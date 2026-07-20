@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <deque>
+#include <mutex>
 
 namespace firmware::application {
 
@@ -27,6 +28,8 @@ public:
     std::size_t size() const;
 
 private:
+    // Serializes producer callbacks and the transport consumer.
+    mutable std::mutex mutex_;
     std::deque<core::ByteVector> frames_;
 };
 
