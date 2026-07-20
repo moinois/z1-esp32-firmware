@@ -45,6 +45,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | DISC-001--DISC-008 UDP discovery | Core formatting/address policy and application implementation with replaceable socket/clock port | Yes for payloads, ordering, timing, recreation, and ignored failures | UDP socket, controller-status, and event integration pending |
 | BLE-001--BLE-006 provisioning identity and lifecycle | Application implementation with replaceable BLUFI/security port plus BLE-only target defaults | Yes for optional startup, identity, security reset, advertising, and credential retention | ESP-IDF BLUFI adapter pending |
 | BLE-010--BLE-016 provisioning commands | Application implementation with replaceable Wi-Fi/report/diagnostic port | Yes for security gates, credentials, connect/disconnect, reports, scan, errors, and custom data | BLUFI wire dispatcher and ESP-IDF Wi-Fi adapter pending |
+| BLESEC-001--BLESEC-006 BLUFI security | Application implementation with replaceable allocation/DH/MD5/AES port; common BLUFI CRC in core | Yes for negotiation shapes, limits, salt, key/IV policy, errors, and readiness lifecycle | ESP-IDF mbedTLS adapter and wire integration pending |
 | CMD-001--CMD-003 recognition and limits | Core implementation | Partial: 001, 003 | Not required |
 | ROUTE-001--ROUTE-018 routing policy | Application implementation | Yes | Transport integration pending |
 | OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | Terminal service integration pending |
