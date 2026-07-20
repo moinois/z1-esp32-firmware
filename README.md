@@ -131,12 +131,14 @@ The first core-to-periphery development slice contains:
   first-boot scheduling, UTC rendering fallback, and exact diagnostics;
 - persistent first-boot, whole-second power-on, and streamed-play machine-time
   accounting with per-save fractional discard and silent write failures;
+- persisted `sys-time` reporting and first-boot-only `clearftm` handling with
+  exact capacity, fallback, UTC, and response behavior;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 421 tests. The firmware also builds successfully as
+The current host suite has 428 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
