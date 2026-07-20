@@ -4,6 +4,8 @@
 #include "firmware/application/usb_receive_staging.hpp"
 #include "firmware/application/usb_transmit_queue.hpp"
 
+#include <atomic>
+
 namespace firmware::application {
 
 // Coordinates USB activity without coupling policy to TinyUSB callbacks.
@@ -31,8 +33,9 @@ public:
     UsbTransmitQueue& transmit_queue();
 
 private:
-    bool physically_present_ = false;
-    bool protocol_active_ = false;
+    // Callback/task shared flags use lock-free atomic state transitions.
+    std::atomic_bool physically_present_{false};
+    std::atomic_bool protocol_active_{false};
     UsbReceiveStaging receive_staging_;
     UsbTransmitQueue transmit_queue_;
 };
