@@ -110,6 +110,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | MEDIA-003--MEDIA-005 media preemption messages | Portable compact JSON message formatter | Yes for exact namespaces, field order, optional preview session, escaping, and no trailing whitespace; clean target build verified | WebSocket send adapter pending |
 | PREV-010 preview path policy | Portable exact `/sd/videos` allow-list | Yes for root/descendant acceptance, root-boundary matching, and any `..` rejection; clean target build verified | Filesystem existence/regular-file adapter pending |
 | AVI-001--AVI-005 preview acceptance | Portable RIFF scanner and indexed frame reader | Yes for RIFF/AVI bounds, padded chunk traversal, last metadata/index retention, immediate invalid-index rejection, movi offset reads, 00dc validation, advertised/buffer limits, and short-read rejection; clean target build verified | Storage seek/read adapter and preview session pending |
+| PREV-001--PREV-007 preview JSON request policy | Application parser over portable JSON core | Yes for exact `vpreview` namespace, six commands, sequence/default selectors, truncation, and path/session bounds; clean target build verified | WebSocket framing, queue, and session adapters pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
 | HW-004--HW-005 CPU, flash, PSRAM, security | Target defaults | Build verification only | No |
