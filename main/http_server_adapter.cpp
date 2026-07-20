@@ -141,12 +141,15 @@ void preview_playback_task(void* parameter) {
     while (context->next_frame < context->avi.entries.size() &&
            preview_generation.load(std::memory_order_acquire) ==
                context->generation) {
+        const bool connection_alive =
+            httpd_ws_get_fd_info(context->handle, context->socket_id) ==
+            HTTPD_WS_CLIENT_WEBSOCKET;
         const auto frame = firmware::core::read_avi_frame(
             firmware::core::BytesView(context->file), context->avi,
             context->next_frame, context->file.size());
         const bool read_succeeded = frame.has_value();
         bool send_succeeded = false;
-        if (read_succeeded) {
+        if (connection_alive && read_succeeded) {
             httpd_ws_frame_t response{};
             response.type = HTTPD_WS_TYPE_BINARY;
             response.payload = const_cast<std::uint8_t*>(frame->data());
@@ -157,7 +160,7 @@ void preview_playback_task(void* parameter) {
         const auto step = firmware::application::schedule_preview_frame(
             context->next_frame, context->avi.entries.size(),
             context->avi.frame_period_us, read_succeeded, send_succeeded,
-            true, false);
+            connection_alive, false);
         if (step.action != firmware::application::PreviewFrameAction::send_frame) {
             break;
         }
@@ -554,12 +557,28 @@ esp_err_t video_websocket_handler(httpd_req_t* request) {
 
 // Receives one preview frame and returns metadata for an accepted open request.
 esp_err_t preview_websocket_handler(httpd_req_t* request) {
+    const auto socket_id =
+        static_cast<std::uint32_t>(httpd_req_to_sockfd(request));
     httpd_ws_frame_t frame{};
-    if (httpd_ws_recv_frame(request, &frame, 0U) != ESP_OK) return ESP_FAIL;
+    if (httpd_ws_recv_frame(request, &frame, 0U) != ESP_OK) {
+        if (preview_runtime.has_value() &&
+            preview_runtime->socket_id == socket_id) {
+            preview_generation.fetch_add(1U, std::memory_order_acq_rel);
+            preview_runtime.reset();
+        }
+        return ESP_FAIL;
+    }
     if (frame.type != HTTPD_WS_TYPE_TEXT || frame.len == 0U) return ESP_OK;
     std::vector<std::uint8_t> payload(frame.len);
     frame.payload = payload.data();
-    if (httpd_ws_recv_frame(request, &frame, frame.len) != ESP_OK) return ESP_FAIL;
+    if (httpd_ws_recv_frame(request, &frame, frame.len) != ESP_OK) {
+        if (preview_runtime.has_value() &&
+            preview_runtime->socket_id == socket_id) {
+            preview_generation.fetch_add(1U, std::memory_order_acq_rel);
+            preview_runtime.reset();
+        }
+        return ESP_FAIL;
+    }
     const auto request_value = firmware::application::accept_preview_socket_message(
         firmware::application::PreviewSocketMessageType::text,
         firmware::core::BytesView(payload));

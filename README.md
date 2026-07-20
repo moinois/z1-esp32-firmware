@@ -183,6 +183,8 @@ The first core-to-periphery development slice contains:
   sent as binary preview WebSocket frames for play/resume/seek commands;
 - Preview playback now continues in a FreeRTOS task with frame-period timing,
   asynchronous WebSocket sends, EOS termination, and generation-based cancel;
+- Playback checks the ESP-IDF WebSocket connection state on each frame and
+  releases the preview session when receive/send fails or the socket closes;
 - static-file serving through replaceable file/response ports, exact 404
   behavior, MIME selection, 256-byte chunks, and terminating empty chunk;
 - nonfatal web-volume startup with format-and-retry policy and an ESP-IDF
