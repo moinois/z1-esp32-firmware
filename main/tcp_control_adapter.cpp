@@ -34,7 +34,7 @@ std::atomic_int active_clients{0};
 std::atomic_uint32_t next_generation{1U};
 firmware::application::Router tcp_router;
 
-void forward_tcp_controller_frame(const firmware::application::HostIdentity&,
+void forward_tcp_controller_frame(firmware::application::TcpClientSession&,
                                   const firmware::core::Frame& frame) {
     static_cast<void>(enqueue_controller_frame(frame));
 }
@@ -134,9 +134,9 @@ void tcp_client_task(void* parameter) {
         const int count = recv(client, input, sizeof(input), 0);
         if (count <= 0) break;
         session.receive({input, static_cast<std::size_t>(count)},
-            [](const firmware::application::HostIdentity& identity,
+            [&session](const firmware::application::HostIdentity&,
                const firmware::core::Frame& frame) {
-                tcp_dispatcher.dispatch(identity, frame);
+                tcp_dispatcher.dispatch(session, frame);
             });
         if (!drain_tcp_transmit_queue(client, session)) {
             break;
