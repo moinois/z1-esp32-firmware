@@ -17,6 +17,8 @@
 #include "tcp_filesystem_adapter.hpp"
 #include "tcp_file_transfer_adapter.hpp"
 #include "tcp_filesystem_query_adapter.hpp"
+#include "tcp_play_adapter.hpp"
+#include "play_runtime_state.hpp"
 #include "tcp_wlan_scan_adapter.hpp"
 #include "tcp_wlan_station_adapter.hpp"
 #include "tcp_wlan_connection_adapter.hpp"
@@ -69,6 +71,20 @@ void forward_tcp_controller_frame(firmware::application::TcpClientSession&,
 void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
                             const firmware::core::Frame& frame) {
     if (frame.type != firmware::core::protocol::general_command) {
+        return;
+    }
+    const bool is_play_command = frame.payload.size() >= 4U &&
+        frame.payload[0] == 'p' && frame.payload[1] == 'l' &&
+        frame.payload[2] == 'a' && frame.payload[3] == 'y';
+    if (is_play_command) {
+        TcpPlayPreparationAdapter play_port(session);
+        auto& play_session = shared_play_session();
+        const bool prepared = play_session.prepare(
+            frame.payload,
+            static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL), play_port);
+        if (prepared) {
+            static_cast<void>(session.queue_frame(play_session.status_reply()));
+        }
         return;
     }
     const auto match = firmware::core::recognize_command(frame.payload);
