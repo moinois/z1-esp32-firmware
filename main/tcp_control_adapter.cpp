@@ -49,6 +49,36 @@ struct TcpClientContext {
     firmware::application::HostIdentity identity;
 };
 
+bool send_tcp_bytes(int client, firmware::core::BytesView bytes) {
+    firmware::application::TcpFrameSender sender;
+    return sender.send(bytes, [client](firmware::core::BytesView remaining) {
+        const ssize_t result = send(client, remaining.data(), remaining.size(), 0);
+        if (result > 0) {
+            return firmware::application::TcpSendResult{
+                firmware::application::TcpSendStatus::sent,
+                static_cast<std::size_t>(result)};
+        }
+        if (result < 0 && (errno == EAGAIN || errno == EWOULDBLOCK
+                           || errno == EINTR)) {
+            return firmware::application::TcpSendResult{
+                firmware::application::TcpSendStatus::temporary_failure, 0U};
+        }
+        return firmware::application::TcpSendResult{
+            firmware::application::TcpSendStatus::permanent_failure, 0U};
+    });
+}
+
+bool drain_tcp_transmit_queue(
+    int client, firmware::application::TcpClientSession& session) {
+    while (const auto* frame = session.transmit_queue().front()) {
+        if (!send_tcp_bytes(client, *frame)) {
+            return false;
+        }
+        session.transmit_queue().pop_front();
+    }
+    return true;
+}
+
 void send_rejection(int client) {
     constexpr std::string_view message =
         "The maximum number of client connections has been reached. Please close other client first.";
@@ -108,6 +138,9 @@ void tcp_client_task(void* parameter) {
                const firmware::core::Frame& frame) {
                 tcp_dispatcher.dispatch(identity, frame);
             });
+        if (!drain_tcp_transmit_queue(client, session)) {
+            break;
+        }
     }
     close(client);
     active_clients.fetch_sub(1, std::memory_order_release);
