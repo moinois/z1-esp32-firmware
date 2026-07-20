@@ -2,6 +2,7 @@
 set(APPLICATION_SOURCES
     src/configuration_files.cpp
     src/configuration_get.cpp
+    src/configuration_set.cpp
     src/directory_listing.cpp
     src/file_transfer_admission.cpp
     src/file_download.cpp

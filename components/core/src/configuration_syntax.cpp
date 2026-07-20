@@ -100,4 +100,66 @@ std::vector<std::string> parse_configuration_tokens(
     return tokens;
 }
 
+std::string rewrite_sd_configuration(std::string_view content,
+                                     std::string_view key,
+                                     std::string_view value) {
+    std::string rewritten;
+    bool replaced = false;
+    std::size_t cursor = 0U;
+    while (cursor < content.size()) {
+        const std::size_t newline = content.find('\n', cursor);
+        const std::size_t line_end =
+            newline == std::string_view::npos ? content.size() : newline;
+        std::string_view line = content.substr(cursor, line_end - cursor);
+        if (!line.empty() && line.back() == '\r') {
+            line.remove_suffix(1U);
+        }
+
+        std::size_t delimiter = line.find('=');
+        if (delimiter == std::string_view::npos) {
+            delimiter = line.find(' ');
+        }
+        const bool matches = delimiter != std::string_view::npos &&
+                             trim_ascii(line.substr(0U, delimiter)) == key;
+        if (matches) {
+            std::size_t value_start = delimiter + 1U;
+            while (value_start < line.size() &&
+                   is_ascii_whitespace(line[value_start])) {
+                ++value_start;
+            }
+            std::size_t suffix_start = value_start;
+            while (suffix_start < line.size() &&
+                   !is_ascii_whitespace(line[suffix_start]) &&
+                   line[suffix_start] != '#') {
+                ++suffix_start;
+            }
+            rewritten.append(key);
+            rewritten.push_back(line[delimiter]);
+            rewritten.append(value);
+            rewritten.append(line.substr(suffix_start));
+            rewritten.push_back('\n');
+            replaced = true;
+        } else {
+            const std::size_t original_end =
+                newline == std::string_view::npos ? line_end : newline + 1U;
+            rewritten.append(content.substr(cursor, original_end - cursor));
+        }
+        if (newline == std::string_view::npos) {
+            break;
+        }
+        cursor = newline + 1U;
+    }
+
+    if (!replaced) {
+        if (!rewritten.empty() && rewritten.back() != '\n') {
+            rewritten.push_back('\n');
+        }
+        rewritten.append(key);
+        rewritten.push_back(' ');
+        rewritten.append(value);
+        rewritten.push_back('\n');
+    }
+    return rewritten;
+}
+
 }  // namespace firmware::core

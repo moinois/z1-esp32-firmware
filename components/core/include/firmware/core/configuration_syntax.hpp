@@ -27,4 +27,9 @@ std::optional<ConfigurationEntry> parse_live_config_chunk(BytesView chunk);
 std::vector<std::string> parse_configuration_tokens(BytesView argument,
                                                     std::size_t maximum_tokens);
 
+// Rewrites every matching SD entry or appends one missing key.
+std::string rewrite_sd_configuration(std::string_view content,
+                                     std::string_view key,
+                                     std::string_view value);
+
 }  // namespace firmware::core

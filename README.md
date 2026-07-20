@@ -45,6 +45,8 @@ The first core-to-periphery development slice contains:
   retained duplicates, first-match updates, and specified truncation behavior;
 - cached, fresh-SD, and retained-live configuration lookup with source-specific
   packet types, cache lifetime, and exact result text;
+- live configuration updates and SD temporary-file rewrites with delimiter and
+  suffix preservation, ordered unlink/rename, cleanup, and exact responses;
 - ordered, case-sensitive local-command prefix recognition and size limits;
 - controller-to-host and host-to-controller routing precedence;
 - controller-forwarding suppression, size, and capacity admission;
@@ -81,7 +83,7 @@ The first core-to-periphery development slice contains:
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 234 tests. The firmware also builds successfully as
+The current host suite has 242 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
