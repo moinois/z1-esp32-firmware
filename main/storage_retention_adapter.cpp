@@ -7,6 +7,7 @@
 #include "freertos/task.h"
 
 #include "firmware/application/storage_retention_service.hpp"
+#include "runtime_counter_task.hpp"
 
 #include <dirent.h>
 #include <sys/stat.h>
@@ -58,7 +59,8 @@ public:
     }
 
     void request_persistence() override {
-        ESP_LOGI(tag, "runtime counter persistence requested");
+        request_runtime_persistence(
+            static_cast<std::uint64_t>(xTaskGetTickCount() * portTICK_PERIOD_MS));
     }
 };
 

@@ -44,6 +44,12 @@ void notify_runtime_play_state(bool running, std::uint64_t monotonic_millisecond
     }
 }
 
+void request_runtime_persistence(std::uint64_t monotonic_milliseconds) {
+    if (active_service != nullptr) {
+        active_service->save_power_on(monotonic_milliseconds);
+    }
+}
+
 void RuntimeCounterTask::start() {
     xTaskCreate(runtime_counter_task, "runtime_counters", 4096U, nullptr, 3U,
                 nullptr);

@@ -17,4 +17,7 @@ void record_runtime_first_boot(std::int64_t unix_seconds);
 // Forwards play start/stop state to runtime accounting.
 void notify_runtime_play_state(bool running, std::uint64_t monotonic_milliseconds);
 
+// Requests an immediate power-on counter persistence from the active service.
+void request_runtime_persistence(std::uint64_t monotonic_milliseconds);
+
 }  // namespace firmware::target
