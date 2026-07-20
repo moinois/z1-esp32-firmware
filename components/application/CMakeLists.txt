@@ -48,6 +48,7 @@ set(APPLICATION_SOURCES
     src/preview_responses.cpp
     src/preview_frame_step.cpp
     src/preview_socket_input.cpp
+    src/recording_policy.cpp
     src/play_line_reader.cpp
     src/play_session.cpp
     src/router.cpp
