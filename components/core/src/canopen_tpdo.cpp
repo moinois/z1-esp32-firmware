@@ -57,8 +57,7 @@ std::optional<CanFrame> CanopenTransmitPdoScheduler::build_tpdo(
         transmission.data.size() != 1U || timer.data.size() != 2U ||
         (read_le(identifier) & disabled_identifier_mask) != 0U ||
         read_le(timer) == 0U ||
-        elapsed_milliseconds_[pdo_number] < read_le(timer) ||
-        read_le(transmission) == 0U) {
+        elapsed_milliseconds_[pdo_number] < read_le(timer)) {
         return std::nullopt;
     }
 

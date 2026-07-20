@@ -221,3 +221,20 @@ TEST_CASE(od_041_tpdo_emits_mapped_value_after_event_timer) {
     REQUIRE_EQ(frame->data[0], 0U);
     REQUIRE_EQ(frame->data[3], 0U);
 }
+
+TEST_CASE(od_040_tpdo_accepts_zero_event_driven_transmission_type) {
+    CanopenObjectDictionary dictionary;
+    REQUIRE_EQ(dictionary.write(0x1800U, 1U, le(0x00000180U, 4U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1800U, 2U, le(0U, 1U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1800U, 5U, le(10U, 2U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1a00U, 0U, le(1U, 1U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1a00U, 1U, le(0x60000120U, 4U)).abort,
+               SdoAbort::none);
+
+    CanopenTransmitPdoScheduler scheduler(dictionary);
+    REQUIRE(scheduler.process_cycle().has_value());
+}
