@@ -13,6 +13,9 @@
 #include "firmware/application/usb_protocol_state.hpp"
 #include "firmware/application/usb_transmit_progress.hpp"
 #include "firmware/application/recording_commands.hpp"
+#include "firmware/application/serial_number.hpp"
+#include "nvs_key_value_adapter.hpp"
+#include "runtime_operation_capacity.hpp"
 #include "recording_request_state.hpp"
 #include "firmware/core/text.hpp"
 #include "firmware/core/frame.hpp"
@@ -41,6 +44,49 @@ const char* string_descriptors[] = {"Espressif", "MakeraZ1 (USB)", "123456"};
 firmware::application::UsbProtocolState protocol_state;
 firmware::core::StreamDecoder decoder(firmware::core::StreamPolicy::usb());
 RecordingRequestState recording_state;
+
+class UsbSerialPort final : public firmware::application::SerialNumberPort {
+public:
+    bool admit_operation(std::uint32_t wait_milliseconds) override {
+        return admit_runtime_operation(wait_milliseconds);
+    }
+
+    firmware::application::SerialNumberRead read_serial(
+        std::string_view name_space, std::string_view key) override {
+        NvsKeyValueAdapter nvs;
+        const auto result = nvs.read_string(name_space, key);
+        if (result.state == NvsReadState::found) {
+            return {firmware::application::SerialNumberReadResult::success,
+                    result.value};
+        }
+        if (result.state == NvsReadState::missing) {
+            return {firmware::application::SerialNumberReadResult::missing_key,
+                    {}};
+        }
+        return {firmware::application::SerialNumberReadResult::failure, {}};
+    }
+
+    bool write_serial(std::string_view name_space, std::string_view key,
+                      std::string_view value) override {
+        NvsKeyValueAdapter nvs;
+        return nvs.write_string(name_space, key, value);
+    }
+
+    void complete_operation() override {
+        complete_runtime_operation();
+    }
+
+    void send_response(std::uint8_t type, std::string_view payload) override {
+        const firmware::core::Frame response{
+            type, firmware::core::ByteVector(payload.begin(), payload.end())};
+        const auto encoded = firmware::core::encode_frame(response);
+        if (!encoded.empty()) {
+            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+        }
+    }
+};
+
+UsbSerialPort serial_port;
 
 void usb_transmit_task(void*) {
     firmware::application::UsbTransmitProgress progress;
@@ -98,6 +144,19 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                 const auto response = firmware::core::encode_frame(result.response);
                 if (!response.empty()) {
                     static_cast<void>(protocol_state.transmit_queue().enqueue(response));
+                }
+                continue;
+            }
+            if (match.kind == firmware::core::CommandKind::serial_get ||
+                match.kind == firmware::core::CommandKind::serial_set) {
+                const std::string_view command(
+                    reinterpret_cast<const char*>(frame.payload.data()),
+                    frame.payload.size());
+                firmware::application::SerialNumberService service(serial_port);
+                if (match.kind == firmware::core::CommandKind::serial_get) {
+                    service.handle_get(command);
+                } else {
+                    service.handle_set(command);
                 }
                 continue;
             }

@@ -14,6 +14,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | USB-008 transmit progress timeout | Application implementation | Yes for strict 500 ms no-progress expiry, progress reset, and explicit clear | TinyUSB TX task integration target-built; physical verification pending |
 | USB local recording control | Target adapter over recording command policy | Target-built for M951/M952 state updates and queued responses | Physical USB verification pending |
 | USB local update/diagnostic/version commands | Target adapter over update trigger and controller snapshots | Target-built for upgrade/reset triggers and queued diagnose/version responses | Physical USB verification pending |
+| USB local serial-number control | Target adapter over NVS and serial-number service | Target-built for `sn-get`/`sn-set`, shared operation admission, persistence delegation, and queued responses | Physical USB/NVS verification pending |
 | ESC-001--ESC-002 escaping | Core implementation | Yes | Not required |
 | HFT-004 path normalization | Core implementation | Yes | Not required |
 | HFT-001--HFT-003 transfer start and path validation | Core implementation | Yes | TCP service integration and target build verified; runtime filesystem verification pending |
