@@ -179,6 +179,8 @@ The first core-to-periphery development slice contains:
   metadata formatting, and text-frame response transmission;
 - Persistent preview session state for play, pause, resume, seek, and stop
   commands with session ownership and conflict responses;
+- Indexed AVI JPEG frames are now read through the tested bounded reader and
+  sent as binary preview WebSocket frames for play/resume/seek commands;
 - static-file serving through replaceable file/response ports, exact 404
   behavior, MIME selection, 256-byte chunks, and terminating empty chunk;
 - nonfatal web-volume startup with format-and-retry policy and an ESP-IDF

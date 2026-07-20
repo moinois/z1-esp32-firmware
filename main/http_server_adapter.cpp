@@ -106,6 +106,22 @@ esp_err_t send_preview_text(httpd_req_t* request, std::string_view text) {
     response.len = text.size();
     return httpd_ws_send_frame(request, &response);
 }
+
+// Sends one indexed JPEG frame from the retained preview file.
+bool send_preview_frame(httpd_req_t* request, const PreviewRuntime& runtime,
+                        std::size_t frame_index) {
+    const auto frame = firmware::core::read_avi_frame(
+        firmware::core::BytesView(runtime.file), runtime.avi, frame_index,
+        runtime.file.size());
+    if (!frame.has_value()) {
+        return false;
+    }
+    httpd_ws_frame_t response{};
+    response.type = HTTPD_WS_TYPE_BINARY;
+    response.payload = const_cast<std::uint8_t*>(frame->data());
+    response.len = frame->size();
+    return httpd_ws_send_frame(request, &response) == ESP_OK;
+}
 #endif
 
 class DirectHttpOtaPort final
@@ -511,6 +527,17 @@ esp_err_t preview_websocket_handler(httpd_req_t* request) {
                       preview_runtime->avi.entries.size() - 1U),
             preview_runtime->avi.frame_period_us, same_session, active);
         const std::string session_id = preview_runtime->session_id;
+        const bool should_send_frame =
+            result.reply &&
+            (command.command == firmware::application::PreviewCommand::play ||
+             command.command == firmware::application::PreviewCommand::seek ||
+             command.command == firmware::application::PreviewCommand::resume);
+        if (should_send_frame &&
+            !send_preview_frame(request, *preview_runtime,
+                                 preview_runtime->current_frame)) {
+            preview_runtime.reset();
+            return ESP_FAIL;
+        }
         if (result.terminated) {
             preview_runtime.reset();
         }
