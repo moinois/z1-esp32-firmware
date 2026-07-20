@@ -9,15 +9,15 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | FRM-001--FRM-016 common framing and recovery | Core implementation | Partial: 001, 004, 010, 011, 013, 015, 016 | No |
 | ESC-001--ESC-002 escaping | Core implementation | Yes | Not required |
 | HFT-004 path normalization | Core implementation | Yes | Not required |
-| HFT-001--HFT-003 transfer start and path validation | Core implementation | Yes | Service integration pending |
+| HFT-001--HFT-003 transfer start and path validation | Core implementation | Yes | TCP service integration and target build verified; runtime filesystem verification pending |
 | HFT-010--HFT-011 cache path mapping | Core implementation | Yes | Target adapter now provides parent-directory creation |
 | HFT-013 cached MD5 extraction | Core implementation | Yes | Target adapter now provides POSIX/mbedTLS MD5 calculation |
 | HFT-014 cache base preparation | Download port contract | Invocation verified | Target adapter and TCP service routing implemented |
-| HFT-005--HFT-007 start admission and owner mailbox | Application implementation | Yes | Ownership and service integration pending |
+| HFT-005--HFT-007 start admission and owner mailbox | Application implementation | Yes | TCP ownership and per-session service integration target-built; runtime contention verification pending |
 | HFTD-001--HFTD-010 host download | Application implementation with replaceable port | Yes | POSIX file, TCP queue, per-session routing, and ownership lifecycle implemented |
-| HFT-020--HFT-021, HFT-023, HFT-025 download timing and errors | Application implementation | Yes for download | Runtime clock integration pending |
+| HFT-020--HFT-021, HFT-023, HFT-025 download timing and errors | Application implementation | Yes for download | ESP timer integration target-built; runtime timing verification pending |
 | HFTU-001--HFTU-010 host upload | Application implementation with replaceable port | Yes | POSIX file, TCP queue, per-session routing, and ownership lifecycle implemented |
-| HFT-020--HFT-022, HFT-024--HFT-025 upload timing and retries | Application implementation | Yes for upload | Runtime clock integration pending |
+| HFT-020--HFT-022, HFT-024--HFT-025 upload timing and retries | Application implementation | Yes for upload | ESP timer integration target-built; runtime timing verification pending |
 | FILE-001--FILE-003 common filesystem path syntax | Core implementation | Yes | Not required |
 | FILE-010 directory-list argument and option parsing | Core implementation | Yes | Not required |
 | FILE-011--FILE-015 directory listing | Application implementation with replaceable port | Yes | POSIX enumeration and TCP response adapter implemented |
