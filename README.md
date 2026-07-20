@@ -34,7 +34,8 @@ The first core-to-periphery development slice contains:
 
 The current host suite has 42 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
-in [`docs/requirements.md`](docs/requirements.md).
+in [`docs/requirements.md`](docs/requirements.md). Material design choices are
+recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
 
 ## Architecture
 
@@ -108,7 +109,7 @@ implementation/
 │   ├── include/           Public core interfaces
 │   └── src/               Core implementations
 ├── components/application/ Routing, ownership, and application services
-├── docs/                  Requirement traceability and design records
+├── docs/                  Requirement traceability and architecture decisions
 ├── main/                  ESP-IDF composition root and target adapters
 ├── tests/                 Host-side specification tests
 ├── CMakeLists.txt         Host/ESP-IDF build entry point
