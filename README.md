@@ -179,6 +179,8 @@ The first core-to-periphery development slice contains:
   ports, waits, wildcard setting, and nonfatal failure behavior;
 - main-server firmware-info and wildcard static-file handlers connected to the
   portable policy and SPIFFS-backed VFS;
+- direct application OTA transaction ordering, exact failure responses,
+  structural-finalization delegation, and delayed restart handoff;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and

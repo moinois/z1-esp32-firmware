@@ -20,6 +20,7 @@ set(APPLICATION_SOURCES
     src/connectivity_startup.cpp
     src/directory_listing.cpp
     src/diagnostic_capture.cpp
+    src/direct_application_update.cpp
     src/diagnostic_log_writer.cpp
     src/discovery_service.cpp
     src/file_transfer_admission.cpp
