@@ -19,8 +19,13 @@ constexpr WifiScanConfig user_scan_config{
 };
 constexpr std::uint32_t scan_settle_milliseconds = 100U;
 constexpr std::size_t maximum_scan_response_size = 512U;
+constexpr std::size_t maximum_connection_error_detail_size = 100U;
+constexpr std::uint32_t discovery_delay_milliseconds = 500U;
 constexpr std::string_view scanning_message = "正在扫描WiFi网络...\n";
 constexpr std::string_view success_message = "ok\r\n";
+constexpr std::string_view connection_failure_message = "Connect error.\r\n";
+constexpr std::string_view disconnection_failure_message =
+    "Disconnect error.\r\n";
 
 // Creates a frame from text and the selected packet type.
 core::Frame text_frame(std::uint8_t type, std::string_view text) {
@@ -50,6 +55,52 @@ void WlanScanCommand::execute(WlanCommandPort& port) {
                 formatted.begin() +
                     static_cast<std::ptrdiff_t>(response_size)}});
     port.send(text_frame(core::protocol::operation_success, success_message));
+}
+
+void WlanConnectionCommand::connect(
+    StationRuntime& runtime, StationConnectionPort& station,
+    WlanConnectionResponsePort& responses, std::string_view ssid,
+    std::string_view password) {
+    const ManualConnectionResult result =
+        ManualStationConnection::connect(runtime, station, ssid, password);
+    if (!result.success) {
+        const std::string_view detail = runtime.error_detail.empty()
+                                            ? std::string_view(result.error_name)
+                                            : std::string_view(runtime.error_detail);
+        std::string report = "Error: ";
+        report.append(detail.substr(0U, maximum_connection_error_detail_size));
+        report.push_back('\n');
+        responses.send(text_frame(core::protocol::text_response, report));
+        responses.send(text_frame(core::protocol::operation_failure,
+                                  connection_failure_message));
+        return;
+    }
+
+    const std::string report = "WiFi connected, ip: " + result.ipv4 + "\n";
+    responses.send(text_frame(core::protocol::text_response, report));
+    responses.send(text_frame(core::protocol::operation_success,
+                              success_message));
+    responses.delay_milliseconds(discovery_delay_milliseconds);
+    responses.send_discovery_burst();
+}
+
+void WlanConnectionCommand::disconnect(
+    StationRuntime& runtime, StationConnectionPort& station,
+    WlanConnectionResponsePort& responses) {
+    const StationApiResult result =
+        ManualStationConnection::disconnect(runtime, station);
+    if (!result.success) {
+        const std::string report = "Error: " + result.error_name + "\n";
+        responses.send(text_frame(core::protocol::text_response, report));
+        responses.send(text_frame(core::protocol::operation_failure,
+                                  disconnection_failure_message));
+        return;
+    }
+
+    responses.send(text_frame(core::protocol::text_response,
+                              "WiFi Disconnected!\n"));
+    responses.send(text_frame(core::protocol::operation_success,
+                              success_message));
 }
 
 }  // namespace firmware::application

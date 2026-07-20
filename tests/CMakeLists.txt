@@ -35,6 +35,7 @@ add_executable(
     test_play_goto.cpp
     test_routing.cpp
     test_sd_card_lifecycle.cpp
+    test_station_connection.cpp
     test_text.cpp
     test_status.cpp
     test_update.cpp

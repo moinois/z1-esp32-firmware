@@ -25,6 +25,7 @@ set(APPLICATION_SOURCES
     src/play_session.cpp
     src/router.cpp
     src/sd_card_lifecycle.cpp
+    src/station_connection.cpp
     src/wlan_command.cpp
 )
 

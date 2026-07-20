@@ -1,6 +1,7 @@
-// Declares the host WLAN scan exchange behind a replaceable Wi-Fi port.
+// Declares host WLAN scan and connection exchanges behind replaceable ports.
 #pragma once
 
+#include "firmware/application/station_connection.hpp"
 #include "firmware/core/frame.hpp"
 #include "firmware/core/network_policy.hpp"
 
@@ -54,6 +55,36 @@ class WlanScanCommand {
 public:
     // Sends progress, performs the blocking scan, and maps its result.
     static void execute(WlanCommandPort& port);
+};
+
+// Isolates host WLAN responses and discovery from connection state policy.
+class WlanConnectionResponsePort {
+public:
+    // Enables safe destruction through a substituted response port.
+    virtual ~WlanConnectionResponsePort() = default;
+
+    // Sends one response to the requesting host.
+    virtual void send(core::Frame frame) = 0;
+
+    // Waits before announcing a newly connected endpoint.
+    virtual void delay_milliseconds(std::uint32_t duration) = 0;
+
+    // Sends the command-triggered discovery datagram burst.
+    virtual void send_discovery_burst() = 0;
+};
+
+// Maps manual station connection operations to exact host responses.
+class WlanConnectionCommand {
+public:
+    // Connects with requested credentials and reports success or retained error.
+    static void connect(StationRuntime& runtime, StationConnectionPort& station,
+                        WlanConnectionResponsePort& responses,
+                        std::string_view ssid, std::string_view password);
+
+    // Requests disconnection and reports its exact API outcome.
+    static void disconnect(StationRuntime& runtime,
+                           StationConnectionPort& station,
+                           WlanConnectionResponsePort& responses);
 };
 
 }  // namespace firmware::application
