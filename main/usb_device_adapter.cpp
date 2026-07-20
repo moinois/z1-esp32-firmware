@@ -1030,11 +1030,34 @@ public:
 UsbDirectoryPort directory_port;
 UsbHashPort hash_port;
 firmware::application::LocalCommandQueue usb_local_commands;
+SemaphoreHandle_t usb_local_command_mutex = nullptr;
+
+// Enqueues one USB-local frame while serializing callback/task access.
+bool enqueue_usb_local_command(const firmware::core::Frame& frame) {
+    if (usb_local_command_mutex == nullptr ||
+        xSemaphoreTake(usb_local_command_mutex, portMAX_DELAY) != pdTRUE) {
+        return false;
+    }
+    const bool queued = usb_local_commands.enqueue(frame);
+    xSemaphoreGive(usb_local_command_mutex);
+    return queued;
+}
+
+// Removes one USB-local frame while serializing callback/task access.
+std::optional<firmware::core::Frame> dequeue_usb_local_command() {
+    if (usb_local_command_mutex == nullptr ||
+        xSemaphoreTake(usb_local_command_mutex, portMAX_DELAY) != pdTRUE) {
+        return std::nullopt;
+    }
+    auto frame = usb_local_commands.dequeue();
+    xSemaphoreGive(usb_local_command_mutex);
+    return frame;
+}
 
 // Handles short USB-local commands outside the TinyUSB receive callback.
 void usb_local_command_task(void*) {
     for (;;) {
-        const auto command_frame = usb_local_commands.dequeue();
+        const auto command_frame = dequeue_usb_local_command();
         if (!command_frame.has_value()) {
             vTaskDelay(pdMS_TO_TICKS(1U));
             continue;
@@ -1342,64 +1365,64 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
             }
             if (match.kind == firmware::core::CommandKind::record_start ||
                 match.kind == firmware::core::CommandKind::record_stop) {
-                static_cast<void>(usb_local_commands.enqueue(frame));
+                static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::serial_get ||
                 match.kind == firmware::core::CommandKind::serial_set) {
-                static_cast<void>(usb_local_commands.enqueue(frame));
+                static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::system_time ||
                 match.kind == firmware::core::CommandKind::clear_first_time) {
-                static_cast<void>(usb_local_commands.enqueue(frame));
+                static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::upgrade ||
                 match.kind == firmware::core::CommandKind::reset) {
-                static_cast<void>(usb_local_commands.enqueue(frame));
+                static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::make_directory ||
                 match.kind == firmware::core::CommandKind::remove ||
                 match.kind == firmware::core::CommandKind::move ||
                 match.kind == firmware::core::CommandKind::file_type) {
-                static_cast<void>(usb_local_commands.enqueue(frame));
+                static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::list) {
-                static_cast<void>(usb_local_commands.enqueue(frame));
+                static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::md5_sum) {
-                static_cast<void>(usb_local_commands.enqueue(frame));
+                static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::wlan) {
-                static_cast<void>(usb_local_commands.enqueue(frame));
+                static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::config_restore ||
                 match.kind == firmware::core::CommandKind::config_default) {
-                static_cast<void>(usb_local_commands.enqueue(frame));
+                static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::config_get ||
                 match.kind == firmware::core::CommandKind::config_set) {
-                static_cast<void>(usb_local_commands.enqueue(frame));
+                static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::upgrade ||
                 match.kind == firmware::core::CommandKind::reset) {
-                static_cast<void>(usb_local_commands.enqueue(frame));
+                static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::diagnose) {
-                static_cast<void>(usb_local_commands.enqueue(frame));
+                static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::version) {
-                static_cast<void>(usb_local_commands.enqueue(frame));
+                static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
         }
@@ -1457,6 +1480,11 @@ bool UsbDeviceAdapter::start() {
     usb_file_mutex = xSemaphoreCreateMutex();
     if (usb_file_mutex == nullptr) {
         ESP_LOGW(tag, "USB file-transfer mutex allocation failed");
+        return false;
+    }
+    usb_local_command_mutex = xSemaphoreCreateMutex();
+    if (usb_local_command_mutex == nullptr) {
+        ESP_LOGW(tag, "USB local-command mutex allocation failed");
         return false;
     }
     xTaskCreate(usb_transmit_task, "usb_tx", 4096U, nullptr, 4U, nullptr);
