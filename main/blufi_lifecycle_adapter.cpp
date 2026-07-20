@@ -87,9 +87,8 @@ bool BlufiLifecycleAdapter::start(const esp_blufi_callbacks_t* callbacks) {
         esp_blufi_profile_init() != ESP_OK) {
         return false;
     }
-    esp_blufi_adv_start();
-    // The profile helper installs its legacy defaults; replace them with the
-    // product advertisement and explicit 160 ms public advertising policy.
+    // Configure the product advertisement directly; invoking the profile
+    // helper here would race its legacy asynchronous advertising defaults.
     return restart_blufi_advertising();
 }
 
