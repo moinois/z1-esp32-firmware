@@ -36,6 +36,9 @@ namespace {
 
 firmware::application::ControllerFrameForwarder controller_forwarder;
 SemaphoreHandle_t controller_forwarder_mutex = nullptr;
+firmware::application::ControllerFirmwareTransfer* active_firmware = nullptr;
+firmware::application::ControllerConfigTransfer* active_configuration = nullptr;
+firmware::application::ControllerFactoryTransfer* active_factory = nullptr;
 
 void drain_forwarded_frames(ControllerUartAdapter& uart) {
     for (;;) {
@@ -67,6 +70,9 @@ void controller_command_task(void*) {
     firmware::application::ControllerFirmwareTransfer firmware_transfer;
     firmware::application::ControllerConfigTransfer config_transfer;
     firmware::application::ControllerFactoryTransfer factory_transfer;
+    active_firmware = &firmware_transfer;
+    active_configuration = &config_transfer;
+    active_factory = &factory_transfer;
     auto& play_session = shared_play_session();
     firmware::application::PlayController play_controller(play_session);
     ControllerPlayAdapter play_port(uart);
@@ -164,6 +170,18 @@ bool enqueue_controller_frame(const firmware::core::Frame& frame) {
     const bool queued = controller_forwarder.forward(frame);
     xSemaphoreGive(controller_forwarder_mutex);
     return queued;
+}
+
+bool controller_firmware_transfer_active() {
+    return active_firmware != nullptr && active_firmware->active();
+}
+
+bool controller_configuration_transfer_active() {
+    return active_configuration != nullptr && active_configuration->active();
+}
+
+bool controller_factory_transfer_active() {
+    return active_factory != nullptr && active_factory->active();
 }
 
 }  // namespace firmware::target

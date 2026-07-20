@@ -3,8 +3,10 @@
 
 #include "controller_uart_adapter.hpp"
 #include "runtime_status_adapter.hpp"
+#include "firmware_update_adapter.hpp"
 
 #include "firmware/core/frame.hpp"
+#include "esp_timer.h"
 
 #include <cstdio>
 #include <climits>
@@ -96,10 +98,19 @@ void ControllerTransferAdapter::publish(
         }
         case firmware::application::FirmwareTransferEvent::completed:
             publish_controller_transfer_status(success_phase, 100U);
+            notify_controller_transfer_completed(
+                static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL));
             break;
         case firmware::application::FirmwareTransferEvent::error:
+            notify_controller_transfer_failed();
+            publish_controller_transfer_status(error_phase, 0U);
+            break;
         case firmware::application::FirmwareTransferEvent::cancelled:
+            notify_controller_transfer_cancelled();
+            publish_controller_transfer_status(error_phase, 0U);
+            break;
         case firmware::application::FirmwareTransferEvent::timed_out:
+            notify_controller_transfer_timeout(true);
             publish_controller_transfer_status(error_phase, 0U);
             break;
     }

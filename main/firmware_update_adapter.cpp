@@ -5,24 +5,60 @@
 #include "esp_image_validator.hpp"
 #include "ota_update_adapter.hpp"
 #include "nvs_key_value_adapter.hpp"
+#include "runtime_status_adapter.hpp"
 
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 #include "firmware/application/update_application.hpp"
+#include "firmware/application/update_controller.hpp"
 #include "firmware/application/update_validation.hpp"
 
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <atomic>
+#include <sys/stat.h>
 
 namespace firmware::target {
 namespace {
 
 constexpr char tag[] = "UPDATE";
 std::atomic_bool update_requested{false};
+std::atomic<firmware::application::UpdateControllerMonitor*> controller_monitor{
+    nullptr};
+
+class UpdateControllerTargetPort final
+    : public firmware::application::UpdateControllerPort {
+public:
+    bool staged_controller_exists() const override {
+        struct stat information{};
+        return stat("/sd/lpc1768.bin", &information) == 0 &&
+               S_ISREG(information.st_mode);
+    }
+    bool firmware_transfer_active() const override {
+        return controller_firmware_transfer_active();
+    }
+    bool configuration_transfer_active() const override {
+        return controller_configuration_transfer_active();
+    }
+    bool factory_transfer_active() const override {
+        return controller_factory_transfer_active();
+    }
+    void send_controller_reset() override {
+        OtaUpdateAdapter{}.send_controller_reset();
+    }
+    void publish_error() override {
+        publish_controller_transfer_status(3U, 0U);
+    }
+    void remove_staged_controller(std::string_view path) override {
+        static_cast<void>(std::remove(std::string(path).c_str()));
+    }
+    void controller_completed(std::uint64_t) override {
+        publish_controller_transfer_status(4U, 100U);
+    }
+};
 
 class UpdateTargetPort final
     : public firmware::application::UpdateValidationPort {
@@ -131,7 +167,12 @@ void update_task(void*) {
         }
     }
     update_requested.store(true);
+    UpdateControllerTargetPort controller_port;
+    firmware::application::UpdateControllerMonitor monitor(controller_port);
+    controller_monitor.store(&monitor, std::memory_order_release);
+    monitor.start(xTaskGetTickCount() * portTICK_PERIOD_MS);
     for (;;) {
+        monitor.tick(xTaskGetTickCount() * portTICK_PERIOD_MS);
         if (update_requested.exchange(false)) {
             process_update_once();
         }
@@ -150,6 +191,26 @@ void FirmwareUpdateAdapter::start() {
 
 void request_firmware_update_processing() {
     update_requested.store(true);
+}
+
+void notify_controller_transfer_completed(std::uint64_t now_milliseconds) {
+    auto* monitor = controller_monitor.load(std::memory_order_acquire);
+    if (monitor != nullptr) monitor->controller_completed(now_milliseconds);
+}
+
+void notify_controller_transfer_failed() {
+    auto* monitor = controller_monitor.load(std::memory_order_acquire);
+    if (monitor != nullptr) monitor->transfer_failed();
+}
+
+void notify_controller_transfer_cancelled() {
+    auto* monitor = controller_monitor.load(std::memory_order_acquire);
+    if (monitor != nullptr) monitor->transfer_cancelled();
+}
+
+void notify_controller_transfer_timeout(bool qualifying) {
+    auto* monitor = controller_monitor.load(std::memory_order_acquire);
+    if (monitor != nullptr) monitor->transfer_timed_out(qualifying);
 }
 
 }  // namespace firmware::target

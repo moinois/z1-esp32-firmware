@@ -14,4 +14,9 @@ public:
 // Queues a frame from another transport for serialized controller output.
 bool enqueue_controller_frame(const firmware::core::Frame& frame);
 
+// Reports whether a controller transfer family currently suppresses traffic.
+bool controller_firmware_transfer_active();
+bool controller_configuration_transfer_active();
+bool controller_factory_transfer_active();
+
 }  // namespace firmware::target
