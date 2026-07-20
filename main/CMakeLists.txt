@@ -14,6 +14,7 @@ idf_component_register(
         "nvs_runtime_counter_adapter.cpp"
         "runtime_counter_task.cpp"
         "runtime_play_observer.cpp"
+        "wall_clock_adapter.cpp"
     REQUIRES
         application
         core

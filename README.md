@@ -215,6 +215,7 @@ The first core-to-periphery development slice contains:
 - runtime-counter startup task with periodic whole-second persistence;
 - first-boot notification bridge from wall-clock handling to runtime persistence;
 - runtime play-state observer bridge for machine-seconds accounting;
+- ESP-IDF wall-clock adapter with UTC formatting and first-boot notification;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
