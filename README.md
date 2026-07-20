@@ -187,6 +187,8 @@ The first core-to-periphery development slice contains:
   releases the preview session when receive/send fails or the socket closes;
 - Camera adapter exposes bounded JPEG capture and current-dimension queries for
   the upcoming recording task without coupling storage to the sensor driver;
+- Recording file adapter writes finalized AVI buffers with short-write handling,
+  flush, `fsync`, and durable close through the mounted FAT/POSIX VFS;
 - static-file serving through replaceable file/response ports, exact 404
   behavior, MIME selection, 256-byte chunks, and terminating empty chunk;
 - nonfatal web-volume startup with format-and-retry policy and an ESP-IDF

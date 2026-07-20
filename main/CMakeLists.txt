@@ -7,6 +7,7 @@ idf_component_register(
         "main.cpp"
         "http_server_adapter.cpp"
         "camera_adapter.cpp"
+        "recording_file_adapter.cpp"
         "web_volume_adapter.cpp"
         "storage_retention_adapter.cpp"
         "sd_card_adapter.cpp"
