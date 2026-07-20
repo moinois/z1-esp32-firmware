@@ -70,6 +70,11 @@ public:
         return std::nullopt;
     }
 
+    // Returns a fixed clock for lifecycle-only tests.
+    std::uint64_t now_milliseconds() const override {
+        return 0U;
+    }
+
     bool send_succeeds = true;
     std::optional<std::uint64_t> open_size = 0x01020304U;
     std::string opened_path;

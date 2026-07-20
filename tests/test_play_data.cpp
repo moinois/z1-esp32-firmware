@@ -79,6 +79,11 @@ public:
         return chunk;
     }
 
+    // Returns a fixed clock for data-only tests.
+    std::uint64_t now_milliseconds() const override {
+        return 0U;
+    }
+
     void set_lines(std::initializer_list<PlayLineChunk> values) {
         initial_chunks = values;
         chunks = initial_chunks;

@@ -11,8 +11,13 @@ constexpr std::string_view start_error =
     "Error:start check failed.file does not exist or CRC wrong [P1]";
 constexpr std::string_view data_format_error =
     "Error:PTYPE_PLAY_DATA command data format error [P2]";
+constexpr std::string_view goto_check_error =
+    "Error:goto check failed.file does not exist or CRC wrong [P3]";
+constexpr std::string_view goto_format_error =
+    "Error:PTYPE_PLAY_DATA goto cmd format error [P3]";
 constexpr std::size_t maximum_data_size = 512U;
 constexpr std::size_t minimum_remaining_data = 74U;
+constexpr std::uint64_t progress_interval_milliseconds = 100U;
 
 // Decodes an unsigned 16-bit big-endian identifier from two available bytes.
 std::uint16_t decode_identifier(core::BytesView payload) {
@@ -66,9 +71,70 @@ void PlayController::handle(const core::Frame& frame, std::uint64_t now_millisec
             }
             break;
         case 6U:
+            handle_goto(frame.payload, now_milliseconds, port);
+            break;
         case 7U:
         default:
             break;
+    }
+}
+
+void PlayController::handle_goto(core::BytesView payload,
+                                 std::uint64_t now_milliseconds,
+                                 PlayControllerPort& port) {
+    const bool identifier_present = payload.size() >= 2U;
+    const bool identifier_matches = identifier_present &&
+                                    decode_identifier(payload) == session_.path_identifier();
+    if (!session_.file_open() || (identifier_present && !identifier_matches)) {
+        static_cast<void>(port.send({0xF4U, {}}));
+        session_.report_error(goto_check_error, now_milliseconds, port);
+        return;
+    }
+    if (payload.size() < 6U) {
+        static_cast<void>(port.send({0xF4U, {}}));
+        session_.report_error(goto_format_error, now_milliseconds, port);
+        return;
+    }
+
+    retained_index_.reset();
+    retained_payload_.clear();
+    if (!port.rewind_file()) {
+        static_cast<void>(port.send({0xF5U, {}}));
+        return;
+    }
+    current_line_ = 0U;
+    transmitted_bytes_ = 0U;
+    const std::uint32_t target = decode_u32(payload.data() + 2U);
+    std::uint64_t last_progress = port.now_milliseconds();
+
+    for (;;) {
+        const PlayLineResult line = PlayLineReader::read(port);
+        if (line.status == PlayLineStatus::failure) {
+            static_cast<void>(port.send({0xF4U, {}}));
+            return;
+        }
+        if (line.status == PlayLineStatus::end_of_file) {
+            send_progress(port);
+            return;
+        }
+
+        ++current_line_;
+        transmitted_bytes_ += line.data.size();
+        const bool reached_target = !line.data.empty() &&
+                                    (target == 0U || current_line_ >= target);
+        const std::uint64_t now = port.now_milliseconds();
+        const bool interval_elapsed = now - last_progress > progress_interval_milliseconds;
+        if (interval_elapsed || reached_target) {
+            send_progress(port);
+            last_progress = now;
+        }
+        if (line.reached_eof) {
+            send_progress(port);
+            return;
+        }
+        if (reached_target) {
+            return;
+        }
     }
 }
 
@@ -188,6 +254,23 @@ bool PlayController::seek_line(std::uint32_t target, PlayControllerPort& port) {
         }
     }
     return true;
+}
+
+void PlayController::send_progress(PlayControllerPort& port) const {
+    const std::uint32_t bytes = static_cast<std::uint32_t>(transmitted_bytes_);
+    core::ByteVector payload{
+        static_cast<std::uint8_t>(session_.path_identifier() >> 8U),
+        static_cast<std::uint8_t>(session_.path_identifier()),
+        static_cast<std::uint8_t>(current_line_ >> 24U),
+        static_cast<std::uint8_t>(current_line_ >> 16U),
+        static_cast<std::uint8_t>(current_line_ >> 8U),
+        static_cast<std::uint8_t>(current_line_),
+        static_cast<std::uint8_t>(bytes >> 24U),
+        static_cast<std::uint8_t>(bytes >> 16U),
+        static_cast<std::uint8_t>(bytes >> 8U),
+        static_cast<std::uint8_t>(bytes),
+    };
+    static_cast<void>(port.send({0xF7U, std::move(payload)}));
 }
 
 void PlayController::reset_read_state() {

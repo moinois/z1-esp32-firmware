@@ -23,6 +23,9 @@ public:
 
     // Rewinds the prepared file to its first byte.
     virtual bool rewind_file() = 0;
+
+    // Returns monotonic time for progress-report pacing during synchronous scans.
+    virtual std::uint64_t now_milliseconds() const = 0;
 };
 
 // Processes controller start and terminal packets for streamed play.
@@ -40,8 +43,11 @@ private:
                       PlayControllerPort& port);
     void handle_data(core::BytesView payload, std::uint64_t now_milliseconds,
                      PlayControllerPort& port);
+    void handle_goto(core::BytesView payload, std::uint64_t now_milliseconds,
+                     PlayControllerPort& port);
     void handle_terminal(PlayControllerPort& port);
     bool seek_line(std::uint32_t target, PlayControllerPort& port);
+    void send_progress(PlayControllerPort& port) const;
     void reset_read_state();
 
     PlaySession& session_;

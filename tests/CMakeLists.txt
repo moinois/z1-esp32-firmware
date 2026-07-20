@@ -15,6 +15,7 @@ add_executable(core_tests
     test_play_controller.cpp
     test_play_data.cpp
     test_play_line_reader.cpp
+    test_play_goto.cpp
     test_routing.cpp
     test_text.cpp
     test_status.cpp

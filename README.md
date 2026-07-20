@@ -47,13 +47,15 @@ The first core-to-periphery development slice contains:
   behavior, long-line collapse, 64-byte wire limiting, and distinct EOF/failure;
 - streamed-play data requests with bounded line aggregation, position-aware
   rewind, retained retransmission, exact request prefixes, and EOF cleanup;
+- streamed-play goto scanning with line and logical-byte progress, strict
+  greater-than-100-ms pacing, target/EOF reports, and nonterminal failures;
 - aggregate firmware-header, size, flag, and checksum validation;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 133 tests. The firmware also builds successfully as
+The current host suite has 139 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
