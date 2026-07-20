@@ -22,6 +22,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | LPC-010--LPC-014 common controller-transfer wire layer | Application implementation | Partial: 010--012, 014 queue and parsing | Service integration pending |
 | LPC-015--LPC-019 common transfer state behavior | Firmware-family implementation | Yes for firmware family | Configuration and factory families pending |
 | LPCFW-001--LPCFW-006 controller firmware transfer | Application implementation with replaceable port | Yes | Storage, routing, and status adapters pending |
+| LPCCFG-001--LPCCFG-006 controller configuration transfer | Application implementation with replaceable port | Yes | Storage and routing adapters pending |
 | UPD-010--UPD-014 package validation | Core implementation | Partial: 010--013 | No |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
