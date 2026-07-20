@@ -640,7 +640,8 @@ public:
 
     bool file_exists(std::string_view path) override {
         struct stat information{};
-        return stat(std::string(path).c_str(), &information) == 0;
+        return stat(std::string(path).c_str(), &information) == 0 &&
+               S_ISREG(information.st_mode);
     }
 
     std::optional<std::uint64_t> open_file(std::string_view path) override {

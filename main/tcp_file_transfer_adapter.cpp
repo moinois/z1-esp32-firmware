@@ -168,7 +168,8 @@ std::optional<firmware::core::ByteVector> TcpFileDownloadAdapter::read_cache(
 
 bool TcpFileDownloadAdapter::file_exists(std::string_view path) {
     struct stat information{};
-    return stat(std::string(path).c_str(), &information) == 0;
+    return stat(std::string(path).c_str(), &information) == 0 &&
+           S_ISREG(information.st_mode);
 }
 
 std::optional<std::uint64_t> TcpFileDownloadAdapter::open_file(
