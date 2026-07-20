@@ -29,6 +29,8 @@ The first core-to-periphery development slice contains:
   partial finalization, retry cycles, cancellation cleanup, and timeout;
 - target POSIX/mbedTLS file-transfer adapters for cache directories, MD5
   calculation, file I/O, and queued TCP response frames;
+- per-TCP-session transfer dispatch with monotonic runtime polling and
+  disconnect cleanup;
 - common filesystem path cleanup with escaped text, trimming, suffix removal,
   normalization, and bounded directory-list option parsing;
 - directory listing with enumeration-order filtering, escaped names, optional

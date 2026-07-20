@@ -15,18 +15,22 @@
 #include "tcp_serial_number_adapter.hpp"
 #include "tcp_runtime_command_adapter.hpp"
 #include "tcp_filesystem_adapter.hpp"
+#include "tcp_file_transfer_adapter.hpp"
 #include "tcp_wlan_scan_adapter.hpp"
 #include "tcp_wlan_station_adapter.hpp"
 #include "tcp_wlan_connection_adapter.hpp"
 #include "tcp_discovery_adapter.hpp"
 #include "firmware_update_adapter.hpp"
 #include "firmware/application/filesystem_commands.hpp"
+#include "firmware/application/file_upload.hpp"
+#include "firmware/application/file_download.hpp"
 #include "firmware/application/wlan_command.hpp"
 #include "firmware/application/wlan_request.hpp"
 #include "firmware/application/runtime_commands.hpp"
 #include "firmware/application/serial_number.hpp"
 #include "firmware/application/recording_commands.hpp"
 #include "firmware/core/text.hpp"
+#include "firmware/core/protocol_constants.hpp"
 
 #include <arpa/inet.h>
 #include <cerrno>
@@ -37,6 +41,8 @@
 #include <unistd.h>
 #include <atomic>
 #include <cstdint>
+#include <esp_timer.h>
+#include <memory>
 #include <string_view>
 #include <utility>
 
@@ -153,10 +159,75 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
     static_cast<void>(session.queue_frame(result.response));
 }
 
-firmware::application::TcpFrameDispatcher tcp_dispatcher(
-    tcp_router,
-    firmware::application::TcpDispatchSinks{forward_tcp_controller_frame,
-                                            handle_tcp_local_frame, {}, {}});
+// Owns one host transfer state machine and its replaceable target ports.
+class TcpFileTransferRuntime final {
+public:
+    TcpFileTransferRuntime(firmware::application::TcpClientSession& session,
+                            firmware::application::Router& router)
+        : session_(session), router_(router), upload_port_(session),
+          download_port_(session) {}
+
+    // Starts or rejects a new upload/download command for this connection.
+    void handle(const firmware::core::Frame& frame, std::uint64_t now) {
+        if (frame.type == firmware::core::protocol::file_command) {
+            const auto start = firmware::core::parse_file_transfer_start(frame.payload);
+            if (!start.has_value()) return;
+            if (upload_.active() || download_.active() ||
+                !router_.ownership().claim_file(session_.identity())) {
+                session_.queue_frame({firmware::core::protocol::file_cancel,
+                                      firmware::core::ByteVector(
+                                          firmware::application::file_owner_limit_message,
+                                          firmware::application::file_owner_limit_message +
+                                              std::char_traits<char>::length(
+                                                  firmware::application::file_owner_limit_message))});
+                return;
+            }
+            bool started = false;
+            if (start->direction == firmware::core::FileTransferDirection::upload) {
+                started = upload_.start(session_.identity(), start->path, now, upload_port_);
+            } else {
+                started = download_.start(session_.identity(), start->path, now, download_port_);
+            }
+            if (!started) router_.ownership().release_file();
+            return;
+        }
+        if (upload_.active()) upload_.handle(frame, now, upload_port_);
+        if (download_.active()) download_.handle(frame, now, download_port_);
+        release_if_finished();
+    }
+
+    // Advances timeout and retry policy for the active operation.
+    void poll(std::uint64_t now) {
+        if (upload_.active()) upload_.poll(now, upload_port_);
+        if (download_.active()) download_.poll(now, download_port_);
+        release_if_finished();
+    }
+
+    // Releases ownership when the TCP connection is closed.
+    void disconnect() {
+        if (upload_.active()) upload_port_.close_files();
+        if (download_.active()) download_port_.close_file();
+        if (upload_.active() || download_.active() ||
+            router_.ownership().is_file_owner(session_.identity())) {
+            router_.ownership().release_file();
+        }
+    }
+
+private:
+    void release_if_finished() {
+        if (!upload_.active() && !download_.active() &&
+            router_.ownership().is_file_owner(session_.identity())) {
+            router_.ownership().release_file();
+        }
+    }
+
+    firmware::application::TcpClientSession& session_;
+    firmware::application::Router& router_;
+    TcpFileUploadAdapter upload_port_;
+    TcpFileDownloadAdapter download_port_;
+    firmware::application::FileUpload upload_;
+    firmware::application::FileDownload download_;
+};
 
 struct TcpClientContext {
     int socket;
@@ -242,20 +313,35 @@ void tcp_client_task(void* parameter) {
     auto* context = static_cast<TcpClientContext*>(parameter);
     const int client = context->socket;
     firmware::application::TcpClientSession session(context->identity);
+    TcpFileTransferRuntime transfer_runtime(session, tcp_router);
+    firmware::application::TcpFrameDispatcher dispatcher(
+        tcp_router,
+        firmware::application::TcpDispatchSinks{
+            forward_tcp_controller_frame,
+            handle_tcp_local_frame,
+            [&transfer_runtime](firmware::application::TcpClientSession&,
+                                const firmware::core::Frame& frame) {
+                transfer_runtime.handle(frame,
+                                         static_cast<std::uint64_t>(esp_timer_get_time() / 1000));
+            },
+            {}});
     configure_socket(client);
     std::uint8_t input[2048];
     for (;;) {
         const int count = recv(client, input, sizeof(input), 0);
         if (count <= 0) break;
         session.receive({input, static_cast<std::size_t>(count)},
-            [&session](const firmware::application::HostIdentity&,
-               const firmware::core::Frame& frame) {
-                tcp_dispatcher.dispatch(session, frame);
+            [&session, &dispatcher](const firmware::application::HostIdentity&,
+                                     const firmware::core::Frame& frame) {
+                dispatcher.dispatch(session, frame);
             });
+        transfer_runtime.poll(
+            static_cast<std::uint64_t>(esp_timer_get_time() / 1000));
         if (!drain_tcp_transmit_queue(client, session)) {
             break;
         }
     }
+    transfer_runtime.disconnect();
     close(client);
     active_clients.fetch_sub(1, std::memory_order_release);
     delete context;
