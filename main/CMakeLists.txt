@@ -17,6 +17,7 @@ idf_component_register(
         "wall_clock_adapter.cpp"
         "wall_clock_command_dispatcher.cpp"
         "controller_command_loop.cpp"
+        "serial_number_adapter.cpp"
     REQUIRES
         application
         core

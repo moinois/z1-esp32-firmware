@@ -219,6 +219,7 @@ The first core-to-periphery development slice contains:
 - target wall-clock command dispatcher for `time` general-command frames;
 - controller UART receive loop with framed command dispatch;
 - wall-clock response encoding and transmission over controller UART;
+- NVS-backed serial-number service with framed UART responses;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
