@@ -724,6 +724,20 @@ esp_err_t preview_websocket_handler(httpd_req_t* request) {
             preview_request.command, preview_request.sequence, -1);
         return send_preview_text(request, response);
     }
+    if (preview_runtime.has_value() &&
+        preview_runtime->socket_id != socket_id) {
+        const std::string message = firmware::core::format_preview_preemption(
+            "preview", preview_runtime->session_id);
+        httpd_ws_frame_t response{};
+        response.type = HTTPD_WS_TYPE_TEXT;
+        response.payload = reinterpret_cast<uint8_t*>(
+            const_cast<char*>(message.data()));
+        response.len = message.size();
+        static_cast<void>(httpd_ws_send_frame_async(
+            request->handle, static_cast<int>(preview_runtime->socket_id),
+            &response));
+        preview_generation.fetch_add(1U, std::memory_order_acq_rel);
+    }
     preview_runtime = PreviewRuntime{
         *file,
         *avi,
