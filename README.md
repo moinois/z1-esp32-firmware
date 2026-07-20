@@ -137,12 +137,14 @@ The first core-to-periphery development slice contains:
   SD-capacity, update-phase, and station-RSSI sources;
 - portable CANopen node identity, addressed and broadcast NMT transitions,
   communication reset, producer-heartbeat timing, and error-state policy;
+- complete CANopen communication, SDO, PDO, identity, and digital-I/O object
+  dictionary with little-endian access and mapping validation;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 440 tests. The firmware also builds successfully as
+The current host suite has 451 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
@@ -328,7 +330,7 @@ The following major areas remain:
   ESP-IDF's independent standard-BLUFI protocol owner;
 - HTTP, WebSocket, camera, AVI preview, recording, and retention;
 - runtime service adapters and composition-root wiring;
-- CANopen object dictionary, NMT, SDO/PDO behavior, and `M942`; and
+- CANopen SDO/PDO transport behavior, TWAI integration, and `M942`; and
 - physical-device verification of hardware and coexistence behavior.
 
 These areas will be implemented in dependency order. Hardware validation will
