@@ -63,6 +63,7 @@ set(APPLICATION_SOURCES
     src/usb_receive_staging.cpp
     src/usb_protocol_state.cpp
     src/usb_descriptors.cpp
+    src/usb_transmit_progress.cpp
     src/wlan_request.cpp
     src/play_line_reader.cpp
     src/play_session.cpp

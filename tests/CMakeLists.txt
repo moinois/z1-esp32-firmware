@@ -111,6 +111,7 @@ add_executable(
     test_usb_receive_staging.cpp
     test_usb_protocol_state.cpp
     test_usb_descriptors.cpp
+    test_usb_transmit_progress.cpp
     test_wlan_request.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
