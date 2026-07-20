@@ -39,13 +39,15 @@ The first core-to-periphery development slice contains:
   record truncation, fixed 512-byte geometry, and bounded response aggregation;
 - controller factory-data transfer with family-specific record eligibility,
   negotiated limits, one-based selection, and completion-only file removal;
+- streamed-play preparation with escaped normalized paths, CRC identity,
+  bounded file size, rate-limited console errors, and local status replies;
 - aggregate firmware-header, size, flag, and checksum validation;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 101 tests. The firmware also builds successfully as
+The current host suite has 111 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).

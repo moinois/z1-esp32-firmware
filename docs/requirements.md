@@ -24,6 +24,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | LPCFW-001--LPCFW-006 controller firmware transfer | Application implementation with replaceable port | Yes | Storage, routing, and status adapters pending |
 | LPCCFG-001--LPCCFG-006 controller configuration transfer | Application implementation with replaceable port | Yes | Storage and routing adapters pending |
 | LPCFAC-001--LPCFAC-005 controller factory-data transfer | Application implementation with replaceable port | Yes | Storage and routing adapters pending |
+| PLAY-001--PLAY-007 streamed-play preparation and status | Application implementation with replaceable port | Yes for preparation and status | Storage, ownership, and routing adapters pending |
 | UPD-010--UPD-014 package validation | Core implementation | Partial: 010--013 | No |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
