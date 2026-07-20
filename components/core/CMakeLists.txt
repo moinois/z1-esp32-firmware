@@ -10,6 +10,7 @@ set(CORE_SOURCES
     src/filesystem_syntax.cpp
     src/frame.cpp
     src/http_policy.cpp
+    src/json_input.cpp
     src/network_policy.cpp
     src/status.cpp
     src/text.cpp
