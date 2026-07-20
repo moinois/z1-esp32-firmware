@@ -126,6 +126,15 @@ TEST_CASE(route_017_active_controller_transfer_suppresses_only_ordinary_forwardi
                 .has(RouteTarget::local_command));
 }
 
+TEST_CASE(route_019_active_controller_transfer_keeps_play_status_local) {
+    Router router;
+    router.set_controller_transfer_active(true);
+
+    const auto status = router.from_host(usb_host(), Frame{0xB7, {}});
+    REQUIRE(status.has(RouteTarget::play_status));
+    REQUIRE(!status.has(RouteTarget::controller));
+}
+
 TEST_CASE(route_018_controller_admission_is_silent_and_independent_from_local_handling) {
     Router router;
     auto oversized = router.from_host(tcp_host(0), Frame{0xA2, {'M', '9', '4', '2'}});

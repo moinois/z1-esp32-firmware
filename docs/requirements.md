@@ -26,6 +26,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | USB local configuration commands | Target POSIX configuration ports over configuration policies | Target-built for `config-get`, `config-set`, `config-restore`, and `config-default` routing and queued responses | Physical USB/storage verification pending |
 | USB local WLAN scan | Target ESP-IDF scan port over WLAN scan policy | Target-built for USB `wlan scan` parsing, bounded blocking scan, observation conversion, and queued responses | Physical USB/RF verification pending |
 | USB local WLAN connection control | Target ESP-IDF station port over manual connection policy | Target-built for USB `wlan connect`/`wlan disconnect`, bounded credentials, state polling, NVS persistence, discovery burst, and queued responses | Physical USB/RF/NVS verification pending |
+| ROUTE-013, ROUTE-017 USB host routing | Target adapter over shared host router | Target-built for local `0xb7` play-status responses and suppression of ordinary USB forwarding while controller transfers are active | Physical USB/controller verification pending |
 | ESC-001--ESC-002 escaping | Core implementation | Yes | Not required |
 | HFT-004 path normalization | Core implementation | Yes | Not required |
 | HFT-001--HFT-003 transfer start and path validation | Core implementation | Yes | TCP service integration and target build verified; runtime filesystem verification pending |

@@ -1173,6 +1173,14 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
             }
             continue;
         }
+        if (frame.type == firmware::core::protocol::play_status) {
+            const auto response = shared_play_session().status_reply();
+            const auto encoded = firmware::core::encode_frame(response);
+            if (!encoded.empty()) {
+                static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+            }
+            continue;
+        }
         if (frame.type == firmware::core::protocol::general_command) {
             const auto match = firmware::core::recognize_command(frame.payload);
             if (frame.payload.size() >= 4U && frame.payload[0] == 'p' &&
@@ -1349,9 +1357,17 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                 continue;
             }
         }
-        // Forward complete USB frames through the controller-owned UART path.
-        // Local USB command routing will be added without changing this boundary.
-        static_cast<void>(enqueue_controller_frame(frame));
+        // Apply the same transfer suppression policy used by TCP before
+        // forwarding an ordinary USB-origin frame to the controller UART.
+        auto& host_router = shared_host_router();
+        host_router.set_controller_transfer_active(
+            controller_firmware_transfer_active() ||
+            controller_configuration_transfer_active() ||
+            controller_factory_transfer_active());
+        const auto decision = host_router.from_host(usb_host_identity, frame);
+        if (decision.has(firmware::application::RouteTarget::controller)) {
+            static_cast<void>(enqueue_controller_frame(frame));
+        }
     }
 }
 
