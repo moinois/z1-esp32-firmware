@@ -3,6 +3,7 @@
 
 #include "controller_uart_adapter.hpp"
 #include "controller_transfer_adapter.hpp"
+#include "controller_play_adapter.hpp"
 #include "wall_clock_adapter.hpp"
 #include "wall_clock_command_dispatcher.hpp"
 #include "serial_number_adapter.hpp"
@@ -22,6 +23,8 @@
 #include "firmware/application/controller_firmware_transfer.hpp"
 #include "firmware/application/controller_config_transfer.hpp"
 #include "firmware/application/controller_factory_transfer.hpp"
+#include "firmware/application/play_controller.hpp"
+#include "firmware/application/play_session.hpp"
 #include "firmware/core/protocol_constants.hpp"
 
 #include <cstdint>
@@ -63,6 +66,9 @@ void controller_command_task(void*) {
     firmware::application::ControllerFirmwareTransfer firmware_transfer;
     firmware::application::ControllerConfigTransfer config_transfer;
     firmware::application::ControllerFactoryTransfer factory_transfer;
+    firmware::application::PlaySession play_session;
+    firmware::application::PlayController play_controller(play_session);
+    ControllerPlayAdapter play_port(uart);
     firmware::core::StreamDecoder decoder(
         firmware::core::StreamPolicy::controller_uart());
     firmware::application::ControllerQueryScheduler query_scheduler(
@@ -97,6 +103,12 @@ void controller_command_task(void*) {
             }
             if (family == firmware::core::protocol::factory_family) {
                 factory_transfer.handle(frame, transfer_port);
+                continue;
+            }
+            if (family == firmware::core::protocol::play_family) {
+                play_controller.handle(
+                    frame, static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL),
+                    play_port);
                 continue;
             }
             dispatcher.dispatch(frame);
