@@ -27,6 +27,8 @@ The first core-to-periphery development slice contains:
   blocks, reread retry, terminal reporting, wrong-command limits, and timeout;
 - host upload with dual-file lifecycle, sequenced 8192-byte writes, firmware
   partial finalization, retry cycles, cancellation cleanup, and timeout;
+- target POSIX/mbedTLS file-transfer adapters for cache directories, MD5
+  calculation, file I/O, and queued TCP response frames;
 - common filesystem path cleanup with escaped text, trimming, suffix removal,
   normalization, and bounded directory-list option parsing;
 - directory listing with enumeration-order filtering, escaped names, optional

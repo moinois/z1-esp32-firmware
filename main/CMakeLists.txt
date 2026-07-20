@@ -24,6 +24,7 @@ idf_component_register(
         "tcp_serial_number_adapter.cpp"
         "tcp_runtime_command_adapter.cpp"
         "tcp_filesystem_adapter.cpp"
+        "tcp_file_transfer_adapter.cpp"
         "tcp_wlan_scan_adapter.cpp"
         "tcp_wlan_station_adapter.cpp"
         "tcp_wlan_connection_adapter.cpp"
