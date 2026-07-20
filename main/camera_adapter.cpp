@@ -115,8 +115,14 @@ firmware::application::FrameDimensions CameraAdapter::current_dimensions() const
     if (sensor == nullptr) {
         return firmware::application::fallback_camera_dimensions;
     }
+    // ESP-IDF frame-size values are zero-based; the product table is one-based.
+    const std::size_t table_index =
+        static_cast<std::size_t>(sensor->status.framesize) + 1U;
+    if (table_index > frame_sizes.size()) {
+        return firmware::application::fallback_camera_dimensions;
+    }
     return firmware::application::camera_dimensions(
-        static_cast<std::uint8_t>(sensor->status.framesize));
+        static_cast<std::uint8_t>(table_index));
 }
 
 CameraAdapter& camera_adapter() {
