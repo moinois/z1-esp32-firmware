@@ -27,6 +27,7 @@
 #include "firmware_update_adapter.hpp"
 #include "diagnostic_capture_adapter.hpp"
 #include "runtime_counter_task.hpp"
+#include "usb_device_adapter.hpp"
 #include "recording_task_adapter.hpp"
 
 #include "firmware/application/web_volume_startup.hpp"
@@ -180,4 +181,8 @@ extern "C" void app_main() {
     wlan_events.set_ble_provisioning(&blufi_provisioning);
     wlan_events.start();
     tcp_control.start();
+    static firmware::target::UsbDeviceAdapter usb_device;
+    if (!usb_device.start()) {
+        ESP_LOGW(tag, "USB device startup failed; USB remains unavailable");
+    }
 }

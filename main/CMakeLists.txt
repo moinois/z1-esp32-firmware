@@ -50,6 +50,7 @@ idf_component_register(
         "firmware_update_adapter.cpp"
         "tcp_control_adapter.cpp"
         "recording_request_state.cpp"
+        "usb_device_adapter.cpp"
     REQUIRES
         application
         core
@@ -73,6 +74,7 @@ idf_component_register(
         bootloader_support
         app_update
         esp32-camera
+        esp_tinyusb
     PRIV_INCLUDE_DIRS
         "$ENV{IDF_PATH}/components/bt/common/api/include/api"
         "$ENV{IDF_PATH}/components/bt/common/btc/profile/esp/blufi/include"
