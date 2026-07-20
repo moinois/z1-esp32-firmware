@@ -68,7 +68,9 @@ public:
     void remove_partial(std::string_view path) override {
         static_cast<void>(std::remove(std::string(path).c_str()));
     }
-    void clear_attributes(std::string_view) override {}
+    void clear_attributes(std::string_view path) override {
+        static_cast<void>(chmod(std::string(path).c_str(), 0666));
+    }
     firmware::application::UpdateLoadResult load_aggregate(
         std::string_view path) override {
         std::FILE* file = std::fopen(std::string(path).c_str(), "rb");
@@ -92,7 +94,10 @@ public:
         }
         return {firmware::application::UpdateLoadFailure::none, std::move(bytes)};
     }
-    void aggregate_opened() override {}
+    void aggregate_opened() override {
+        static_cast<void>(NvsKeyValueAdapter{}.write_u8(
+            "ota_state", "phase", 0U));
+    }
     void remove_aggregate(std::string_view path) override {
         static_cast<void>(std::remove(std::string(path).c_str()));
     }
