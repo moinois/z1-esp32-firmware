@@ -165,6 +165,9 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
         frame.payload[0] == 'p' && frame.payload[1] == 'l' &&
         frame.payload[2] == 'a' && frame.payload[3] == 'y';
     if (is_play_command) {
+        if (!tcp_router.ownership().claim_play(session.identity())) {
+            return;
+        }
         TcpPlayPreparationAdapter play_port(session);
         auto& play_session = shared_play_session();
         const bool prepared = play_session.prepare(
@@ -172,6 +175,8 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL), play_port);
         if (prepared) {
             static_cast<void>(session.queue_frame(play_session.status_reply()));
+        } else {
+            tcp_router.ownership().release_play();
         }
         return;
     }
@@ -536,6 +541,7 @@ void tcp_client_task(void* parameter) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     }
     transfer_runtime.disconnect();
+    tcp_router.ownership().transport_disconnected(context->identity);
     close(client);
     active_clients.fetch_sub(1, std::memory_order_release);
     delete context;
@@ -598,6 +604,10 @@ void TcpControlAdapter::start() {
 
 std::size_t active_tcp_client_count() {
     return static_cast<std::size_t>(active_clients.load(std::memory_order_acquire));
+}
+
+void tcp_router_play_ownership_release() {
+    tcp_router.ownership().release_play();
 }
 
 }  // namespace firmware::target

@@ -3,6 +3,7 @@
 
 #include "controller_uart_adapter.hpp"
 #include "runtime_play_observer.hpp"
+#include "tcp_control_adapter.hpp"
 
 #include "esp_timer.h"
 #include "firmware/core/file_transfer_paths.hpp"
@@ -67,7 +68,9 @@ void ControllerPlayAdapter::play_state_changed(bool running) {
         running, static_cast<unsigned long long>(now_milliseconds()));
 }
 
-void ControllerPlayAdapter::release_play_ownership() {}
+void ControllerPlayAdapter::release_play_ownership() {
+    tcp_router_play_ownership_release();
+}
 
 bool ControllerPlayAdapter::rewind_file() {
     return file_ != nullptr && std::fseek(file_, 0L, SEEK_SET) == 0;
