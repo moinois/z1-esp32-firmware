@@ -93,6 +93,10 @@ bool ConnectivityStartupAdapter::start_access_point_and_station(
                                policy.default_hostname.c_str()) != ESP_OK) {
         return false;
     }
+    if (esp_wifi_set_ps(policy.power_save_enabled ? WIFI_PS_MIN_MODEM
+                                                  : WIFI_PS_NONE) != ESP_OK) {
+        return false;
+    }
     // Wi-Fi was started for the station-only scan; changing mode keeps it running.
     return true;
 }
