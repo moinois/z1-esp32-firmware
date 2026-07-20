@@ -18,6 +18,11 @@
 #include "ota_update_adapter.hpp"
 #include "camera_adapter.hpp"
 #include "firmware/application/live_control_policy.hpp"
+#include "firmware/application/preview_open.hpp"
+#include "firmware/application/preview_metadata.hpp"
+#include "firmware/application/preview_responses.hpp"
+#include "firmware/core/preview_path_policy.hpp"
+#include "firmware/core/avi_preview.hpp"
 #include "firmware/core/multipart_extractor.hpp"
 #include "firmware/core/multipart_policy.hpp"
 #include "firmware/application/direct_application_update.hpp"
@@ -51,6 +56,39 @@ bool send_live_frame(httpd_req_t* request) {
     const esp_err_t result = httpd_ws_send_frame(request, &outgoing);
     esp_camera_fb_return(frame);
     return result == ESP_OK;
+}
+
+// Reads one preview file for the metadata admission path.
+std::optional<firmware::core::ByteVector> read_preview_file(
+    std::string_view path) {
+    std::FILE* file = std::fopen(std::string(path).c_str(), "rb");
+    if (file == nullptr || std::fseek(file, 0L, SEEK_END) != 0) {
+        if (file != nullptr) {
+            std::fclose(file);
+        }
+        return std::nullopt;
+    }
+    const long length = std::ftell(file);
+    if (length < 0L || std::fseek(file, 0L, SEEK_SET) != 0) {
+        std::fclose(file);
+        return std::nullopt;
+    }
+    firmware::core::ByteVector content(static_cast<std::size_t>(length));
+    const std::size_t read = std::fread(content.data(), 1U, content.size(), file);
+    std::fclose(file);
+    if (read != content.size()) {
+        return std::nullopt;
+    }
+    return content;
+}
+
+// Sends one text message through the preview WebSocket.
+esp_err_t send_preview_text(httpd_req_t* request, std::string_view text) {
+    httpd_ws_frame_t response{};
+    response.type = HTTPD_WS_TYPE_TEXT;
+    response.payload = reinterpret_cast<uint8_t*>(const_cast<char*>(text.data()));
+    response.len = text.size();
+    return httpd_ws_send_frame(request, &response);
 }
 #endif
 
@@ -420,7 +458,7 @@ esp_err_t video_websocket_handler(httpd_req_t* request) {
     return ESP_OK;
 }
 
-// Receives one preview WebSocket frame and delegates text parsing to the application.
+// Receives one preview frame and returns metadata for an accepted open request.
 esp_err_t preview_websocket_handler(httpd_req_t* request) {
     httpd_ws_frame_t frame{};
     if (httpd_ws_recv_frame(request, &frame, 0U) != ESP_OK) return ESP_FAIL;
@@ -431,8 +469,36 @@ esp_err_t preview_websocket_handler(httpd_req_t* request) {
     const auto request_value = firmware::application::accept_preview_socket_message(
         firmware::application::PreviewSocketMessageType::text,
         firmware::core::BytesView(payload));
-    (void)request_value;
-    return ESP_OK;
+    if (!request_value.has_value() ||
+        request_value->command != firmware::application::PreviewCommand::open) {
+        return ESP_OK;
+    }
+    const auto& preview_request = *request_value;
+    if (!firmware::core::preview_path_allowed(preview_request.path)) {
+        const auto response = firmware::application::format_preview_response(
+            preview_request.command, preview_request.sequence, -1);
+        return send_preview_text(request, response);
+    }
+    const auto file = read_preview_file(preview_request.path);
+    if (!file.has_value()) {
+        const auto response = firmware::application::format_preview_response(
+            preview_request.command, preview_request.sequence, -1);
+        return send_preview_text(request, response);
+    }
+    const auto avi = firmware::core::AviPreview::parse(*file);
+    const auto decision = firmware::application::decide_preview_open(
+        preview_request.path, avi.has_value() ? &*avi : nullptr, true, true,
+        static_cast<std::uint32_t>(httpd_req_to_sockfd(request)),
+        preview_request.sequence);
+    if (decision.error != firmware::application::PreviewOpenError::none) {
+        const auto response = firmware::application::format_preview_response(
+            preview_request.command, preview_request.sequence, -1);
+        return send_preview_text(request, response);
+    }
+    const auto metadata = firmware::application::format_preview_metadata(
+        *avi, decision.session_id, preview_request.path,
+        preview_request.sequence);
+    return send_preview_text(request, metadata);
 }
 #endif
 
