@@ -12,6 +12,7 @@
 #include "web_volume_adapter.hpp"
 #include "storage_retention_adapter.hpp"
 #include "sd_card_adapter.hpp"
+#include "diagnostic_capture_adapter.hpp"
 
 #include "firmware/application/web_volume_startup.hpp"
 
@@ -91,4 +92,6 @@ extern "C" void app_main() {
     retention_adapter.start();
     static firmware::target::SdCardAdapter sd_card_adapter;
     sd_card_adapter.start();
+    static firmware::target::DiagnosticCaptureAdapter diagnostic_capture;
+    diagnostic_capture.start();
 }

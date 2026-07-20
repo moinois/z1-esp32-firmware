@@ -208,6 +208,7 @@ The first core-to-periphery development slice contains:
 - FAT usage reporting through `esp_vfs_fat_info` for retention decisions;
 - SDMMC slot-1 mount lifecycle with GPIO2 detect and specified four-bit pins;
 - SD diagnostic log adapter with buffered append, rotation, markers, and shutdown drain;
+- ESP-IDF `vprintf` diagnostic hook preserving console output and bounded capture;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and

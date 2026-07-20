@@ -9,6 +9,7 @@ idf_component_register(
         "web_volume_adapter.cpp"
         "storage_retention_adapter.cpp"
         "sd_card_adapter.cpp"
+        "diagnostic_capture_adapter.cpp"
     REQUIRES
         application
         core
@@ -21,4 +22,6 @@ idf_component_register(
         fatfs
         sdmmc
         esp_driver_sdmmc
+        log
+        esp_timer
 )
