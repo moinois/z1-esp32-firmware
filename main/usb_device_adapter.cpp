@@ -31,6 +31,7 @@
 #include "firmware/core/frame.hpp"
 #include "controller_command_loop.hpp"
 #include "tcp_control_adapter.hpp"
+#include "tcp_discovery_adapter.hpp"
 #include "firmware_update_adapter.hpp"
 #include "firmware/application/controller_snapshots.hpp"
 #include "runtime_status_adapter.hpp"
@@ -401,7 +402,9 @@ public:
         vTaskDelay(pdMS_TO_TICKS(duration));
     }
 
-    void send_discovery_burst() override {}
+    void send_discovery_burst() override {
+        send_tcp_discovery_burst(active_tcp_client_count());
+    }
 };
 
 UsbWlanStationPort wlan_station_port;
