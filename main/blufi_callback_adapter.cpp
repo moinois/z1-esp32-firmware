@@ -5,20 +5,26 @@
 
 #include <array>
 #include <algorithm>
+#include "esp_crc.h"
+#include <cstring>
 
 namespace firmware::target {
 
 BlufiCallbackAdapter* BlufiCallbackAdapter::active_instance_ = nullptr;
+BlufiCryptoAdapter BlufiCallbackAdapter::crypto_;
+firmware::application::BlufiSecurityContext
+    BlufiCallbackAdapter::security_(BlufiCallbackAdapter::crypto_);
+firmware::core::ByteVector BlufiCallbackAdapter::negotiation_output_;
 
 BlufiCallbackAdapter::BlufiCallbackAdapter(
     firmware::application::BleProvisioning& provisioning)
     : provisioning_(provisioning) {
     active_instance_ = this;
     callbacks_.event_cb = &BlufiCallbackAdapter::event_callback;
-    callbacks_.negotiate_data_handler = nullptr;
-    callbacks_.encrypt_func = nullptr;
-    callbacks_.decrypt_func = nullptr;
-    callbacks_.checksum_func = nullptr;
+    callbacks_.negotiate_data_handler = &BlufiCallbackAdapter::negotiate_data_handler;
+    callbacks_.encrypt_func = &BlufiCallbackAdapter::encrypt_data;
+    callbacks_.decrypt_func = &BlufiCallbackAdapter::decrypt_data;
+    callbacks_.checksum_func = &BlufiCallbackAdapter::checksum_data;
 }
 
 const esp_blufi_callbacks_t& BlufiCallbackAdapter::callbacks() const {
@@ -33,9 +39,11 @@ void BlufiCallbackAdapter::event_callback(esp_blufi_cb_event_t event,
     auto& provisioning = active_instance_->provisioning_;
     switch (event) {
         case ESP_BLUFI_EVENT_BLE_CONNECT:
+            security_.create();
             provisioning.client_connected();
             return;
         case ESP_BLUFI_EVENT_BLE_DISCONNECT:
+            security_.destroy();
             provisioning.client_disconnected();
             return;
         case ESP_BLUFI_EVENT_REQ_CONNECT_TO_AP:
@@ -84,6 +92,58 @@ void BlufiCallbackAdapter::event_callback(esp_blufi_cb_event_t event,
         default:
             return;
     }
+}
+
+void BlufiCallbackAdapter::negotiate_data_handler(
+    std::uint8_t* data, int length, std::uint8_t** output,
+    int* output_length, bool* needs_free) {
+    if (data == nullptr || length < 0 || output == nullptr ||
+        output_length == nullptr || needs_free == nullptr) {
+        return;
+    }
+    security_.receive_negotiation(
+        firmware::core::BytesView(data, static_cast<std::size_t>(length)));
+    negotiation_output_ = crypto_.take_negotiation_response().value_or(
+        firmware::core::ByteVector{});
+    *output = negotiation_output_.empty() ? nullptr : negotiation_output_.data();
+    *output_length = static_cast<int>(negotiation_output_.size());
+    *needs_free = false;
+}
+
+int BlufiCallbackAdapter::encrypt_data(std::uint8_t sequence,
+                                       std::uint8_t* data, int length) {
+    if (data == nullptr || length < 0) {
+        return -1;
+    }
+    const auto result = security_.crypt(
+        sequence, firmware::core::BytesView(data, static_cast<std::size_t>(length)), true);
+    if (!result.has_value()) {
+        return -1;
+    }
+    std::memcpy(data, result->data(), result->size());
+    return length;
+}
+
+int BlufiCallbackAdapter::decrypt_data(std::uint8_t sequence,
+                                       std::uint8_t* data, int length) {
+    if (data == nullptr || length < 0) {
+        return -1;
+    }
+    const auto result = security_.crypt(
+        sequence, firmware::core::BytesView(data, static_cast<std::size_t>(length)), false);
+    if (!result.has_value()) {
+        return -1;
+    }
+    std::memcpy(data, result->data(), result->size());
+    return length;
+}
+
+std::uint16_t BlufiCallbackAdapter::checksum_data(
+    std::uint8_t, std::uint8_t* data, int length) {
+    if (data == nullptr || length < 0) {
+        return 0U;
+    }
+    return esp_crc16_be(0U, data, static_cast<std::size_t>(length));
 }
 
 }  // namespace firmware::target

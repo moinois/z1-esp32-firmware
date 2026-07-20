@@ -255,6 +255,7 @@ The first core-to-periphery development slice contains:
 - mbedTLS BLUFI crypto adapter provides bounded DH, MD5, and AES-CFB128 operations;
 - ESP-IDF BLUFI provisioning adapter provides Wi-Fi configuration, scanning, status/list reports, and advertising controls;
 - ESP-IDF BLUFI callback adapter forwards supported BLE events into the tested provisioning policy;
+- BLUFI callback table now uses the portable security session for negotiation, AES-CFB128, and CRC callbacks;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;

@@ -104,12 +104,22 @@ std::optional<firmware::core::ByteVector> BlufiCryptoAdapter::aes_cfb128(
 }
 
 void BlufiCryptoAdapter::send_negotiation_response(
-    firmware::core::BytesView) {
-    // The future GATT transport owns BLUFI characteristic delivery.
+    firmware::core::BytesView response) {
+    negotiation_response_.assign(response.begin(), response.end());
 }
 
 void BlufiCryptoAdapter::report_error(std::uint8_t) {
-    // The future GATT transport owns BLUFI error delivery.
+    // ESP-IDF emits the protocol error through its own BLUFI callback path.
+}
+
+std::optional<firmware::core::ByteVector>
+BlufiCryptoAdapter::take_negotiation_response() {
+    if (negotiation_response_.empty()) {
+        return std::nullopt;
+    }
+    firmware::core::ByteVector response = std::move(negotiation_response_);
+    negotiation_response_.clear();
+    return response;
 }
 
 }  // namespace firmware::target

@@ -6,6 +6,8 @@
 #include "mbedtls/aes.h"
 #include "mbedtls/dhm.h"
 
+#include <optional>
+
 namespace firmware::target {
 
 // Owns one bounded Diffie-Hellman and AES-CFB context for a BLE connection.
@@ -27,9 +29,13 @@ public:
     void send_negotiation_response(firmware::core::BytesView response) override;
     void report_error(std::uint8_t error) override;
 
+    // Returns and clears the most recent negotiation response.
+    std::optional<firmware::core::ByteVector> take_negotiation_response();
+
 private:
     mbedtls_dhm_context dhm_{};
     mbedtls_aes_context aes_{};
+    firmware::core::ByteVector negotiation_response_;
 };
 
 }  // namespace firmware::target
