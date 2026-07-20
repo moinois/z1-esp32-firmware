@@ -115,7 +115,7 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
                 if (tcp_station_runtime.state ==
                     firmware::application::StationConnectionState::address_ready) {
                     update_tcp_discovery_station(
-                        tcp_station_runtime.ipv4, "255.255.255.0",
+                        tcp_station_runtime.ipv4, station.current_netmask(),
                         active_tcp_client_count());
                 }
             }

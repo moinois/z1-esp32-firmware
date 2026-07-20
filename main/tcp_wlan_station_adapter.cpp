@@ -95,4 +95,18 @@ TcpWlanStationAdapter::save_credentials(std::string_view ssid,
     return {true, {}};
 }
 
+std::string TcpWlanStationAdapter::current_netmask() const {
+    esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    if (netif == nullptr) {
+        return {};
+    }
+    esp_netif_ip_info_t ip_info{};
+    if (esp_netif_get_ip_info(netif, &ip_info) != ESP_OK) {
+        return {};
+    }
+    char address[INET_ADDRSTRLEN]{};
+    inet_ntop(AF_INET, &ip_info.netmask.addr, address, sizeof(address));
+    return std::string(address);
+}
+
 }  // namespace firmware::target

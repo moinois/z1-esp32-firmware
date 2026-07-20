@@ -19,6 +19,9 @@ public:
     firmware::application::StationSnapshot station_snapshot() const override;
     firmware::application::StationApiResult save_credentials(
         std::string_view ssid, std::string_view password) override;
+
+    // Returns the current STA netmask in dotted-decimal form.
+    std::string current_netmask() const;
 };
 
 }  // namespace firmware::target

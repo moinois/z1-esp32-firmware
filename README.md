@@ -245,6 +245,7 @@ The first core-to-periphery development slice contains:
 - TCP WLAN connect/disconnect response flow over the tested station policy;
 - UDP discovery adapter for long-lived and command-triggered broadcast bursts;
 - TCP station success updates discovery with the assigned station subnet;
+- discovery subnet selection uses the actual ESP-IDF STA netmask;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
