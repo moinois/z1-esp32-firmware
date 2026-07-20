@@ -4,6 +4,7 @@
 #include "firmware/application/discovery_service.hpp"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "tcp_control_adapter.hpp"
 
 #include <arpa/inet.h>
 #include <cerrno>
@@ -90,6 +91,14 @@ EspDiscoveryPort discovery_port;
 firmware::application::DiscoveryService discovery_service(discovery_port,
                                                           "espressif");
 
+// Keeps periodic discovery traffic alive without coupling policy to TCP code.
+void discovery_task(void*) {
+    for (;;) {
+        discovery_service.periodic_cycle(std::nullopt,
+                                         active_tcp_client_count());
+    }
+}
+
 }  // namespace
 
 void send_tcp_discovery_burst(std::size_t active_tcp_clients) {
@@ -105,6 +114,13 @@ void update_tcp_discovery_station(std::string_view ipv4,
 
 void clear_tcp_discovery_station() {
     discovery_service.station_disconnected();
+}
+
+void start_tcp_discovery_task() {
+    static constexpr std::uint32_t stack_size = 3072U;
+    static constexpr UBaseType_t priority = 2U;
+    xTaskCreate(discovery_task, "discovery", stack_size, nullptr, priority,
+                nullptr);
 }
 
 }  // namespace firmware::target

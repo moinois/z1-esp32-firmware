@@ -18,6 +18,7 @@
 #include "sd_card_adapter.hpp"
 #include "controller_command_loop.hpp"
 #include "tcp_control_adapter.hpp"
+#include "tcp_discovery_adapter.hpp"
 #include "wlan_event_adapter.hpp"
 #include "connectivity_startup_adapter.hpp"
 #include "automatic_connection_adapter.hpp"
@@ -181,6 +182,7 @@ extern "C" void app_main() {
     wlan_events.set_ble_provisioning(&blufi_provisioning);
     wlan_events.start();
     tcp_control.start();
+    firmware::target::start_tcp_discovery_task();
     static firmware::target::UsbDeviceAdapter usb_device;
     if (!usb_device.start()) {
         ESP_LOGW(tag, "USB device startup failed; USB remains unavailable");
