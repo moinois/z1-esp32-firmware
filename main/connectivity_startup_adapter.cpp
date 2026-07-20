@@ -86,6 +86,13 @@ bool ConnectivityStartupAdapter::start_access_point_and_station(
     if (esp_wifi_set_config(WIFI_IF_STA, &station) != ESP_OK) {
         return false;
     }
+    esp_netif_t* station_netif =
+        esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    if (station_netif == nullptr ||
+        esp_netif_set_hostname(station_netif,
+                               policy.default_hostname.c_str()) != ESP_OK) {
+        return false;
+    }
     // Wi-Fi was started for the station-only scan; changing mode keeps it running.
     return true;
 }
