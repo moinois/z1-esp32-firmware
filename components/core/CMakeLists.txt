@@ -15,6 +15,7 @@ set(CORE_SOURCES
     src/media_messages.cpp
     src/multipart_extractor.cpp
     src/network_policy.cpp
+    src/preview_path_policy.cpp
     src/status.cpp
     src/text.cpp
     src/update_package.cpp

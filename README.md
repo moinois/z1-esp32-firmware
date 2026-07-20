@@ -186,12 +186,13 @@ The first core-to-periphery development slice contains:
 - live-video command matching, single-socket ownership, cross-socket
   preemption, and disconnect cleanup policy;
 - compact, ordered and JSON-escaped live/preview preemption responses;
+- preview path allow-list and literal traversal rejection;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 534 tests. The firmware also builds successfully as
+The current host suite has 536 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).

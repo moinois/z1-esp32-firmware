@@ -108,6 +108,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | WEBUP-020--WEBUP-023 direct web-volume update | Application raw partition orchestration with replaceable partition/response/restart port | Yes for partition lookup, full erase before offset-zero write, capacity rejection, empty content, exact errors/success, two-second delay, and restart; clean target build verified | ESP-IDF partition adapter pending |
 | LIVE-001, LIVE-005--LIVE-006, LIVE-008 live control ownership | Application single-owner live-control policy | Yes for exact start/stop matching, owner-only stop, cross-socket preemption, same-socket restart suppression, and disconnect cleanup; clean target build verified | WebSocket receive/send and camera execution adapters pending |
 | MEDIA-003--MEDIA-005 media preemption messages | Portable compact JSON message formatter | Yes for exact namespaces, field order, optional preview session, escaping, and no trailing whitespace; clean target build verified | WebSocket send adapter pending |
+| PREV-010 preview path policy | Portable exact `/sd/videos` allow-list | Yes for root/descendant acceptance, root-boundary matching, and any `..` rejection; clean target build verified | Filesystem existence/regular-file adapter pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
 | HW-004--HW-005 CPU, flash, PSRAM, security | Target defaults | Build verification only | No |
