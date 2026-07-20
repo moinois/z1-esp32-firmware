@@ -130,14 +130,14 @@ extern "C" void app_main() {
     retention_adapter.start();
     static firmware::target::SdCardAdapter sd_card_adapter;
     sd_card_adapter.start();
-    static firmware::target::FirmwareUpdateAdapter firmware_update;
-    firmware_update.start();
     static firmware::target::DiagnosticCaptureAdapter diagnostic_capture;
     diagnostic_capture.start();
     static firmware::target::RuntimeCounterTask runtime_counter_task;
     runtime_counter_task.start();
     static firmware::target::ControllerCommandLoop controller_command_loop;
     controller_command_loop.start();
+    static firmware::target::FirmwareUpdateAdapter firmware_update;
+    firmware_update.start();
     static firmware::target::TcpControlAdapter tcp_control;
     static firmware::application::StationRuntime automatic_station_runtime;
     static firmware::target::AutomaticConnectionAdapter automatic_connection;
