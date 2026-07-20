@@ -2,6 +2,7 @@
 #pragma once
 
 #include "firmware/application/camera_resolution_endpoint.hpp"
+#include "firmware/application/camera_settings.hpp"
 #include "firmware/core/bytes.hpp"
 
 #include <optional>
@@ -26,6 +27,9 @@ public:
 
     // Returns the configured startup dimensions used by the recording writer.
     firmware::application::FrameDimensions current_dimensions() const;
+
+    // Returns the cached normalized settings loaded during initialization.
+    const firmware::application::CameraSettings& settings() const;
 };
 
 // Returns the process-wide camera adapter used by HTTP and update services.

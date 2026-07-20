@@ -21,8 +21,6 @@
 namespace firmware::target {
 namespace {
 
-constexpr std::uint32_t recording_period_milliseconds = 1000U;
-constexpr std::size_t recording_frames_per_file = 300U;
 constexpr char recording_source_path[] = "/sd/videos/session.avi";
 
 // Finalizes and durably writes one active in-memory AVI segment.
@@ -47,7 +45,9 @@ void recording_task(void*) {
     std::optional<firmware::core::AviWriter> writer;
     std::optional<std::string> path;
     firmware::application::RecordingSegmentState state;
-    const auto dimensions = firmware::application::camera_dimensions(15U);
+    const auto& settings = camera_adapter().settings();
+    const auto dimensions = firmware::application::camera_dimensions(
+        settings.recording_frame_size);
     for (;;) {
         const bool active = firmware::application::recording_conditions_active(
             request.requested(), streamed_play_running(), controller_running());
@@ -70,12 +70,12 @@ void recording_task(void*) {
         if (writer.has_value()) {
             const bool close = firmware::application::advance_recording_segment(
                 state, active, capture_succeeded, write_succeeded,
-                recording_frames_per_file);
+                settings.frames_per_file);
             if (close) {
                 close_segment(writer, path);
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(recording_period_milliseconds));
+        vTaskDelay(pdMS_TO_TICKS(settings.frame_interval_milliseconds));
     }
 }
 
