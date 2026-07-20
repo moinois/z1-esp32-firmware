@@ -13,6 +13,7 @@
 #include "storage_retention_adapter.hpp"
 #include "sd_card_adapter.hpp"
 #include "diagnostic_capture_adapter.hpp"
+#include "runtime_counter_task.hpp"
 
 #include "firmware/application/web_volume_startup.hpp"
 
@@ -94,4 +95,6 @@ extern "C" void app_main() {
     sd_card_adapter.start();
     static firmware::target::DiagnosticCaptureAdapter diagnostic_capture;
     diagnostic_capture.start();
+    static firmware::target::RuntimeCounterTask runtime_counter_task;
+    runtime_counter_task.start();
 }

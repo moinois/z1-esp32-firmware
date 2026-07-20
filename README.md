@@ -212,6 +212,7 @@ The first core-to-periphery development slice contains:
 - SD-monitor draining of captured diagnostic records into the log writer;
 - reusable ESP-IDF NVS scalar/string adapter with explicit missing-key handling;
 - NVS runtime-counter backend for `first_boot`, `pon_s`, and `mach_s`;
+- runtime-counter startup task with periodic whole-second persistence;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and

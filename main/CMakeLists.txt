@@ -12,6 +12,7 @@ idf_component_register(
         "diagnostic_capture_adapter.cpp"
         "nvs_key_value_adapter.cpp"
         "nvs_runtime_counter_adapter.cpp"
+        "runtime_counter_task.cpp"
     REQUIRES
         application
         core
