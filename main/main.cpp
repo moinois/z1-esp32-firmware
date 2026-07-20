@@ -141,6 +141,7 @@ extern "C" void app_main() {
     automatic_connection.start(automatic_station_runtime);
     static firmware::target::WlanEventAdapter wlan_events;
     wlan_events.set_automatic_connection(&automatic_connection);
+    wlan_events.set_ble_provisioning(&blufi_provisioning);
     wlan_events.start();
     tcp_control.start();
 }
