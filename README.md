@@ -228,6 +228,7 @@ The first core-to-periphery development slice contains:
 - TCP overflow rejection wired to the whole-frame sender with a one-second call timeout;
 - per-client TCP session composition for incremental frames, stable identity, and queued responses;
 - target TCP tasks now retain per-connection identities and make explicit routing decisions;
+- callback-based TCP dispatch ports for controller, local, file, and play services;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
@@ -235,7 +236,7 @@ The first core-to-periphery development slice contains:
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 571 tests. The firmware also builds successfully as
+The current host suite has 573 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
