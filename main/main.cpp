@@ -131,6 +131,9 @@ extern "C" void app_main() {
     if (esp_wifi_init(&wifi_config) != ESP_OK) {
         esp_restart();
     }
+    // Install capture before storage startup so early diagnostics are retained.
+    static firmware::target::DiagnosticCaptureAdapter diagnostic_capture;
+    diagnostic_capture.start();
     static firmware::target::SdCardAdapter sd_card_adapter;
     static_cast<void>(sd_card_adapter.mount_for_boot());
     sd_card_adapter.start();
@@ -164,8 +167,6 @@ extern "C" void app_main() {
     canopen_service.start();
     static firmware::target::StorageRetentionAdapter retention_adapter;
     retention_adapter.start();
-    static firmware::target::DiagnosticCaptureAdapter diagnostic_capture;
-    diagnostic_capture.start();
     static firmware::target::RuntimeCounterTask runtime_counter_task;
     runtime_counter_task.start();
     static firmware::target::ControllerCommandLoop controller_command_loop;
