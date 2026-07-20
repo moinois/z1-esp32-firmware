@@ -1,5 +1,6 @@
 # The host test executable intentionally has no third-party test dependency.
-add_executable(core_tests
+add_executable(
+    core_tests
     test_main.cpp
     test_crc.cpp
     test_controller_query.cpp
@@ -12,6 +13,7 @@ add_executable(core_tests
     test_controller_uart_config.cpp
     test_frame.cpp
     test_file_transfer_paths.cpp
+    test_file_transfer_admission.cpp
     test_play_session.cpp
     test_play_controller.cpp
     test_play_data.cpp
