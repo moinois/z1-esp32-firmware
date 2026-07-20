@@ -142,6 +142,18 @@ TEST_CASE(disc_004_periodic_cycle_sends_station_before_access_point) {
     REQUIRE_EQ(port.delays, std::vector<std::uint32_t>({500U}));
 }
 
+TEST_CASE(disc_machine_name_can_be_replaced_before_periodic_advertisement) {
+    FakeDiscoveryPort port;
+    DiscoveryService service(port, "initial");
+    service.set_machine_name("configured-name");
+
+    service.periodic_cycle(std::nullopt, 0U);
+
+    REQUIRE_EQ(port.long_datagrams.size(), 1U);
+    REQUIRE_EQ(port.long_datagrams.front().payload,
+               std::string("configured-name,192.168.4.1,2222,0,Idle"));
+}
+
 TEST_CASE(disc_005_socket_failure_retries_and_broadcast_failure_stays_in_service) {
     FakeDiscoveryPort port;
     port.long_socket_opens = false;
