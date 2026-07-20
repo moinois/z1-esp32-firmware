@@ -9,6 +9,7 @@ set(APPLICATION_SOURCES
     src/controller_transfer.cpp
     src/ownership.cpp
     src/play_controller.cpp
+    src/play_line_reader.cpp
     src/play_session.cpp
     src/router.cpp
 )

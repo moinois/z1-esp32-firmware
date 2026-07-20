@@ -26,6 +26,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | LPCFAC-001--LPCFAC-005 controller factory-data transfer | Application implementation with replaceable port | Yes | Storage and routing adapters pending |
 | PLAY-001--PLAY-007 streamed-play preparation and status | Application implementation with replaceable port | Yes for preparation and status | Storage, ownership, and routing adapters pending |
 | PLAY-010--PLAY-011, PLAY-018 play controller lifecycle | Application implementation with replaceable port | Start, validation, observer, and terminal cases | Data and goto exchange pending |
+| PLAY-007, PLAY-014 streamed-play logical lines | Application implementation with replaceable source | NUL, chunk, length, EOF, and failure cases | Data and goto aggregation pending |
 | UPD-010--UPD-014 package validation | Core implementation | Partial: 010--013 | No |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
