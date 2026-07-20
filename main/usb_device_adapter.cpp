@@ -41,6 +41,7 @@
 #include "play_runtime_state.hpp"
 #include "firmware/core/file_transfer_paths.hpp"
 #include "firmware/application/file_upload.hpp"
+#include "firmware/application/file_download.hpp"
 
 #include <array>
 #include <algorithm>
@@ -53,6 +54,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cerrno>
+#include <climits>
+#include "esp_heap_caps.h"
 #include "mbedtls/md5.h"
 #include <esp_timer.h>
 #include "esp_wifi.h"
@@ -579,6 +582,120 @@ firmware::application::FileUpload usb_upload;
 const firmware::application::HostIdentity usb_host_identity{
     firmware::application::HostTransport::usb, 0U, 0U};
 
+// Implements bounded POSIX reads and MD5 lookup for USB downloads.
+class UsbFileDownloadPort final : public firmware::application::FileDownloadPort {
+public:
+    ~UsbFileDownloadPort() override { close_file(); }
+
+    void prepare_cache_paths(const firmware::core::FileCachePaths& paths) override {
+        if (paths.md5_path.has_value()) usb_upload_port.create_parent_directories(
+            *paths.md5_path, 0777U);
+        if (paths.compressed_path.has_value()) usb_upload_port.create_parent_directories(
+            *paths.compressed_path, 0777U);
+    }
+
+    std::optional<std::string> calculate_md5(std::string_view path) override {
+        FILE* input = std::fopen(std::string(path).c_str(), "rb");
+        if (input == nullptr) return std::nullopt;
+        mbedtls_md5_context context;
+        mbedtls_md5_init(&context);
+        mbedtls_md5_starts(&context);
+        std::uint8_t buffer[1024];
+        while (const std::size_t count =
+                   std::fread(buffer, 1U, sizeof(buffer), input)) {
+            mbedtls_md5_update(&context, buffer, count);
+        }
+        if (std::ferror(input) != 0) {
+            std::fclose(input);
+            mbedtls_md5_free(&context);
+            return std::nullopt;
+        }
+        std::uint8_t digest[16];
+        mbedtls_md5_finish(&context, digest);
+        mbedtls_md5_free(&context);
+        std::fclose(input);
+        static constexpr char hex[] = "0123456789abcdef";
+        std::string result(32U, '0');
+        for (std::size_t index = 0U; index < 16U; ++index) {
+            result[index * 2U] = hex[digest[index] >> 4U];
+            result[index * 2U + 1U] = hex[digest[index] & 0x0fU];
+        }
+        return result;
+    }
+
+    std::optional<firmware::core::ByteVector> read_cache(
+        std::string_view path, std::size_t maximum_size) override {
+        FILE* input = std::fopen(std::string(path).c_str(), "rb");
+        if (input == nullptr) return std::nullopt;
+        firmware::core::ByteVector data(maximum_size);
+        const std::size_t count = std::fread(data.data(), 1U, maximum_size, input);
+        data.resize(count);
+        std::fclose(input);
+        return data;
+    }
+
+    bool file_exists(std::string_view path) override {
+        struct stat information{};
+        return stat(std::string(path).c_str(), &information) == 0;
+    }
+
+    std::optional<std::uint64_t> open_file(std::string_view path) override {
+        close_file();
+        file_ = std::fopen(std::string(path).c_str(), "rb");
+        if (file_ == nullptr || std::fseek(file_, 0L, SEEK_END) != 0) {
+            close_file();
+            return std::nullopt;
+        }
+        const long size = std::ftell(file_);
+        if (size < 0L || std::fseek(file_, 0L, SEEK_SET) != 0) {
+            close_file();
+            return std::nullopt;
+        }
+        return static_cast<std::uint64_t>(size);
+    }
+
+    std::optional<firmware::core::ByteVector> read_file(
+        std::uint64_t offset, std::size_t maximum_size) override {
+        if (file_ == nullptr || offset > static_cast<std::uint64_t>(LONG_MAX) ||
+            std::fseek(file_, static_cast<long>(offset), SEEK_SET) != 0) {
+            return std::nullopt;
+        }
+        firmware::core::ByteVector data(maximum_size);
+        const std::size_t count = std::fread(data.data(), 1U, maximum_size, file_);
+        if (std::ferror(file_) != 0) return std::nullopt;
+        data.resize(count);
+        return data;
+    }
+
+    bool allocate_response_workspace(std::size_t size) override {
+        void* workspace = heap_caps_malloc(size, MALLOC_CAP_8BIT);
+        if (workspace == nullptr) return false;
+        heap_caps_free(workspace);
+        return true;
+    }
+
+    void close_file() override {
+        if (file_ != nullptr) std::fclose(file_);
+        file_ = nullptr;
+    }
+
+    void send(const firmware::application::HostIdentity&,
+              firmware::core::Frame frame) override {
+        const auto encoded = firmware::core::encode_frame(frame);
+        if (!encoded.empty()) {
+            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+        }
+    }
+
+    void release_ownership() override { close_file(); }
+
+private:
+    FILE* file_ = nullptr;
+};
+
+UsbFileDownloadPort usb_download_port;
+firmware::application::FileDownload usb_download;
+
 class UsbSerialPort final : public firmware::application::SerialNumberPort {
 public:
     bool admit_operation(std::uint32_t wait_milliseconds) override {
@@ -887,29 +1004,37 @@ void usb_transmit_task(void*) {
     }
 }
 
-// Handles one USB-origin upload start or data frame and releases ownership on completion.
-void handle_usb_upload(const firmware::core::Frame& frame) {
+// Handles one USB-origin file transfer frame and releases ownership on completion.
+void handle_usb_file_transfer(const firmware::core::Frame& frame) {
     const std::uint64_t now =
         static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
     if (frame.type == firmware::core::protocol::file_command) {
         const auto start = firmware::core::parse_file_transfer_start(frame.payload);
         if (!start.has_value() ||
-            start->direction != firmware::core::FileTransferDirection::upload ||
             usb_upload.active() ||
+            usb_download.active() ||
             !shared_host_router().ownership().claim_file(usb_host_identity)) {
             return;
         }
-        if (!usb_upload.start(usb_host_identity, start->path, now,
-                              usb_upload_port)) {
+        const bool started = start->direction ==
+                                 firmware::core::FileTransferDirection::upload
+                             ? usb_upload.start(usb_host_identity, start->path,
+                                                now, usb_upload_port)
+                             : usb_download.start(usb_host_identity, start->path,
+                                                  now, usb_download_port);
+        if (!started) {
             shared_host_router().ownership().release_file();
         }
         return;
     }
     if (usb_upload.active()) {
         usb_upload.handle(frame, now, usb_upload_port);
-        if (!usb_upload.active()) {
-            shared_host_router().ownership().release_file();
-        }
+    }
+    if (usb_download.active()) {
+        usb_download.handle(frame, now, usb_download_port);
+    }
+    if (!usb_upload.active() && !usb_download.active()) {
+        shared_host_router().ownership().release_file();
     }
 }
 
@@ -920,9 +1045,14 @@ void usb_upload_task(void*) {
             usb_upload.poll(
                 static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL),
                 usb_upload_port);
-            if (!usb_upload.active()) {
-                shared_host_router().ownership().release_file();
-            }
+        }
+        if (usb_download.active()) {
+            usb_download.poll(
+                static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL),
+                usb_download_port);
+        }
+        if (!usb_upload.active() && !usb_download.active()) {
+            shared_host_router().ownership().release_file();
         }
         vTaskDelay(pdMS_TO_TICKS(50U));
     }
@@ -939,7 +1069,7 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
         if (frame.type == firmware::core::protocol::file_command ||
             (frame.type >= firmware::core::protocol::file_md5 &&
              frame.type <= firmware::core::protocol::file_retry)) {
-            handle_usb_upload(frame);
+            handle_usb_file_transfer(frame);
             continue;
         }
         if (frame.type == firmware::core::protocol::single_command &&
