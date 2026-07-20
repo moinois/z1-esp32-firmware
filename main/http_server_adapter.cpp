@@ -21,6 +21,8 @@
 #include "firmware/application/preview_open.hpp"
 #include "firmware/application/preview_metadata.hpp"
 #include "firmware/application/preview_responses.hpp"
+#include "firmware/application/preview_playback.hpp"
+#include "firmware/application/preview_frame_step.hpp"
 #include "firmware/core/preview_path_policy.hpp"
 #include "firmware/core/avi_preview.hpp"
 #include "firmware/core/multipart_extractor.hpp"
@@ -43,6 +45,20 @@ constexpr char tag[] = "HTTP";
 firmware::application::LiveControlPolicy live_control_policy;
 
 #if CONFIG_HTTPD_WS_SUPPORT
+// Retains the currently admitted preview file and playback state.
+struct PreviewRuntime {
+    firmware::core::ByteVector file;
+    firmware::core::AviPreview avi;
+    std::string path;
+    std::string session_id;
+    std::uint32_t socket_id = 0U;
+    firmware::application::PreviewMode mode =
+        firmware::application::PreviewMode::stopped;
+    std::uint32_t current_frame = 0U;
+};
+
+std::optional<PreviewRuntime> preview_runtime;
+
 // Captures and sends one JPEG frame on the requesting WebSocket.
 bool send_live_frame(httpd_req_t* request) {
     camera_fb_t* frame = esp_camera_fb_get();
@@ -470,7 +486,43 @@ esp_err_t preview_websocket_handler(httpd_req_t* request) {
         firmware::application::PreviewSocketMessageType::text,
         firmware::core::BytesView(payload));
     if (!request_value.has_value() ||
-        request_value->command != firmware::application::PreviewCommand::open) {
+        request_value->command == firmware::application::PreviewCommand::open) {
+        if (!request_value.has_value()) {
+            return ESP_OK;
+        }
+    } else {
+        const auto& command = *request_value;
+        const bool active = preview_runtime.has_value();
+        const bool same_session = active &&
+            command.session_id == preview_runtime->session_id &&
+            static_cast<std::uint32_t>(httpd_req_to_sockfd(request)) ==
+                preview_runtime->socket_id;
+        if (!active || !same_session) {
+            const auto response = firmware::application::format_preview_conflict(
+                command.command, command.sequence,
+                active ? preview_runtime->session_id : std::string_view{});
+            return send_preview_text(request, response);
+        }
+        const auto result = firmware::application::apply_preview_command(
+            command, preview_runtime->mode, preview_runtime->current_frame,
+            preview_runtime->avi.entries.empty()
+                ? 0U
+                : static_cast<std::uint32_t>(
+                      preview_runtime->avi.entries.size() - 1U),
+            preview_runtime->avi.frame_period_us, same_session, active);
+        const std::string session_id = preview_runtime->session_id;
+        if (result.terminated) {
+            preview_runtime.reset();
+        }
+        if (result.reply) {
+            const auto response = firmware::application::format_preview_response(
+                command.command, command.sequence, 0,
+                session_id);
+            return send_preview_text(request, response);
+        }
+        return ESP_OK;
+    }
+    if (!request_value.has_value()) {
         return ESP_OK;
     }
     const auto& preview_request = *request_value;
@@ -495,6 +547,15 @@ esp_err_t preview_websocket_handler(httpd_req_t* request) {
             preview_request.command, preview_request.sequence, -1);
         return send_preview_text(request, response);
     }
+    preview_runtime = PreviewRuntime{
+        *file,
+        *avi,
+        preview_request.path,
+        decision.session_id,
+        static_cast<std::uint32_t>(httpd_req_to_sockfd(request)),
+        firmware::application::PreviewMode::stopped,
+        0U,
+    };
     const auto metadata = firmware::application::format_preview_metadata(
         *avi, decision.session_id, preview_request.path,
         preview_request.sequence);

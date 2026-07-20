@@ -177,6 +177,8 @@ The first core-to-periphery development slice contains:
   binary frame transmission on `start_stream`;
 - Preview WebSocket `open` admission with `/sd/videos` path policy, AVI parsing,
   metadata formatting, and text-frame response transmission;
+- Persistent preview session state for play, pause, resume, seek, and stop
+  commands with session ownership and conflict responses;
 - static-file serving through replaceable file/response ports, exact 404
   behavior, MIME selection, 256-byte chunks, and terminating empty chunk;
 - nonfatal web-volume startup with format-and-retry policy and an ESP-IDF
