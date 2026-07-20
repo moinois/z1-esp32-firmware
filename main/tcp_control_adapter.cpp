@@ -298,4 +298,8 @@ void TcpControlAdapter::start() {
     xTaskCreate(tcp_accept_task, "tcp_control", 4096U, nullptr, 4U, nullptr);
 }
 
+std::size_t active_tcp_client_count() {
+    return static_cast<std::size_t>(active_clients.load(std::memory_order_acquire));
+}
+
 }  // namespace firmware::target

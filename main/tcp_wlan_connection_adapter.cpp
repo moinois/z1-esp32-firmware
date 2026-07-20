@@ -5,6 +5,8 @@
 #include "freertos/task.h"
 
 #include "firmware/application/tcp_client_session.hpp"
+#include "tcp_discovery_adapter.hpp"
+#include "tcp_control_adapter.hpp"
 
 namespace firmware::target {
 
@@ -20,6 +22,8 @@ void TcpWlanConnectionAdapter::delay_milliseconds(std::uint32_t duration) {
     vTaskDelay(pdMS_TO_TICKS(duration));
 }
 
-void TcpWlanConnectionAdapter::send_discovery_burst() {}
+void TcpWlanConnectionAdapter::send_discovery_burst() {
+    send_tcp_discovery_burst(active_tcp_client_count());
+}
 
 }  // namespace firmware::target

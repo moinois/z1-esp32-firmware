@@ -243,6 +243,7 @@ The first core-to-periphery development slice contains:
 - WLAN station credentials persisted through the shared NVS adapter after IPv4 assignment;
 - portable `wlan` request parser with exact `-d`/`-e` option precedence;
 - TCP WLAN connect/disconnect response flow over the tested station policy;
+- UDP discovery adapter for long-lived and command-triggered broadcast bursts;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
