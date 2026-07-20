@@ -3,6 +3,7 @@ set(APPLICATION_SOURCES
     src/controller_link.cpp
     src/controller_query.cpp
     src/controller_snapshots.cpp
+    src/controller_transfer.cpp
     src/ownership.cpp
     src/router.cpp
 )

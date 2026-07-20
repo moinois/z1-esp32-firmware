@@ -1,0 +1,95 @@
+// Implements common controller-transfer parsing and paced family inboxes.
+#include "firmware/application/controller_transfer.hpp"
+
+#include <utility>
+
+namespace firmware::application {
+namespace {
+
+constexpr std::size_t maximum_pending_frames = 32U;
+constexpr std::size_t maximum_encoded_size = 544U;
+constexpr std::size_t encoded_frame_overhead = 9U;
+constexpr std::uint64_t processing_interval_milliseconds = 10U;
+
+// Decodes an unsigned 32-bit big-endian integer from four available bytes.
+std::uint32_t decode_u32(core::BytesView bytes) {
+    return (static_cast<std::uint32_t>(bytes[0]) << 24U) |
+           (static_cast<std::uint32_t>(bytes[1]) << 16U) |
+           (static_cast<std::uint32_t>(bytes[2]) << 8U) |
+           static_cast<std::uint32_t>(bytes[3]);
+}
+
+}  // namespace
+
+TransferOperation transfer_operation(std::uint8_t packet_type) {
+    switch (packet_type & 0x0FU) {
+        case 1U:
+            return TransferOperation::start;
+        case 2U:
+            return TransferOperation::geometry;
+        case 3U:
+            return TransferOperation::data;
+        case 4U:
+            return TransferOperation::complete;
+        case 5U:
+            return TransferOperation::cancel;
+        default:
+            return TransferOperation::unknown;
+    }
+}
+
+std::optional<TransferGeometry> parse_transfer_geometry(core::BytesView payload) {
+    if (payload.size() < 6U) {
+        return std::nullopt;
+    }
+    const std::uint16_t data_size =
+        static_cast<std::uint16_t>((static_cast<std::uint16_t>(payload[4]) << 8U) | payload[5]);
+    return TransferGeometry{decode_u32({payload.data(), 4U}), data_size};
+}
+
+std::optional<TransferDataRequest> parse_transfer_data_request(core::BytesView payload) {
+    if (payload.size() < 4U) {
+        return std::nullopt;
+    }
+    return TransferDataRequest{
+        decode_u32({payload.data(), 4U}),
+        core::ByteVector(payload.begin(), payload.begin() + 4),
+    };
+}
+
+core::Frame make_transfer_reply(std::uint8_t family, std::uint8_t low_nibble,
+                                core::ByteVector payload) {
+    return {
+        static_cast<std::uint8_t>((family & 0xF0U) | (low_nibble & 0x0FU)),
+        std::move(payload),
+    };
+}
+
+ControllerTransferInbox::ControllerTransferInbox(std::uint8_t family)
+    : family_(family & 0xF0U) {}
+
+bool ControllerTransferInbox::enqueue(core::Frame frame) {
+    const bool correct_family = (frame.type & 0xF0U) == family_;
+    const bool size_allowed = frame.payload.size() <= maximum_encoded_size - encoded_frame_overhead;
+    if (!correct_family || !size_allowed || frames_.size() >= maximum_pending_frames) {
+        return false;
+    }
+    frames_.push_back(std::move(frame));
+    return true;
+}
+
+std::optional<core::Frame> ControllerTransferInbox::take_ready(std::uint64_t now_milliseconds) {
+    if (frames_.empty() || now_milliseconds < next_process_milliseconds_) {
+        return std::nullopt;
+    }
+    core::Frame frame = std::move(frames_.front());
+    frames_.pop_front();
+    next_process_milliseconds_ = now_milliseconds + processing_interval_milliseconds;
+    return frame;
+}
+
+std::size_t ControllerTransferInbox::pending() const {
+    return frames_.size();
+}
+
+}  // namespace firmware::application

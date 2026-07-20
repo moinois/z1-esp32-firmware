@@ -19,6 +19,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | DIAG-021 controller write failure message | Application implementation | Yes | Diagnostic sink integration pending |
 | HW-020--HW-022 controller UART configuration | ESP-IDF adapter | Exact settings verified | Adapter startup deferred by BOOT-012 |
 | UART-002 bounded controller reads | ESP-IDF adapter | Exact settings verified | Adapter startup deferred by BOOT-012 |
+| LPC-010--LPC-014 common controller-transfer wire layer | Application implementation | Partial: 010--012, 014 queue and parsing | Service integration pending |
 | UPD-010--UPD-014 package validation | Core implementation | Partial: 010--013 | No |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
