@@ -43,6 +43,7 @@ set(APPLICATION_SOURCES
     src/update_phase.cpp
     src/update_trigger.cpp
     src/update_validation.cpp
+    src/wall_clock.cpp
     src/wlan_command.cpp
 )
 

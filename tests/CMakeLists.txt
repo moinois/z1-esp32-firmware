@@ -57,6 +57,7 @@ add_executable(
     test_update_trigger.cpp
     test_update_validation.cpp
     test_wlan_command.cpp
+    test_wall_clock.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
 target_compile_options(core_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
