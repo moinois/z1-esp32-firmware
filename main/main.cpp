@@ -1,8 +1,10 @@
 // Starts the mainboard services in the normative order defined by BOOT-010 through BOOT-019.
 #include "driver/gpio.h"
 #include "esp_err.h"
+#include "esp_event.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "nvs_flash.h"
@@ -15,10 +17,12 @@
 #include "controller_command_loop.hpp"
 #include "tcp_control_adapter.hpp"
 #include "wlan_event_adapter.hpp"
+#include "connectivity_startup_adapter.hpp"
 #include "diagnostic_capture_adapter.hpp"
 #include "runtime_counter_task.hpp"
 
 #include "firmware/application/web_volume_startup.hpp"
+#include "firmware/application/connectivity_startup.hpp"
 
 #include <cstdint>
 
@@ -85,6 +89,18 @@ extern "C" void app_main() {
         esp_restart();
     }
     start_heartbeat();
+    if (esp_netif_init() != ESP_OK || esp_event_loop_create_default() != ESP_OK) {
+        esp_restart();
+    }
+    esp_netif_create_default_wifi_ap();
+    esp_netif_create_default_wifi_sta();
+    wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
+    if (esp_wifi_init(&wifi_config) != ESP_OK) {
+        esp_restart();
+    }
+    static firmware::target::ConnectivityStartupAdapter connectivity_adapter;
+    firmware::application::ConnectivityStartup::start(connectivity_adapter,
+                                                       "espressif");
     static firmware::target::WebVolumeAdapter web_volume_adapter;
     static firmware::application::WebVolumeStartup web_volume_startup;
     web_volume_startup.start(web_volume_adapter);

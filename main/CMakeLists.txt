@@ -26,6 +26,7 @@ idf_component_register(
         "tcp_wlan_connection_adapter.cpp"
         "tcp_discovery_adapter.cpp"
         "wlan_event_adapter.cpp"
+        "connectivity_startup_adapter.cpp"
         "tcp_control_adapter.cpp"
         "recording_request_state.cpp"
     REQUIRES
@@ -36,6 +37,7 @@ idf_component_register(
         esp_driver_uart
         esp_wifi
         esp_netif
+        esp_event
         nvs_flash
         spiffs
         esp_http_server
