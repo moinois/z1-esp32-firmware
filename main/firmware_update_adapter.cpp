@@ -2,6 +2,7 @@
 #include "firmware_update_adapter.hpp"
 
 #include "controller_command_loop.hpp"
+#include "tcp_control_adapter.hpp"
 #include "esp_image_validator.hpp"
 #include "ota_update_adapter.hpp"
 #include "nvs_key_value_adapter.hpp"
@@ -153,8 +154,8 @@ public:
         vTaskDelay(pdMS_TO_TICKS(duration));
     }
 
-    void broadcast(std::uint8_t, std::string_view payload) override {
-        ESP_LOGW(tag, "%.*s", static_cast<int>(payload.size()), payload.data());
+    void broadcast(std::uint8_t type, std::string_view payload) override {
+        broadcast_tcp_frame({type, {payload.begin(), payload.end()}});
     }
 };
 

@@ -47,6 +47,7 @@
 #include "firmware/core/protocol_constants.hpp"
 
 #include <arpa/inet.h>
+#include <algorithm>
 #include <cerrno>
 #include <cstring>
 #include <netinet/in.h>
@@ -57,8 +58,10 @@
 #include <cstdint>
 #include <esp_timer.h>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string_view>
+#include <vector>
 #include <utility>
 
 namespace firmware::target {
@@ -74,6 +77,8 @@ RecordingRequestState tcp_recording_state;
 firmware::application::StationRuntime tcp_station_runtime;
 firmware::application::LiveConfiguration tcp_live_configuration;
 std::atomic_bool m942_exercise_active{false};
+std::mutex tcp_session_registry_mutex;
+std::vector<firmware::application::TcpClientSession*> tcp_sessions;
 
 // Adapts one TCP-origin M942 request to the shared CANopen SDO service.
 class TcpM942Port final : public firmware::application::M942ExercisePort {
@@ -504,6 +509,10 @@ void tcp_client_task(void* parameter) {
     auto* context = static_cast<TcpClientContext*>(parameter);
     const int client = context->socket;
     firmware::application::TcpClientSession session(context->identity);
+    {
+        std::lock_guard<std::mutex> lock(tcp_session_registry_mutex);
+        tcp_sessions.push_back(&session);
+    }
     TcpFileTransferRuntime transfer_runtime(session, tcp_router);
     TaskHandle_t m942_worker = nullptr;
     firmware::application::TcpFrameDispatcher dispatcher(
@@ -546,6 +555,11 @@ void tcp_client_task(void* parameter) {
     }
     transfer_runtime.disconnect();
     tcp_router.ownership().transport_disconnected(context->identity);
+    {
+        std::lock_guard<std::mutex> lock(tcp_session_registry_mutex);
+        tcp_sessions.erase(std::remove(tcp_sessions.begin(), tcp_sessions.end(),
+                                       &session), tcp_sessions.end());
+    }
     close(client);
     active_clients.fetch_sub(1, std::memory_order_release);
     delete context;
@@ -612,6 +626,15 @@ std::size_t active_tcp_client_count() {
 
 void tcp_router_play_ownership_release() {
     tcp_router.ownership().release_play();
+}
+
+void broadcast_tcp_frame(const firmware::core::Frame& frame) {
+    std::lock_guard<std::mutex> lock(tcp_session_registry_mutex);
+    for (auto* session : tcp_sessions) {
+        if (session != nullptr) {
+            static_cast<void>(session->queue_frame(frame));
+        }
+    }
 }
 
 }  // namespace firmware::target
