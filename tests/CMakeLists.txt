@@ -4,6 +4,7 @@ add_executable(core_tests
     test_crc.cpp
     test_controller_query.cpp
     test_controller_link.cpp
+    test_controller_firmware_transfer.cpp
     test_controller_snapshots.cpp
     test_controller_transfer.cpp
     test_controller_uart_config.cpp
