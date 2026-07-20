@@ -13,6 +13,7 @@
 
 #include "firmware/application/update_application.hpp"
 #include "firmware/application/update_controller.hpp"
+#include "firmware/application/update_deletion.hpp"
 #include "firmware/application/update_validation.hpp"
 
 #include <cstdio>
@@ -20,6 +21,7 @@
 #include <string>
 #include <atomic>
 #include <sys/stat.h>
+#include <cerrno>
 
 namespace firmware::target {
 namespace {
@@ -118,10 +120,49 @@ private:
     EspImageValidator validator_;
 };
 
+// Maps target filesystem effects to the bounded update-deletion policy.
+class UpdateDeletionTargetPort final
+    : public firmware::application::UpdateDeletionPort {
+public:
+    firmware::application::UpdateDeleteResult unlink_file(
+        std::string_view path) override {
+        if (std::remove(std::string(path).c_str()) == 0 || errno == ENOENT) {
+            return firmware::application::UpdateDeleteResult::success;
+        }
+        if (errno == EBUSY) {
+            return firmware::application::UpdateDeleteResult::busy;
+        }
+        if (errno == EACCES || errno == EPERM) {
+            return firmware::application::UpdateDeleteResult::permission_denied;
+        }
+        if (errno == EROFS) {
+            return firmware::application::UpdateDeleteResult::read_only_filesystem;
+        }
+        return firmware::application::UpdateDeleteResult::other_failure;
+    }
+
+    bool clear_fat_attributes(std::string_view path) override {
+        return chmod(std::string(path).c_str(), 0666U) == 0;
+    }
+
+    bool set_mode(std::string_view path, std::uint32_t mode) override {
+        return chmod(std::string(path).c_str(), static_cast<mode_t>(mode)) == 0;
+    }
+
+    void delay_milliseconds(std::uint32_t duration) override {
+        vTaskDelay(pdMS_TO_TICKS(duration));
+    }
+
+    void broadcast(std::uint8_t, std::string_view payload) override {
+        ESP_LOGW(tag, "%.*s", static_cast<int>(payload.size()), payload.data());
+    }
+};
+
 class UpdateApplicationTargetPort final
     : public firmware::application::UpdateApplicationPort {
 public:
-    explicit UpdateApplicationTargetPort(OtaUpdateAdapter& ota) : ota_(ota) {}
+    explicit UpdateApplicationTargetPort(OtaUpdateAdapter& ota)
+        : ota_(ota), deletion_(deletion_port_) {}
     void publish_phase(std::uint8_t phase) override { ota_.publish_phase(phase); }
     bool select_inactive_partition() override { return ota_.select_inactive_partition(); }
     bool begin_mainboard_write(std::uint32_t size) override {
@@ -140,12 +181,16 @@ public:
     void persist_phase_direct(std::uint8_t phase) override {
         ota_.persist_phase_direct(phase);
     }
-    void remove_aggregate(std::string_view path) override { ota_.remove_aggregate(path); }
+    void remove_aggregate(std::string_view path) override {
+        static_cast<void>(deletion_.remove(path));
+    }
     void send_controller_reset() override { ota_.send_controller_reset(); }
     void restart_mainboard() override { ota_.restart_mainboard(); }
 
 private:
     OtaUpdateAdapter& ota_;
+    UpdateDeletionTargetPort deletion_port_;
+    firmware::application::UpdateDeletionService deletion_;
 };
 
 void process_update_once() {
