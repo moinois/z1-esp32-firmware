@@ -1072,6 +1072,72 @@ void usb_local_command_task(void*) {
         } else if (match.kind == firmware::core::CommandKind::upgrade ||
                    match.kind == firmware::core::CommandKind::reset) {
             request_firmware_update_processing();
+        } else if (match.kind == firmware::core::CommandKind::make_directory ||
+                   match.kind == firmware::core::CommandKind::remove ||
+                   match.kind == firmware::core::CommandKind::move ||
+                   match.kind == firmware::core::CommandKind::file_type) {
+            if (match.kind == firmware::core::CommandKind::make_directory) {
+                firmware::application::FilesystemCommands::make_directory(
+                    command_frame->payload, filesystem_port);
+            } else if (match.kind == firmware::core::CommandKind::remove) {
+                firmware::application::FilesystemCommands::remove(
+                    command_frame->payload, filesystem_port);
+            } else if (match.kind == firmware::core::CommandKind::move) {
+                firmware::application::FilesystemCommands::move(
+                    command_frame->payload, filesystem_port);
+            } else {
+                firmware::application::FilesystemCommands::file_type(
+                    filesystem_port);
+            }
+        } else if (match.kind == firmware::core::CommandKind::list) {
+            firmware::application::DirectoryListing::execute(
+                command_frame->payload, directory_port);
+        } else if (match.kind == firmware::core::CommandKind::md5_sum) {
+            firmware::application::FileHashCommand::execute(
+                command_frame->payload, hash_port);
+        } else if (match.kind == firmware::core::CommandKind::wlan) {
+            const auto request = firmware::application::parse_wlan_request(command);
+            if (request.kind == firmware::application::WlanRequestKind::scan) {
+                firmware::application::WlanScanCommand::execute(wlan_scan_port);
+            } else if (request.kind ==
+                       firmware::application::WlanRequestKind::disconnect) {
+                firmware::application::WlanConnectionCommand::disconnect(
+                    usb_station_runtime, wlan_station_port, wlan_response_port);
+            } else {
+                firmware::application::WlanConnectionCommand::connect(
+                    usb_station_runtime, wlan_station_port, wlan_response_port,
+                    request.ssid, request.password);
+            }
+        } else if (match.kind == firmware::core::CommandKind::config_restore ||
+                   match.kind == firmware::core::CommandKind::config_default) {
+            if (match.kind == firmware::core::CommandKind::config_restore) {
+                firmware::application::ConfigurationFiles::restore(
+                    configuration_file_port);
+            } else {
+                firmware::application::ConfigurationFiles::save_default(
+                    configuration_file_port);
+            }
+        } else if (match.kind == firmware::core::CommandKind::config_get ||
+                   match.kind == firmware::core::CommandKind::config_set) {
+            if (match.kind == firmware::core::CommandKind::config_get) {
+                firmware::application::ConfigurationGet::execute(
+                    command_frame->payload, usb_live_configuration,
+                    configuration_port);
+            } else {
+                firmware::application::ConfigurationSet::execute(
+                    command_frame->payload, usb_live_configuration,
+                    configuration_port);
+            }
+        } else if (match.kind == firmware::core::CommandKind::diagnose) {
+            const auto response = shared_controller_snapshots().diagnostic_reply(0);
+            if (response.has_value()) {
+                static_cast<void>(protocol_state.transmit_queue().enqueue(
+                    firmware::core::encode_frame(*response)));
+            }
+        } else if (match.kind == firmware::core::CommandKind::version) {
+            const auto response = shared_controller_snapshots().version_reply();
+            static_cast<void>(protocol_state.transmit_queue().enqueue(
+                firmware::core::encode_frame(response)));
         }
         vTaskDelay(pdMS_TO_TICKS(10U));
     }
@@ -1298,93 +1364,42 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                 match.kind == firmware::core::CommandKind::remove ||
                 match.kind == firmware::core::CommandKind::move ||
                 match.kind == firmware::core::CommandKind::file_type) {
-                if (match.kind == firmware::core::CommandKind::make_directory) {
-                    firmware::application::FilesystemCommands::make_directory(
-                        frame.payload, filesystem_port);
-                } else if (match.kind == firmware::core::CommandKind::remove) {
-                    firmware::application::FilesystemCommands::remove(
-                        frame.payload, filesystem_port);
-                } else if (match.kind == firmware::core::CommandKind::move) {
-                    firmware::application::FilesystemCommands::move(
-                        frame.payload, filesystem_port);
-                } else {
-                    firmware::application::FilesystemCommands::file_type(
-                        filesystem_port);
-                }
+                static_cast<void>(usb_local_commands.enqueue(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::list) {
-                firmware::application::DirectoryListing::execute(
-                    frame.payload, directory_port);
+                static_cast<void>(usb_local_commands.enqueue(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::md5_sum) {
-                firmware::application::FileHashCommand::execute(
-                    frame.payload, hash_port);
+                static_cast<void>(usb_local_commands.enqueue(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::wlan) {
-                const std::string command(
-                    reinterpret_cast<const char*>(frame.payload.data()),
-                    frame.payload.size());
-                const auto request =
-                    firmware::application::parse_wlan_request(command);
-                if (request.kind == firmware::application::WlanRequestKind::scan) {
-                    firmware::application::WlanScanCommand::execute(
-                        wlan_scan_port);
-                } else if (request.kind ==
-                           firmware::application::WlanRequestKind::disconnect) {
-                    firmware::application::WlanConnectionCommand::disconnect(
-                        usb_station_runtime, wlan_station_port,
-                        wlan_response_port);
-                } else {
-                    firmware::application::WlanConnectionCommand::connect(
-                        usb_station_runtime, wlan_station_port,
-                        wlan_response_port, request.ssid, request.password);
-                }
+                static_cast<void>(usb_local_commands.enqueue(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::config_restore ||
                 match.kind == firmware::core::CommandKind::config_default) {
-                if (match.kind == firmware::core::CommandKind::config_restore) {
-                    firmware::application::ConfigurationFiles::restore(
-                        configuration_file_port);
-                } else {
-                    firmware::application::ConfigurationFiles::save_default(
-                        configuration_file_port);
-                }
+                static_cast<void>(usb_local_commands.enqueue(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::config_get ||
                 match.kind == firmware::core::CommandKind::config_set) {
-                if (match.kind == firmware::core::CommandKind::config_get) {
-                    firmware::application::ConfigurationGet::execute(
-                        frame.payload, usb_live_configuration, configuration_port);
-                } else {
-                    firmware::application::ConfigurationSet::execute(
-                        frame.payload, usb_live_configuration, configuration_port);
-                }
+                static_cast<void>(usb_local_commands.enqueue(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::upgrade ||
                 match.kind == firmware::core::CommandKind::reset) {
-                request_firmware_update_processing();
+                static_cast<void>(usb_local_commands.enqueue(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::diagnose) {
-                const auto response =
-                    shared_controller_snapshots().diagnostic_reply(0);
-                if (response.has_value()) {
-                    static_cast<void>(protocol_state.transmit_queue().enqueue(
-                        firmware::core::encode_frame(*response)));
-                }
+                static_cast<void>(usb_local_commands.enqueue(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::version) {
-                const auto response =
-                    shared_controller_snapshots().version_reply();
-                static_cast<void>(protocol_state.transmit_queue().enqueue(
-                    firmware::core::encode_frame(response)));
+                static_cast<void>(usb_local_commands.enqueue(frame));
                 continue;
             }
         }
