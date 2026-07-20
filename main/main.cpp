@@ -99,8 +99,11 @@ extern "C" void app_main() {
         esp_restart();
     }
     static firmware::target::ConnectivityStartupAdapter connectivity_adapter;
-    firmware::application::ConnectivityStartup::start(connectivity_adapter,
-                                                       "espressif");
+    if (!firmware::application::ConnectivityStartup::start(connectivity_adapter,
+                                                           "espressif")) {
+        ESP_LOGE(tag, "Connectivity startup failed; restarting");
+        esp_restart();
+    }
     static firmware::target::WebVolumeAdapter web_volume_adapter;
     static firmware::application::WebVolumeStartup web_volume_startup;
     web_volume_startup.start(web_volume_adapter);
