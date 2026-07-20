@@ -36,6 +36,7 @@ set(APPLICATION_SOURCES
     src/router.cpp
     src/sd_card_lifecycle.cpp
     src/station_connection.cpp
+    src/update_deletion.cpp
     src/wlan_command.cpp
 )
 
