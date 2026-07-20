@@ -29,6 +29,7 @@ idf_component_register(
         "connectivity_startup_adapter.cpp"
         "automatic_connection_adapter.cpp"
         "blufi_lifecycle_adapter.cpp"
+        "blufi_crypto_adapter.cpp"
         "tcp_control_adapter.cpp"
         "recording_request_state.cpp"
     REQUIRES
@@ -50,6 +51,7 @@ idf_component_register(
         esp_timer
         lwip
         bt
+        mbedtls
     PRIV_INCLUDE_DIRS
         "$ENV{IDF_PATH}/components/bt/common/api/include/api"
         "$ENV{IDF_PATH}/components/bt/common/btc/profile/esp/blufi/include"
