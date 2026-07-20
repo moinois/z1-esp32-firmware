@@ -15,6 +15,8 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | LPC-001--LPC-002 periodic controller queries | Application implementation | Yes | UART integration pending |
 | LPC-003 initial controller status | Application implementation | Yes | UART integration pending |
 | STAT-001--STAT-010 controller snapshots and replies | Core and application implementation | Yes | Routing integration pending |
+| UART-003--UART-008 controller link policy | Application implementation | Yes | UART adapter integration pending |
+| DIAG-021 controller write failure message | Application implementation | Yes | Diagnostic sink integration pending |
 | UPD-010--UPD-014 package validation | Core implementation | Partial: 010--013 | No |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |

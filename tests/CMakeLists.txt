@@ -3,6 +3,7 @@ add_executable(core_tests
     test_main.cpp
     test_crc.cpp
     test_controller_query.cpp
+    test_controller_link.cpp
     test_controller_snapshots.cpp
     test_frame.cpp
     test_routing.cpp
