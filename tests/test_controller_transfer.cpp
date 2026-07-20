@@ -73,3 +73,15 @@ TEST_CASE(lpc_010_reply_uses_the_same_family_and_requested_low_nibble) {
     REQUIRE_EQ(reply.type, 0xD3U);
     REQUIRE_EQ(reply.payload, ByteVector({1U, 2U}));
 }
+
+TEST_CASE(play_021_play_family_uses_the_same_bounded_paced_fifo) {
+    ControllerTransferInbox inbox(0xF0U);
+    for (std::uint8_t value = 0U; value < 32U; ++value) {
+        REQUIRE(inbox.enqueue({0xF3U, {value}}));
+    }
+
+    REQUIRE(!inbox.enqueue({0xF6U, {}}));
+    REQUIRE_EQ(inbox.take_ready(100U)->payload, ByteVector({0U}));
+    REQUIRE(!inbox.take_ready(109U).has_value());
+    REQUIRE_EQ(inbox.take_ready(110U)->payload, ByteVector({1U}));
+}

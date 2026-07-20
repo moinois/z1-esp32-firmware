@@ -29,6 +29,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | PLAY-007, PLAY-014 streamed-play logical lines | Application implementation with replaceable source | NUL, chunk, length, EOF, and failure cases | Data and goto aggregation pending |
 | PLAY-012--PLAY-017 streamed-play data exchange | Application implementation with replaceable source | Validation, aggregation, rewind, retry, EOF, and cleanup | Storage and routing adapters pending |
 | PLAY-019--PLAY-020 streamed-play goto exchange | Application implementation with monotonic-time port | Validation, scan, pacing, target, EOF, and failure cases | Storage and routing adapters pending |
+| PLAY-021 streamed-play family inbox | Shared application family inbox | Yes | Routing adapter pending |
 | UPD-010--UPD-014 package validation | Core implementation | Partial: 010--013 | No |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
