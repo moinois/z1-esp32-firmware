@@ -1,0 +1,9 @@
+# Builds portable logic as either an ESP-IDF component or a host-side library.
+set(CORE_SOURCES src/crc.cpp src/frame.cpp src/text.cpp src/status.cpp src/update_package.cpp)
+if(COMMAND idf_component_register)
+    idf_component_register(SRCS ${CORE_SOURCES} INCLUDE_DIRS include)
+else()
+    add_library(firmware_core ${CORE_SOURCES})
+    target_include_directories(firmware_core PUBLIC include)
+    target_compile_options(firmware_core PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
