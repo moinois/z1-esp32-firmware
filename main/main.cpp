@@ -13,6 +13,7 @@
 #include "storage_retention_adapter.hpp"
 #include "sd_card_adapter.hpp"
 #include "controller_command_loop.hpp"
+#include "tcp_control_adapter.hpp"
 #include "diagnostic_capture_adapter.hpp"
 #include "runtime_counter_task.hpp"
 
@@ -100,4 +101,6 @@ extern "C" void app_main() {
     runtime_counter_task.start();
     static firmware::target::ControllerCommandLoop controller_command_loop;
     controller_command_loop.start();
+    static firmware::target::TcpControlAdapter tcp_control;
+    tcp_control.start();
 }

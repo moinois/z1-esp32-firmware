@@ -221,6 +221,7 @@ The first core-to-periphery development slice contains:
 - wall-clock response encoding and transmission over controller UART;
 - NVS-backed serial-number service with framed UART responses;
 - M951/M952 recording control wired through recognition, state policy, and UART response;
+- TCP control listener on port 2222 with bounded client slots and keepalive options;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;

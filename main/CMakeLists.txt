@@ -18,6 +18,7 @@ idf_component_register(
         "wall_clock_command_dispatcher.cpp"
         "controller_command_loop.cpp"
         "serial_number_adapter.cpp"
+        "tcp_control_adapter.cpp"
         "recording_request_state.cpp"
     REQUIRES
         application
@@ -33,4 +34,5 @@ idf_component_register(
         esp_driver_sdmmc
         log
         esp_timer
+        lwip
 )
