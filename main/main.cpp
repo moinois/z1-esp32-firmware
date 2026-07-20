@@ -19,6 +19,7 @@
 #include "wlan_event_adapter.hpp"
 #include "connectivity_startup_adapter.hpp"
 #include "automatic_connection_adapter.hpp"
+#include "blufi_lifecycle_adapter.hpp"
 #include "diagnostic_capture_adapter.hpp"
 #include "runtime_counter_task.hpp"
 
@@ -104,6 +105,10 @@ extern "C" void app_main() {
                                                            "espressif")) {
         ESP_LOGE(tag, "Connectivity startup failed; restarting");
         esp_restart();
+    }
+    static firmware::target::BlufiLifecycleAdapter blufi_lifecycle;
+    if (!blufi_lifecycle.start()) {
+        ESP_LOGW(tag, "BLUFI lifecycle did not start");
     }
     static firmware::target::WebVolumeAdapter web_volume_adapter;
     static firmware::application::WebVolumeStartup web_volume_startup;

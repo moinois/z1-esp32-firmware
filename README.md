@@ -251,6 +251,7 @@ The first core-to-periphery development slice contains:
 - ESP-IDF Wi-Fi/IP event adapter synchronizes discovery state on station disconnect and IPv4 assignment;
 - ESP-IDF connectivity-startup adapter performs station-only congestion scanning and AP/STA startup;
 - ESP-IDF automatic-connection adapter loads saved credentials, schedules initial association, and retries station disconnects;
+- ESP-IDF BLUFI lifecycle adapter initializes BLE/Bluedroid, the standard BLUFI profile, and advertising;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;

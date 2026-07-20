@@ -28,6 +28,7 @@ idf_component_register(
         "wlan_event_adapter.cpp"
         "connectivity_startup_adapter.cpp"
         "automatic_connection_adapter.cpp"
+        "blufi_lifecycle_adapter.cpp"
         "tcp_control_adapter.cpp"
         "recording_request_state.cpp"
     REQUIRES
@@ -48,4 +49,10 @@ idf_component_register(
         log
         esp_timer
         lwip
+        bt
+    PRIV_INCLUDE_DIRS
+        "$ENV{IDF_PATH}/components/bt/common/api/include/api"
+        "$ENV{IDF_PATH}/components/bt/common/btc/profile/esp/blufi/include"
+        "$ENV{IDF_PATH}/components/bt/host/bluedroid/api/include/api"
+        "$ENV{IDF_PATH}/components/bt/include/esp32c3/include"
 )
