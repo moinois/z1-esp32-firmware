@@ -23,6 +23,31 @@ TEST_CASE(frm_010_decoder_preserves_partial_frames_across_reads) {
     REQUIRE_EQ(frames.front(), (Frame{0x83, {'o', 'k'}}));
 }
 
+TEST_CASE(frm_002_and_frm_003_encoder_and_decoder_enforce_length_rules) {
+    const auto encoded = firmware::core::encode_frame(Frame{0x84, {}});
+    REQUIRE_EQ(encoded[2], 0x00U);
+    REQUIRE_EQ(encoded[3], 0x03U);
+
+    StreamDecoder decoder(StreamPolicy::tcp());
+    const auto valid = firmware::core::encode_frame(Frame{0x84, {}});
+    ByteVector input{0x86, 0x68, 0x00, 0x02};
+    input.insert(input.end(), valid.begin(), valid.end());
+    const auto frames = decoder.push(input);
+    REQUIRE_EQ(frames.size(), 1U);
+    REQUIRE_EQ(frames.front().type, 0x84U);
+}
+
+TEST_CASE(frm_004_and_frm_005_reject_bad_crc_or_tail) {
+    auto bad_crc = firmware::core::encode_frame(Frame{0x90, {'x'}});
+    bad_crc[bad_crc.size() - 4U] ^= 1U;
+    auto bad_tail = firmware::core::encode_frame(Frame{0x91, {'y'}});
+    bad_tail.back() ^= 1U;
+
+    StreamDecoder decoder(StreamPolicy::tcp());
+    REQUIRE(decoder.push(bad_crc).empty());
+    REQUIRE(decoder.push(bad_tail).empty());
+}
+
 TEST_CASE(frm_011_decoder_discards_noise_but_retains_unpaired_sync_byte) {
     const auto encoded = firmware::core::encode_frame(Frame{0x84, {}});
     StreamDecoder decoder(StreamPolicy::tcp());
@@ -45,6 +70,27 @@ TEST_CASE(frm_013_tcp_recovers_sync_inside_rejected_candidate) {
 
     REQUIRE_EQ(frames.size(), 1U);
     REQUIRE_EQ(frames.front().payload, ByteVector({'x'}));
+}
+
+TEST_CASE(frm_012_decoder_waits_for_declared_frame) {
+    const auto encoded = firmware::core::encode_frame(Frame{0x92, {'o', 'k'}});
+    StreamDecoder decoder(StreamPolicy::tcp());
+    REQUIRE(decoder.push(ByteVector(encoded.begin(), encoded.end() - 1)).empty());
+    const auto frames = decoder.push(ByteVector{encoded.back()});
+    REQUIRE_EQ(frames.size(), 1U);
+    REQUIRE_EQ(frames.front().type, 0x92U);
+}
+
+TEST_CASE(frm_014_decoder_consumes_valid_frame_independent_of_destination) {
+    const auto first = firmware::core::encode_frame(Frame{0x93, {'a'}});
+    const auto second = firmware::core::encode_frame(Frame{0x94, {'b'}});
+    ByteVector input = first;
+    input.insert(input.end(), second.begin(), second.end());
+    StreamDecoder decoder(StreamPolicy::tcp());
+    const auto frames = decoder.push(input);
+    REQUIRE_EQ(frames.size(), 2U);
+    REQUIRE_EQ(frames[0].type, 0x93U);
+    REQUIRE_EQ(frames[1].type, 0x94U);
 }
 
 TEST_CASE(frm_015_transport_limits_are_exact) {

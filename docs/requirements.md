@@ -6,7 +6,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 
 | Area | Implemented | Host verified | Hardware verified |
 |---|---|---|---|
-| FRM-001--FRM-016 common framing and recovery | Core implementation | Partial: 001, 004, 010, 011, 013, 015, 016 | No |
+| FRM-001--FRM-016 common framing and recovery | Core implementation | Yes for envelope, length validation, CRC/tail rejection, stream boundaries, recovery modes, and transport limits | No |
 | ESC-001--ESC-002 escaping | Core implementation | Yes | Not required |
 | HFT-004 path normalization | Core implementation | Yes | Not required |
 | HFT-001--HFT-003 transfer start and path validation | Core implementation | Yes | TCP service integration and target build verified; runtime filesystem verification pending |
