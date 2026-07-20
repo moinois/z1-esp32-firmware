@@ -1077,10 +1077,26 @@ void handle_usb_file_transfer(const firmware::core::Frame& frame) {
         static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
     if (frame.type == firmware::core::protocol::file_command) {
         const auto start = firmware::core::parse_file_transfer_start(frame.payload);
-        if (!start.has_value() ||
-            usb_upload.active() ||
-            usb_download.active() ||
-            !shared_host_router().ownership().claim_file(usb_host_identity)) {
+        if (!start.has_value()) {
+            xSemaphoreGive(usb_file_mutex);
+            return;
+        }
+        const bool owned_by_usb =
+            shared_host_router().ownership().is_file_owner(usb_host_identity);
+        const bool capacity_available =
+            !usb_upload.active() && !usb_download.active() &&
+            (owned_by_usb ||
+             shared_host_router().ownership().claim_file(usb_host_identity));
+        if (!capacity_available) {
+            const std::string_view message =
+                firmware::application::file_owner_limit_message;
+            const firmware::core::Frame rejection{
+                firmware::core::protocol::file_cancel,
+                firmware::core::ByteVector(message.begin(), message.end())};
+            const auto encoded = firmware::core::encode_frame(rejection);
+            if (!encoded.empty()) {
+                static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+            }
             xSemaphoreGive(usb_file_mutex);
             return;
         }
