@@ -225,6 +225,7 @@ The first core-to-periphery development slice contains:
 - per-client TCP receive loops with independent stream decoders and overflow rejection;
 - bounded TCP transmit FIFO retaining complete frames until transport completion;
 - TCP whole-frame sender policy with short-write continuation and temporary-failure retry;
+- TCP overflow rejection wired to the whole-frame sender with a one-second call timeout;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;

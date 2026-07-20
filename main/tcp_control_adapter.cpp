@@ -6,6 +6,7 @@
 #include "freertos/task.h"
 
 #include "firmware/core/frame.hpp"
+#include "firmware/application/tcp_frame_sender.hpp"
 
 #include <arpa/inet.h>
 #include <cerrno>
@@ -17,6 +18,7 @@
 #include <atomic>
 #include <cstdint>
 #include <string_view>
+#include <utility>
 
 namespace firmware::target {
 namespace {
@@ -33,7 +35,25 @@ void send_rejection(int client) {
         firmware::core::protocol::ownership_limit,
         firmware::core::ByteVector(message.begin(), message.end())};
     const auto encoded = firmware::core::encode_frame(frame);
-    if (!encoded.empty()) send(client, encoded.data(), encoded.size(), 0);
+    timeval rejection_timeout{1, 0};
+    setsockopt(client, SOL_SOCKET, SO_SNDTIMEO, &rejection_timeout,
+               sizeof(rejection_timeout));
+    firmware::application::TcpFrameSender sender;
+    sender.send(encoded, [client](firmware::core::BytesView remaining) {
+        const ssize_t result = send(client, remaining.data(), remaining.size(), 0);
+        if (result > 0) {
+            return firmware::application::TcpSendResult{
+                firmware::application::TcpSendStatus::sent,
+                static_cast<std::size_t>(result)};
+        }
+        if (result < 0 && (errno == EAGAIN || errno == EWOULDBLOCK
+                           || errno == EINTR)) {
+            return firmware::application::TcpSendResult{
+                firmware::application::TcpSendStatus::temporary_failure, 0U};
+        }
+        return firmware::application::TcpSendResult{
+            firmware::application::TcpSendStatus::permanent_failure, 0U};
+    });
     vTaskDelay(pdMS_TO_TICKS(300U));
 }
 
