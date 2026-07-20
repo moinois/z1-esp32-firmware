@@ -5,6 +5,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "firmware/core/frame.hpp"
+
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstring>
@@ -12,6 +14,9 @@
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <atomic>
+#include <cstdint>
+#include <string_view>
 
 namespace firmware::target {
 namespace {
@@ -19,6 +24,18 @@ namespace {
 constexpr int control_port = 2222;
 constexpr int listen_backlog = 4;
 constexpr int maximum_clients = 4;
+std::atomic_int active_clients{0};
+
+void send_rejection(int client) {
+    constexpr std::string_view message =
+        "The maximum number of client connections has been reached. Please close other client first.";
+    const firmware::core::Frame frame{
+        firmware::core::protocol::ownership_limit,
+        firmware::core::ByteVector(message.begin(), message.end())};
+    const auto encoded = firmware::core::encode_frame(frame);
+    if (!encoded.empty()) send(client, encoded.data(), encoded.size(), 0);
+    vTaskDelay(pdMS_TO_TICKS(300U));
+}
 
 void configure_socket(int socket) {
     const int enabled = 1;
@@ -34,6 +51,21 @@ void configure_socket(int socket) {
     timeval send_timeout{5, 0};
     setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, &receive_timeout, sizeof(receive_timeout));
     setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout));
+}
+
+void tcp_client_task(void* parameter) {
+    const int client = static_cast<int>(reinterpret_cast<intptr_t>(parameter));
+    configure_socket(client);
+    firmware::core::StreamDecoder decoder(firmware::core::StreamPolicy::tcp());
+    std::uint8_t input[2048];
+    for (;;) {
+        const int count = recv(client, input, sizeof(input), 0);
+        if (count <= 0) break;
+        static_cast<void>(decoder.push({input, static_cast<std::size_t>(count)}));
+    }
+    close(client);
+    active_clients.fetch_sub(1, std::memory_order_release);
+    vTaskDelete(nullptr);
 }
 
 void tcp_accept_task(void*) {
@@ -54,23 +86,24 @@ void tcp_accept_task(void*) {
         vTaskDelete(nullptr);
         return;
     }
-    int clients[maximum_clients] = {-1, -1, -1, -1};
     for (;;) {
         const int client = accept(listener, nullptr, nullptr);
         if (client < 0) {
             vTaskDelay(pdMS_TO_TICKS(1000U));
             continue;
         }
-        bool stored = false;
-        for (int& slot : clients) {
-            if (slot < 0) {
-                configure_socket(client);
-                slot = client;
-                stored = true;
-                break;
-            }
+        int expected = active_clients.load(std::memory_order_acquire);
+        while (expected < maximum_clients &&
+               !active_clients.compare_exchange_weak(
+                   expected, expected + 1, std::memory_order_acq_rel)) {}
+        if (expected >= maximum_clients) {
+            send_rejection(client);
+            close(client);
+            continue;
         }
-        if (!stored) close(client);
+        xTaskCreate(tcp_client_task, "tcp_client", 4096U,
+                    reinterpret_cast<void*>(static_cast<intptr_t>(client)),
+                    4U, nullptr);
     }
 }
 
