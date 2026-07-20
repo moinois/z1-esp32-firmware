@@ -3,6 +3,7 @@ set(APPLICATION_SOURCES
     src/automatic_connection.cpp
     src/ble_provisioning.cpp
     src/blufi_security.cpp
+    src/blufi_wire.cpp
     src/configuration_files.cpp
     src/configuration_get.cpp
     src/configuration_set.cpp

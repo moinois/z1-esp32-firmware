@@ -10,6 +10,21 @@
 
 namespace firmware::application {
 
+// Provides the wire layer only the symmetric operations it requires.
+class BlufiCipher {
+public:
+    // Enables safe destruction through a substituted cipher.
+    virtual ~BlufiCipher() = default;
+
+    // Reports whether complete key derivation has succeeded.
+    virtual bool ready() const = 0;
+
+    // Encrypts or decrypts using an IV seeded by the sequence number.
+    virtual std::optional<core::ByteVector> crypt(std::uint8_t sequence,
+                                                  core::BytesView input,
+                                                  bool encrypt) = 0;
+};
+
 // Identifies deterministic Diffie-Hellman failure stages for error mapping.
 enum class BlufiDhFailure {
     none,
@@ -57,7 +72,7 @@ public:
 };
 
 // Owns one BLE connection's parameter buffer, AES key, and readiness state.
-class BlufiSecurityContext {
+class BlufiSecurityContext final : public BlufiCipher {
 public:
     // Creates an initially unready context using the supplied crypto port.
     explicit BlufiSecurityContext(BlufiSecurityPort& port);
@@ -72,7 +87,7 @@ public:
     void receive_negotiation(core::BytesView message);
 
     // Reports whether complete key derivation has succeeded for this connection.
-    bool ready() const;
+    bool ready() const override;
 
     // Exposes retained parameter capacity for allocation lifecycle verification.
     std::size_t parameter_size() const;
@@ -80,7 +95,7 @@ public:
     // Encrypts or decrypts using a fresh IV seeded only by sequence number.
     std::optional<core::ByteVector> crypt(std::uint8_t sequence,
                                          core::BytesView input,
-                                         bool encrypt);
+                                         bool encrypt) override;
 
 private:
     // Processes a big-endian parameter length message.
