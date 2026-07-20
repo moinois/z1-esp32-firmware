@@ -1125,8 +1125,8 @@ void handle_usb_file_transfer(const firmware::core::Frame& frame) {
     xSemaphoreGive(usb_file_mutex);
 }
 
-// Polls USB upload inactivity and retry deadlines independently of RX callbacks.
-void usb_upload_task(void*) {
+// Polls USB upload/download inactivity and retry deadlines independently of RX callbacks.
+void usb_file_transfer_task(void*) {
     for (;;) {
         if (xSemaphoreTake(usb_file_mutex, portMAX_DELAY) == pdTRUE) {
             const std::uint64_t now =
@@ -1398,7 +1398,7 @@ bool UsbDeviceAdapter::start() {
         return false;
     }
     xTaskCreate(usb_transmit_task, "usb_tx", 4096U, nullptr, 4U, nullptr);
-    xTaskCreate(usb_upload_task, "usb_upload", 4096U, nullptr, 4U, nullptr);
+    xTaskCreate(usb_file_transfer_task, "usb_file", 4096U, nullptr, 4U, nullptr);
     return true;
 }
 
