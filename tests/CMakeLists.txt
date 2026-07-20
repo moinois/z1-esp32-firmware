@@ -15,6 +15,7 @@ add_executable(
     test_file_transfer_paths.cpp
     test_file_transfer_admission.cpp
     test_file_download.cpp
+    test_file_upload.cpp
     test_play_session.cpp
     test_play_controller.cpp
     test_play_data.cpp
