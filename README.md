@@ -239,6 +239,7 @@ The first core-to-periphery development slice contains:
 - TCP-local `sys-time` and `clearftm` using persisted runtime counters and UTC formatting;
 - TCP-local filesystem mutation and `ftype` commands using POSIX storage operations;
 - TCP-local WLAN scan command using ESP-IDF blocking scan parameters;
+- ESP-IDF WLAN station adapter for bounded manual connect/disconnect polling;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
