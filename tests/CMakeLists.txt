@@ -43,6 +43,7 @@ add_executable(
     test_blufi_gatt.cpp
     test_blufi_product.cpp
     test_blufi_security.cpp
+    test_blufi_session.cpp
     test_blufi_wire.cpp
     test_station_connection.cpp
     test_text.cpp

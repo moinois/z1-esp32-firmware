@@ -6,6 +6,7 @@ set(APPLICATION_SOURCES
     src/blufi_gatt.cpp
     src/blufi_product.cpp
     src/blufi_security.cpp
+    src/blufi_session.cpp
     src/blufi_wire.cpp
     src/configuration_files.cpp
     src/configuration_get.cpp

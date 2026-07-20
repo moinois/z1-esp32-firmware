@@ -25,6 +25,16 @@ public:
                                                   bool encrypt) = 0;
 };
 
+// Provides the composed session only the negotiation operation it requires.
+class BlufiNegotiationHandler {
+public:
+    // Enables safe destruction through a substituted negotiation handler.
+    virtual ~BlufiNegotiationHandler() = default;
+
+    // Processes one complete security-negotiation product message.
+    virtual void receive_negotiation(core::BytesView message) = 0;
+};
+
 // Identifies deterministic Diffie-Hellman failure stages for error mapping.
 enum class BlufiDhFailure {
     none,
@@ -72,7 +82,8 @@ public:
 };
 
 // Owns one BLE connection's parameter buffer, AES key, and readiness state.
-class BlufiSecurityContext final : public BlufiCipher {
+class BlufiSecurityContext final : public BlufiCipher,
+                                   public BlufiNegotiationHandler {
 public:
     // Creates an initially unready context using the supplied crypto port.
     explicit BlufiSecurityContext(BlufiSecurityPort& port);
@@ -84,7 +95,7 @@ public:
     void destroy();
 
     // Processes one complete negotiation message and reports exact failures.
-    void receive_negotiation(core::BytesView message);
+    void receive_negotiation(core::BytesView message) override;
 
     // Reports whether complete key derivation has succeeded for this connection.
     bool ready() const override;
