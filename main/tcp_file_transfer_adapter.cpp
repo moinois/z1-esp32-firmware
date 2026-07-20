@@ -1,6 +1,7 @@
 // Implements upload/download file effects through POSIX VFS and mbedTLS MD5.
 #include "tcp_file_transfer_adapter.hpp"
 
+#include "esp_heap_caps.h"
 #include "firmware/application/tcp_client_session.hpp"
 
 #include "mbedtls/md5.h"
@@ -199,7 +200,14 @@ std::optional<firmware::core::ByteVector> TcpFileDownloadAdapter::read_file(
     return data;
 }
 
-bool TcpFileDownloadAdapter::allocate_response_workspace(std::size_t) { return true; }
+bool TcpFileDownloadAdapter::allocate_response_workspace(std::size_t size) {
+    void* workspace = heap_caps_malloc(size, MALLOC_CAP_8BIT);
+    if (workspace == nullptr) {
+        return false;
+    }
+    heap_caps_free(workspace);
+    return true;
+}
 
 void TcpFileDownloadAdapter::close_file() {
     if (file_ != nullptr) std::fclose(file_);
