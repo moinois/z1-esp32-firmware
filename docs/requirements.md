@@ -16,6 +16,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | USB local update/diagnostic/version commands | Target adapter over update trigger and controller snapshots | Target-built for upgrade/reset triggers and queued diagnose/version responses | Physical USB verification pending |
 | USB local serial-number control | Target adapter over NVS and serial-number service | Target-built for `sn-get`/`sn-set`, shared operation admission, persistence delegation, and queued responses | Physical USB/NVS verification pending |
 | USB local runtime control | Target adapter over NVS and runtime command service | Target-built for `sys-time`/`clearftm`, UTC formatting, erase semantics, shared admission, and queued responses | Physical USB/NVS verification pending |
+| USB local filesystem mutations | Target POSIX filesystem port over filesystem command policy | Target-built for `mkdir`, `rm`, `mv`, `ftype`, recursive removal, and queued responses | Physical USB/filesystem verification pending |
 | ESC-001--ESC-002 escaping | Core implementation | Yes | Not required |
 | HFT-004 path normalization | Core implementation | Yes | Not required |
 | HFT-001--HFT-003 transfer start and path validation | Core implementation | Yes | TCP service integration and target build verified; runtime filesystem verification pending |

@@ -15,6 +15,7 @@
 #include "firmware/application/recording_commands.hpp"
 #include "firmware/application/serial_number.hpp"
 #include "firmware/application/runtime_commands.hpp"
+#include "firmware/application/filesystem_commands.hpp"
 #include "nvs_key_value_adapter.hpp"
 #include "runtime_operation_capacity.hpp"
 #include "recording_request_state.hpp"
@@ -28,6 +29,11 @@
 #include <array>
 #include <ctime>
 #include <optional>
+#include <cerrno>
+#include <cstdio>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <esp_timer.h>
 
 namespace firmware::target {
@@ -165,6 +171,61 @@ private:
 
 UsbRuntimePort runtime_port;
 
+void remove_usb_tree(const std::string& path) {
+    struct stat status{};
+    if (stat(path.c_str(), &status) != 0) return;
+    if (!S_ISDIR(status.st_mode)) {
+        static_cast<void>(unlink(path.c_str()));
+        return;
+    }
+    DIR* directory = opendir(path.c_str());
+    if (directory != nullptr) {
+        while (const dirent* entry = readdir(directory)) {
+            const std::string name(entry->d_name);
+            if (name == "." || name == "..") continue;
+            remove_usb_tree(path + "/" + name);
+        }
+        closedir(directory);
+    }
+    static_cast<void>(rmdir(path.c_str()));
+}
+
+class UsbFilesystemPort final
+    : public firmware::application::FilesystemCommandPort {
+public:
+    bool create_directory(std::string_view path, std::uint32_t mode) override {
+        const std::string value(path);
+        return mkdir(value.c_str(), static_cast<mode_t>(mode)) == 0 ||
+               errno == EEXIST;
+    }
+
+    void remove_recursively(std::string_view path) override {
+        remove_usb_tree(std::string(path));
+    }
+
+    bool path_exists(std::string_view path) override {
+        struct stat status{};
+        const std::string value(path);
+        return stat(value.c_str(), &status) == 0;
+    }
+
+    bool rename_path(std::string_view source,
+                     std::string_view destination) override {
+        const std::string old_path(source);
+        const std::string new_path(destination);
+        return rename(old_path.c_str(), new_path.c_str()) == 0;
+    }
+
+    void send(firmware::core::Frame frame) override {
+        const auto encoded = firmware::core::encode_frame(frame);
+        if (!encoded.empty()) {
+            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+        }
+    }
+};
+
+UsbFilesystemPort filesystem_port;
+
 void usb_transmit_task(void*) {
     firmware::application::UsbTransmitProgress progress;
     const firmware::core::ByteVector* tracked_frame = nullptr;
@@ -247,6 +308,25 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                     service.handle_system_time(command);
                 } else {
                     service.handle_clear_first_boot(command);
+                }
+                continue;
+            }
+            if (match.kind == firmware::core::CommandKind::make_directory ||
+                match.kind == firmware::core::CommandKind::remove ||
+                match.kind == firmware::core::CommandKind::move ||
+                match.kind == firmware::core::CommandKind::file_type) {
+                if (match.kind == firmware::core::CommandKind::make_directory) {
+                    firmware::application::FilesystemCommands::make_directory(
+                        frame.payload, filesystem_port);
+                } else if (match.kind == firmware::core::CommandKind::remove) {
+                    firmware::application::FilesystemCommands::remove(
+                        frame.payload, filesystem_port);
+                } else if (match.kind == firmware::core::CommandKind::move) {
+                    firmware::application::FilesystemCommands::move(
+                        frame.payload, filesystem_port);
+                } else {
+                    firmware::application::FilesystemCommands::file_type(
+                        filesystem_port);
                 }
                 continue;
             }
