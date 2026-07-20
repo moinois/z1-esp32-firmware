@@ -16,6 +16,7 @@
 #include "tcp_runtime_command_adapter.hpp"
 #include "tcp_filesystem_adapter.hpp"
 #include "tcp_file_transfer_adapter.hpp"
+#include "tcp_filesystem_query_adapter.hpp"
 #include "tcp_wlan_scan_adapter.hpp"
 #include "tcp_wlan_station_adapter.hpp"
 #include "tcp_wlan_connection_adapter.hpp"
@@ -24,6 +25,8 @@
 #include "firmware/application/filesystem_commands.hpp"
 #include "firmware/application/file_upload.hpp"
 #include "firmware/application/file_download.hpp"
+#include "firmware/application/directory_listing.hpp"
+#include "firmware/application/file_hash_command.hpp"
 #include "firmware/application/wlan_command.hpp"
 #include "firmware/application/wlan_request.hpp"
 #include "firmware/application/runtime_commands.hpp"
@@ -84,7 +87,9 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             && match.kind != firmware::core::CommandKind::make_directory
             && match.kind != firmware::core::CommandKind::remove
             && match.kind != firmware::core::CommandKind::move
-            && match.kind != firmware::core::CommandKind::file_type) {
+            && match.kind != firmware::core::CommandKind::file_type
+            && match.kind != firmware::core::CommandKind::list
+            && match.kind != firmware::core::CommandKind::md5_sum) {
             return;
         }
         const std::string_view command(
@@ -147,6 +152,14 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             } else if (match.kind == firmware::core::CommandKind::move) {
                 firmware::application::FilesystemCommands::move(
                     frame.payload, filesystem_port);
+            } else if (match.kind == firmware::core::CommandKind::list) {
+                TcpDirectoryListAdapter directory_port(session);
+                firmware::application::DirectoryListing::execute(
+                    frame.payload, directory_port);
+            } else if (match.kind == firmware::core::CommandKind::md5_sum) {
+                TcpFileHashAdapter hash_port(session);
+                firmware::application::FileHashCommand::execute(
+                    frame.payload, hash_port);
             } else {
                 firmware::application::FilesystemCommands::file_type(filesystem_port);
             }

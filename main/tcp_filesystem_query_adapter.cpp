@@ -1,0 +1,110 @@
+// Implements POSIX directory enumeration and mbedTLS MD5 queries.
+#include "tcp_filesystem_query_adapter.hpp"
+
+#include "firmware/application/tcp_client_session.hpp"
+
+#include "mbedtls/md5.h"
+
+#include <dirent.h>
+#include <cstdio>
+#include <sys/stat.h>
+#include <time.h>
+
+namespace firmware::target {
+namespace {
+
+// Converts a target timestamp to the UTC metadata shape used by the service.
+firmware::application::UtcFileTime make_utc_file_time(time_t value) {
+    struct tm result{};
+    gmtime_r(&value, &result);
+    return {static_cast<std::uint16_t>(result.tm_year + 1900),
+            static_cast<std::uint8_t>(result.tm_mon + 1),
+            static_cast<std::uint8_t>(result.tm_mday),
+            static_cast<std::uint8_t>(result.tm_hour),
+            static_cast<std::uint8_t>(result.tm_min),
+            static_cast<std::uint8_t>(result.tm_sec)};
+}
+
+}  // namespace
+
+TcpDirectoryListAdapter::TcpDirectoryListAdapter(
+    firmware::application::TcpClientSession& session) : session_(session) {}
+
+std::optional<std::vector<firmware::application::DirectoryEntry>>
+TcpDirectoryListAdapter::list_directory(std::string_view path) {
+    const std::string root(path);
+    DIR* directory = opendir(root.c_str());
+    if (directory == nullptr) return std::nullopt;
+    std::vector<firmware::application::DirectoryEntry> entries;
+    while (const dirent* item = readdir(directory)) {
+        const std::string name(item->d_name);
+        if (name == "." || name == "..") continue;
+        const std::string full_path = root + "/" + name;
+        struct stat information{};
+        const bool metadata = stat(full_path.c_str(), &information) == 0;
+        entries.push_back({name,
+                           metadata && S_ISDIR(information.st_mode),
+                           metadata ? static_cast<std::uint64_t>(information.st_size) : 0U,
+                           metadata ? make_utc_file_time(information.st_mtime)
+                                    : make_utc_file_time(0),
+                           metadata});
+    }
+    closedir(directory);
+    return entries;
+}
+
+void TcpDirectoryListAdapter::send(firmware::core::Frame frame) {
+    static_cast<void>(session_.queue_frame(frame));
+}
+
+TcpFileHashAdapter::TcpFileHashAdapter(
+    firmware::application::TcpClientSession& session) : session_(session) {}
+
+firmware::application::FileHashPathState TcpFileHashAdapter::inspect_path(
+    std::string_view path) {
+    struct stat information{};
+    if (stat(std::string(path).c_str(), &information) != 0) {
+        return firmware::application::FileHashPathState::missing;
+    }
+    return S_ISREG(information.st_mode)
+               ? firmware::application::FileHashPathState::regular_file
+               : firmware::application::FileHashPathState::not_regular;
+}
+
+std::optional<std::string> TcpFileHashAdapter::calculate_md5(
+    std::string_view path, std::size_t block_size) {
+    std::FILE* file = std::fopen(std::string(path).c_str(), "rb");
+    if (file == nullptr || block_size == 0U) {
+        if (file != nullptr) std::fclose(file);
+        return std::nullopt;
+    }
+    std::vector<std::uint8_t> buffer(block_size);
+    mbedtls_md5_context context;
+    mbedtls_md5_init(&context);
+    mbedtls_md5_starts(&context);
+    while (const std::size_t count = std::fread(buffer.data(), 1U, buffer.size(), file)) {
+        mbedtls_md5_update(&context, buffer.data(), count);
+    }
+    if (std::ferror(file) != 0) {
+        std::fclose(file);
+        mbedtls_md5_free(&context);
+        return std::nullopt;
+    }
+    std::uint8_t digest[16];
+    mbedtls_md5_finish(&context, digest);
+    mbedtls_md5_free(&context);
+    std::fclose(file);
+    static constexpr char hex[] = "0123456789abcdef";
+    std::string result(32U, '0');
+    for (std::size_t index = 0U; index < 16U; ++index) {
+        result[index * 2U] = hex[digest[index] >> 4U];
+        result[index * 2U + 1U] = hex[digest[index] & 0x0fU];
+    }
+    return result;
+}
+
+void TcpFileHashAdapter::send(firmware::core::Frame frame) {
+    static_cast<void>(session_.queue_frame(frame));
+}
+
+}  // namespace firmware::target
