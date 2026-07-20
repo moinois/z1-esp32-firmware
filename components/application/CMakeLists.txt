@@ -40,6 +40,7 @@ set(APPLICATION_SOURCES
     src/update_controller.cpp
     src/update_deletion.cpp
     src/update_phase.cpp
+    src/update_trigger.cpp
     src/update_validation.cpp
     src/wlan_command.cpp
 )

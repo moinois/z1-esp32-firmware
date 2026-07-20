@@ -124,12 +124,13 @@ The first core-to-periphery development slice contains:
   phase/delete/restart ordering;
 - controller-update handoff monitoring with immediate drift-free reset checks,
   transfer-channel suppression, staged-content failure gates, and completion;
+- coalesced aggregate-update boot and case-sensitive local-command triggers;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 397 tests. The firmware also builds successfully as
+The current host suite has 401 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
@@ -307,19 +308,16 @@ the board's strapping-pin levels have been verified.
 
 ## Current limitations and next steps
 
-The following major areas are not yet implemented:
+The following major areas remain:
 
-- transport connection-slot allocation and outbound generation checks;
-- controller UART scheduling and controller transfer families;
-- controller UART transport, activity monitoring, and transfer families;
-- host upload and download state machines;
-- SD lifecycle, filesystem commands, configuration views, and logging;
-- Wi-Fi AP/station behavior, discovery, and host Wi-Fi commands;
-- BLE GATT, BLUFI framing, fragmentation, security, and provisioning;
+- composition-root wiring and ESP-IDF adapters for the implemented portable
+  transport, storage, connectivity, controller, BLUFI, and update services;
+- a raw ESP-IDF GATT adapter for the byte-exact BLUFI stack, kept separate from
+  ESP-IDF's independent standard-BLUFI protocol owner;
 - HTTP, WebSocket, camera, AVI preview, recording, and retention;
-- aggregate OTA application and recovery state;
-- runtime counters and identity commands; and
-- CANopen object dictionary, NMT, SDO/PDO behavior, and `M942`.
+- runtime counters and identity commands;
+- CANopen object dictionary, NMT, SDO/PDO behavior, and `M942`; and
+- physical-device verification of hardware and coexistence behavior.
 
 These areas will be implemented in dependency order. Hardware validation will
 then cover the actual ESP32-S3 module, octal PSRAM, camera sensor, SD card,

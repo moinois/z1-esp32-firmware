@@ -53,6 +53,7 @@ add_executable(
     test_update_controller.cpp
     test_update_deletion.cpp
     test_update_phase.cpp
+    test_update_trigger.cpp
     test_update_validation.cpp
     test_wlan_command.cpp
 )

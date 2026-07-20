@@ -78,6 +78,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | UPD-050--UPD-052, UPD-054 visible update status | Application implementation | Yes for persisted/volatile selection, rounded controller progress, clamping, and three-second success display | Machine-status and controller-completion composition pending |
 | UPD-030--UPD-034 validated package application | Application implementation with replaceable OTA/storage/phase/controller/reset port | Yes for image boundaries, controller-only behavior, OTA call order, active abort, failures, staging, direct phase two, delete, and restart | ESP-IDF OTA, filesystem, controller, and restart adapters pending |
 | UPD-053--UPD-055 controller update handoff | Application monitor with replaceable staged-file/channel/controller/phase port | Yes for failure availability gates, qualifying timeout, completion ordering, immediate five-second schedule, and channel suppression | Controller-transfer, deletion, phase, and scheduler composition pending |
+| UPD-001--UPD-003 aggregate paths and triggers | Application trigger with one coalesced pending operation | Yes for exact partial path, boot order, case-sensitive prefixes, no reply surface, and coalescing | Command-router, boot, and processing-task composition pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
 | HW-004--HW-005 CPU, flash, PSRAM, security | Target defaults | Build verification only | No |
