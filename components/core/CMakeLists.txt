@@ -1,5 +1,6 @@
 # Builds portable logic as either an ESP-IDF component or a host-side library.
 set(CORE_SOURCES
+    src/configuration_syntax.cpp
     src/crc.cpp
     src/file_transfer_paths.cpp
     src/filesystem_syntax.cpp

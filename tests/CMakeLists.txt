@@ -11,6 +11,7 @@ add_executable(
     test_controller_snapshots.cpp
     test_controller_transfer.cpp
     test_controller_uart_config.cpp
+    test_configuration_syntax.cpp
     test_directory_listing.cpp
     test_frame.cpp
     test_file_transfer_paths.cpp

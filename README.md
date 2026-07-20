@@ -37,6 +37,8 @@ The first core-to-periphery development slice contains:
   lowercase success formatting behind a separate hash port;
 - SD-card startup mounting, sampled debounce, transition-specific retry,
   logging order, and whole-MiB capacity policy behind an SD port;
+- reusable SD configuration-line parsing and literal-space-before-escape token
+  parsing for configuration and future WLAN commands;
 - ordered, case-sensitive local-command prefix recognition and size limits;
 - controller-to-host and host-to-controller routing precedence;
 - controller-forwarding suppression, size, and capacity admission;
@@ -73,7 +75,7 @@ The first core-to-periphery development slice contains:
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 213 tests. The firmware also builds successfully as
+The current host suite has 218 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
