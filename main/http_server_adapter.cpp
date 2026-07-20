@@ -60,20 +60,59 @@ struct PreviewRuntime {
 
 std::optional<PreviewRuntime> preview_runtime;
 std::atomic_uint32_t preview_generation{0U};
+std::atomic_uint32_t live_generation{0U};
 
-// Captures and sends one JPEG frame on the requesting WebSocket.
-bool send_live_frame(httpd_req_t* request) {
-    camera_fb_t* frame = esp_camera_fb_get();
-    if (frame == nullptr) {
-        return false;
+constexpr TickType_t live_frame_interval = pdMS_TO_TICKS(100U);
+
+// Owns one continuous live-camera stream until ownership is revoked.
+struct LiveStreamTaskContext {
+    httpd_handle_t handle;
+    int socket_id;
+    std::uint32_t generation;
+};
+
+// Captures and asynchronously sends JPEG frames without retaining a request pointer.
+void live_stream_task(void* parameter) {
+    auto* context = static_cast<LiveStreamTaskContext*>(parameter);
+    while (live_generation.load(std::memory_order_acquire) ==
+               context->generation &&
+           httpd_ws_get_fd_info(context->handle, context->socket_id) ==
+               HTTPD_WS_CLIENT_WEBSOCKET) {
+        camera_fb_t* frame = esp_camera_fb_get();
+        if (frame == nullptr) {
+            break;
+        }
+        httpd_ws_frame_t outgoing{};
+        outgoing.type = HTTPD_WS_TYPE_BINARY;
+        outgoing.payload = frame->buf;
+        outgoing.len = frame->len;
+        const bool sent = httpd_ws_send_frame_async(
+                              context->handle, context->socket_id, &outgoing) ==
+                          ESP_OK;
+        esp_camera_fb_return(frame);
+        if (!sent) {
+            break;
+        }
+        vTaskDelay(live_frame_interval);
     }
-    httpd_ws_frame_t outgoing{};
-    outgoing.type = HTTPD_WS_TYPE_BINARY;
-    outgoing.payload = frame->buf;
-    outgoing.len = frame->len;
-    const esp_err_t result = httpd_ws_send_frame(request, &outgoing);
-    esp_camera_fb_return(frame);
-    return result == ESP_OK;
+    delete context;
+    vTaskDelete(nullptr);
+}
+
+// Starts a generation-bound live stream for one admitted socket.
+void start_live_stream(httpd_req_t* request) {
+    const auto generation = live_generation.fetch_add(
+                                1U, std::memory_order_acq_rel) +
+                            1U;
+    auto* context = new LiveStreamTaskContext{
+        request->handle,
+        httpd_req_to_sockfd(request),
+        generation,
+    };
+    if (xTaskCreate(live_stream_task, "live_stream", 4096U, context, 4U,
+                    nullptr) != pdPASS) {
+        delete context;
+    }
 }
 
 // Reads one preview file for the metadata admission path.
@@ -527,6 +566,7 @@ esp_err_t video_websocket_handler(httpd_req_t* request) {
     httpd_ws_frame_t frame{};
     if (httpd_ws_recv_frame(request, &frame, 0U) != ESP_OK) {
         static_cast<void>(live_control_policy.on_disconnect(socket_id));
+        live_generation.fetch_add(1U, std::memory_order_acq_rel);
         return ESP_FAIL;
     }
     if (frame.len == 0U) return ESP_OK;
@@ -534,6 +574,7 @@ esp_err_t video_websocket_handler(httpd_req_t* request) {
     frame.payload = payload.data();
     if (httpd_ws_recv_frame(request, &frame, frame.len) != ESP_OK) {
         static_cast<void>(live_control_policy.on_disconnect(socket_id));
+        live_generation.fetch_add(1U, std::memory_order_acq_rel);
         return ESP_FAIL;
     }
     if (frame.type != HTTPD_WS_TYPE_TEXT) {
@@ -544,12 +585,13 @@ esp_err_t video_websocket_handler(httpd_req_t* request) {
     const auto decisions = live_control_policy.handle(
         socket_id, command);
     for (const auto& decision : decisions) {
+        if (decision.action == firmware::application::LiveControlAction::stop ||
+            decision.action == firmware::application::LiveControlAction::preempted) {
+            live_generation.fetch_add(1U, std::memory_order_acq_rel);
+        }
         if (decision.action == firmware::application::LiveControlAction::start &&
-            decision.socket_id ==
-                socket_id) {
-            if (!send_live_frame(request)) {
-                return ESP_FAIL;
-            }
+            decision.socket_id == socket_id) {
+            start_live_stream(request);
         }
     }
     return ESP_OK;
