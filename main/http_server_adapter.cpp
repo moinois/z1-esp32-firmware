@@ -14,6 +14,7 @@
 #include "firmware/application/static_file_server.hpp"
 #include "firmware/application/preview_socket_input.hpp"
 #include "firmware/core/web_static.hpp"
+#include "firmware/core/media_messages.hpp"
 #include "firmware_update_adapter.hpp"
 #include "ota_update_adapter.hpp"
 #include "camera_adapter.hpp"
@@ -589,6 +590,16 @@ esp_err_t video_websocket_handler(httpd_req_t* request) {
     const auto decisions = live_control_policy.handle(
         socket_id, command);
     for (const auto& decision : decisions) {
+        if (decision.action == firmware::application::LiveControlAction::preempted) {
+            const std::string message = firmware::core::format_live_preemption("live");
+            httpd_ws_frame_t response{};
+            response.type = HTTPD_WS_TYPE_TEXT;
+            response.payload = reinterpret_cast<uint8_t*>(
+                const_cast<char*>(message.data()));
+            response.len = message.size();
+            static_cast<void>(httpd_ws_send_frame_async(
+                request->handle, static_cast<int>(decision.socket_id), &response));
+        }
         if (decision.action == firmware::application::LiveControlAction::stop ||
             decision.action == firmware::application::LiveControlAction::preempted) {
             live_generation.fetch_add(1U, std::memory_order_acq_rel);
