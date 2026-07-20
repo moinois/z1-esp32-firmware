@@ -24,6 +24,7 @@ idf_component_register(
         "controller_play_adapter.cpp"
         "play_runtime_state.cpp"
         "tcp_play_adapter.cpp"
+        "tcp_configuration_file_adapter.cpp"
         "serial_number_adapter.cpp"
         "tcp_serial_number_adapter.cpp"
         "tcp_runtime_command_adapter.cpp"

@@ -18,6 +18,7 @@
 #include "tcp_file_transfer_adapter.hpp"
 #include "tcp_filesystem_query_adapter.hpp"
 #include "tcp_play_adapter.hpp"
+#include "tcp_configuration_file_adapter.hpp"
 #include "play_runtime_state.hpp"
 #include "tcp_wlan_scan_adapter.hpp"
 #include "tcp_wlan_station_adapter.hpp"
@@ -29,6 +30,7 @@
 #include "firmware/application/file_download.hpp"
 #include "firmware/application/directory_listing.hpp"
 #include "firmware/application/file_hash_command.hpp"
+#include "firmware/application/configuration_files.hpp"
 #include "firmware/application/wlan_command.hpp"
 #include "firmware/application/wlan_request.hpp"
 #include "firmware/application/runtime_commands.hpp"
@@ -105,7 +107,9 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             && match.kind != firmware::core::CommandKind::move
             && match.kind != firmware::core::CommandKind::file_type
             && match.kind != firmware::core::CommandKind::list
-            && match.kind != firmware::core::CommandKind::md5_sum) {
+            && match.kind != firmware::core::CommandKind::md5_sum
+            && match.kind != firmware::core::CommandKind::config_restore
+            && match.kind != firmware::core::CommandKind::config_default) {
             return;
         }
         const std::string_view command(
@@ -156,6 +160,15 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
                         active_tcp_client_count());
                     send_tcp_discovery_burst(active_tcp_client_count());
                 }
+            }
+        } else if (match.kind == firmware::core::CommandKind::config_restore ||
+                   match.kind == firmware::core::CommandKind::config_default) {
+            TcpConfigurationFileAdapter configuration_port(session);
+            if (match.kind == firmware::core::CommandKind::config_restore) {
+                firmware::application::ConfigurationFiles::restore(configuration_port);
+            } else {
+                firmware::application::ConfigurationFiles::save_default(
+                    configuration_port);
             }
         } else {
             TcpFilesystemAdapter filesystem_port(session);
