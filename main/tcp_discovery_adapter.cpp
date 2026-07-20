@@ -123,4 +123,8 @@ void start_tcp_discovery_task() {
                 nullptr);
 }
 
+void configure_tcp_discovery_machine_name(std::string_view machine_name) {
+    discovery_service.set_machine_name(std::string(machine_name));
+}
+
 }  // namespace firmware::target

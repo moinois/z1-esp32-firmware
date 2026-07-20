@@ -25,6 +25,10 @@ constexpr std::uint32_t burst_copy_delay_milliseconds = 100U;
 DiscoveryService::DiscoveryService(DiscoveryPort& port, std::string machine_name)
     : port_(port), machine_name_(std::move(machine_name)) {}
 
+void DiscoveryService::set_machine_name(std::string machine_name) {
+    machine_name_ = std::move(machine_name);
+}
+
 void DiscoveryService::periodic_cycle(
     std::optional<std::string_view> controller_status,
     std::size_t active_tcp_clients) {

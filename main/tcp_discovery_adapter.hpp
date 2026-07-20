@@ -21,4 +21,7 @@ void clear_tcp_discovery_station();
 // Starts the periodic discovery task after networking has been initialized.
 void start_tcp_discovery_task();
 
+// Selects the machine name advertised by the shared discovery service.
+void configure_tcp_discovery_machine_name(std::string_view machine_name);
+
 }  // namespace firmware::target

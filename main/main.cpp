@@ -136,6 +136,7 @@ extern "C" void app_main() {
     sd_card_adapter.start();
     static firmware::target::ConnectivityStartupAdapter connectivity_adapter;
     const std::string machine_name = configured_machine_name();
+    firmware::target::configure_tcp_discovery_machine_name(machine_name);
     if (!firmware::application::ConnectivityStartup::start(connectivity_adapter,
                                                            machine_name)) {
         ESP_LOGE(tag, "Connectivity startup failed; restarting");

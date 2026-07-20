@@ -50,6 +50,9 @@ public:
     // Creates discovery policy for the retained machine name.
     DiscoveryService(DiscoveryPort& port, std::string machine_name);
 
+    // Replaces the advertised machine name before periodic traffic starts.
+    void set_machine_name(std::string machine_name);
+
     // Sends one periodic station-first cycle or waits after creation failure.
     void periodic_cycle(std::optional<std::string_view> controller_status,
                         std::size_t active_tcp_clients);
