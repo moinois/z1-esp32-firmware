@@ -2,6 +2,7 @@
 set(CORE_SOURCES
     src/configuration_syntax.cpp
     src/crc.cpp
+    src/discovery_policy.cpp
     src/file_transfer_paths.cpp
     src/filesystem_syntax.cpp
     src/frame.cpp

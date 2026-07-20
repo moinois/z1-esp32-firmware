@@ -40,6 +40,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | NET-030--NET-033 Wi-Fi scan policy | Core result policy and application command implementation with replaceable Wi-Fi port | Yes | ESP-IDF Wi-Fi adapter pending |
 | NET-040--NET-043 host WLAN parsing and scan command | Core parser and application implementation with replaceable Wi-Fi port | Yes | Command routing, transport, and ESP-IDF Wi-Fi adapters pending |
 | NET-044--NET-046 host WLAN connect/disconnect responses | Application implementation with replaceable response and discovery port | Yes | Command routing, transport, discovery, and ESP-IDF Wi-Fi adapters pending |
+| DISC-001--DISC-008 UDP discovery | Core formatting/address policy and application implementation with replaceable socket/clock port | Yes for payloads, ordering, timing, recreation, and ignored failures | UDP socket, controller-status, and event integration pending |
 | CMD-001--CMD-003 recognition and limits | Core implementation | Partial: 001, 003 | Not required |
 | ROUTE-001--ROUTE-018 routing policy | Application implementation | Yes | Transport integration pending |
 | OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | Terminal service integration pending |
