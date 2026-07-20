@@ -28,9 +28,9 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | CFG-002--CFG-003 SD configuration line parsing | Core implementation | Yes | Not required |
 | CFG-010 configuration command tokenization | Core implementation | Yes | Command-service integration pending |
 | CFG-001, CFG-004--CFG-006 configuration file copies | Application implementation with replaceable bytewise file port | Yes | POSIX bytewise adapter and TCP command routing integrated; physical storage verification pending |
-| CFG-020--CFG-023 live configuration view | Core chunk parser and application implementation with replaceable load port | Yes | Filesystem and command adapters pending |
-| CFG-011--CFG-013 configuration reads | Application implementation with replaceable live/SD read port | Yes | Filesystem and response adapters pending |
-| CFG-030--CFG-034 configuration updates | Core rewrite logic and application implementation with replaceable persistence port | Yes | Filesystem and response adapters pending |
+| CFG-020--CFG-023 live configuration view | Core chunk parser and application implementation with replaceable load port | Yes | POSIX chunk adapter and TCP command routing integrated; physical storage verification pending |
+| CFG-011--CFG-013 configuration reads | Application implementation with replaceable live/SD read port | Yes | POSIX line adapter and TCP response routing integrated; physical storage verification pending |
+| CFG-030--CFG-034 configuration updates | Core rewrite logic and application implementation with replaceable persistence port | Yes | POSIX temporary-file/rename adapter and TCP response routing integrated; physical storage verification pending |
 | LOG-001--LOG-006 diagnostic capture and record formatting | Application implementation with replaceable output/buffer/clock port | Yes | ESP-IDF log-hook and writer integration pending |
 | LOG-007--LOG-013 diagnostic log writer | Application implementation with replaceable buffered-file port | Yes for session, flush, rotation, short write, and shutdown policy | Filesystem/task integration pending |
 | NET-001--NET-002 machine name | Core implementation | Yes | Configuration/MAC adapter integration pending |
