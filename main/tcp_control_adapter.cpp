@@ -126,7 +126,9 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             && match.kind != firmware::core::CommandKind::config_restore
             && match.kind != firmware::core::CommandKind::config_default
             && match.kind != firmware::core::CommandKind::config_get
-            && match.kind != firmware::core::CommandKind::config_set) {
+            && match.kind != firmware::core::CommandKind::config_set
+            && match.kind != firmware::core::CommandKind::diagnose
+            && match.kind != firmware::core::CommandKind::version) {
             return;
         }
         const std::string_view command(
@@ -196,6 +198,20 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             } else {
                 firmware::application::ConfigurationSet::execute(
                     frame.payload, tcp_live_configuration, configuration_port);
+            }
+        } else if (match.kind == firmware::core::CommandKind::diagnose ||
+                   match.kind == firmware::core::CommandKind::version) {
+            if (match.kind == firmware::core::CommandKind::diagnose) {
+                RuntimeStatusAdapter status_sources(tcp_router);
+                const auto response = shared_controller_snapshots().diagnostic_reply(
+                    firmware::application::AggregatedStatusService(status_sources)
+                        .diagnostic_rssi());
+                if (response.has_value()) {
+                    static_cast<void>(session.queue_frame(*response));
+                }
+            } else {
+                static_cast<void>(session.queue_frame(
+                    shared_controller_snapshots().version_reply()));
             }
         } else {
             TcpFilesystemAdapter filesystem_port(session);
