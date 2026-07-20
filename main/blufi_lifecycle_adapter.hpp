@@ -5,6 +5,9 @@
 
 namespace firmware::target {
 
+// Reapplies the fixed BLUFI identity and advertising contract after disconnect.
+bool restart_blufi_advertising();
+
 // Owns one-time controller, Bluedroid, BLUFI profile, and advertising startup.
 class BlufiLifecycleAdapter {
 public:

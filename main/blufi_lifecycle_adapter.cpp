@@ -57,6 +57,10 @@ esp_blufi_callbacks_t lifecycle_callbacks{
 
 }  // namespace
 
+bool restart_blufi_advertising() {
+    return configure_blufi_advertising() && start_blufi_advertising();
+}
+
 bool BlufiLifecycleAdapter::start(const esp_blufi_callbacks_t* callbacks) {
     if (esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_IDLE) {
         esp_bt_controller_config_t controller_config = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
@@ -86,7 +90,7 @@ bool BlufiLifecycleAdapter::start(const esp_blufi_callbacks_t* callbacks) {
     esp_blufi_adv_start();
     // The profile helper installs its legacy defaults; replace them with the
     // product advertisement and explicit 160 ms public advertising policy.
-    return configure_blufi_advertising() && start_blufi_advertising();
+    return restart_blufi_advertising();
 }
 
 }  // namespace firmware::target

@@ -7,6 +7,7 @@
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "blufi_lifecycle_adapter.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -33,11 +34,10 @@ bool BlufiProvisioningAdapter::initialize(
 }
 
 bool BlufiProvisioningAdapter::start_advertising(std::string_view device_name) {
-    std::string name(device_name.substr(0U, 31U));
-    if (esp_ble_gap_set_device_name(name.c_str()) != ESP_OK) {
+    static_cast<void>(device_name);
+    if (!restart_blufi_advertising()) {
         return false;
     }
-    esp_blufi_adv_start();
     return true;
 }
 
