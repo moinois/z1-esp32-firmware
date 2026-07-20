@@ -1,6 +1,7 @@
 # Builds portable application policy as an ESP-IDF component or host library.
 set(APPLICATION_SOURCES
     src/automatic_connection.cpp
+    src/canopen_service.cpp
     src/ble_provisioning.cpp
     src/blufi_fragment.cpp
     src/blufi_gatt.cpp

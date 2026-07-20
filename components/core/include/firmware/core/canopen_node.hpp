@@ -45,6 +45,13 @@ struct CanopenCycleResult {
     bool restart_mainboard = false;
 };
 
+// Reports service-level work selected while accepting an NMT request.
+enum class NmtRequestEffect {
+    none,
+    communication_reset,
+    restart_scheduled,
+};
+
 // Owns local NMT state and producer-heartbeat timing independently of TWAI.
 class CanopenNode {
 public:
@@ -52,7 +59,7 @@ public:
     CanopenNode() = default;
 
     // Applies one valid local or broadcast NMT request and ignores other frames.
-    void accept_nmt(const CanFrame& frame);
+    NmtRequestEffect accept_nmt(const CanFrame& frame);
 
     // Applies an in-memory write to producer-heartbeat object 0x1017.
     void set_producer_heartbeat_period(std::uint16_t period_milliseconds);

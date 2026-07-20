@@ -28,14 +28,14 @@ void decrement_cycle(std::uint16_t& remaining_milliseconds) {
 
 }  // namespace
 
-void CanopenNode::accept_nmt(const CanFrame& frame) {
+NmtRequestEffect CanopenNode::accept_nmt(const CanFrame& frame) {
     if (frame.identifier != canopen::nmt_identifier ||
         frame.size != nmt_frame_size) {
-        return;
+        return NmtRequestEffect::none;
     }
     const std::uint8_t target = frame.data[1];
     if (target != canopen::node_id && target != broadcast_node_id) {
-        return;
+        return NmtRequestEffect::none;
     }
 
     switch (frame.data[0]) {
@@ -51,13 +51,14 @@ void CanopenNode::accept_nmt(const CanFrame& frame) {
         case nmt_reset_node:
             restart_remaining_milliseconds_ =
                 canopen::restart_delay_milliseconds;
-            break;
+            return NmtRequestEffect::restart_scheduled;
         case nmt_reset_communication:
             reset_communication();
-            break;
+            return NmtRequestEffect::communication_reset;
         default:
-            break;
+            return NmtRequestEffect::none;
     }
+    return NmtRequestEffect::none;
 }
 
 void CanopenNode::set_producer_heartbeat_period(

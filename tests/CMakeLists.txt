@@ -7,6 +7,7 @@ add_executable(
     test_canopen_dictionary.cpp
     test_canopen_sdo.cpp
     test_can_twai_config.cpp
+    test_canopen_service.cpp
     test_controller_query.cpp
     test_controller_link.cpp
     test_controller_firmware_transfer.cpp
