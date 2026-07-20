@@ -62,9 +62,9 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | UART-002 bounded controller reads | ESP-IDF adapter | Exact settings verified | Adapter startup deferred by BOOT-012 |
 | LPC-010--LPC-014 common controller-transfer wire layer | Application implementation | Partial: 010--012, 014 queue and parsing | Service integration pending |
 | LPC-015--LPC-019 common transfer state behavior | Firmware-family implementation | Yes for firmware family | Configuration and factory families pending |
-| LPCFW-001--LPCFW-006 controller firmware transfer | Application implementation with replaceable port | Yes | Storage, routing, and status adapters pending |
-| LPCCFG-001--LPCCFG-006 controller configuration transfer | Application implementation with replaceable port | Yes | Storage and routing adapters pending |
-| LPCFAC-001--LPCFAC-005 controller factory-data transfer | Application implementation with replaceable port | Yes | Storage and routing adapters pending |
+| LPCFW-001--LPCFW-006 controller firmware transfer | Application implementation with replaceable port | Yes | POSIX storage, UART response, and controller-task routing integrated; physical controller verification pending |
+| LPCCFG-001--LPCCFG-006 controller configuration transfer | Application implementation with replaceable port | Yes | POSIX storage, UART response, and controller-task routing integrated; physical controller verification pending |
+| LPCFAC-001--LPCFAC-005 controller factory-data transfer | Application implementation with replaceable port | Yes | POSIX storage, UART response, removal, and controller-task routing integrated; physical controller verification pending |
 | PLAY-001--PLAY-007 streamed-play preparation and status | Application implementation with replaceable port | Yes for preparation and status | Storage, ownership, and routing adapters pending |
 | PLAY-010--PLAY-011, PLAY-018 play controller lifecycle | Application implementation with replaceable port | Start, validation, observer, and terminal cases | Data and goto exchange pending |
 | PLAY-007, PLAY-014 streamed-play logical lines | Application implementation with replaceable source | NUL, chunk, length, EOF, and failure cases | Data and goto aggregation pending |
