@@ -28,6 +28,7 @@
 
 #include "firmware/application/controller_frame_forwarder.hpp"
 #include "firmware/application/controller_query.hpp"
+#include "firmware/application/controller_link.hpp"
 #include "firmware/application/controller_firmware_transfer.hpp"
 #include "firmware/application/controller_config_transfer.hpp"
 #include "firmware/application/controller_factory_transfer.hpp"
@@ -101,6 +102,8 @@ void controller_command_task(void*) {
     firmware::application::LocalCommandQueue local_commands;
     firmware::application::ControllerQueryScheduler query_scheduler(
         static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL));
+    firmware::application::ControllerActivityMonitor activity_monitor(
+        static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL));
     std::uint8_t input[256];
     for (;;) {
         drain_forwarded_frames(uart);
@@ -112,11 +115,21 @@ void controller_command_task(void*) {
                 write_controller_frame(uart, encoded);
             }
         }
+        const auto now_milliseconds =
+            static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
+        for (const auto& alarm : activity_monitor.poll(now_milliseconds)) {
+            const auto encoded = firmware::core::encode_frame(alarm);
+            if (!encoded.empty()) {
+                write_controller_frame(uart, encoded);
+            }
+        }
         const int count = uart.read(input, sizeof(input));
         if (count <= 0) continue;
         const auto frames = decoder.push(
             {input, static_cast<std::size_t>(count)});
         for (const auto& frame : frames) {
+            activity_monitor.record_valid_frame(
+                static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL));
             if (frame.type == firmware::core::protocol::machine_status) {
                 shared_controller_snapshots().update_status(frame.payload);
                 set_controller_running(firmware::core::status_reports_running(
