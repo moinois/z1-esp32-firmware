@@ -3,6 +3,7 @@ set(APPLICATION_SOURCES
     src/directory_listing.cpp
     src/file_transfer_admission.cpp
     src/file_download.cpp
+    src/file_hash_command.cpp
     src/file_upload.cpp
     src/filesystem_commands.cpp
     src/controller_config_transfer.cpp
