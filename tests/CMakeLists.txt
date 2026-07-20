@@ -83,6 +83,7 @@ add_executable(
     test_direct_application_update.cpp
     test_direct_web_volume_update.cpp
     test_live_control_policy.cpp
+    test_media_messages.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
 target_compile_options(core_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
