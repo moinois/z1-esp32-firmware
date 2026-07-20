@@ -53,6 +53,7 @@ public:
             .max_files = static_cast<int>(config.maximum_open_files),
             .allocation_unit_size = config.allocation_unit_size,
             .disk_status_check_enable = false,
+            .use_one_fat = false,
         };
         return esp_vfs_fat_sdmmc_mount(config.mount_path.data(), &host, &slot,
                                        &mount_config, &card_) == ESP_OK;
