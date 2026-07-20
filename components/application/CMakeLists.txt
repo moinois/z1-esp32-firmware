@@ -4,6 +4,7 @@ set(APPLICATION_SOURCES
     src/can_output_monitor.cpp
     src/canopen_service.cpp
     src/camera_settings.cpp
+    src/camera_resolution_endpoint.cpp
     src/ble_provisioning.cpp
     src/blufi_fragment.cpp
     src/blufi_gatt.cpp
