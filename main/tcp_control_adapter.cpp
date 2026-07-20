@@ -16,8 +16,11 @@
 #include "tcp_runtime_command_adapter.hpp"
 #include "tcp_filesystem_adapter.hpp"
 #include "tcp_wlan_scan_adapter.hpp"
+#include "tcp_wlan_station_adapter.hpp"
+#include "tcp_wlan_connection_adapter.hpp"
 #include "firmware/application/filesystem_commands.hpp"
 #include "firmware/application/wlan_command.hpp"
+#include "firmware/application/wlan_request.hpp"
 #include "firmware/application/runtime_commands.hpp"
 #include "firmware/application/serial_number.hpp"
 #include "firmware/application/recording_commands.hpp"
@@ -45,6 +48,7 @@ std::atomic_int active_clients{0};
 std::atomic_uint32_t next_generation{1U};
 firmware::application::Router tcp_router;
 RecordingRequestState tcp_recording_state;
+firmware::application::StationRuntime tcp_station_runtime;
 
 void forward_tcp_controller_frame(firmware::application::TcpClientSession&,
                                   const firmware::core::Frame& frame) {
@@ -92,11 +96,22 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
                 runtime_service.handle_clear_first_boot(command);
             }
         } else if (match.kind == firmware::core::CommandKind::wlan) {
-            if (command.find("scan") == std::string_view::npos) {
-                return;
+            const auto request = firmware::application::parse_wlan_request(command);
+            if (request.kind == firmware::application::WlanRequestKind::scan) {
+                TcpWlanScanAdapter wlan_port(session);
+                firmware::application::WlanScanCommand::execute(wlan_port);
+            } else if (request.kind == firmware::application::WlanRequestKind::disconnect) {
+                TcpWlanStationAdapter station;
+                TcpWlanConnectionAdapter responses(session);
+                static_cast<void>(firmware::application::WlanConnectionCommand::disconnect(
+                    tcp_station_runtime, station, responses));
+            } else {
+                TcpWlanStationAdapter station;
+                TcpWlanConnectionAdapter responses(session);
+                firmware::application::WlanConnectionCommand::connect(
+                    tcp_station_runtime, station, responses,
+                    request.ssid, request.password);
             }
-            TcpWlanScanAdapter wlan_port(session);
-            firmware::application::WlanScanCommand::execute(wlan_port);
         } else {
             TcpFilesystemAdapter filesystem_port(session);
             if (match.kind == firmware::core::CommandKind::make_directory) {
