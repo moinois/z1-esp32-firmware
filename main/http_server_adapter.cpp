@@ -31,6 +31,7 @@
 #include "firmware/application/direct_web_volume_update.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 #include <cstdint>
 #include <optional>
@@ -58,6 +59,7 @@ struct PreviewRuntime {
 };
 
 std::optional<PreviewRuntime> preview_runtime;
+std::atomic_uint32_t preview_generation{0U};
 
 // Captures and sends one JPEG frame on the requesting WebSocket.
 bool send_live_frame(httpd_req_t* request) {
@@ -121,6 +123,66 @@ bool send_preview_frame(httpd_req_t* request, const PreviewRuntime& runtime,
     response.payload = const_cast<std::uint8_t*>(frame->data());
     response.len = frame->size();
     return httpd_ws_send_frame(request, &response) == ESP_OK;
+}
+
+// Owns one asynchronous preview playback pass until stop or end-of-stream.
+struct PreviewPlaybackTaskContext {
+    httpd_handle_t handle;
+    int socket_id;
+    firmware::core::ByteVector file;
+    firmware::core::AviPreview avi;
+    std::size_t next_frame;
+    std::uint32_t generation;
+};
+
+// Streams indexed frames asynchronously without retaining an HTTP request pointer.
+void preview_playback_task(void* parameter) {
+    auto* context = static_cast<PreviewPlaybackTaskContext*>(parameter);
+    while (context->next_frame < context->avi.entries.size() &&
+           preview_generation.load(std::memory_order_acquire) ==
+               context->generation) {
+        const auto frame = firmware::core::read_avi_frame(
+            firmware::core::BytesView(context->file), context->avi,
+            context->next_frame, context->file.size());
+        const bool read_succeeded = frame.has_value();
+        bool send_succeeded = false;
+        if (read_succeeded) {
+            httpd_ws_frame_t response{};
+            response.type = HTTPD_WS_TYPE_BINARY;
+            response.payload = const_cast<std::uint8_t*>(frame->data());
+            response.len = frame->size();
+            send_succeeded = httpd_ws_send_frame_async(
+                                 context->handle, context->socket_id, &response) == ESP_OK;
+        }
+        const auto step = firmware::application::schedule_preview_frame(
+            context->next_frame, context->avi.entries.size(),
+            context->avi.frame_period_us, read_succeeded, send_succeeded,
+            true, false);
+        if (step.action != firmware::application::PreviewFrameAction::send_frame) {
+            break;
+        }
+        ++context->next_frame;
+        vTaskDelay(pdMS_TO_TICKS(step.delay_milliseconds));
+    }
+    delete context;
+    vTaskDelete(nullptr);
+}
+
+// Starts asynchronous playback after the command response's first frame.
+void start_preview_playback_task(httpd_req_t* request,
+                                 const PreviewRuntime& runtime) {
+    auto* context = new PreviewPlaybackTaskContext{
+        request->handle,
+        httpd_req_to_sockfd(request),
+        runtime.file,
+        runtime.avi,
+        static_cast<std::size_t>(runtime.current_frame) + 1U,
+        preview_generation.load(std::memory_order_acquire),
+    };
+    if (xTaskCreate(preview_playback_task, "preview_play", 6144U, context,
+                    4U, nullptr) != pdPASS) {
+        delete context;
+    }
 }
 #endif
 
@@ -519,6 +581,11 @@ esp_err_t preview_websocket_handler(httpd_req_t* request) {
                 active ? preview_runtime->session_id : std::string_view{});
             return send_preview_text(request, response);
         }
+        if (command.command == firmware::application::PreviewCommand::play ||
+            command.command == firmware::application::PreviewCommand::resume ||
+            command.command == firmware::application::PreviewCommand::seek) {
+            preview_generation.fetch_add(1U, std::memory_order_acq_rel);
+        }
         const auto result = firmware::application::apply_preview_command(
             command, preview_runtime->mode, preview_runtime->current_frame,
             preview_runtime->avi.entries.empty()
@@ -535,10 +602,17 @@ esp_err_t preview_websocket_handler(httpd_req_t* request) {
         if (should_send_frame &&
             !send_preview_frame(request, *preview_runtime,
                                  preview_runtime->current_frame)) {
+            preview_generation.fetch_add(1U, std::memory_order_acq_rel);
             preview_runtime.reset();
             return ESP_FAIL;
         }
+        if (result.reply &&
+            (command.command == firmware::application::PreviewCommand::play ||
+             command.command == firmware::application::PreviewCommand::resume)) {
+            start_preview_playback_task(request, *preview_runtime);
+        }
         if (result.terminated) {
+            preview_generation.fetch_add(1U, std::memory_order_acq_rel);
             preview_runtime.reset();
         }
         if (result.reply) {
@@ -583,6 +657,7 @@ esp_err_t preview_websocket_handler(httpd_req_t* request) {
         firmware::application::PreviewMode::stopped,
         0U,
     };
+    preview_generation.fetch_add(1U, std::memory_order_acq_rel);
     const auto metadata = firmware::application::format_preview_metadata(
         *avi, decision.session_id, preview_request.path,
         preview_request.sequence);
