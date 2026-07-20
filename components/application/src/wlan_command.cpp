@@ -1,6 +1,7 @@
 // Implements exact user Wi-Fi scan sequencing and host response framing.
 #include "firmware/application/wlan_command.hpp"
 
+#include "firmware/application/connectivity_defaults.hpp"
 #include "firmware/core/protocol_constants.hpp"
 
 #include <algorithm>
@@ -13,11 +14,10 @@ namespace {
 constexpr WifiScanConfig user_scan_config{
     true,
     true,
-    120U,
-    360U,
-    20U,
+    connectivity_defaults::user_scan_active_dwell_milliseconds,
+    connectivity_defaults::user_scan_passive_dwell_milliseconds,
+    connectivity_defaults::user_scan_maximum_observations,
 };
-constexpr std::uint32_t scan_settle_milliseconds = 100U;
 constexpr std::size_t maximum_scan_response_size = 512U;
 constexpr std::size_t maximum_connection_error_detail_size = 100U;
 constexpr std::uint32_t discovery_delay_milliseconds = 500U;
@@ -38,7 +38,8 @@ void WlanScanCommand::execute(WlanCommandPort& port) {
     port.send(text_frame(core::protocol::text_response, scanning_message));
     const std::string selected = port.connected_ssid();
     port.stop_scan();
-    port.delay_milliseconds(scan_settle_milliseconds);
+    port.delay_milliseconds(
+        connectivity_defaults::user_scan_settle_milliseconds);
     const WifiScanOutcome outcome = port.scan(user_scan_config);
     if (!outcome.success) {
         const std::string error = "WiFi scan failed: " + outcome.error_name;

@@ -65,6 +65,8 @@ The first core-to-periphery development slice contains:
   delayed startup, bounded retries, event updates, and RSSI fallback;
 - bounded UDP discovery payloads with status extraction, subnet broadcasts,
   socket recreation, periodic station-first sends, and three-copy bursts;
+- optional BLE-only BLUFI lifecycle and secured provisioning commands with
+  retained credentials, exact status reports, scans, and diagnostic handling;
 - ordered, case-sensitive local-command prefix recognition and size limits;
 - controller-to-host and host-to-controller routing precedence;
 - controller-forwarding suppression, size, and capacity admission;
@@ -101,7 +103,7 @@ The first core-to-periphery development slice contains:
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 302 tests. The firmware also builds successfully as
+The current host suite has 313 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).

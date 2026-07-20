@@ -45,6 +45,7 @@ struct StationConfiguration {
     std::string ssid;
     std::string password;
     bool scan_all_channels = true;
+    bool fast_scan = false;
     bool sort_by_strongest_signal = true;
     bool use_fixed_bssid = false;
     std::uint8_t channel = 0U;
