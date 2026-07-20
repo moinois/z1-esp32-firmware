@@ -4,6 +4,7 @@
 #include "esp_err.h"
 #include "esp_http_server.h"
 #include "esp_partition.h"
+#include "esp_camera.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
@@ -16,6 +17,7 @@
 #include "firmware_update_adapter.hpp"
 #include "ota_update_adapter.hpp"
 #include "camera_adapter.hpp"
+#include "firmware/application/live_control_policy.hpp"
 #include "firmware/core/multipart_extractor.hpp"
 #include "firmware/core/multipart_policy.hpp"
 #include "firmware/application/direct_application_update.hpp"
@@ -33,6 +35,24 @@ namespace firmware::target {
 namespace {
 
 constexpr char tag[] = "HTTP";
+firmware::application::LiveControlPolicy live_control_policy;
+
+#if CONFIG_HTTPD_WS_SUPPORT
+// Captures and sends one JPEG frame on the requesting WebSocket.
+bool send_live_frame(httpd_req_t* request) {
+    camera_fb_t* frame = esp_camera_fb_get();
+    if (frame == nullptr) {
+        return false;
+    }
+    httpd_ws_frame_t outgoing{};
+    outgoing.type = HTTPD_WS_TYPE_BINARY;
+    outgoing.payload = frame->buf;
+    outgoing.len = frame->len;
+    const esp_err_t result = httpd_ws_send_frame(request, &outgoing);
+    esp_camera_fb_return(frame);
+    return result == ESP_OK;
+}
+#endif
 
 class DirectHttpOtaPort final
     : public firmware::application::DirectApplicationUpdatePort {
@@ -367,12 +387,37 @@ esp_err_t web_volume_update_handler(httpd_req_t* request) {
 #if CONFIG_HTTPD_WS_SUPPORT
 // Receives one video WebSocket frame and applies the shared message boundary.
 esp_err_t video_websocket_handler(httpd_req_t* request) {
+    const auto socket_id =
+        static_cast<std::uint32_t>(httpd_req_to_sockfd(request));
     httpd_ws_frame_t frame{};
-    if (httpd_ws_recv_frame(request, &frame, 0U) != ESP_OK) return ESP_FAIL;
+    if (httpd_ws_recv_frame(request, &frame, 0U) != ESP_OK) {
+        static_cast<void>(live_control_policy.on_disconnect(socket_id));
+        return ESP_FAIL;
+    }
     if (frame.len == 0U) return ESP_OK;
     std::vector<std::uint8_t> payload(frame.len);
     frame.payload = payload.data();
-    return httpd_ws_recv_frame(request, &frame, frame.len);
+    if (httpd_ws_recv_frame(request, &frame, frame.len) != ESP_OK) {
+        static_cast<void>(live_control_policy.on_disconnect(socket_id));
+        return ESP_FAIL;
+    }
+    if (frame.type != HTTPD_WS_TYPE_TEXT) {
+        return ESP_OK;
+    }
+    const std::string_view command(
+        reinterpret_cast<const char*>(payload.data()), payload.size());
+    const auto decisions = live_control_policy.handle(
+        socket_id, command);
+    for (const auto& decision : decisions) {
+        if (decision.action == firmware::application::LiveControlAction::start &&
+            decision.socket_id ==
+                socket_id) {
+            if (!send_live_frame(request)) {
+                return ESP_FAIL;
+            }
+        }
+    }
+    return ESP_OK;
 }
 
 // Receives one preview WebSocket frame and delegates text parsing to the application.

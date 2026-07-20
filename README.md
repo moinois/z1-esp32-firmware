@@ -173,6 +173,8 @@ The first core-to-periphery development slice contains:
   boundaries, header overflow handling, and end-of-input behavior;
 - case-sensitive main/video HTTP route selection with query exclusion and
   GET-only static fallback;
+- WebSocket live-control ownership dispatch with camera JPEG frame capture and
+  binary frame transmission on `start_stream`;
 - static-file serving through replaceable file/response ports, exact 404
   behavior, MIME selection, 256-byte chunks, and terminating empty chunk;
 - nonfatal web-volume startup with format-and-retry policy and an ESP-IDF
