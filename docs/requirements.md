@@ -114,6 +114,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | PREV-013--PREV-014 preview metadata response | Application formatter over accepted AVI metadata | Yes for ordered open/meta fields, filename extraction, timing, dimensions, frame count, and JPEG stream marker; clean target build verified | Session creation and WebSocket send adapters pending |
 | PREV-010--PREV-012, PREV-015 preview open admission | Application policy over path and AVI ports | Yes for path/file/AVI failure ordering, random session formatting, largest-index sizing, small-buffer default, and 262144-byte limit; clean target build verified | Filesystem, allocator, response, and stream-start adapters pending |
 | PREV-020--PREV-027 preview command policy | Application state machine over normalized requests | Yes for conflict handling, wrong-session suppression, play selection, pause/resume, clamped seek, and stop termination; clean target build verified | WebSocket response, frame I/O, timer, and session composition pending |
+| PREV-020--PREV-022 preview response formatting | Portable application JSON formatter | Yes for command/sequence/error/session ordering, optional message omission, escaping, and exact conflict text; clean target build verified | WebSocket send adapter pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
 | HW-004--HW-005 CPU, flash, PSRAM, security | Target defaults | Build verification only | No |

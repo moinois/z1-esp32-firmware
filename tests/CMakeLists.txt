@@ -90,6 +90,7 @@ add_executable(
     test_preview_metadata.cpp
     test_preview_open.cpp
     test_preview_playback.cpp
+    test_preview_responses.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
 target_compile_options(core_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)

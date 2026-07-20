@@ -45,6 +45,7 @@ set(APPLICATION_SOURCES
     src/preview_metadata.cpp
     src/preview_open.cpp
     src/preview_playback.cpp
+    src/preview_responses.cpp
     src/play_line_reader.cpp
     src/play_session.cpp
     src/router.cpp
