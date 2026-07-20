@@ -135,12 +135,14 @@ The first core-to-periphery development slice contains:
   exact capacity, fallback, UTC, and response behavior;
 - aggregate machine-status composition from replaceable transfer, recording,
   SD-capacity, update-phase, and station-RSSI sources;
+- portable CANopen node identity, addressed and broadcast NMT transitions,
+  communication reset, producer-heartbeat timing, and error-state policy;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 432 tests. The firmware also builds successfully as
+The current host suite has 440 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
