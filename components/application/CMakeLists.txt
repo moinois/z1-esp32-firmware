@@ -51,6 +51,7 @@ set(APPLICATION_SOURCES
     src/recording_policy.cpp
     src/recording_commands.cpp
     src/storage_retention.cpp
+    src/storage_retention_service.cpp
     src/play_line_reader.cpp
     src/play_session.cpp
     src/router.cpp
