@@ -15,12 +15,13 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <atomic>
 
 namespace firmware::target {
 namespace {
 
 constexpr char tag[] = "UPDATE";
-constexpr char aggregate_path[] = "/sd/firmware.bin";
+std::atomic_bool update_requested{false};
 
 class UpdateTargetPort final
     : public firmware::application::UpdateValidationPort {
@@ -105,20 +106,28 @@ private:
     OtaUpdateAdapter& ota_;
 };
 
-void update_task(void*) {
-    vTaskDelay(pdMS_TO_TICKS(1000U));
+void process_update_once() {
     OtaUpdateAdapter ota;
     UpdateTargetPort validation_port(ota);
     firmware::application::UpdateValidationService validation(validation_port);
     const auto package = validation.validate(0U);
     if (!package.has_value()) {
-        vTaskDelete(nullptr);
         return;
     }
     UpdateApplicationTargetPort application_port(ota);
     firmware::application::UpdateApplicationService application(application_port);
     static_cast<void>(application.apply(*package));
-    vTaskDelete(nullptr);
+}
+
+void update_task(void*) {
+    vTaskDelay(pdMS_TO_TICKS(1000U));
+    update_requested.store(true);
+    for (;;) {
+        if (update_requested.exchange(false)) {
+            process_update_once();
+        }
+        vTaskDelay(pdMS_TO_TICKS(250U));
+    }
 }
 
 }  // namespace
@@ -128,6 +137,10 @@ void FirmwareUpdateAdapter::start() {
         pdPASS) {
         ESP_LOGW(tag, "could not create firmware update task");
     }
+}
+
+void request_firmware_update_processing() {
+    update_requested.store(true);
 }
 
 }  // namespace firmware::target

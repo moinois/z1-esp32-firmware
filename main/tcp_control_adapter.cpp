@@ -19,6 +19,7 @@
 #include "tcp_wlan_station_adapter.hpp"
 #include "tcp_wlan_connection_adapter.hpp"
 #include "tcp_discovery_adapter.hpp"
+#include "firmware_update_adapter.hpp"
 #include "firmware/application/filesystem_commands.hpp"
 #include "firmware/application/wlan_command.hpp"
 #include "firmware/application/wlan_request.hpp"
@@ -62,6 +63,11 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
         return;
     }
     const auto match = firmware::core::recognize_command(frame.payload);
+    if (match.kind == firmware::core::CommandKind::upgrade ||
+        match.kind == firmware::core::CommandKind::reset) {
+        request_firmware_update_processing();
+        return;
+    }
     if (match.kind != firmware::core::CommandKind::record_start
         && match.kind != firmware::core::CommandKind::record_stop) {
         if (match.kind != firmware::core::CommandKind::serial_get

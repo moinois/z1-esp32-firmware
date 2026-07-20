@@ -10,4 +10,7 @@ public:
     void start();
 };
 
+// Requests one coalesced aggregate processing pass from a local command.
+void request_firmware_update_processing();
+
 }  // namespace firmware::target
