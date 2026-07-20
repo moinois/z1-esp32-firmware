@@ -91,6 +91,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | CAN-001, HW-050--HW-052 TWAI hardware | Portable configuration plus active optional ESP-IDF classic-CAN adapter | Exact mode, rate, timing, pins, filter, queues, unused outputs, nonfatal startup, and frame conversion host/target-build verified | Physical bus verification pending |
 | DIAG-033 CAN digital-output monitoring | Application sampler plus ESP-IDF log/task adapter | Yes for exact startup records, 50 ms scheduling, initial zero, changed samples, collapse, hex format, and DO2 bit | Physical diagnostic-output verification pending |
 | CAM-001--CAM-002, CAM-005, CAM-008 camera settings | Application one-shot loader and dimension mapping with replaceable first-value source | Yes for strict signed parsing, defaults, normalization, all mappings, fallback, and load-once behavior | Live-configuration adapter and camera startup integration pending |
+| CAM-003, CAM-009, HW-040--HW-043 camera hardware | Target-neutral immutable camera adapter contract | Exact DVP/SCCB/XCLK pins, unused controls, JPEG, quality, PSRAM, buffer/grab policy, UXGA allocation, orientation, live size, and timeout host verified | esp32-camera dependency, target adapter, and physical sensor verification pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
 | HW-004--HW-005 CPU, flash, PSRAM, security | Target defaults | Build verification only | No |
