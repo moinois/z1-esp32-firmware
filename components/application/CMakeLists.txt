@@ -35,6 +35,7 @@ set(APPLICATION_SOURCES
     src/play_session.cpp
     src/router.cpp
     src/sd_card_lifecycle.cpp
+    src/serial_number.cpp
     src/station_connection.cpp
     src/update_application.cpp
     src/update_controller.cpp

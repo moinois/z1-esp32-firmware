@@ -37,6 +37,7 @@ add_executable(
     test_play_goto.cpp
     test_routing.cpp
     test_sd_card_lifecycle.cpp
+    test_serial_number.cpp
     test_automatic_connection.cpp
     test_ble_provisioning.cpp
     test_blufi_fragment.cpp
