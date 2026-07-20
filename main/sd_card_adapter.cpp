@@ -16,6 +16,7 @@
 
 #include <optional>
 #include <cstdio>
+#include <ctime>
 #include <string>
 
 namespace firmware::target {
@@ -113,7 +114,21 @@ public:
         std::rename(std::string(source).c_str(), std::string(destination).c_str());
     }
     firmware::application::DiagnosticTime current_time() override {
-        return {0U, 0U, 0U, 0U, 0U, 0U, 0U, now_milliseconds()};
+        const std::uint64_t uptime = now_milliseconds();
+        const time_t seconds = std::time(nullptr);
+        std::tm utc{};
+        if (seconds == static_cast<time_t>(-1) ||
+            gmtime_r(&seconds, &utc) == nullptr) {
+            return {0U, 0U, 0U, 0U, 0U, 0U,
+                    static_cast<std::uint16_t>(uptime % 1000U), uptime};
+        }
+        return {static_cast<std::uint16_t>(utc.tm_year + 1900),
+                static_cast<std::uint8_t>(utc.tm_mon + 1),
+                static_cast<std::uint8_t>(utc.tm_mday),
+                static_cast<std::uint8_t>(utc.tm_hour),
+                static_cast<std::uint8_t>(utc.tm_min),
+                static_cast<std::uint8_t>(utc.tm_sec),
+                static_cast<std::uint16_t>(uptime % 1000U), uptime};
     }
 
 private:

@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <string_view>
+#include <ctime>
 
 namespace firmware::target {
 namespace {
@@ -23,8 +24,22 @@ public:
     void print(firmware::core::BytesView) override {}
     bool record_buffer_available() override { return true; }
     firmware::application::DiagnosticTime current_time() override {
-        return {0U, 0U, 0U, 0U, 0U, 0U, 0U,
-                static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL)};
+        const std::uint64_t uptime =
+            static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
+        const time_t seconds = std::time(nullptr);
+        std::tm utc{};
+        if (seconds == static_cast<time_t>(-1) ||
+            gmtime_r(&seconds, &utc) == nullptr) {
+            return {0U, 0U, 0U, 0U, 0U, 0U,
+                    static_cast<std::uint16_t>(uptime % 1000U), uptime};
+        }
+        return {static_cast<std::uint16_t>(utc.tm_year + 1900),
+                static_cast<std::uint8_t>(utc.tm_mon + 1),
+                static_cast<std::uint8_t>(utc.tm_mday),
+                static_cast<std::uint8_t>(utc.tm_hour),
+                static_cast<std::uint8_t>(utc.tm_min),
+                static_cast<std::uint8_t>(utc.tm_sec),
+                static_cast<std::uint16_t>(uptime % 1000U), uptime};
     }
 };
 
