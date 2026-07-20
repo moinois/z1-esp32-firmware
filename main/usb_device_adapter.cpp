@@ -10,6 +10,7 @@
 #include "firmware/application/usb_descriptors.hpp"
 #include "firmware/application/usb_protocol_state.hpp"
 #include "firmware/core/frame.hpp"
+#include "controller_command_loop.hpp"
 
 #include <array>
 
@@ -37,8 +38,10 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
     if (!staging.stage({bytes, size})) return;
     const auto staged = staging.take();
     for (const auto& frame : decoder.push(staged)) {
-        (void)frame;
         protocol_state.valid_frame_received();
+        // Forward complete USB frames through the controller-owned UART path.
+        // Local USB command routing will be added without changing this boundary.
+        static_cast<void>(enqueue_controller_frame(frame));
     }
 }
 
