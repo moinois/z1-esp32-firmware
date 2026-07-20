@@ -117,6 +117,7 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
                     update_tcp_discovery_station(
                         tcp_station_runtime.ipv4, station.current_netmask(),
                         active_tcp_client_count());
+                    send_tcp_discovery_burst(active_tcp_client_count());
                 }
             }
         } else {

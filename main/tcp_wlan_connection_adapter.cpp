@@ -23,7 +23,7 @@ void TcpWlanConnectionAdapter::delay_milliseconds(std::uint32_t duration) {
 }
 
 void TcpWlanConnectionAdapter::send_discovery_burst() {
-    send_tcp_discovery_burst(active_tcp_client_count());
+    // The TCP composition root triggers the burst after station subnet update.
 }
 
 }  // namespace firmware::target

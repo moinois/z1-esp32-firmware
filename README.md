@@ -246,6 +246,7 @@ The first core-to-periphery development slice contains:
 - UDP discovery adapter for long-lived and command-triggered broadcast bursts;
 - TCP station success updates discovery with the assigned station subnet;
 - discovery subnet selection uses the actual ESP-IDF STA netmask;
+- connect-triggered discovery bursts occur only after subnet state is ready;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
