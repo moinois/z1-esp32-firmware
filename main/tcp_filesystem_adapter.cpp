@@ -7,7 +7,33 @@
 #include <cstdio>
 #include <string>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <unistd.h>
+
+namespace {
+
+// Removes a directory tree using the target VFS directory and stat APIs.
+void remove_tree(const std::string& path) {
+    struct stat status{};
+    if (stat(path.c_str(), &status) != 0) return;
+    if (!S_ISDIR(status.st_mode)) {
+        static_cast<void>(unlink(path.c_str()));
+        return;
+    }
+
+    DIR* directory = opendir(path.c_str());
+    if (directory != nullptr) {
+        while (const dirent* entry = readdir(directory)) {
+            const std::string name(entry->d_name);
+            if (name == "." || name == "..") continue;
+            remove_tree(path + "/" + name);
+        }
+        closedir(directory);
+    }
+    static_cast<void>(rmdir(path.c_str()));
+}
+
+}  // namespace
 
 namespace firmware::target {
 
@@ -24,7 +50,7 @@ bool TcpFilesystemAdapter::create_directory(std::string_view path,
 
 void TcpFilesystemAdapter::remove_recursively(std::string_view path) {
     const std::string value(path);
-    static_cast<void>(remove(value.c_str()));
+    remove_tree(value);
 }
 
 bool TcpFilesystemAdapter::path_exists(std::string_view path) {
