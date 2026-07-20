@@ -16,6 +16,8 @@
 #include "firmware/application/serial_number.hpp"
 #include "firmware/application/runtime_commands.hpp"
 #include "firmware/application/filesystem_commands.hpp"
+#include "firmware/application/directory_listing.hpp"
+#include "firmware/application/file_hash_command.hpp"
 #include "nvs_key_value_adapter.hpp"
 #include "runtime_operation_capacity.hpp"
 #include "recording_request_state.hpp"
@@ -34,6 +36,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "mbedtls/md5.h"
 #include <esp_timer.h>
 
 namespace firmware::target {
@@ -226,6 +229,104 @@ public:
 
 UsbFilesystemPort filesystem_port;
 
+firmware::application::UtcFileTime usb_file_time(time_t value) {
+    struct tm result{};
+    gmtime_r(&value, &result);
+    return {static_cast<std::uint16_t>(result.tm_year + 1900),
+            static_cast<std::uint8_t>(result.tm_mon + 1),
+            static_cast<std::uint8_t>(result.tm_mday),
+            static_cast<std::uint8_t>(result.tm_hour),
+            static_cast<std::uint8_t>(result.tm_min),
+            static_cast<std::uint8_t>(result.tm_sec)};
+}
+
+class UsbDirectoryPort final : public firmware::application::DirectoryListPort {
+public:
+    std::optional<std::vector<firmware::application::DirectoryEntry>>
+    list_directory(std::string_view path) override {
+        const std::string root(path);
+        DIR* directory = opendir(root.c_str());
+        if (directory == nullptr) return std::nullopt;
+        std::vector<firmware::application::DirectoryEntry> entries;
+        while (const dirent* item = readdir(directory)) {
+            const std::string name(item->d_name);
+            if (name == "." || name == "..") continue;
+            struct stat information{};
+            const std::string full_path = root + "/" + name;
+            const bool metadata = stat(full_path.c_str(), &information) == 0;
+            entries.push_back({name, metadata && S_ISDIR(information.st_mode),
+                               metadata ? static_cast<std::uint64_t>(information.st_size) : 0U,
+                               metadata ? usb_file_time(information.st_mtime) : usb_file_time(0),
+                               metadata});
+        }
+        closedir(directory);
+        return entries;
+    }
+
+    void send(firmware::core::Frame frame) override {
+        const auto encoded = firmware::core::encode_frame(frame);
+        if (!encoded.empty()) {
+            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+        }
+    }
+};
+
+class UsbHashPort final : public firmware::application::FileHashPort {
+public:
+    firmware::application::FileHashPathState inspect_path(
+        std::string_view path) override {
+        struct stat information{};
+        if (stat(std::string(path).c_str(), &information) != 0) {
+            return firmware::application::FileHashPathState::missing;
+        }
+        return S_ISREG(information.st_mode)
+                   ? firmware::application::FileHashPathState::regular_file
+                   : firmware::application::FileHashPathState::not_regular;
+    }
+
+    std::optional<std::string> calculate_md5(std::string_view path,
+                                             std::size_t block_size) override {
+        std::FILE* file = std::fopen(std::string(path).c_str(), "rb");
+        if (file == nullptr || block_size == 0U) {
+            if (file != nullptr) std::fclose(file);
+            return std::nullopt;
+        }
+        std::vector<std::uint8_t> buffer(block_size);
+        mbedtls_md5_context context;
+        mbedtls_md5_init(&context);
+        mbedtls_md5_starts(&context);
+        while (const std::size_t count = std::fread(buffer.data(), 1U, buffer.size(), file)) {
+            mbedtls_md5_update(&context, buffer.data(), count);
+        }
+        if (std::ferror(file) != 0) {
+            std::fclose(file);
+            mbedtls_md5_free(&context);
+            return std::nullopt;
+        }
+        std::uint8_t digest[16];
+        mbedtls_md5_finish(&context, digest);
+        mbedtls_md5_free(&context);
+        std::fclose(file);
+        static constexpr char hex[] = "0123456789abcdef";
+        std::string result(32U, '0');
+        for (std::size_t index = 0U; index < 16U; ++index) {
+            result[index * 2U] = hex[digest[index] >> 4U];
+            result[index * 2U + 1U] = hex[digest[index] & 0x0fU];
+        }
+        return result;
+    }
+
+    void send(firmware::core::Frame frame) override {
+        const auto encoded = firmware::core::encode_frame(frame);
+        if (!encoded.empty()) {
+            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+        }
+    }
+};
+
+UsbDirectoryPort directory_port;
+UsbHashPort hash_port;
+
 void usb_transmit_task(void*) {
     firmware::application::UsbTransmitProgress progress;
     const firmware::core::ByteVector* tracked_frame = nullptr;
@@ -328,6 +429,16 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                     firmware::application::FilesystemCommands::file_type(
                         filesystem_port);
                 }
+                continue;
+            }
+            if (match.kind == firmware::core::CommandKind::list) {
+                firmware::application::DirectoryListing::execute(
+                    frame.payload, directory_port);
+                continue;
+            }
+            if (match.kind == firmware::core::CommandKind::md5_sum) {
+                firmware::application::FileHashCommand::execute(
+                    frame.payload, hash_port);
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::upgrade ||
