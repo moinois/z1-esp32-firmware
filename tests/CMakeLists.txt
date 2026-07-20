@@ -2,6 +2,7 @@
 add_executable(core_tests
     test_main.cpp
     test_crc.cpp
+    test_controller_query.cpp
     test_frame.cpp
     test_routing.cpp
     test_text.cpp

@@ -23,6 +23,7 @@ The first core-to-periphery development slice contains:
 - controller-to-host and host-to-controller routing precedence;
 - controller-forwarding suppression, size, and capacity admission;
 - independent file-transfer and streamed-play ownership identities;
+- independent drift-free 300 ms status and 500 ms diagnostic query schedules;
 - controller status validation, running-state detection, and local status
   extension generation;
 - aggregate firmware-header, size, flag, and checksum validation;
@@ -31,7 +32,7 @@ The first core-to-periphery development slice contains:
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 38 tests. The firmware also builds successfully as
+The current host suite has 42 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md).
 
@@ -206,6 +207,7 @@ The following major areas are not yet implemented:
 
 - transport connection-slot allocation and outbound generation checks;
 - controller UART scheduling and controller transfer families;
+- controller UART transport, activity monitoring, and transfer families;
 - host upload and download state machines;
 - SD lifecycle, filesystem commands, configuration views, and logging;
 - Wi-Fi AP/station behavior, discovery, and host Wi-Fi commands;

@@ -1,5 +1,6 @@
 # Builds portable application policy as an ESP-IDF component or host library.
 set(APPLICATION_SOURCES
+    src/controller_query.cpp
     src/ownership.cpp
     src/router.cpp
 )
