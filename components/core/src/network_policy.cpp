@@ -4,7 +4,9 @@
 #include "firmware/core/configuration_syntax.hpp"
 
 #include <array>
+#include <algorithm>
 #include <cstdio>
+#include <string>
 #include <string_view>
 
 namespace firmware::core {
@@ -14,6 +16,8 @@ constexpr std::string_view machine_name_key = "wifi.machine_name";
 constexpr std::size_t maximum_machine_name_size = 31U;
 constexpr std::uint8_t first_wifi_channel = 1U;
 constexpr std::uint8_t last_wifi_channel = 14U;
+constexpr std::size_t maximum_scan_observations = 20U;
+constexpr std::size_t maximum_ssid_size = 31U;
 
 // Formats the exact default name from the final two station-MAC bytes.
 std::string fallback_machine_name(
@@ -71,6 +75,65 @@ std::uint8_t select_access_point_channel(
         }
     }
     return selected;
+}
+
+std::vector<WifiScanResult> process_wifi_scan(
+    const std::vector<WifiObservation>& observations,
+    std::string_view selected_ssid) {
+    std::vector<WifiScanResult> results;
+    const std::size_t inspected =
+        std::min(observations.size(), maximum_scan_observations);
+    results.reserve(inspected);
+    for (std::size_t index = 0U; index < inspected; ++index) {
+        const WifiObservation& observation = observations[index];
+        if (observation.raw_ssid.empty()) {
+            continue;
+        }
+        const auto duplicate = std::find_if(
+            results.begin(), results.end(), [&observation](const auto& retained) {
+                return observation.raw_ssid.size() == retained.ssid.size() &&
+                       std::equal(observation.raw_ssid.begin(),
+                                  observation.raw_ssid.end(),
+                                  retained.ssid.begin());
+            });
+        if (duplicate != results.end()) {
+            if (observation.rssi > duplicate->rssi) {
+                duplicate->rssi = observation.rssi;
+                duplicate->authentication_mode =
+                    observation.authentication_mode;
+            }
+            continue;
+        }
+
+        const std::size_t retained_size =
+            std::min(observation.raw_ssid.size(), maximum_ssid_size);
+        const std::string ssid(observation.raw_ssid.begin(),
+                               observation.raw_ssid.begin() +
+                                   static_cast<std::ptrdiff_t>(retained_size));
+        results.push_back({ssid, observation.rssi,
+                           observation.authentication_mode,
+                           ssid == selected_ssid});
+    }
+    std::stable_sort(results.begin(), results.end(),
+                     [](const auto& left, const auto& right) {
+                         return left.rssi > right.rssi;
+                     });
+    return results;
+}
+
+std::string format_wifi_scan(const std::vector<WifiScanResult>& results) {
+    std::string formatted;
+    for (const WifiScanResult& result : results) {
+        formatted += result.ssid;
+        formatted += ',';
+        formatted += result.authentication_mode == 0U ? '0' : '1';
+        formatted += ',';
+        formatted += std::to_string(result.rssi);
+        formatted += ',';
+        formatted += result.selected ? '1' : '0';
+        formatted += '\n';
+    }
+    return formatted;
 }
 
 }  // namespace firmware::core
