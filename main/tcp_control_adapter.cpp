@@ -57,6 +57,7 @@
 #include <cstdint>
 #include <esp_timer.h>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <utility>
 
@@ -72,6 +73,7 @@ firmware::application::Router tcp_router;
 RecordingRequestState tcp_recording_state;
 firmware::application::StationRuntime tcp_station_runtime;
 firmware::application::LiveConfiguration tcp_live_configuration;
+std::atomic_bool m942_exercise_active{false};
 
 // Adapts one TCP-origin M942 request to the shared CANopen SDO service.
 class TcpM942Port final : public firmware::application::M942ExercisePort {
@@ -120,13 +122,33 @@ private:
     firmware::application::TcpClientSession& session_;
 };
 
+// Owns one asynchronous M942 execution until its worker task terminates.
+struct TcpM942WorkerContext {
+    firmware::application::TcpClientSession* session;
+    std::unique_ptr<TcpM942Port> port;
+    std::unique_ptr<firmware::application::M942ExerciseService> service;
+    TaskHandle_t owner_task = nullptr;
+};
+
+void tcp_m942_worker(void* parameter) {
+    auto* context = static_cast<TcpM942WorkerContext*>(parameter);
+    context->service->run();
+    m942_exercise_active.store(false, std::memory_order_release);
+    if (context->owner_task != nullptr) {
+        xTaskNotifyGive(context->owner_task);
+    }
+    delete context;
+    vTaskDelete(nullptr);
+}
+
 void forward_tcp_controller_frame(firmware::application::TcpClientSession&,
                                   const firmware::core::Frame& frame) {
     static_cast<void>(enqueue_controller_frame(frame));
 }
 
 void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
-                            const firmware::core::Frame& frame) {
+                            const firmware::core::Frame& frame,
+                            TaskHandle_t* m942_worker_handle) {
     if (frame.type == firmware::core::protocol::single_command &&
         !frame.payload.empty() && frame.payload.front() == '?') {
         RuntimeStatusAdapter status_sources(tcp_router);
@@ -155,10 +177,30 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
     }
     const auto match = firmware::core::recognize_command(frame.payload);
     if (match.kind == firmware::core::CommandKind::can_exercise) {
-        TcpM942Port m942_port(session);
-        firmware::application::M942ExerciseService exercise(m942_port);
-        if (exercise.submit(session.identity(), frame, true)) {
-            exercise.run();
+        const bool capacity = !m942_exercise_active.exchange(
+            true, std::memory_order_acq_rel);
+        auto context = std::make_unique<TcpM942WorkerContext>();
+        context->session = &session;
+        context->port = std::make_unique<TcpM942Port>(session);
+        context->service = std::make_unique<
+            firmware::application::M942ExerciseService>(*context->port);
+        if (!context->service->submit(session.identity(), frame, capacity)) {
+            if (capacity) {
+                m942_exercise_active.store(false, std::memory_order_release);
+            }
+            return;
+        }
+        TcpM942WorkerContext* raw_context = context.release();
+        TaskHandle_t worker = nullptr;
+        if (xTaskCreate(tcp_m942_worker, "m942", 6144U, raw_context,
+                        4U, &worker) != pdPASS) {
+            m942_exercise_active.store(false, std::memory_order_release);
+            delete raw_context;
+            return;
+        }
+        raw_context->owner_task = xTaskGetCurrentTaskHandle();
+        if (m942_worker_handle != nullptr) {
+            *m942_worker_handle = worker;
         }
         return;
     }
@@ -397,11 +439,13 @@ bool send_tcp_bytes(int client, firmware::core::BytesView bytes) {
 
 bool drain_tcp_transmit_queue(
     int client, firmware::application::TcpClientSession& session) {
-    while (const auto* frame = session.transmit_queue().front()) {
-        if (!send_tcp_bytes(client, *frame)) {
+    while (session.has_pending_transmit_frame()) {
+        if (!session.send_next_transmit_frame(
+                [client](firmware::core::BytesView frame) {
+                    return send_tcp_bytes(client, frame);
+                })) {
             return false;
         }
-        session.transmit_queue().pop_front();
     }
     return true;
 }
@@ -456,11 +500,16 @@ void tcp_client_task(void* parameter) {
     const int client = context->socket;
     firmware::application::TcpClientSession session(context->identity);
     TcpFileTransferRuntime transfer_runtime(session, tcp_router);
+    TaskHandle_t m942_worker = nullptr;
     firmware::application::TcpFrameDispatcher dispatcher(
         tcp_router,
         firmware::application::TcpDispatchSinks{
             forward_tcp_controller_frame,
-            handle_tcp_local_frame,
+            [&m942_worker](firmware::application::TcpClientSession& client_session,
+                           const firmware::core::Frame& local_frame) {
+                handle_tcp_local_frame(client_session, local_frame,
+                                       &m942_worker);
+            },
             [&transfer_runtime](firmware::application::TcpClientSession&,
                                 const firmware::core::Frame& frame) {
                 transfer_runtime.handle(frame,
@@ -482,6 +531,9 @@ void tcp_client_task(void* parameter) {
         if (!drain_tcp_transmit_queue(client, session)) {
             break;
         }
+    }
+    if (m942_worker != nullptr) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     }
     transfer_runtime.disconnect();
     close(client);

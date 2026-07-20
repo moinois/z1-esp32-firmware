@@ -37,3 +37,22 @@ TEST_CASE(tcp_session_queues_encoded_frames) {
     REQUIRE(session.transmit_queue().front() != nullptr);
     REQUIRE_EQ(*session.transmit_queue().front(), firmware::core::encode_frame(frame));
 }
+
+TEST_CASE(tcp_session_sender_removes_frame_only_after_success) {
+    firmware::application::TcpClientSession session({});
+    const firmware::core::Frame frame{0x33U, {'x'}};
+    REQUIRE(session.queue_frame(frame));
+    bool attempted = false;
+    REQUIRE(!session.send_next_transmit_frame(
+        [&](firmware::core::BytesView) {
+            attempted = true;
+            return false;
+        }));
+    REQUIRE(attempted);
+    REQUIRE(session.has_pending_transmit_frame());
+    REQUIRE(session.send_next_transmit_frame(
+        [](firmware::core::BytesView bytes) {
+            return bytes.size() > 0U;
+        }));
+    REQUIRE(!session.has_pending_transmit_frame());
+}

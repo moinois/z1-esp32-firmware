@@ -6,6 +6,8 @@
 #include "firmware/core/frame.hpp"
 
 #include <functional>
+#include <optional>
+#include <mutex>
 
 namespace firmware::application {
 
@@ -25,6 +27,16 @@ public:
     // Provides the session's bounded outgoing queue to the transport adapter.
     TcpTransmitQueue& transmit_queue();
 
+    // Atomically removes and returns the next encoded frame for a sender.
+    std::optional<core::ByteVector> take_next_transmit_frame();
+
+    // Sends the queued front frame and removes it only after completion.
+    bool send_next_transmit_frame(
+        const std::function<bool(core::BytesView)>& send_function);
+
+    // Reports whether at least one encoded frame is waiting for transmission.
+    bool has_pending_transmit_frame() const;
+
     // Returns this connection's ownership identity.
     const HostIdentity& identity() const;
 
@@ -32,6 +44,7 @@ private:
     HostIdentity identity_;
     core::StreamDecoder decoder_;
     TcpTransmitQueue transmit_queue_;
+    mutable std::mutex transmit_mutex_;
 };
 
 }  // namespace firmware::application
