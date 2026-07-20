@@ -175,6 +175,8 @@ The first core-to-periphery development slice contains:
   behavior, MIME selection, 256-byte chunks, and terminating empty chunk;
 - nonfatal web-volume startup with format-and-retry policy and an ESP-IDF
   SPIFFS adapter;
+- ESP-IDF main/video HTTP listener startup using the exact independent limits,
+  ports, waits, wildcard setting, and nonfatal failure behavior;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
