@@ -13,11 +13,34 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "esp_timer.h"
+
+#include "firmware/application/controller_frame_forwarder.hpp"
 
 #include <cstdint>
+#include <optional>
 
 namespace firmware::target {
 namespace {
+
+firmware::application::ControllerFrameForwarder controller_forwarder;
+SemaphoreHandle_t controller_forwarder_mutex = nullptr;
+
+void drain_forwarded_frames(ControllerUartAdapter& uart) {
+    for (;;) {
+        std::optional<firmware::core::ByteVector> item;
+        if (xSemaphoreTake(controller_forwarder_mutex, portMAX_DELAY) == pdTRUE) {
+            item = controller_forwarder.take_ready(
+                static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL));
+            xSemaphoreGive(controller_forwarder_mutex);
+        }
+        if (!item.has_value()) {
+            return;
+        }
+        static_cast<void>(uart.write(*item));
+    }
+}
 
 void controller_command_task(void*) {
     ControllerUartAdapter uart;
@@ -34,6 +57,7 @@ void controller_command_task(void*) {
         firmware::core::StreamPolicy::controller_uart());
     std::uint8_t input[256];
     for (;;) {
+        drain_forwarded_frames(uart);
         const int count = uart.read(input, sizeof(input));
         if (count <= 0) continue;
         const auto frames = decoder.push(
@@ -64,8 +88,26 @@ void controller_command_task(void*) {
 }  // namespace
 
 void ControllerCommandLoop::start() {
+    if (controller_forwarder_mutex == nullptr) {
+        controller_forwarder_mutex = xSemaphoreCreateMutex();
+    }
+    if (controller_forwarder_mutex == nullptr) {
+        return;
+    }
     xTaskCreate(controller_command_task, "controller_commands", 6144U, nullptr,
                 5U, nullptr);
+}
+
+bool enqueue_controller_frame(const firmware::core::Frame& frame) {
+    if (controller_forwarder_mutex == nullptr) {
+        return false;
+    }
+    if (xSemaphoreTake(controller_forwarder_mutex, portMAX_DELAY) != pdTRUE) {
+        return false;
+    }
+    const bool queued = controller_forwarder.forward(frame);
+    xSemaphoreGive(controller_forwarder_mutex);
+    return queued;
 }
 
 }  // namespace firmware::target

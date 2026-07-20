@@ -9,6 +9,7 @@
 #include "firmware/application/tcp_frame_sender.hpp"
 #include "firmware/application/tcp_client_session.hpp"
 #include "firmware/application/router.hpp"
+#include "controller_command_loop.hpp"
 
 #include <arpa/inet.h>
 #include <cerrno>
@@ -95,8 +96,9 @@ void tcp_client_task(void* parameter) {
             [](const firmware::application::HostIdentity& identity,
                const firmware::core::Frame& frame) {
                 const auto decision = tcp_router.from_host(identity, frame);
-                ESP_LOGD("TCP", "routed type=0x%02x targets=0x%04x",
-                         frame.type, decision.targets);
+                if (decision.has(firmware::application::RouteTarget::controller)) {
+                    static_cast<void>(enqueue_controller_frame(frame));
+                }
             });
     }
     close(client);

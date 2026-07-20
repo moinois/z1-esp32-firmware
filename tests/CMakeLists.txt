@@ -102,6 +102,7 @@ add_executable(
     test_tcp_frame_sender.cpp
     test_tcp_client_session.cpp
     test_tcp_frame_dispatcher.cpp
+    test_controller_frame_forwarder.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
 target_compile_options(core_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
