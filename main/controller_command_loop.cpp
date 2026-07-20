@@ -11,6 +11,7 @@
 #include "wall_clock_command_dispatcher.hpp"
 #include "serial_number_adapter.hpp"
 #include "controller_runtime_command_adapter.hpp"
+#include "firmware_update_adapter.hpp"
 #include "firmware/application/serial_number.hpp"
 #include "firmware/application/recording_commands.hpp"
 #include "recording_request_state.hpp"
@@ -143,6 +144,8 @@ void controller_command_task(void*) {
             if (match.kind == firmware::core::CommandKind::serial_get ||
                 match.kind == firmware::core::CommandKind::serial_set ||
                 match.kind == firmware::core::CommandKind::clear_first_time ||
+                match.kind == firmware::core::CommandKind::upgrade ||
+                match.kind == firmware::core::CommandKind::reset ||
                 match.kind == firmware::core::CommandKind::record_start ||
                 match.kind == firmware::core::CommandKind::record_stop) {
                 static_cast<void>(local_commands.enqueue(frame));
@@ -161,6 +164,9 @@ void controller_command_task(void*) {
                 serial_service.handle_set(command);
             } else if (match.kind == firmware::core::CommandKind::clear_first_time) {
                 runtime_service.handle_clear_first_boot(command);
+            } else if (match.kind == firmware::core::CommandKind::upgrade ||
+                       match.kind == firmware::core::CommandKind::reset) {
+                request_firmware_update_processing();
             } else {
                 const auto result = firmware::application::handle_recording_command(
                     match.kind, recording_state.requested());
