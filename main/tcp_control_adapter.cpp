@@ -15,7 +15,9 @@
 #include "tcp_serial_number_adapter.hpp"
 #include "tcp_runtime_command_adapter.hpp"
 #include "tcp_filesystem_adapter.hpp"
+#include "tcp_wlan_scan_adapter.hpp"
 #include "firmware/application/filesystem_commands.hpp"
+#include "firmware/application/wlan_command.hpp"
 #include "firmware/application/runtime_commands.hpp"
 #include "firmware/application/serial_number.hpp"
 #include "firmware/application/recording_commands.hpp"
@@ -61,6 +63,7 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             && match.kind != firmware::core::CommandKind::serial_set
             && match.kind != firmware::core::CommandKind::system_time
             && match.kind != firmware::core::CommandKind::clear_first_time
+            && match.kind != firmware::core::CommandKind::wlan
             && match.kind != firmware::core::CommandKind::make_directory
             && match.kind != firmware::core::CommandKind::remove
             && match.kind != firmware::core::CommandKind::move
@@ -88,6 +91,12 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             } else {
                 runtime_service.handle_clear_first_boot(command);
             }
+        } else if (match.kind == firmware::core::CommandKind::wlan) {
+            if (command.find("scan") == std::string_view::npos) {
+                return;
+            }
+            TcpWlanScanAdapter wlan_port(session);
+            firmware::application::WlanScanCommand::execute(wlan_port);
         } else {
             TcpFilesystemAdapter filesystem_port(session);
             if (match.kind == firmware::core::CommandKind::make_directory) {

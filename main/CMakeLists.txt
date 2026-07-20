@@ -21,6 +21,7 @@ idf_component_register(
         "tcp_serial_number_adapter.cpp"
         "tcp_runtime_command_adapter.cpp"
         "tcp_filesystem_adapter.cpp"
+        "tcp_wlan_scan_adapter.cpp"
         "tcp_control_adapter.cpp"
         "recording_request_state.cpp"
     REQUIRES
@@ -29,6 +30,7 @@ idf_component_register(
         driver
         esp_driver_gpio
         esp_driver_uart
+        esp_wifi
         nvs_flash
         spiffs
         esp_http_server
