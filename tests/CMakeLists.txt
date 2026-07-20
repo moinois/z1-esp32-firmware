@@ -16,6 +16,7 @@ add_executable(
     test_configuration_get.cpp
     test_configuration_set.cpp
     test_directory_listing.cpp
+    test_diagnostic_capture.cpp
     test_frame.cpp
     test_live_configuration.cpp
     test_file_transfer_paths.cpp
