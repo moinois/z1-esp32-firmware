@@ -106,6 +106,7 @@ add_executable(
     test_tcp_frame_dispatcher.cpp
     test_controller_frame_forwarder.cpp
     test_local_command_classifier.cpp
+    test_local_command_queue.cpp
     test_wlan_request.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
