@@ -12,7 +12,10 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | HFT-001--HFT-003 transfer start and path validation | Core implementation | Yes | Service integration pending |
 | HFT-010--HFT-011 cache path mapping | Core implementation | Yes | Directory adapter pending |
 | HFT-013 cached MD5 extraction | Core implementation | Yes | Storage adapter pending |
+| HFT-014 cache base preparation | Download port contract | Invocation verified | Filesystem adapter pending |
 | HFT-005--HFT-007 start admission and owner mailbox | Application implementation | Yes | Ownership and service integration pending |
+| HFTD-001--HFTD-010 host download | Application implementation with replaceable port | Yes | Filesystem, transport, and ownership adapters pending |
+| HFT-020--HFT-021, HFT-023, HFT-025 download timing and errors | Application implementation | Yes for download | Runtime clock integration pending |
 | CMD-001--CMD-003 recognition and limits | Core implementation | Partial: 001, 003 | Not required |
 | ROUTE-001--ROUTE-018 routing policy | Application implementation | Yes | Transport integration pending |
 | OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | Terminal service integration pending |
