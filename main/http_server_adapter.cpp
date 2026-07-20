@@ -3,6 +3,7 @@
 
 #include "esp_err.h"
 #include "esp_http_server.h"
+#include "esp_partition.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
@@ -17,7 +18,9 @@
 #include "firmware/core/multipart_extractor.hpp"
 #include "firmware/core/multipart_policy.hpp"
 #include "firmware/application/direct_application_update.hpp"
+#include "firmware/application/direct_web_volume_update.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdint>
 #include <optional>
@@ -74,6 +77,60 @@ public:
 private:
     httpd_req_t* request_;
     firmware::target::OtaUpdateAdapter ota_;
+};
+
+// Bridges raw web-volume writes to the ESP-IDF SPIFFS data partition.
+class DirectHttpWebVolumePort final
+    : public firmware::application::DirectWebVolumeUpdatePort {
+public:
+    explicit DirectHttpWebVolumePort(httpd_req_t* request) : request_(request) {}
+
+    // Locates the complete SPIFFS partition without unmounting it.
+    std::optional<std::size_t> partition_size() override {
+        partition_ = esp_partition_find_first(
+            ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, nullptr);
+        if (partition_ == nullptr) {
+            return std::nullopt;
+        }
+        return partition_->size;
+    }
+
+    // Erases every byte before offset-zero content is written.
+    bool erase_partition() override {
+        return partition_ != nullptr &&
+               esp_partition_erase_range(partition_, 0U, partition_->size) == ESP_OK;
+    }
+
+    // Writes the extracted image at the beginning of the selected partition.
+    bool write_content(firmware::core::BytesView content) override {
+        if (partition_ == nullptr) {
+            return false;
+        }
+        if (content.size() == 0U) {
+            return true;
+        }
+        return esp_partition_write(partition_, 0U, content.data(), content.size()) == ESP_OK;
+    }
+
+    // Sends the portable update result through the HTTP request.
+    void send_response(std::uint16_t status, std::string_view body) override {
+        httpd_resp_set_status(request_,
+                              status == 200U ? "200 OK" : "500 Internal Server Error");
+        httpd_resp_set_type(request_, "text/html");
+        httpd_resp_send(request_, body.data(), body.size());
+    }
+
+    // Delays in the FreeRTOS task before rebooting.
+    void delay_milliseconds(std::uint32_t milliseconds) override {
+        vTaskDelay(pdMS_TO_TICKS(milliseconds));
+    }
+
+    // Reboots after a successful web-volume replacement.
+    void restart() override { esp_restart(); }
+
+private:
+    httpd_req_t* request_;
+    const esp_partition_t* partition_ = nullptr;
 };
 
 // Reads SPIFFS files through the standard C file API used by VFS.
@@ -225,6 +282,64 @@ esp_err_t firmware_update_handler(httpd_req_t* request) {
     return ESP_OK;
 }
 
+// Extracts the first multipart part and applies it as a raw web-volume image.
+esp_err_t web_volume_update_handler(httpd_req_t* request) {
+    const std::size_t header_length =
+        httpd_req_get_hdr_value_len(request, "Content-Type");
+    if (header_length == 0U ||
+        header_length >= firmware::core::web_update::content_type_capacity) {
+        httpd_resp_set_status(request, "400 Bad Request");
+        return httpd_resp_send(request, "Invalid multipart Content-Type",
+                               HTTPD_RESP_USE_STRLEN);
+    }
+    std::string content_type(header_length + 1U, '\0');
+    if (httpd_req_get_hdr_value_str(request, "Content-Type", content_type.data(),
+                                    content_type.size()) != ESP_OK) {
+        httpd_resp_set_status(request, "400 Bad Request");
+        return httpd_resp_send(request, "Invalid multipart Content-Type",
+                               HTTPD_RESP_USE_STRLEN);
+    }
+    content_type.resize(header_length);
+    const auto boundary = firmware::core::parse_multipart_content_type(content_type);
+    if (!boundary.has_value()) {
+        httpd_resp_set_status(request, "400 Bad Request");
+        return httpd_resp_send(request, "Invalid multipart request",
+                               HTTPD_RESP_USE_STRLEN);
+    }
+    firmware::core::MultipartPartExtractor extractor(*boundary);
+    std::vector<std::uint8_t> block(1024U);
+    std::size_t received = 0U;
+    while (received < static_cast<std::size_t>(request->content_len)) {
+        const std::size_t remaining =
+            static_cast<std::size_t>(request->content_len) - received;
+        const int count = httpd_req_recv(
+            request, reinterpret_cast<char*>(block.data()),
+            std::min(block.size(), remaining));
+        if (count <= 0) {
+            httpd_resp_set_status(request, "400 Bad Request");
+            return httpd_resp_send(request, "Bad Request", HTTPD_RESP_USE_STRLEN);
+        }
+        received += static_cast<std::size_t>(count);
+        const bool final_block =
+            received == static_cast<std::size_t>(request->content_len);
+        if (!extractor.feed(
+                {block.data(), static_cast<std::size_t>(count)}, final_block)) {
+            httpd_resp_set_status(request, "400 Bad Request");
+            return httpd_resp_send(request, "Invalid multipart request",
+                                   HTTPD_RESP_USE_STRLEN);
+        }
+    }
+    if (extractor.status() != firmware::core::MultipartExtractStatus::complete) {
+        httpd_resp_set_status(request, "400 Bad Request");
+        return httpd_resp_send(request, "Invalid multipart request",
+                               HTTPD_RESP_USE_STRLEN);
+    }
+    DirectHttpWebVolumePort port(request);
+    firmware::application::DirectWebVolumeUpdateService service;
+    static_cast<void>(service.apply(extractor.content(), port));
+    return ESP_OK;
+}
+
 #if CONFIG_HTTPD_WS_SUPPORT
 // Receives one video WebSocket frame and applies the shared message boundary.
 esp_err_t video_websocket_handler(httpd_req_t* request) {
@@ -272,6 +387,12 @@ void register_main_handlers(httpd_handle_t handle) {
         .handler = firmware_update_handler,
         .user_ctx = nullptr,
     };
+    static const httpd_uri_t web_volume_update_uri{
+        .uri = "/updateffs",
+        .method = HTTP_POST,
+        .handler = web_volume_update_handler,
+        .user_ctx = nullptr,
+    };
 #if CONFIG_HTTPD_WS_SUPPORT
     static const httpd_uri_t video_websocket_uri{
         .uri = "/ws_video",
@@ -291,6 +412,7 @@ void register_main_handlers(httpd_handle_t handle) {
     httpd_register_uri_handler(handle, &firmware_info_uri);
     httpd_register_uri_handler(handle, &static_file_uri);
     httpd_register_uri_handler(handle, &firmware_update_uri);
+    httpd_register_uri_handler(handle, &web_volume_update_uri);
 #if CONFIG_HTTPD_WS_SUPPORT
     httpd_register_uri_handler(handle, &video_websocket_uri);
     httpd_register_uri_handler(handle, &preview_websocket_uri);

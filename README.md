@@ -267,6 +267,7 @@ The first core-to-periphery development slice contains:
 - Update boot processing reads the persisted OTA phase and clears completed phase 4 before retrying aggregate work;
 - HTTP target responses preserve the portable 400, 404, 405, 413, and 500 status mapping;
 - HTTP POST `/update` parses bounded multipart input in 1024-byte blocks and applies the first part through the ESP-IDF OTA adapter;
+- HTTP POST `/updateffs` parses the same multipart stream and writes the first part to the complete SPIFFS partition without unmounting it;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
