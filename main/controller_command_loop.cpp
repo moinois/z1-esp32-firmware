@@ -25,6 +25,7 @@
 #include "firmware/application/controller_firmware_transfer.hpp"
 #include "firmware/application/controller_config_transfer.hpp"
 #include "firmware/application/controller_factory_transfer.hpp"
+#include "firmware/application/local_command_queue.hpp"
 #include "firmware/application/play_controller.hpp"
 #include "firmware/core/protocol_constants.hpp"
 
@@ -78,6 +79,7 @@ void controller_command_task(void*) {
     ControllerPlayAdapter play_port(uart);
     firmware::core::StreamDecoder decoder(
         firmware::core::StreamPolicy::controller_uart());
+    firmware::application::LocalCommandQueue local_commands;
     firmware::application::ControllerQueryScheduler query_scheduler(
         static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL));
     std::uint8_t input[256];
@@ -127,22 +129,35 @@ void controller_command_task(void*) {
             }
             dispatcher.dispatch(frame);
             if (frame.type != firmware::core::protocol::general_command) continue;
-            const std::string_view command(
-                reinterpret_cast<const char*>(frame.payload.data()),
-                frame.payload.size());
             const auto match = firmware::core::recognize_command(frame.payload);
+            if (match.kind == firmware::core::CommandKind::serial_get ||
+                match.kind == firmware::core::CommandKind::serial_set ||
+                match.kind == firmware::core::CommandKind::record_start ||
+                match.kind == firmware::core::CommandKind::record_stop) {
+                static_cast<void>(local_commands.enqueue(frame));
+            }
+        }
+        if (const auto local_frame = local_commands.dequeue();
+            local_frame.has_value()) {
+            const std::string_view command(
+                reinterpret_cast<const char*>(local_frame->payload.data()),
+                local_frame->payload.size());
+            const auto match = firmware::core::recognize_command(
+                local_frame->payload);
             if (match.kind == firmware::core::CommandKind::serial_get) {
                 serial_service.handle_get(command);
             } else if (match.kind == firmware::core::CommandKind::serial_set) {
                 serial_service.handle_set(command);
-            } else if (match.kind == firmware::core::CommandKind::record_start ||
-                       match.kind == firmware::core::CommandKind::record_stop) {
+            } else {
                 const auto result = firmware::application::handle_recording_command(
                     match.kind, recording_state.requested());
                 recording_state.set_requested(result.requested);
                 const auto encoded = firmware::core::encode_frame(result.response);
-                if (!encoded.empty()) uart.write(encoded);
+                if (!encoded.empty()) {
+                    static_cast<void>(uart.write(encoded));
+                }
             }
+            vTaskDelay(pdMS_TO_TICKS(10U));
         }
     }
 }
