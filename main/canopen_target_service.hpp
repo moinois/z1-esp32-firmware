@@ -5,6 +5,10 @@
 
 #include "firmware/application/can_output_monitor.hpp"
 #include "firmware/application/canopen_service.hpp"
+#include "firmware/core/canopen_sdo_mailbox.hpp"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 #include <cstdint>
 #include <string_view>
@@ -32,6 +36,16 @@ public:
     void log_info(std::string_view tag,
                   std::string_view message) override;
 
+    // Performs one serialized expedited SDO upload against a remote node.
+    std::optional<std::uint32_t> read_remote_u32(
+        std::uint8_t node, std::uint16_t index, std::uint8_t subindex,
+        std::uint32_t timeout_milliseconds);
+
+    // Performs one serialized expedited SDO download against a remote node.
+    bool write_remote_u32(std::uint8_t node, std::uint16_t index,
+                          std::uint8_t subindex, std::uint32_t value,
+                          std::uint32_t timeout_milliseconds);
+
 private:
     // Adapts the FreeRTOS task entry point back to the owning instance.
     static void task_entry(void* context);
@@ -42,6 +56,13 @@ private:
     CanTwaiAdapter adapter_;
     application::CanopenService service_;
     application::CanOutputMonitor output_monitor_;
+    core::CanopenSdoMailbox sdo_mailbox_;
+    SemaphoreHandle_t sdo_mutex_ = nullptr;
+    SemaphoreHandle_t sdo_response_ = nullptr;
+    std::optional<core::SdoClientResponse> sdo_result_;
 };
+
+// Returns the service instance started by the composition root, when available.
+CanopenTargetService* active_canopen_target_service();
 
 }  // namespace firmware::target

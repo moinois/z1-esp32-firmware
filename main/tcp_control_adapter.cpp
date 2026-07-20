@@ -21,6 +21,7 @@
 #include "tcp_configuration_file_adapter.hpp"
 #include "tcp_configuration_adapter.hpp"
 #include "runtime_status_adapter.hpp"
+#include "canopen_target_service.hpp"
 #include "play_runtime_state.hpp"
 #include "tcp_wlan_scan_adapter.hpp"
 #include "tcp_wlan_station_adapter.hpp"
@@ -35,6 +36,7 @@
 #include "firmware/application/configuration_files.hpp"
 #include "firmware/application/configuration_get.hpp"
 #include "firmware/application/configuration_set.hpp"
+#include "firmware/application/m942_exercise.hpp"
 #include "firmware/application/controller_snapshots.hpp"
 #include "firmware/application/wlan_command.hpp"
 #include "firmware/application/wlan_request.hpp"
@@ -71,6 +73,53 @@ RecordingRequestState tcp_recording_state;
 firmware::application::StationRuntime tcp_station_runtime;
 firmware::application::LiveConfiguration tcp_live_configuration;
 
+// Adapts one TCP-origin M942 request to the shared CANopen SDO service.
+class TcpM942Port final : public firmware::application::M942ExercisePort {
+public:
+    explicit TcpM942Port(firmware::application::TcpClientSession& session)
+        : session_(session) {}
+
+    void forward_to_controller(const firmware::core::Frame& frame) override {
+        static_cast<void>(enqueue_controller_frame(frame));
+    }
+
+    void respond(const firmware::application::HostIdentity& host,
+                 const firmware::core::Frame& frame) override {
+        if (host == session_.identity()) static_cast<void>(session_.queue_frame(frame));
+    }
+
+    std::uint64_t monotonic_milliseconds() const override {
+        return static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
+    }
+
+    void delay_milliseconds(std::uint32_t duration) override {
+        vTaskDelay(pdMS_TO_TICKS(duration));
+    }
+
+    void lock_sdo_client() override {}
+    void unlock_sdo_client() override {}
+
+    std::optional<std::uint32_t> read_remote_u32(
+        std::uint8_t node, std::uint16_t index, std::uint8_t subindex,
+        std::uint32_t timeout, std::uint64_t) override {
+        auto* service = active_canopen_target_service();
+        return service == nullptr
+                   ? std::nullopt
+                   : service->read_remote_u32(node, index, subindex, timeout);
+    }
+
+    bool write_remote_u32(std::uint8_t node, std::uint16_t index,
+                          std::uint8_t subindex, std::uint32_t value,
+                          std::uint32_t timeout, std::uint64_t) override {
+        auto* service = active_canopen_target_service();
+        return service != nullptr && service->write_remote_u32(
+            node, index, subindex, value, timeout);
+    }
+
+private:
+    firmware::application::TcpClientSession& session_;
+};
+
 void forward_tcp_controller_frame(firmware::application::TcpClientSession&,
                                   const firmware::core::Frame& frame) {
     static_cast<void>(enqueue_controller_frame(frame));
@@ -105,6 +154,14 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
         return;
     }
     const auto match = firmware::core::recognize_command(frame.payload);
+    if (match.kind == firmware::core::CommandKind::can_exercise) {
+        TcpM942Port m942_port(session);
+        firmware::application::M942ExerciseService exercise(m942_port);
+        if (exercise.submit(session.identity(), frame, true)) {
+            exercise.run();
+        }
+        return;
+    }
     if (match.kind == firmware::core::CommandKind::upgrade ||
         match.kind == firmware::core::CommandKind::reset) {
         request_firmware_update_processing();
