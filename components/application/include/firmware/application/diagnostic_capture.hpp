@@ -23,6 +23,9 @@ struct DiagnosticTime {
     std::uint64_t uptime_milliseconds;
 };
 
+// Formats UTC calendar time when valid and otherwise the uptime fallback.
+std::string format_diagnostic_timestamp(const DiagnosticTime& time);
+
 // Identifies capture contexts that must bypass SD buffering.
 struct CaptureContext {
     bool recursive = false;

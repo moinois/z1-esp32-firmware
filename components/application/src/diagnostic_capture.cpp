@@ -45,8 +45,9 @@ std::string remove_ansi(std::string_view message) {
     return plain;
 }
 
-// Formats UTC calendar time when valid and otherwise the uptime fallback.
-std::string format_timestamp(const DiagnosticTime& time) {
+}  // namespace
+
+std::string format_diagnostic_timestamp(const DiagnosticTime& time) {
     char timestamp[40];
     int length = 0;
     if (time.year >= first_valid_utc_year) {
@@ -71,8 +72,6 @@ std::string format_timestamp(const DiagnosticTime& time) {
     return {timestamp, static_cast<std::size_t>(length)};
 }
 
-}  // namespace
-
 void DiagnosticCapture::set_logging_active(bool active) {
     logging_active_ = active;
 }
@@ -94,7 +93,8 @@ std::size_t DiagnosticCapture::capture(std::string_view message,
     }
 
     const std::string bounded_text(printed.begin(), printed.end());
-    const std::string timestamp = format_timestamp(port.current_time());
+    const std::string timestamp =
+        format_diagnostic_timestamp(port.current_time());
     std::string record = "[" + timestamp + "] " + remove_ansi(bounded_text);
     pending_.emplace_back(record.begin(), record.end());
     return untruncated_length;

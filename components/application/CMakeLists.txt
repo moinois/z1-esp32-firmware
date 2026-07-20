@@ -5,6 +5,7 @@ set(APPLICATION_SOURCES
     src/configuration_set.cpp
     src/directory_listing.cpp
     src/diagnostic_capture.cpp
+    src/diagnostic_log_writer.cpp
     src/file_transfer_admission.cpp
     src/file_download.cpp
     src/file_hash_command.cpp
