@@ -100,6 +100,7 @@ add_executable(
     test_storage_retention_service.cpp
     test_tcp_transmit_queue.cpp
     test_tcp_frame_sender.cpp
+    test_tcp_client_session.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
 target_compile_options(core_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)

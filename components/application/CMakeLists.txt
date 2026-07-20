@@ -54,6 +54,7 @@ set(APPLICATION_SOURCES
     src/storage_retention_service.cpp
     src/tcp_transmit_queue.cpp
     src/tcp_frame_sender.cpp
+    src/tcp_client_session.cpp
     src/play_line_reader.cpp
     src/play_session.cpp
     src/router.cpp
