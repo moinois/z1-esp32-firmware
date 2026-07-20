@@ -4,6 +4,7 @@ set(APPLICATION_SOURCES
     src/configuration_files.cpp
     src/configuration_get.cpp
     src/configuration_set.cpp
+    src/connectivity_startup.cpp
     src/directory_listing.cpp
     src/diagnostic_capture.cpp
     src/diagnostic_log_writer.cpp

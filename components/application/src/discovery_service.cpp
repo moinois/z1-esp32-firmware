@@ -1,6 +1,7 @@
 // Implements discovery socket lifecycle, periodic sends, and temporary bursts.
 #include "firmware/application/discovery_service.hpp"
 
+#include "firmware/application/connectivity_defaults.hpp"
 #include "firmware/core/discovery_policy.hpp"
 
 #include <cstddef>
@@ -14,8 +15,6 @@ namespace firmware::application {
 namespace {
 
 constexpr std::uint16_t discovery_port = 3333U;
-constexpr std::string_view access_point_ipv4 = "192.168.4.1";
-constexpr std::string_view access_point_broadcast = "192.168.4.255";
 constexpr std::uint32_t periodic_interval_milliseconds = 500U;
 constexpr std::uint32_t socket_retry_milliseconds = 2000U;
 constexpr std::size_t burst_copy_count = 3U;
@@ -54,9 +53,10 @@ void DiscoveryService::periodic_cycle(
                               station_payload);
     }
     const std::string access_point_payload = core::format_discovery_payload(
-        machine_name_, access_point_ipv4, active_tcp_clients, state);
-    port_.send_long_lived(access_point_broadcast, discovery_port,
-                          access_point_payload);
+        machine_name_, connectivity_defaults::access_point_ipv4,
+        active_tcp_clients, state);
+    port_.send_long_lived(connectivity_defaults::access_point_broadcast,
+                          discovery_port, access_point_payload);
     port_.delay_milliseconds(periodic_interval_milliseconds);
 }
 

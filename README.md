@@ -53,6 +53,8 @@ The first core-to-periphery development slice contains:
   periodic flush, size rotation, short-write tracking, and bounded shutdown;
 - connectivity machine-name derivation with MAC fallback and wrapping
   congestion-based access-point channel selection;
+- required station-scan then AP/station startup with explicit radio, DHCP,
+  hostname, socket-capacity, and failure settings;
 - bounded Wi-Fi scan filtering with raw-SSID duplicate semantics, strongest
   observation retention, stable RSSI ordering, and exact result formatting;
 - bounded WLAN command parsing and user-scan orchestration with exact scan
@@ -99,7 +101,7 @@ The first core-to-periphery development slice contains:
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 297 tests. The firmware also builds successfully as
+The current host suite has 302 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).

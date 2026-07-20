@@ -34,7 +34,9 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | LOG-001--LOG-006 diagnostic capture and record formatting | Application implementation with replaceable output/buffer/clock port | Yes | ESP-IDF log-hook and writer integration pending |
 | LOG-007--LOG-013 diagnostic log writer | Application implementation with replaceable buffered-file port | Yes for session, flush, rotation, short write, and shutdown policy | Filesystem/task integration pending |
 | NET-001--NET-002 machine name | Core implementation | Yes | Configuration/MAC adapter integration pending |
-| NET-004--NET-005 AP channel selection | Core implementation | Yes for counting, wrapping, tie, and fallback | Wi-Fi scan/startup integration pending |
+| NET-004--NET-005 AP channel selection | Core implementation | Yes for counting, wrapping, tie, and fallback | ESP-IDF Wi-Fi adapter pending |
+| NET-003--NET-005, NET-008 connectivity startup | Application implementation with replaceable Wi-Fi/network port | Yes for order, scan settings, AP/STA settings, fallback, and fatal failures | ESP-IDF Wi-Fi and network-interface adapters pending |
+| NET-006--NET-007 socket capacity and hostname | Target defaults and application startup configuration | Exact values host verified; target build verified | Runtime resource-exhaustion verification pending |
 | NET-010--NET-017 saved credentials and automatic retry | Application implementation with replaceable storage, scheduler, station, and clock port | Yes for storage outcomes, exact configuration, scheduling, retry, and nonfatal failures | ESP-IDF station-event, task, and persistent-store adapters pending |
 | NET-020--NET-026 manual station lifecycle | Application implementation with replaceable station API and persistence port | Yes for connection phases, event data, RSSI, persistence outcome, errors, and disconnect retention | ESP-IDF station-event and persistent-store adapters pending |
 | NET-030--NET-033 Wi-Fi scan policy | Core result policy and application command implementation with replaceable Wi-Fi port | Yes | ESP-IDF Wi-Fi adapter pending |
