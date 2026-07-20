@@ -2,6 +2,7 @@
 #include "controller_transfer_adapter.hpp"
 
 #include "controller_uart_adapter.hpp"
+#include "runtime_status_adapter.hpp"
 
 #include "firmware/core/frame.hpp"
 
@@ -77,7 +78,31 @@ bool ControllerTransferAdapter::send(firmware::core::Frame frame) {
 }
 
 void ControllerTransferAdapter::publish(
-    firmware::application::FirmwareTransferEvent, std::uint32_t,
-    std::uint32_t) {}
+    firmware::application::FirmwareTransferEvent event, std::uint32_t index,
+    std::uint32_t frame_count) {
+    constexpr std::uint8_t controller_phase = 2U;
+    constexpr std::uint8_t error_phase = 3U;
+    constexpr std::uint8_t success_phase = 4U;
+    switch (event) {
+        case firmware::application::FirmwareTransferEvent::started:
+            publish_controller_transfer_status(controller_phase, 0U);
+            break;
+        case firmware::application::FirmwareTransferEvent::progress: {
+            const std::uint32_t progress = frame_count == 0U
+                ? 0U
+                : (100U * index + frame_count / 2U) / frame_count;
+            publish_controller_transfer_status(controller_phase, progress);
+            break;
+        }
+        case firmware::application::FirmwareTransferEvent::completed:
+            publish_controller_transfer_status(success_phase, 100U);
+            break;
+        case firmware::application::FirmwareTransferEvent::error:
+        case firmware::application::FirmwareTransferEvent::cancelled:
+        case firmware::application::FirmwareTransferEvent::timed_out:
+            publish_controller_transfer_status(error_phase, 0U);
+            break;
+    }
+}
 
 }  // namespace firmware::target

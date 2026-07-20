@@ -15,6 +15,7 @@ namespace firmware::target {
 namespace {
 firmware::application::ControllerSnapshots snapshots;
 std::atomic_uint8_t update_phase{0U};
+std::atomic_uint8_t update_progress{0U};
 }  // namespace
 
 RuntimeStatusAdapter::RuntimeStatusAdapter(
@@ -45,7 +46,8 @@ RuntimeStatusAdapter::sd_capacity() const {
 }
 
 firmware::application::UpdateStatus RuntimeStatusAdapter::update_status() const {
-    return {update_phase.load(std::memory_order_acquire), 0U};
+    return {update_phase.load(std::memory_order_acquire),
+            update_progress.load(std::memory_order_acquire)};
 }
 
 std::optional<std::int32_t> RuntimeStatusAdapter::station_rssi() const {
@@ -61,6 +63,14 @@ firmware::application::ControllerSnapshots& shared_controller_snapshots() {
 }
 
 void publish_runtime_update_phase(std::uint8_t phase) {
+    update_phase.store(phase, std::memory_order_release);
+}
+
+void publish_controller_transfer_status(std::uint8_t phase,
+                                        std::uint32_t progress) {
+    update_progress.store(
+        static_cast<std::uint8_t>(progress > 100U ? 100U : progress),
+        std::memory_order_release);
     update_phase.store(phase, std::memory_order_release);
 }
 
