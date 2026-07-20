@@ -11,6 +11,9 @@
 #include "firmware/application/router.hpp"
 #include "firmware/application/tcp_frame_dispatcher.hpp"
 #include "controller_command_loop.hpp"
+#include "recording_request_state.hpp"
+#include "firmware/application/recording_commands.hpp"
+#include "firmware/core/text.hpp"
 
 #include <arpa/inet.h>
 #include <cerrno>
@@ -33,16 +36,33 @@ constexpr int maximum_clients = 4;
 std::atomic_int active_clients{0};
 std::atomic_uint32_t next_generation{1U};
 firmware::application::Router tcp_router;
+RecordingRequestState tcp_recording_state;
 
 void forward_tcp_controller_frame(firmware::application::TcpClientSession&,
                                   const firmware::core::Frame& frame) {
     static_cast<void>(enqueue_controller_frame(frame));
 }
 
+void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
+                            const firmware::core::Frame& frame) {
+    if (frame.type != firmware::core::protocol::general_command) {
+        return;
+    }
+    const auto match = firmware::core::recognize_command(frame.payload);
+    if (match.kind != firmware::core::CommandKind::record_start
+        && match.kind != firmware::core::CommandKind::record_stop) {
+        return;
+    }
+    const auto result = firmware::application::handle_recording_command(
+        match.kind, tcp_recording_state.requested());
+    tcp_recording_state.set_requested(result.requested);
+    static_cast<void>(session.queue_frame(result.response));
+}
+
 firmware::application::TcpFrameDispatcher tcp_dispatcher(
     tcp_router,
     firmware::application::TcpDispatchSinks{forward_tcp_controller_frame,
-                                            {}, {}, {}});
+                                            handle_tcp_local_frame, {}, {}});
 
 struct TcpClientContext {
     int socket;
