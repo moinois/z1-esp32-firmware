@@ -3,6 +3,7 @@
 #include "esp_err.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_mac.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
@@ -30,8 +31,13 @@
 
 #include "firmware/application/web_volume_startup.hpp"
 #include "firmware/application/connectivity_startup.hpp"
+#include "firmware/core/network_policy.hpp"
 
+#include <array>
+#include <cstdio>
 #include <cstdint>
+#include <string>
+#include <vector>
 
 namespace {
 constexpr gpio_num_t heartbeat_gpio = GPIO_NUM_0;
@@ -39,6 +45,24 @@ constexpr std::uint32_t heartbeat_period_milliseconds = 1000U;
 constexpr std::uint32_t heartbeat_stack_size = 2048U;
 constexpr UBaseType_t heartbeat_priority = 3U;
 constexpr char tag[] = "MAIN";
+
+// Loads the optional machine-name configuration and derives the MAC fallback.
+std::string configured_machine_name() {
+    std::vector<std::string> lines;
+    std::FILE* file = std::fopen("/sd/config.txt", "rb");
+    if (file != nullptr) {
+        char buffer[256];
+        while (std::fgets(buffer, sizeof(buffer), file) != nullptr) {
+            lines.emplace_back(buffer);
+        }
+        std::fclose(file);
+    }
+    std::array<std::uint8_t, 6U> station_mac{};
+    if (esp_read_mac(station_mac.data(), ESP_MAC_WIFI_STA) != ESP_OK) {
+        station_mac.fill(0U);
+    }
+    return firmware::core::derive_machine_name(lines, station_mac);
+}
 
 // Initializes NVS with the erase-and-retry recovery required during early boot.
 bool initialize_persistent_store() {
@@ -106,8 +130,9 @@ extern "C" void app_main() {
         esp_restart();
     }
     static firmware::target::ConnectivityStartupAdapter connectivity_adapter;
+    const std::string machine_name = configured_machine_name();
     if (!firmware::application::ConnectivityStartup::start(connectivity_adapter,
-                                                           "espressif")) {
+                                                           machine_name)) {
         ESP_LOGE(tag, "Connectivity startup failed; restarting");
         esp_restart();
     }
