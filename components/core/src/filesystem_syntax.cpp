@@ -91,4 +91,52 @@ std::optional<DirectoryListArguments> parse_directory_list_arguments(
     };
 }
 
+std::optional<std::string> parse_remove_path(BytesView argument) {
+    std::string decoded = decode_escaped(argument);
+    const std::size_t first = decoded.find_first_not_of(' ');
+    if (first == std::string::npos) {
+        return std::nullopt;
+    }
+    decoded.erase(0U, first);
+    const bool recursive_option =
+        decoded.size() >= 3U && decoded[0] == '-' &&
+        (decoded[1] == 'r' || decoded[1] == 'R') && decoded[2] == ' ';
+    if (recursive_option) {
+        decoded.erase(0U, 3U);
+    }
+
+    std::string path = clean_path_text(std::move(decoded));
+    if (path.empty()) {
+        return std::nullopt;
+    }
+    return normalize_path(std::move(path));
+}
+
+std::optional<MovePaths> parse_move_paths(BytesView argument) {
+    std::string decoded = decode_escaped(argument);
+    const std::size_t first = decoded.find_first_not_of(' ');
+    if (first == std::string::npos) {
+        return std::nullopt;
+    }
+    decoded.erase(0U, first);
+
+    std::size_t separator = decoded.find(" /");
+    if (separator == std::string::npos) {
+        separator = decoded.find(' ');
+    }
+    if (separator == std::string::npos) {
+        return std::nullopt;
+    }
+
+    std::string source = clean_path_text(decoded.substr(0U, separator));
+    std::string destination = clean_path_text(decoded.substr(separator + 1U));
+    if (source.empty() || destination.empty()) {
+        return std::nullopt;
+    }
+    return MovePaths{
+        normalize_path(std::move(source)),
+        normalize_path(std::move(destination)),
+    };
+}
+
 }  // namespace firmware::core

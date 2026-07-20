@@ -4,6 +4,7 @@ set(APPLICATION_SOURCES
     src/file_transfer_admission.cpp
     src/file_download.cpp
     src/file_upload.cpp
+    src/filesystem_commands.cpp
     src/controller_config_transfer.cpp
     src/controller_factory_transfer.cpp
     src/controller_firmware_transfer.cpp
