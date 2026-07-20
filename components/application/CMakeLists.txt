@@ -59,6 +59,7 @@ set(APPLICATION_SOURCES
     src/controller_frame_forwarder.cpp
     src/local_command_classifier.cpp
     src/local_command_queue.cpp
+    src/usb_transmit_queue.cpp
     src/wlan_request.cpp
     src/play_line_reader.cpp
     src/play_session.cpp

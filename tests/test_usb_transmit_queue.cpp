@@ -1,0 +1,28 @@
+// Verifies USB transmit capacity, bounds, and completion-driven FIFO removal.
+#include "test.hpp"
+
+#include "firmware/application/usb_transmit_queue.hpp"
+
+using firmware::application::UsbTransmitQueue;
+using firmware::core::ByteVector;
+
+TEST_CASE(usb_007_queue_accepts_30_frames_and_preserves_fifo_order) {
+    UsbTransmitQueue queue;
+    for (std::uint8_t value = 0U; value < 30U; ++value) {
+        REQUIRE(queue.enqueue(ByteVector{value}));
+    }
+    REQUIRE(!queue.enqueue(ByteVector{0xffU}));
+    REQUIRE_EQ(queue.size(), 30U);
+    REQUIRE_EQ(queue.front()->front(), 0U);
+    queue.pop_front();
+    REQUIRE_EQ(queue.front()->front(), 1U);
+}
+
+TEST_CASE(usb_007_queue_rejects_empty_and_oversized_frames) {
+    UsbTransmitQueue queue;
+    REQUIRE(!queue.enqueue(ByteVector{}));
+    REQUIRE(queue.enqueue(ByteVector(UsbTransmitQueue::maximum_frame_size, 0x5aU)));
+    REQUIRE(!queue.enqueue(
+        ByteVector(UsbTransmitQueue::maximum_frame_size + 1U, 0x5aU)));
+}
+
