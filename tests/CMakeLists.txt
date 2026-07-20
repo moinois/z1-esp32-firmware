@@ -78,6 +78,7 @@ add_executable(
     test_multipart_policy.cpp
     test_multipart_extractor.cpp
     test_web_routes.cpp
+    test_static_file_server.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
 target_compile_options(core_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)

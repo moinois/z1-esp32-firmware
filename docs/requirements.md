@@ -100,6 +100,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | WEBUP-001 multipart Content-Type policy | Portable bounded boundary parser | Yes for 1--512-byte header limits, required marker, suffix preservation, and matching outer quotes; clean target build verified | HTTP header adapter pending |
 | WEBUP-002--WEBUP-003 multipart first-part extraction | Portable streaming extractor with replaceable transport feed | Yes for split headers/boundaries, first-marker termination, 4096-byte header limit, terminator-at-limit handling, and EOF after headers; clean target build verified | HTTP receive-loop adapter pending |
 | WEB-003, WEB-008 main/video route selection | Portable case-sensitive route table | Yes for all main endpoints, both WebSockets, query exclusion, GET static fallback, and method rejection; clean target build verified | ESP-IDF handler registration pending |
+| WEB-011 static-file serving | Application service with replaceable file and response ports | Yes for exact 404 body, path resolution, MIME selection, 256-byte chunks, terminating empty chunk, and close behavior; clean target build verified | SPIFFS and HTTP response adapters pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
 | HW-004--HW-005 CPU, flash, PSRAM, security | Target defaults | Build verification only | No |
