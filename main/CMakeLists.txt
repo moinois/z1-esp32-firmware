@@ -11,6 +11,7 @@ idf_component_register(
         "sd_card_adapter.cpp"
         "diagnostic_capture_adapter.cpp"
         "nvs_key_value_adapter.cpp"
+        "nvs_runtime_counter_adapter.cpp"
     REQUIRES
         application
         core

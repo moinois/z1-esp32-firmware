@@ -15,6 +15,11 @@ struct NvsStringRead {
     std::string value;
 };
 
+struct NvsU64Read {
+    NvsReadState state = NvsReadState::failure;
+    std::uint64_t value = 0U;
+};
+
 // Reads and writes NVS values while keeping namespace/key handling centralized.
 class NvsKeyValueAdapter {
 public:
@@ -22,6 +27,8 @@ public:
                               std::string_view key) const;
     std::optional<std::uint64_t> read_u64(std::string_view name_space,
                                           std::string_view key) const;
+    NvsU64Read read_u64_state(std::string_view name_space,
+                              std::string_view key) const;
     std::optional<std::int64_t> read_i64(std::string_view name_space,
                                          std::string_view key) const;
     bool write_string(std::string_view name_space, std::string_view key,

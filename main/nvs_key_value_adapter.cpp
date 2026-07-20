@@ -41,12 +41,22 @@ NvsStringRead NvsKeyValueAdapter::read_string(std::string_view name_space,
 
 std::optional<std::uint64_t> NvsKeyValueAdapter::read_u64(
     std::string_view name_space, std::string_view key) const {
+    const auto result = read_u64_state(name_space, key);
+    return result.state == NvsReadState::found
+               ? std::optional<std::uint64_t>(result.value)
+               : std::nullopt;
+}
+
+NvsU64Read NvsKeyValueAdapter::read_u64_state(
+    std::string_view name_space, std::string_view key) const {
     nvs_handle_t handle = 0;
     std::uint64_t value = 0U;
-    if (!open_namespace(name_space, read_only, handle)) return std::nullopt;
+    if (!open_namespace(name_space, read_only, handle)) return {};
     const esp_err_t result = nvs_get_u64(handle, std::string(key).c_str(), &value);
     nvs_close(handle);
-    return result == ESP_OK ? std::optional<std::uint64_t>(value) : std::nullopt;
+    if (result == ESP_OK) return {NvsReadState::found, value};
+    if (result == ESP_ERR_NVS_NOT_FOUND) return {NvsReadState::missing, 0U};
+    return {};
 }
 
 std::optional<std::int64_t> NvsKeyValueAdapter::read_i64(
