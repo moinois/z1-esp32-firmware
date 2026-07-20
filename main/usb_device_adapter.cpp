@@ -21,6 +21,8 @@
 #include "firmware/application/configuration_get.hpp"
 #include "firmware/application/configuration_set.hpp"
 #include "firmware/application/configuration_files.hpp"
+#include "firmware/application/wlan_command.hpp"
+#include "firmware/application/wlan_request.hpp"
 #include "nvs_key_value_adapter.hpp"
 #include "runtime_operation_capacity.hpp"
 #include "recording_request_state.hpp"
@@ -41,6 +43,9 @@
 #include <unistd.h>
 #include "mbedtls/md5.h"
 #include <esp_timer.h>
+#include "esp_wifi.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 namespace firmware::target {
 namespace {
@@ -222,6 +227,77 @@ private:
 };
 
 UsbConfigurationFilePort configuration_file_port;
+
+// Performs blocking ESP-IDF scans and queues WLAN responses on USB.
+class UsbWlanScanPort final : public firmware::application::WlanCommandPort {
+public:
+    void stop_scan() override {
+        static_cast<void>(esp_wifi_scan_stop());
+    }
+
+    void delay_milliseconds(std::uint32_t duration) override {
+        vTaskDelay(pdMS_TO_TICKS(duration));
+    }
+
+    firmware::application::WifiScanOutcome scan(
+        const firmware::application::WifiScanConfig& config) override {
+        wifi_scan_config_t scan_config{};
+        scan_config.scan_type = config.active ? WIFI_SCAN_TYPE_ACTIVE
+                                              : WIFI_SCAN_TYPE_PASSIVE;
+        scan_config.show_hidden = config.include_hidden;
+        scan_config.scan_time.active.min = config.active_dwell_milliseconds;
+        scan_config.scan_time.active.max = config.active_dwell_milliseconds;
+        scan_config.scan_time.passive = config.passive_dwell_milliseconds;
+        if (esp_wifi_scan_start(&scan_config, true) != ESP_OK) {
+            return {false, "scan_start", {}};
+        }
+        std::uint16_t count = 0U;
+        if (esp_wifi_scan_get_ap_num(&count) != ESP_OK) {
+            return {false, "scan_count", {}};
+        }
+        count = static_cast<std::uint16_t>(
+            count > config.maximum_observations ? config.maximum_observations
+                                                 : count);
+        std::vector<wifi_ap_record_t> records(count);
+        if (count > 0U &&
+            esp_wifi_scan_get_ap_records(&count, records.data()) != ESP_OK) {
+            return {false, "scan_records", {}};
+        }
+        std::vector<firmware::core::WifiObservation> observations;
+        observations.reserve(count);
+        for (std::uint16_t index = 0U; index < count; ++index) {
+            const wifi_ap_record_t& record = records[index];
+            std::size_t length = 0U;
+            while (length < sizeof(record.ssid) && record.ssid[length] != 0U) {
+                ++length;
+            }
+            observations.push_back({
+                firmware::core::ByteVector(record.ssid, record.ssid + length),
+                record.rssi,
+                static_cast<std::uint8_t>(record.authmode)});
+        }
+        return {true, {}, std::move(observations)};
+    }
+
+    std::string connected_ssid() const override {
+        wifi_ap_record_t record{};
+        if (esp_wifi_sta_get_ap_info(&record) != ESP_OK) return {};
+        std::size_t length = 0U;
+        while (length < sizeof(record.ssid) && record.ssid[length] != 0U) {
+            ++length;
+        }
+        return std::string(reinterpret_cast<const char*>(record.ssid), length);
+    }
+
+    void send(firmware::core::Frame frame) override {
+        const auto encoded = firmware::core::encode_frame(frame);
+        if (!encoded.empty()) {
+            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+        }
+    }
+};
+
+UsbWlanScanPort wlan_scan_port;
 
 class UsbSerialPort final : public firmware::application::SerialNumberPort {
 public:
@@ -605,6 +681,18 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
             if (match.kind == firmware::core::CommandKind::md5_sum) {
                 firmware::application::FileHashCommand::execute(
                     frame.payload, hash_port);
+                continue;
+            }
+            if (match.kind == firmware::core::CommandKind::wlan) {
+                const std::string command(
+                    reinterpret_cast<const char*>(frame.payload.data()),
+                    frame.payload.size());
+                const auto request =
+                    firmware::application::parse_wlan_request(command);
+                if (request.kind == firmware::application::WlanRequestKind::scan) {
+                    firmware::application::WlanScanCommand::execute(
+                        wlan_scan_port);
+                }
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::config_restore ||
