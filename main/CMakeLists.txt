@@ -27,6 +27,7 @@ idf_component_register(
         "tcp_discovery_adapter.cpp"
         "wlan_event_adapter.cpp"
         "connectivity_startup_adapter.cpp"
+        "automatic_connection_adapter.cpp"
         "tcp_control_adapter.cpp"
         "recording_request_state.cpp"
     REQUIRES

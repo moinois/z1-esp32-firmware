@@ -7,6 +7,7 @@
 
 #include "tcp_discovery_adapter.hpp"
 #include "tcp_control_adapter.hpp"
+#include "automatic_connection_adapter.hpp"
 
 #include <lwip/inet.h>
 #include <lwip/sockets.h>
@@ -14,9 +15,13 @@
 namespace firmware::target {
 namespace {
 
-void station_event_handler(void*, esp_event_base_t base, int32_t id, void*) {
+void station_event_handler(void* context, esp_event_base_t base, int32_t id, void*) {
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
         clear_tcp_discovery_station();
+        auto* adapter = static_cast<WlanEventAdapter*>(context);
+        if (adapter->automatic_connection() != nullptr) {
+            adapter->automatic_connection()->on_station_disconnected();
+        }
         return;
     }
     if (base != IP_EVENT || id != IP_EVENT_STA_GOT_IP) {
@@ -39,11 +44,20 @@ void station_event_handler(void*, esp_event_base_t base, int32_t id, void*) {
 
 }  // namespace
 
+void WlanEventAdapter::set_automatic_connection(
+    AutomaticConnectionAdapter* adapter) {
+    automatic_connection_ = adapter;
+}
+
+AutomaticConnectionAdapter* WlanEventAdapter::automatic_connection() const {
+    return automatic_connection_;
+}
+
 void WlanEventAdapter::start() {
     static_cast<void>(esp_event_handler_register(
-        WIFI_EVENT, ESP_EVENT_ANY_ID, &station_event_handler, nullptr));
+        WIFI_EVENT, ESP_EVENT_ANY_ID, &station_event_handler, this));
     static_cast<void>(esp_event_handler_register(
-        IP_EVENT, IP_EVENT_STA_GOT_IP, &station_event_handler, nullptr));
+        IP_EVENT, IP_EVENT_STA_GOT_IP, &station_event_handler, this));
 }
 
 }  // namespace firmware::target

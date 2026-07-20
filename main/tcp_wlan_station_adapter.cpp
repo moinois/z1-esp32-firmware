@@ -86,10 +86,10 @@ firmware::application::StationApiResult
 TcpWlanStationAdapter::save_credentials(std::string_view ssid,
                                         std::string_view password) {
     NvsKeyValueAdapter nvs;
-    if (!nvs.write_string("wifi", "ssid", ssid)) {
+    if (!nvs.write_string("wifi_config", "ssid", ssid)) {
         return {false, "save_ssid"};
     }
-    if (!nvs.write_string("wifi", "password", password)) {
+    if (!nvs.write_string("wifi_config", "password", password)) {
         return {false, "save_password"};
     }
     return {true, {}};

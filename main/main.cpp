@@ -18,6 +18,7 @@
 #include "tcp_control_adapter.hpp"
 #include "wlan_event_adapter.hpp"
 #include "connectivity_startup_adapter.hpp"
+#include "automatic_connection_adapter.hpp"
 #include "diagnostic_capture_adapter.hpp"
 #include "runtime_counter_task.hpp"
 
@@ -122,7 +123,11 @@ extern "C" void app_main() {
     static firmware::target::ControllerCommandLoop controller_command_loop;
     controller_command_loop.start();
     static firmware::target::TcpControlAdapter tcp_control;
+    static firmware::application::StationRuntime automatic_station_runtime;
+    static firmware::target::AutomaticConnectionAdapter automatic_connection;
+    automatic_connection.start(automatic_station_runtime);
     static firmware::target::WlanEventAdapter wlan_events;
+    wlan_events.set_automatic_connection(&automatic_connection);
     wlan_events.start();
     tcp_control.start();
 }
