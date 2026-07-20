@@ -266,6 +266,7 @@ The first core-to-periphery development slice contains:
 - OTA phase publication persists the specified byte in NVS namespace `ota_state`, key `phase`;
 - Update boot processing reads the persisted OTA phase and clears completed phase 4 before retrying aggregate work;
 - HTTP target responses preserve the portable 400, 404, 405, 413, and 500 status mapping;
+- HTTP POST `/update` accepts a bounded request body, returns 202, and wakes the shared update task;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;

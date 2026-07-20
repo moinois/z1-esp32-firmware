@@ -9,6 +9,7 @@
 #include "firmware/application/static_file_server.hpp"
 #include "firmware/application/preview_socket_input.hpp"
 #include "firmware/core/web_static.hpp"
+#include "firmware_update_adapter.hpp"
 
 #include <cstdio>
 #include <cstdint>
@@ -122,6 +123,31 @@ esp_err_t firmware_info_handler(httpd_req_t* request) {
     return httpd_resp_send(request, payload.data(), payload.size());
 }
 
+// Accepts a bounded update request and wakes the shared update-processing task.
+esp_err_t firmware_update_handler(httpd_req_t* request) {
+    constexpr std::size_t maximum_request_body = 4096U;
+    if (request->content_len > maximum_request_body) {
+        httpd_resp_set_status(request, "413 Payload Too Large");
+        return httpd_resp_send(request, "Payload Too Large", HTTPD_RESP_USE_STRLEN);
+    }
+    std::vector<std::uint8_t> body(static_cast<std::size_t>(request->content_len));
+    std::size_t received = 0U;
+    while (received < body.size()) {
+        const int count = httpd_req_recv(
+            request, reinterpret_cast<char*>(body.data() + received),
+            body.size() - received);
+        if (count <= 0) {
+            httpd_resp_set_status(request, "400 Bad Request");
+            return httpd_resp_send(request, "Bad Request", HTTPD_RESP_USE_STRLEN);
+        }
+        received += static_cast<std::size_t>(count);
+    }
+    request_firmware_update_processing();
+    httpd_resp_set_status(request, "202 Accepted");
+    httpd_resp_set_type(request, "text/plain");
+    return httpd_resp_send(request, "Update accepted", HTTPD_RESP_USE_STRLEN);
+}
+
 #if CONFIG_HTTPD_WS_SUPPORT
 // Receives one video WebSocket frame and applies the shared message boundary.
 esp_err_t video_websocket_handler(httpd_req_t* request) {
@@ -163,6 +189,12 @@ void register_main_handlers(httpd_handle_t handle) {
         .handler = static_file_handler,
         .user_ctx = nullptr,
     };
+    static const httpd_uri_t firmware_update_uri{
+        .uri = "/update",
+        .method = HTTP_POST,
+        .handler = firmware_update_handler,
+        .user_ctx = nullptr,
+    };
 #if CONFIG_HTTPD_WS_SUPPORT
     static const httpd_uri_t video_websocket_uri{
         .uri = "/ws_video",
@@ -181,6 +213,7 @@ void register_main_handlers(httpd_handle_t handle) {
 #endif
     httpd_register_uri_handler(handle, &firmware_info_uri);
     httpd_register_uri_handler(handle, &static_file_uri);
+    httpd_register_uri_handler(handle, &firmware_update_uri);
 #if CONFIG_HTTPD_WS_SUPPORT
     httpd_register_uri_handler(handle, &video_websocket_uri);
     httpd_register_uri_handler(handle, &preview_websocket_uri);
