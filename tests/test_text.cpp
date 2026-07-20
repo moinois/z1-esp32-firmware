@@ -35,3 +35,42 @@ TEST_CASE(cmd_003_selected_commands_bypass_the_128_byte_limit) {
     list[1] = 's';
     REQUIRE(!firmware::core::recognize_command(list).accepted);
 }
+
+TEST_CASE(cmd_002_argument_offsets_are_empty_until_the_required_suffix_byte) {
+    const ByteVector prefixes[] = {
+        {'m', 'd', '5', 's', 'u', 'm'},
+        {'c', 'o', 'n', 'f', 'i', 'g', '-', 'g', 'e', 't'},
+        {'t', 'i', 'm', 'e'},
+    };
+    for (const auto& prefix : prefixes) {
+        const auto match = firmware::core::recognize_command(prefix);
+        REQUIRE(match.accepted);
+        REQUIRE_EQ(match.argument_offset, prefix.size());
+    }
+    const ByteVector md5{'m', 'd', '5', 's', 'u', 'm', ' ', 'x'};
+    REQUIRE_EQ(firmware::core::recognize_command(md5).argument_offset, 7U);
+}
+
+TEST_CASE(cmd_002_complete_payload_commands_keep_offset_zero) {
+    const ByteVector wlan{'w', 'l', 'a', 'n', ' ', 's', 's', 'i', 'd'};
+    const ByteVector serial{'s', 'n', '-', 's', 'e', 't', ' ', '1', '2'};
+    REQUIRE_EQ(firmware::core::recognize_command(wlan).argument_offset, 0U);
+    REQUIRE_EQ(firmware::core::recognize_command(serial).argument_offset, 0U);
+}
+
+TEST_CASE(cmd_003_only_the_named_commands_are_unbounded) {
+    const char* unlimited[] = {"?", "ftype", "M951", "M952", "upgrade",
+                               "reset", "diagnose", "version"};
+    for (const char* prefix : unlimited) {
+        ByteVector payload(200U, 'x');
+        const std::size_t length = std::char_traits<char>::length(prefix);
+        std::copy(prefix, prefix + length, payload.begin());
+        REQUIRE(firmware::core::recognize_command(payload).accepted);
+    }
+    ByteVector bounded(129U, 'x');
+    bounded[0] = 't';
+    bounded[1] = 'i';
+    bounded[2] = 'm';
+    bounded[3] = 'e';
+    REQUIRE(!firmware::core::recognize_command(bounded).accepted);
+}
