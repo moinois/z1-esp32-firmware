@@ -195,8 +195,9 @@ void HttpServerAdapter::start() {
         firmware::application::main_http_server);
     if (httpd_start(&main_handle_, &main_config) != ESP_OK) {
         ESP_LOGW(tag, "main HTTP server did not start");
+    } else {
+        register_main_handlers(main_handle_);
     }
-    register_main_handlers(main_handle_);
 
     video_handle_ = nullptr;
     httpd_config_t video_config = make_config(
