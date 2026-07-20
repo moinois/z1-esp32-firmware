@@ -103,4 +103,8 @@ void update_tcp_discovery_station(std::string_view ipv4,
                                                 active_tcp_clients);
 }
 
+void clear_tcp_discovery_station() {
+    discovery_service.station_disconnected();
+}
+
 }  // namespace firmware::target

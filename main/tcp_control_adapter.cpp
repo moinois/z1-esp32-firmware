@@ -104,8 +104,12 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             } else if (request.kind == firmware::application::WlanRequestKind::disconnect) {
                 TcpWlanStationAdapter station;
                 TcpWlanConnectionAdapter responses(session);
-                static_cast<void>(firmware::application::WlanConnectionCommand::disconnect(
-                    tcp_station_runtime, station, responses));
+                firmware::application::WlanConnectionCommand::disconnect(
+                    tcp_station_runtime, station, responses);
+                if (tcp_station_runtime.state ==
+                    firmware::application::StationConnectionState::idle) {
+                    clear_tcp_discovery_station();
+                }
             } else {
                 TcpWlanStationAdapter station;
                 TcpWlanConnectionAdapter responses(session);

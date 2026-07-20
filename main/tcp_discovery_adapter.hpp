@@ -15,4 +15,7 @@ void update_tcp_discovery_station(std::string_view ipv4,
                                   std::string_view netmask,
                                   std::size_t active_tcp_clients);
 
+// Clears station-specific discovery state after a successful disconnect.
+void clear_tcp_discovery_station();
+
 }  // namespace firmware::target
