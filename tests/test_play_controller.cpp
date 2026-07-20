@@ -60,6 +60,16 @@ public:
         ++release_count;
     }
 
+    // Reports successful rewind for lifecycle-only tests.
+    bool rewind_file() override {
+        return true;
+    }
+
+    // Reports no readable data for lifecycle-only tests.
+    std::optional<firmware::application::PlayLineChunk> read_chunk(std::size_t) override {
+        return std::nullopt;
+    }
+
     bool send_succeeds = true;
     std::optional<std::uint64_t> open_size = 0x01020304U;
     std::string opened_path;

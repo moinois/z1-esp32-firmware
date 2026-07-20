@@ -60,6 +60,9 @@ public:
     // Returns the normalized path used for opening and status.
     std::string_view path() const;
 
+    // Changes whenever preparation replaces and resets controller read state.
+    std::uint32_t generation() const;
+
     // Broadcasts a play error subject to the shared one-second rate limit.
     void report_error(std::string_view message, std::uint64_t now_milliseconds,
                       PlayPreparationPort& port);
@@ -77,6 +80,7 @@ private:
     std::uint64_t transmitted_bytes_ = 0U;
     core::ByteVector retained_data_;
     std::optional<std::uint64_t> last_error_milliseconds_;
+    std::uint32_t generation_ = 0U;
 };
 
 }  // namespace firmware::application

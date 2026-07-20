@@ -48,6 +48,7 @@ bool PlaySession::prepare(core::BytesView payload, std::uint64_t now_millisecond
                           PlayPreparationPort& port) {
     port.close_file();
     clear_prepared_state();
+    ++generation_;
 
     const std::string resolved = resolve_play_path(payload);
     if (resolved.size() > maximum_path_size) {
@@ -113,6 +114,10 @@ std::uint32_t PlaySession::file_size() const {
 
 std::string_view PlaySession::path() const {
     return path_;
+}
+
+std::uint32_t PlaySession::generation() const {
+    return generation_;
 }
 
 void PlaySession::report_error(std::string_view message,
