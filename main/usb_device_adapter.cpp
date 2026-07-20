@@ -14,6 +14,7 @@
 #include "firmware/application/usb_transmit_progress.hpp"
 #include "firmware/application/recording_commands.hpp"
 #include "firmware/application/serial_number.hpp"
+#include "firmware/application/runtime_commands.hpp"
 #include "nvs_key_value_adapter.hpp"
 #include "runtime_operation_capacity.hpp"
 #include "recording_request_state.hpp"
@@ -25,6 +26,8 @@
 #include "runtime_status_adapter.hpp"
 
 #include <array>
+#include <ctime>
+#include <optional>
 #include <esp_timer.h>
 
 namespace firmware::target {
@@ -87,6 +90,80 @@ public:
 };
 
 UsbSerialPort serial_port;
+
+class UsbRuntimePort final : public firmware::application::RuntimeCommandPort {
+public:
+    bool admit_operation(std::uint32_t wait_milliseconds) override {
+        return admit_runtime_operation(wait_milliseconds);
+    }
+
+    bool open_namespace(std::string_view name_space) override {
+        name_space_ = std::string(name_space);
+        return true;
+    }
+
+    firmware::application::RuntimeSignedRead read_first_boot(
+        std::string_view key) override {
+        NvsKeyValueAdapter nvs;
+        const auto value = nvs.read_u64_state(name_space_, key);
+        if (value.state == NvsReadState::found) {
+            return {firmware::application::RuntimeValueResult::success,
+                    static_cast<std::int64_t>(value.value)};
+        }
+        if (value.state == NvsReadState::missing) {
+            return {firmware::application::RuntimeValueResult::missing, 0};
+        }
+        return {firmware::application::RuntimeValueResult::failure, 0};
+    }
+
+    std::optional<std::uint64_t> read_counter(std::string_view key) override {
+        NvsKeyValueAdapter nvs;
+        return nvs.read_u64(name_space_, key);
+    }
+
+    std::optional<std::string> format_utc_minute(
+        std::int64_t seconds) override {
+        const time_t value = static_cast<time_t>(seconds);
+        std::tm utc{};
+        if (gmtime_r(&value, &utc) == nullptr) return std::nullopt;
+        char buffer[32];
+        if (std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M UTC", &utc) == 0U) {
+            return std::nullopt;
+        }
+        return std::string(buffer);
+    }
+
+    firmware::application::RuntimeEraseResult erase_first_boot(
+        std::string_view name_space, std::string_view key) override {
+        NvsKeyValueAdapter nvs;
+        const auto result = nvs.erase_key(name_space, key);
+        if (result == NvsReadState::found) {
+            return firmware::application::RuntimeEraseResult::success;
+        }
+        if (result == NvsReadState::missing) {
+            return firmware::application::RuntimeEraseResult::missing;
+        }
+        return firmware::application::RuntimeEraseResult::failure;
+    }
+
+    void complete_operation() override {
+        complete_runtime_operation();
+    }
+
+    void send_response(std::uint8_t type, std::string_view payload) override {
+        const firmware::core::Frame response{
+            type, firmware::core::ByteVector(payload.begin(), payload.end())};
+        const auto encoded = firmware::core::encode_frame(response);
+        if (!encoded.empty()) {
+            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+        }
+    }
+
+private:
+    std::string name_space_;
+};
+
+UsbRuntimePort runtime_port;
 
 void usb_transmit_task(void*) {
     firmware::application::UsbTransmitProgress progress;
@@ -157,6 +234,19 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                     service.handle_get(command);
                 } else {
                     service.handle_set(command);
+                }
+                continue;
+            }
+            if (match.kind == firmware::core::CommandKind::system_time ||
+                match.kind == firmware::core::CommandKind::clear_first_time) {
+                const std::string_view command(
+                    reinterpret_cast<const char*>(frame.payload.data()),
+                    frame.payload.size());
+                firmware::application::RuntimeCommandService service(runtime_port);
+                if (match.kind == firmware::core::CommandKind::system_time) {
+                    service.handle_system_time(command);
+                } else {
+                    service.handle_clear_first_boot(command);
                 }
                 continue;
             }
