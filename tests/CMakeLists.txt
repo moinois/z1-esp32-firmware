@@ -81,6 +81,7 @@ add_executable(
     test_static_file_server.cpp
     test_web_volume_startup.cpp
     test_direct_application_update.cpp
+    test_direct_web_volume_update.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
 target_compile_options(core_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)

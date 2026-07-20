@@ -181,6 +181,8 @@ The first core-to-periphery development slice contains:
   portable policy and SPIFFS-backed VFS;
 - direct application OTA transaction ordering, exact failure responses,
   structural-finalization delegation, and delayed restart handoff;
+- direct raw web-volume update ordering, capacity rejection, empty-image
+  success, exact failure text, and delayed restart handoff;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
