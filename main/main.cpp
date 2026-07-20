@@ -26,6 +26,7 @@
 #include "firmware_update_adapter.hpp"
 #include "diagnostic_capture_adapter.hpp"
 #include "runtime_counter_task.hpp"
+#include "recording_task_adapter.hpp"
 
 #include "firmware/application/web_volume_startup.hpp"
 #include "firmware/application/connectivity_startup.hpp"
@@ -140,6 +141,8 @@ extern "C" void app_main() {
     runtime_counter_task.start();
     static firmware::target::ControllerCommandLoop controller_command_loop;
     controller_command_loop.start();
+    static firmware::target::RecordingTaskAdapter recording_task;
+    recording_task.start();
     static firmware::target::FirmwareUpdateAdapter firmware_update;
     firmware_update.start();
     static firmware::target::TcpControlAdapter tcp_control;
