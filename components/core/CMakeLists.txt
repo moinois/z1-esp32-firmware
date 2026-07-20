@@ -1,5 +1,12 @@
 # Builds portable logic as either an ESP-IDF component or a host-side library.
-set(CORE_SOURCES src/crc.cpp src/frame.cpp src/text.cpp src/status.cpp src/update_package.cpp)
+set(CORE_SOURCES
+    src/crc.cpp
+    src/file_transfer_paths.cpp
+    src/frame.cpp
+    src/status.cpp
+    src/text.cpp
+    src/update_package.cpp
+)
 if(COMMAND idf_component_register)
     idf_component_register(SRCS ${CORE_SOURCES} INCLUDE_DIRS include)
 else()

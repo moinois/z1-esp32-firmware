@@ -9,6 +9,9 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | FRM-001--FRM-016 common framing and recovery | Core implementation | Partial: 001, 004, 010, 011, 013, 015, 016 | No |
 | ESC-001--ESC-002 escaping | Core implementation | Yes | Not required |
 | HFT-004 path normalization | Core implementation | Yes | Not required |
+| HFT-001--HFT-003 transfer start and path validation | Core implementation | Yes | Service integration pending |
+| HFT-010--HFT-011 cache path mapping | Core implementation | Yes | Directory adapter pending |
+| HFT-013 cached MD5 extraction | Core implementation | Yes | Storage adapter pending |
 | CMD-001--CMD-003 recognition and limits | Core implementation | Partial: 001, 003 | Not required |
 | ROUTE-001--ROUTE-018 routing policy | Application implementation | Yes | Transport integration pending |
 | OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | Terminal service integration pending |

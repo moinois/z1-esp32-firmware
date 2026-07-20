@@ -11,6 +11,7 @@ add_executable(core_tests
     test_controller_transfer.cpp
     test_controller_uart_config.cpp
     test_frame.cpp
+    test_file_transfer_paths.cpp
     test_play_session.cpp
     test_play_controller.cpp
     test_play_data.cpp
