@@ -10,6 +10,8 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | ESC-001--ESC-002 escaping | Core implementation | Yes | Not required |
 | HFT-004 path normalization | Core implementation | Yes | Not required |
 | CMD-001--CMD-003 recognition and limits | Core implementation | Partial: 001, 003 | Not required |
+| ROUTE-001--ROUTE-018 routing policy | Application implementation | Yes | Transport integration pending |
+| OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | Terminal service integration pending |
 | STAT-005--STAT-006 status transformation | Core implementation | Yes | No |
 | UPD-010--UPD-014 package validation | Core implementation | Partial: 010--013 | No |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |

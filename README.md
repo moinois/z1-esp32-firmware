@@ -20,6 +20,9 @@ The first core-to-periphery development slice contains:
 - normalized filesystem paths with both separator forms and bounded parent
   traversal;
 - ordered, case-sensitive local-command prefix recognition and size limits;
+- controller-to-host and host-to-controller routing precedence;
+- controller-forwarding suppression, size, and capacity admission;
+- independent file-transfer and streamed-play ownership identities;
 - controller status validation, running-state detection, and local status
   extension generation;
 - aggregate firmware-header, size, flag, and checksum validation;
@@ -28,7 +31,7 @@ The first core-to-periphery development slice contains:
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 21 tests. The firmware also builds successfully as
+The current host suite has 38 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md).
 
@@ -73,10 +76,12 @@ through empty or typed result values rather than exceptions.
 
 ### Application and service layer
 
-Future application services own protocol state, queues, timeouts, connection
-generations, and single-client ownership. They depend on narrow abstract ports
-for operations such as file access, packet delivery, persistence, and monotonic
-time. This layer is introduced test-first as each specification area is added.
+`components/application` contains transport-neutral policies above the wire
+core. Its first module selects routing destinations and maintains independent
+logical file-transfer and physical play-connection ownership. Future services
+in this layer will own queues, timeouts, and protocol state. They depend on
+narrow abstract ports for operations such as file access, packet delivery,
+persistence, and monotonic time.
 
 ### ESP-IDF composition root
 
@@ -101,6 +106,7 @@ implementation/
 ├── components/core/       Portable C++ protocol and domain logic
 │   ├── include/           Public core interfaces
 │   └── src/               Core implementations
+├── components/application/ Routing, ownership, and application services
 ├── docs/                  Requirement traceability and design records
 ├── main/                  ESP-IDF composition root and target adapters
 ├── tests/                 Host-side specification tests
@@ -198,7 +204,7 @@ the board's strapping-pin levels have been verified.
 
 The following major areas are not yet implemented:
 
-- routing, host identity, connection generations, and ownership;
+- transport connection-slot allocation and outbound generation checks;
 - controller UART scheduling and controller transfer families;
 - host upload and download state machines;
 - SD lifecycle, filesystem commands, configuration views, and logging;
