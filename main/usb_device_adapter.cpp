@@ -12,6 +12,9 @@
 #include "firmware/application/usb_descriptors.hpp"
 #include "firmware/application/usb_protocol_state.hpp"
 #include "firmware/application/usb_transmit_progress.hpp"
+#include "firmware/application/recording_commands.hpp"
+#include "recording_request_state.hpp"
+#include "firmware/core/text.hpp"
 #include "firmware/core/frame.hpp"
 #include "controller_command_loop.hpp"
 
@@ -34,6 +37,7 @@ constexpr std::array<std::uint8_t, 32> configuration_descriptor{
 const char* string_descriptors[] = {"Espressif", "MakeraZ1 (USB)", "123456"};
 firmware::application::UsbProtocolState protocol_state;
 firmware::core::StreamDecoder decoder(firmware::core::StreamPolicy::usb());
+RecordingRequestState recording_state;
 
 void usb_transmit_task(void*) {
     firmware::application::UsbTransmitProgress progress;
@@ -81,6 +85,20 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
     const auto staged = staging.take();
     for (const auto& frame : decoder.push(staged)) {
         protocol_state.valid_frame_received();
+        if (frame.type == firmware::core::protocol::general_command) {
+            const auto match = firmware::core::recognize_command(frame.payload);
+            if (match.kind == firmware::core::CommandKind::record_start ||
+                match.kind == firmware::core::CommandKind::record_stop) {
+                const auto result = firmware::application::handle_recording_command(
+                    match.kind, recording_state.requested());
+                recording_state.set_requested(result.requested);
+                const auto response = firmware::core::encode_frame(result.response);
+                if (!response.empty()) {
+                    static_cast<void>(protocol_state.transmit_queue().enqueue(response));
+                }
+                continue;
+            }
+        }
         // Forward complete USB frames through the controller-owned UART path.
         // Local USB command routing will be added without changing this boundary.
         static_cast<void>(enqueue_controller_frame(frame));

@@ -12,6 +12,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | USB-004--USB-005, USB-009--USB-010 protocol activity state | Application implementation | Yes for enumeration gating, valid-frame activation, disconnect receive clearing, send gating, and retained transmit queue | TinyUSB mount/unmount/RX callbacks and controller forwarding target-built; TX routing and physical verification pending |
 | USB-001--USB-003 descriptors | Application implementation | Yes for device identity, vendor interface, bulk endpoint geometry, bus power, and required strings | TinyUSB dependency, vendor interface configuration, and startup adapter target-built; physical enumeration pending |
 | USB-008 transmit progress timeout | Application implementation | Yes for strict 500 ms no-progress expiry, progress reset, and explicit clear | TinyUSB TX task integration target-built; physical verification pending |
+| USB local recording control | Target adapter over recording command policy | Target-built for M951/M952 state updates and queued responses | Physical USB verification pending |
 | ESC-001--ESC-002 escaping | Core implementation | Yes | Not required |
 | HFT-004 path normalization | Core implementation | Yes | Not required |
 | HFT-001--HFT-003 transfer start and path validation | Core implementation | Yes | TCP service integration and target build verified; runtime filesystem verification pending |
