@@ -64,9 +64,27 @@ class EspHttpStaticResponse final
 public:
     explicit EspHttpStaticResponse(httpd_req_t* request) : request_(request) {}
 
+    // Maps the portable status code to the HTTP reason phrase required by IDF.
+    static const char* status_text(std::uint16_t status) {
+        switch (status) {
+            case 400U:
+                return "400 Bad Request";
+            case 404U:
+                return "404 Not Found";
+            case 405U:
+                return "405 Method Not Allowed";
+            case 413U:
+                return "413 Payload Too Large";
+            case 500U:
+                return "500 Internal Server Error";
+            default:
+                return "500 Internal Server Error";
+        }
+    }
+
     void send_error(std::uint16_t status, std::string_view content_type,
                     std::string_view body) override {
-        httpd_resp_set_status(request_, status == 404U ? "404 Not Found" : "500 Internal Server Error");
+        httpd_resp_set_status(request_, status_text(status));
         httpd_resp_set_type(request_, std::string(content_type).c_str());
         httpd_resp_send(request_, body.data(), body.size());
     }
