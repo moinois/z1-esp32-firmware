@@ -2,6 +2,7 @@
 set(CORE_SOURCES
     src/canopen_dictionary.cpp
     src/canopen_pdo.cpp
+    src/canopen_tpdo.cpp
     src/avi_preview.cpp
     src/avi_writer.cpp
     src/canopen_node.cpp

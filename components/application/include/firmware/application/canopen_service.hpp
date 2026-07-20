@@ -5,6 +5,7 @@
 #include "firmware/core/canopen_node.hpp"
 #include "firmware/core/canopen_sdo.hpp"
 #include "firmware/core/canopen_pdo.hpp"
+#include "firmware/core/canopen_tpdo.hpp"
 
 #include <cstdint>
 
@@ -51,6 +52,7 @@ private:
     CanopenServicePort& port_;
     core::CanopenObjectDictionary dictionary_;
     core::CanopenReceivePdoRouter receive_pdo_router_;
+    core::CanopenTransmitPdoScheduler transmit_pdo_scheduler_;
     core::CanopenNode node_;
     core::CanopenSdoServer sdo_server_;
 };

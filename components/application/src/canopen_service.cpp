@@ -8,6 +8,7 @@ namespace firmware::application {
 CanopenService::CanopenService(CanopenServicePort& port)
     : port_(port),
       receive_pdo_router_(dictionary_),
+      transmit_pdo_scheduler_(dictionary_),
       sdo_server_(dictionary_) {}
 
 void CanopenService::receive(const core::CanFrame& frame) {
@@ -32,6 +33,9 @@ void CanopenService::process_cycle() {
     const core::CanopenCycleResult result = node_.process_cycle();
     if (result.frame.has_value()) {
         port_.transmit(*result.frame);
+    }
+    if (const auto pdo = transmit_pdo_scheduler_.process_cycle(); pdo.has_value()) {
+        port_.transmit(*pdo);
     }
     if (result.restart_mainboard) {
         port_.restart_mainboard();

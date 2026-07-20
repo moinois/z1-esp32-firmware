@@ -4,12 +4,14 @@
 #include "firmware/core/canopen_dictionary.hpp"
 #include "firmware/core/canopen_node.hpp"
 #include "firmware/core/canopen_pdo.hpp"
+#include "firmware/core/canopen_tpdo.hpp"
 
 #include <cstdint>
 
 using firmware::core::ByteVector;
 using firmware::core::CanopenObjectDictionary;
 using firmware::core::CanopenReceivePdoRouter;
+using firmware::core::CanopenTransmitPdoScheduler;
 using firmware::core::SdoAbort;
 
 namespace {
@@ -197,4 +199,25 @@ TEST_CASE(od_031_rpdo_routes_little_endian_mapping_into_dictionary) {
     frame.data = {0x78U, 0x56U, 0x34U, 0x12U, 0U, 0U, 0U, 0U};
     REQUIRE(router.receive(frame));
     REQUIRE_EQ(read_value(dictionary, 0x6001U, 1U), 0x12345678U);
+}
+
+TEST_CASE(od_041_tpdo_emits_mapped_value_after_event_timer) {
+    CanopenObjectDictionary dictionary;
+    REQUIRE_EQ(dictionary.write(0x1800U, 1U, le(0x00000180U, 4U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1800U, 5U, le(20U, 2U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1a00U, 0U, le(1U, 1U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1a00U, 1U, le(0x60000120U, 4U)).abort,
+               SdoAbort::none);
+
+    CanopenTransmitPdoScheduler scheduler(dictionary);
+    REQUIRE(!scheduler.process_cycle().has_value());
+    const auto frame = scheduler.process_cycle();
+    REQUIRE(frame.has_value());
+    REQUIRE_EQ(frame->identifier, 0x180U);
+    REQUIRE_EQ(frame->size, 4U);
+    REQUIRE_EQ(frame->data[0], 0U);
+    REQUIRE_EQ(frame->data[3], 0U);
 }
