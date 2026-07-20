@@ -4,6 +4,8 @@
 #include "esp_log.h"
 #include "esp_system.h"
 
+#include "controller_command_loop.hpp"
+
 #include "firmware/core/bytes.hpp"
 
 #include <cstdio>
@@ -79,7 +81,11 @@ void OtaUpdateAdapter::remove_aggregate(std::string_view path) {
 }
 
 void OtaUpdateAdapter::send_controller_reset() {
-    ESP_LOGI(tag, "controller reset requested");
+    const firmware::core::Frame reset_frame{
+        0xA2U, {'r', 'e', 's', 'e', 't', 0U}};
+    if (!enqueue_controller_frame(reset_frame)) {
+        ESP_LOGW(tag, "controller reset could not be queued");
+    }
 }
 
 void OtaUpdateAdapter::restart_mainboard() {
