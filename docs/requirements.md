@@ -9,6 +9,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | FRM-001--FRM-016 common framing and recovery | Core implementation | Yes for envelope, length validation, CRC/tail rejection, stream boundaries, recovery modes, and transport limits | No |
 | USB-007 transmit queue | Application implementation | Yes for 30-frame FIFO, 544-byte bound, empty/overflow rejection, and completion-driven removal | TinyUSB transport integration and physical verification pending |
 | USB-006 receive staging | Application implementation | Yes for 32768-byte capacity, complete-block admission, whole-session discard on overflow, and clear-on-disconnect | TinyUSB transport integration and physical verification pending |
+| USB-004--USB-005, USB-009--USB-010 protocol activity state | Application implementation | Yes for enumeration gating, valid-frame activation, disconnect receive clearing, send gating, and retained transmit queue | TinyUSB callbacks and physical verification pending |
 | ESC-001--ESC-002 escaping | Core implementation | Yes | Not required |
 | HFT-004 path normalization | Core implementation | Yes | Not required |
 | HFT-001--HFT-003 transfer start and path validation | Core implementation | Yes | TCP service integration and target build verified; runtime filesystem verification pending |
