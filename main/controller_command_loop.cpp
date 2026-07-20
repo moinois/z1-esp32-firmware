@@ -17,6 +17,7 @@
 #include "esp_timer.h"
 
 #include "firmware/application/controller_frame_forwarder.hpp"
+#include "firmware/application/controller_query.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -55,9 +56,19 @@ void controller_command_task(void*) {
     RecordingRequestState recording_state;
     firmware::core::StreamDecoder decoder(
         firmware::core::StreamPolicy::controller_uart());
+    firmware::application::ControllerQueryScheduler query_scheduler(
+        static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL));
     std::uint8_t input[256];
     for (;;) {
         drain_forwarded_frames(uart);
+        const auto due_queries = query_scheduler.poll(
+            static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL), true);
+        for (const auto& query : due_queries) {
+            const auto encoded = firmware::core::encode_frame(query);
+            if (!encoded.empty()) {
+                static_cast<void>(uart.write(encoded));
+            }
+        }
         const int count = uart.read(input, sizeof(input));
         if (count <= 0) continue;
         const auto frames = decoder.push(

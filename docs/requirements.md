@@ -53,8 +53,8 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | CMD-001--CMD-003 recognition and limits | Core implementation | Partial: 001, 003 | Not required |
 | ROUTE-001--ROUTE-018 routing policy | Application implementation | Yes | Transport integration pending |
 | OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | Terminal service integration pending |
-| LPC-001--LPC-002 periodic controller queries | Application implementation | Yes | UART integration pending |
-| LPC-003 initial controller status | Application implementation | Yes | UART integration pending |
+| LPC-001--LPC-002 periodic controller queries | Application scheduler plus ESP-IDF controller UART task | Target build verified for periodic status/diagnostic query emission and bounded serial transport | Physical controller timing verification pending |
+| LPC-003 initial controller status | Controller UART task using scheduler at startup | Target build verified for immediate first query opportunity | Physical controller verification pending |
 | STAT-001--STAT-010 controller snapshots and replies | Core and application implementation | Yes | Routing integration pending |
 | UART-003--UART-008 controller link policy | Application implementation | Yes | UART adapter integration pending |
 | DIAG-021 controller write failure message | Application implementation | Yes | Diagnostic sink integration pending |

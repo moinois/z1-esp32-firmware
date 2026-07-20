@@ -257,6 +257,7 @@ The first core-to-periphery development slice contains:
 - ESP-IDF BLUFI callback adapter forwards supported BLE events into the tested provisioning policy;
 - BLUFI callback table now uses the portable security session for negotiation, AES-CFB128, and CRC callbacks;
 - Wi-Fi/IP event adapter forwards station association, address-ready, and disconnect state to BLUFI provisioning;
+- Controller UART task now emits drift-free periodic status and diagnostic queries through the tested scheduler;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
