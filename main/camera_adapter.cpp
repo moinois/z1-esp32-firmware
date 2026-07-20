@@ -97,6 +97,28 @@ bool CameraAdapter::set_frame_dimensions(
     return false;
 }
 
+std::optional<firmware::core::ByteVector> CameraAdapter::capture_jpeg() {
+    camera_fb_t* frame = esp_camera_fb_get();
+    if (frame == nullptr || frame->format != PIXFORMAT_JPEG) {
+        if (frame != nullptr) {
+            esp_camera_fb_return(frame);
+        }
+        return std::nullopt;
+    }
+    firmware::core::ByteVector jpeg(frame->buf, frame->buf + frame->len);
+    esp_camera_fb_return(frame);
+    return jpeg;
+}
+
+firmware::application::FrameDimensions CameraAdapter::current_dimensions() const {
+    const sensor_t* sensor = esp_camera_sensor_get();
+    if (sensor == nullptr) {
+        return firmware::application::fallback_camera_dimensions;
+    }
+    return firmware::application::camera_dimensions(
+        static_cast<std::uint8_t>(sensor->status.framesize));
+}
+
 CameraAdapter& camera_adapter() {
     static CameraAdapter adapter;
     return adapter;

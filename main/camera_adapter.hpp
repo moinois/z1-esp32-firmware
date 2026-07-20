@@ -2,6 +2,9 @@
 #pragma once
 
 #include "firmware/application/camera_resolution_endpoint.hpp"
+#include "firmware/core/bytes.hpp"
+
+#include <optional>
 
 namespace firmware::target {
 
@@ -17,6 +20,12 @@ public:
     // Applies one logical frame-size dimension pair to the active sensor.
     bool set_frame_dimensions(
         firmware::application::FrameDimensions dimensions) override;
+
+    // Captures one JPEG frame using the driver's configured buffer timeout.
+    std::optional<firmware::core::ByteVector> capture_jpeg();
+
+    // Returns the configured startup dimensions used by the recording writer.
+    firmware::application::FrameDimensions current_dimensions() const;
 };
 
 // Returns the process-wide camera adapter used by HTTP and update services.
