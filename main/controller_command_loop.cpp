@@ -7,6 +7,7 @@
 #include "serial_number_adapter.hpp"
 #include "firmware/application/serial_number.hpp"
 #include "firmware/application/recording_commands.hpp"
+#include "recording_request_state.hpp"
 #include "firmware/core/text.hpp"
 #include "firmware/core/frame.hpp"
 
@@ -28,7 +29,7 @@ void controller_command_task(void*) {
     WallClockCommandDispatcher dispatcher(wall_clock);
     NvsSerialNumberAdapter serial_port(&uart);
     firmware::application::SerialNumberService serial_service(serial_port);
-    bool recording_requested = false;
+    RecordingRequestState recording_state;
     firmware::core::StreamDecoder decoder(
         firmware::core::StreamPolicy::controller_uart());
     std::uint8_t input[256];
@@ -51,8 +52,8 @@ void controller_command_task(void*) {
             } else if (match.kind == firmware::core::CommandKind::record_start ||
                        match.kind == firmware::core::CommandKind::record_stop) {
                 const auto result = firmware::application::handle_recording_command(
-                    match.kind, recording_requested);
-                recording_requested = result.requested;
+                    match.kind, recording_state.requested());
+                recording_state.set_requested(result.requested);
                 const auto encoded = firmware::core::encode_frame(result.response);
                 if (!encoded.empty()) uart.write(encoded);
             }

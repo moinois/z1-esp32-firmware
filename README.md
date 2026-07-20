@@ -221,6 +221,7 @@ The first core-to-periphery development slice contains:
 - wall-clock response encoding and transmission over controller UART;
 - NVS-backed serial-number service with framed UART responses;
 - M951/M952 recording control wired through recognition, state policy, and UART response;
+- shared atomic recording-request state available to media tasks;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
