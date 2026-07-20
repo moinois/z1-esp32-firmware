@@ -1,6 +1,8 @@
 // Implements controller UART activity alarms and bounded output scheduling.
 #include "firmware/application/controller_link.hpp"
 
+#include "firmware/core/protocol_constants.hpp"
+
 #include <utility>
 
 namespace firmware::application {
@@ -9,8 +11,7 @@ namespace {
 constexpr std::uint64_t inactivity_period_milliseconds = 10000U;
 constexpr std::uint64_t write_interval_milliseconds = 10U;
 constexpr std::size_t maximum_pending_items = 32U;
-constexpr std::size_t maximum_item_size = 544U;
-constexpr std::uint8_t console_frame_type = 0x90U;
+constexpr std::size_t maximum_item_size = core::protocol::controller_maximum_item_size;
 constexpr char inactivity_alarm[] =
     "ALARM: Mainboard did not receive a status response from the CTRL (RX error)\n";
 
@@ -18,7 +19,7 @@ constexpr char inactivity_alarm[] =
 core::Frame make_inactivity_alarm() {
     const auto* begin = reinterpret_cast<const std::uint8_t*>(inactivity_alarm);
     const auto* end = begin + sizeof(inactivity_alarm) - 1U;
-    return {console_frame_type, core::ByteVector(begin, end)};
+    return {core::protocol::console_message, core::ByteVector(begin, end)};
 }
 
 }  // namespace

@@ -1,6 +1,8 @@
 // Implements bounded generation of the host-visible machine-status extension.
 #include "firmware/core/status.hpp"
 
+#include "firmware/core/protocol_constants.hpp"
+
 #include <cinttypes>
 #include <cstdio>
 
@@ -22,7 +24,8 @@ std::optional<std::string> extend_status(std::string_view status, const StatusEx
         extension.recording ? 1U : 0U, extension.sd_used_mib, extension.sd_total_mib,
         extension.update_phase, extension.update_progress);
     if (length < 0 || static_cast<std::size_t>(length) >= sizeof(suffix) ||
-        closing + static_cast<std::size_t>(length) > 528U) {
+        closing + static_cast<std::size_t>(length) >
+            protocol::controller_maximum_frame_size) {
         return std::nullopt;
     }
 

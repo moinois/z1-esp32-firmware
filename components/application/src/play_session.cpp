@@ -2,6 +2,7 @@
 #include "firmware/application/play_session.hpp"
 
 #include "firmware/core/crc.hpp"
+#include "firmware/core/protocol_constants.hpp"
 #include "firmware/core/text.hpp"
 
 #include <algorithm>
@@ -14,6 +15,8 @@ namespace {
 
 constexpr std::size_t maximum_path_size = 255U;
 constexpr std::uint64_t error_interval_milliseconds = 1000U;
+constexpr std::size_t md5_text_size = 32U;
+constexpr std::size_t play_prefix_size = 5U;
 constexpr std::string_view open_error = "Error:open file failed[P0]";
 
 // Selects and normalizes the path text according to the unusual play-prefix rule.
@@ -24,8 +27,9 @@ std::string resolve_play_path(core::BytesView payload) {
     }
 
     std::string selected = decoded;
-    if (decoded.size() > 5U && decoded.compare(0U, 5U, "play ") == 0) {
-        selected = decoded.substr(5U);
+    if (decoded.size() > play_prefix_size &&
+        decoded.compare(0U, play_prefix_size, "play ") == 0) {
+        selected = decoded.substr(play_prefix_size);
     }
     const auto first = std::find_if(selected.begin(), selected.end(), [](char value) {
         return value != ' ';
@@ -36,7 +40,7 @@ std::string resolve_play_path(core::BytesView payload) {
 
 // Reports whether a cached checksum contains exactly 32 hexadecimal characters.
 bool valid_md5(std::string_view value) {
-    return value.size() == 32U &&
+    return value.size() == md5_text_size &&
            std::all_of(value.begin(), value.end(), [](unsigned char character) {
                return std::isxdigit(character) != 0;
            });
@@ -78,12 +82,12 @@ bool PlaySession::prepare(core::BytesView payload, std::uint64_t now_millisecond
 
 core::Frame PlaySession::status_reply() const {
     if (!running_ || !file_open_) {
-        return {0xB7U, {'|'}};
+        return {core::protocol::play_status, {'|'}};
     }
     core::ByteVector payload(path_.begin(), path_.end());
     payload.push_back('|');
     payload.insert(payload.end(), md5_.begin(), md5_.end());
-    return {0xB7U, std::move(payload)};
+    return {core::protocol::play_status, std::move(payload)};
 }
 
 void PlaySession::mark_running() {
@@ -128,7 +132,7 @@ void PlaySession::report_error(std::string_view message,
         return;
     }
     last_error_milliseconds_ = now_milliseconds;
-    port.broadcast({0x90U, {message.begin(), message.end()}});
+    port.broadcast({core::protocol::console_message, {message.begin(), message.end()}});
 }
 
 void PlaySession::clear_prepared_state() {

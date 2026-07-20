@@ -7,8 +7,13 @@
 #include "freertos/task.h"
 #include "nvs_flash.h"
 
+#include <cstdint>
+
 namespace {
 constexpr gpio_num_t heartbeat_gpio = GPIO_NUM_0;
+constexpr std::uint32_t heartbeat_period_milliseconds = 1000U;
+constexpr std::uint32_t heartbeat_stack_size = 2048U;
+constexpr UBaseType_t heartbeat_priority = 3U;
 constexpr char tag[] = "MAIN";
 
 // Initializes NVS with the erase-and-retry recovery required during early boot.
@@ -17,12 +22,16 @@ bool initialize_persistent_store() {
     if (result == ESP_ERR_NVS_NO_FREE_PAGES || result == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_LOGW(tag, "NVS分区需要擦除，正在擦除...");
         result = nvs_flash_erase();
-        if (result == ESP_OK) result = nvs_flash_init();
+        if (result == ESP_OK) {
+            result = nvs_flash_init();
+        }
     } else if (result != ESP_OK) {
         ESP_LOGE(tag, "NVS初始化失败: %s (0x%x)", esp_err_to_name(result), static_cast<unsigned>(result));
         ESP_LOGW(tag, "尝试擦除NVS分区并重新初始化...");
         result = nvs_flash_erase();
-        if (result == ESP_OK) result = nvs_flash_init();
+        if (result == ESP_OK) {
+            result = nvs_flash_init();
+        }
     }
     if (result != ESP_OK) {
         ESP_LOGE(tag, "NVS初始化仍然失败，系统无法继续运行");
@@ -37,7 +46,7 @@ void heartbeat_task(void*) {
     bool high = true;
     gpio_set_level(heartbeat_gpio, high);
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(heartbeat_period_milliseconds));
         high = !high;
         gpio_set_level(heartbeat_gpio, high);
     }
@@ -50,8 +59,11 @@ void start_heartbeat() {
                                .pull_up_en = GPIO_PULLUP_DISABLE,
                                .pull_down_en = GPIO_PULLDOWN_DISABLE,
                                .intr_type = GPIO_INTR_DISABLE};
-    if (gpio_config(&config) != ESP_OK) return;
-    xTaskCreate(heartbeat_task, "heartbeat", 2048, nullptr, 3, nullptr);
+    if (gpio_config(&config) != ESP_OK) {
+        return;
+    }
+    xTaskCreate(heartbeat_task, "heartbeat", heartbeat_stack_size, nullptr,
+                heartbeat_priority, nullptr);
 }
 }  // namespace
 

@@ -2,6 +2,7 @@
 #include "firmware/application/controller_factory_transfer.hpp"
 
 #include "firmware/application/controller_transfer.hpp"
+#include "firmware/core/protocol_constants.hpp"
 
 #include <utility>
 
@@ -55,7 +56,8 @@ void ControllerFactoryTransfer::handle(const core::Frame& frame, ControllerFacto
 }
 
 void ControllerFactoryTransfer::handle_start(ControllerFactoryPort& port) {
-    const bool acknowledgement_sent = port.send(make_transfer_reply(0xE0U, 1U));
+    const bool acknowledgement_sent = port.send(make_transfer_reply(
+        core::protocol::factory_family, core::protocol::transfer_start));
     const bool available = port.file_exists(factory_path);
     if (available) {
         active_ = true;
@@ -87,8 +89,9 @@ void ControllerFactoryTransfer::handle_geometry(core::BytesView payload,
     }
     frame_count_ = count;
     frame_data_size_ = proposed->frame_data_size;
-    if (!port.send(make_transfer_reply(
-            0xE0U, 2U, encode_geometry(frame_count_, frame_data_size_)))) {
+    if (!port.send(make_transfer_reply(core::protocol::factory_family,
+                                       core::protocol::transfer_geometry,
+                                       encode_geometry(frame_count_, frame_data_size_)))) {
         report_error(port);
     }
 }
@@ -123,7 +126,9 @@ void ControllerFactoryTransfer::handle_data(core::BytesView payload,
         }
         core::ByteVector response = request->wire_index;
         response.insert(response.end(), chunk.begin(), chunk.end());
-        if (!port.send(make_transfer_reply(0xE0U, 3U, std::move(response)))) {
+        if (!port.send(make_transfer_reply(core::protocol::factory_family,
+                                           core::protocol::transfer_data,
+                                           std::move(response)))) {
             report_error(port);
         }
         return;
@@ -140,7 +145,8 @@ void ControllerFactoryTransfer::finish(bool remove_file, ControllerFactoryPort& 
 }
 
 void ControllerFactoryTransfer::report_error(ControllerFactoryPort& port) {
-    port.send(make_transfer_reply(0xE0U, 5U));
+    port.send(make_transfer_reply(core::protocol::factory_family,
+                                  core::protocol::transfer_cancel));
 }
 
 bool ControllerFactoryTransfer::active() const {

@@ -1,6 +1,8 @@
 // Implements drift-free, non-deferred controller query scheduling.
 #include "firmware/application/controller_query.hpp"
 
+#include "firmware/core/protocol_constants.hpp"
+
 namespace firmware::application {
 namespace {
 
@@ -35,10 +37,12 @@ std::vector<core::Frame> ControllerQueryScheduler::poll(std::uint64_t now_millis
         return queries;
     }
     if (status_due) {
-        queries.push_back({0xA1U, {'?'}});
+        queries.push_back({core::protocol::single_command, {'?'}});
     }
     if (diagnostic_due) {
-        queries.push_back({0xA2U, {'d', 'i', 'a', 'g', 'n', 'o', 's', 'e', 0}});
+        queries.push_back(
+            {core::protocol::general_command,
+             {'d', 'i', 'a', 'g', 'n', 'o', 's', 'e', 0}});
     }
     return queries;
 }

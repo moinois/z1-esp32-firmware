@@ -24,6 +24,7 @@ Allowed statuses are `Proposed`, `Accepted`, `Superseded`, and `Rejected`.
 | ADR-006 | Pin the target implementation profile to ESP-IDF 5.4.1 | Accepted | 2026-07-20 |
 | ADR-007 | Separate logical file ownership from physical play ownership | Accepted | 2026-07-20 |
 | ADR-008 | Keep generated build state outside version control | Accepted | 2026-07-20 |
+| ADR-009 | Assign constants to the innermost owning module | Accepted | 2026-07-20 |
 
 ---
 
@@ -236,3 +237,39 @@ Write host test output to the temporary path in `CMakePresets.json`.
 - Commits contain maintained source and configuration inputs only.
 - Clean checkouts regenerate derived state.
 - Dependencies requiring a committed lock file need a later explicit decision.
+
+---
+
+## ADR-009: Assign constants to the innermost owning module
+
+- **Status:** Accepted
+- **Date:** 2026-07-20
+
+### Context
+
+Protocol identifiers, binary-format fields, service limits, and hardware
+settings were previously expressed at several use sites as numeric literals.
+That obscured their meaning and made a coordinated protocol change easy to
+apply incompletely. A single global constants module would instead couple
+otherwise independent architectural partitions.
+
+### Decision
+
+Give every nontrivial fixed value a descriptive name in the innermost module
+that owns its meaning. Shared wire identifiers and limits live in the portable
+core protocol contract. Algorithm and file-format values remain private to
+their core implementation. Service capacities and timing remain private to the
+application service. Hardware and RTOS settings remain in target configuration
+or target adapters.
+
+Dependencies continue to point inward; constants must not introduce a reverse
+dependency between core, application, and target partitions.
+
+### Consequences
+
+- Call sites state the purpose of protocol and policy values.
+- A shared wire change has one authoritative definition.
+- Unrelated services may retain equal-valued constants without becoming
+  coupled.
+- Literal zero, one, byte offsets, and bit shifts may remain where they express
+  a local operation more clearly than an additional name would.

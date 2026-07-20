@@ -1,6 +1,8 @@
 // Implements host download protocol sequencing, retries, errors, and timeout.
 #include "firmware/application/file_download.hpp"
 
+#include "firmware/core/protocol_constants.hpp"
+
 #include <algorithm>
 #include <utility>
 
@@ -8,7 +10,11 @@ namespace firmware::application {
 namespace {
 
 constexpr std::size_t block_size = 8192U;
-constexpr std::size_t response_workspace_size = 8196U;
+constexpr std::size_t response_workspace_size =
+    block_size + core::protocol::big_endian_u32_size;
+constexpr std::size_t md5_text_size = 32U;
+constexpr std::size_t maximum_cache_read_size = 63U;
+constexpr std::size_t maximum_error_path_size = 240U;
 constexpr std::uint64_t inactivity_timeout_milliseconds = 9000U;
 constexpr std::uint8_t maximum_unexpected_packets = 51U;
 constexpr std::string_view default_md5 = "82df799dde08f3d86839e24cb97e74d4";
@@ -55,7 +61,7 @@ bool FileDownload::start(const HostIdentity& owner, std::string path,
 
     if (is_config_file(path_)) {
         const auto calculated = port.calculate_md5(path_);
-        if (!calculated.has_value() || calculated->size() != 32U) {
+        if (!calculated.has_value() || calculated->size() != md5_text_size) {
             send_path_error("Error: failed to get MD5 for [", port);
             return false;
         }
@@ -63,7 +69,7 @@ bool FileDownload::start(const HostIdentity& owner, std::string path,
     } else {
         md5_ = std::string(default_md5);
         if (cache_paths.md5_path.has_value()) {
-            const auto cache = port.read_cache(*cache_paths.md5_path, 63U);
+            const auto cache = port.read_cache(*cache_paths.md5_path, maximum_cache_read_size);
             if (cache.has_value()) {
                 const auto extracted = core::extract_cached_md5(*cache);
                 if (extracted.has_value()) {
@@ -100,35 +106,36 @@ void FileDownload::handle(const core::Frame& frame,
     }
     last_activity_milliseconds_ = now_milliseconds;
     switch (frame.type) {
-        case 0xB1U:
+        case core::protocol::file_md5:
             send_md5(port);
             break;
-        case 0xB2U:
+        case core::protocol::file_geometry:
             send_geometry(port);
             break;
-        case 0xB3U:
-            if (frame.payload.size() < 4U) {
+        case core::protocol::file_data:
+            if (frame.payload.size() < core::protocol::big_endian_u32_size) {
                 record_unexpected(port);
             } else {
                 send_data(decode_u32(frame.payload), port);
             }
             break;
-        case 0xB4U:
-            port.send(owner_, {0xB4U, {'o', 'k', '\r', '\n'}});
+        case core::protocol::file_complete:
+            port.send(owner_, {core::protocol::file_complete, {'o', 'k', '\r', '\n'}});
             retained_response_.payload.assign(
                 {'I', 'n', 'f', 'o', ':', ' ', 'd', 'o', 'w', 'n', 'l', 'o', 'a', 'd', ' ',
                  's', 'u', 'c', 'c', 'e', 's', 's', ':', ' '});
             retained_response_.payload.insert(retained_response_.payload.end(), path_.begin(), path_.end());
             retained_response_.payload.push_back('.');
-            port.send(owner_, {0x90U, retained_response_.payload});
+            port.send(owner_, {core::protocol::console_message, retained_response_.payload});
             finish(port);
             break;
-        case 0xB5U:
-            port.send(owner_, {0xB5U, {'I', 'n', 'f', 'o', ':', ' ', 'c', 'a', 'n', 'c', 'e', 'l',
+        case core::protocol::file_cancel:
+            port.send(owner_, {core::protocol::file_cancel,
+                               {'I', 'n', 'f', 'o', ':', ' ', 'c', 'a', 'n', 'c', 'e', 'l',
                                         'e', 'd', ' ', 'b', 'y', ' ', 'r', 'e', 'm', 'o', 't', 'e', '!'}});
             finish(port);
             break;
-        case 0xB6U:
+        case core::protocol::file_retry:
             retry_last(port);
             break;
         default:
@@ -149,7 +156,7 @@ bool FileDownload::active() const {
 }
 
 void FileDownload::send_md5(FileDownloadPort& port) {
-    retained_response_ = {0xB1U, {md5_.begin(), md5_.end()}};
+    retained_response_ = {core::protocol::file_md5, {md5_.begin(), md5_.end()}};
     port.send(owner_, retained_response_);
     last_response_ = LastResponse::md5;
     unexpected_count_ = 0U;
@@ -158,9 +165,9 @@ void FileDownload::send_md5(FileDownloadPort& port) {
 void FileDownload::send_geometry(FileDownloadPort& port) {
     const std::uint64_t count = (file_size_ + block_size - 1U) / block_size;
     core::ByteVector payload = encode_u32(static_cast<std::uint32_t>(count));
-    payload.push_back(0x20U);
-    payload.push_back(0U);
-    retained_response_ = {0xB2U, std::move(payload)};
+    payload.push_back(static_cast<std::uint8_t>(block_size >> 8U));
+    payload.push_back(static_cast<std::uint8_t>(block_size));
+    retained_response_ = {core::protocol::file_geometry, std::move(payload)};
     port.send(owner_, retained_response_);
     last_response_ = LastResponse::geometry;
     unexpected_count_ = 0U;
@@ -186,7 +193,7 @@ void FileDownload::send_data(std::uint32_t sequence, FileDownloadPort& port) {
     }
     core::ByteVector payload = encode_u32(sequence);
     payload.insert(payload.end(), data->begin(), data->end());
-    retained_response_ = {0xB3U, std::move(payload)};
+    retained_response_ = {core::protocol::file_data, std::move(payload)};
     port.send(owner_, retained_response_);
     last_data_sequence_ = sequence;
     last_response_ = LastResponse::data;
@@ -214,7 +221,7 @@ void FileDownload::record_unexpected(FileDownloadPort& port) {
 }
 
 void FileDownload::abort(std::string_view message, FileDownloadPort& port) {
-    port.send(owner_, {0xB5U, {message.begin(), message.end()}});
+    port.send(owner_, {core::protocol::file_cancel, {message.begin(), message.end()}});
     finish(port);
 }
 
@@ -228,11 +235,11 @@ void FileDownload::finish(FileDownloadPort& port) {
 
 void FileDownload::send_path_error(std::string_view prefix, FileDownloadPort& port) {
     core::ByteVector payload(prefix.begin(), prefix.end());
-    const std::size_t inserted_size = std::min(path_.size(), std::size_t{240U});
+    const std::size_t inserted_size = std::min(path_.size(), maximum_error_path_size);
     payload.insert(payload.end(), path_.begin(),
                    path_.begin() + static_cast<std::ptrdiff_t>(inserted_size));
     payload.insert(payload.end(), {']', '!'});
-    port.send(owner_, {0xB5U, std::move(payload)});
+    port.send(owner_, {core::protocol::file_cancel, std::move(payload)});
     active_ = false;
     port.release_ownership();
 }

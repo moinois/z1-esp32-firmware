@@ -4,13 +4,26 @@
 #include <array>
 #include <string_view>
 #include <vector>
+
 namespace firmware::core {
+namespace {
+
+constexpr std::uint8_t first_escape_code = 1U;
+constexpr std::uint8_t last_escape_code = 5U;
+constexpr std::size_t maximum_bounded_command_size = 128U;
+
+}  // namespace
+
 std::string decode_escaped(BytesView input) {
     constexpr std::array<char, 5> replacement{' ', '?', '*', '!', '~'};
     std::string output;
     for (const auto byte : input) {
-        if (byte == 0) break;
-        output.push_back(byte >= 1U && byte <= 5U ? replacement[byte - 1U] : static_cast<char>(byte));
+        if (byte == 0U) {
+            break;
+        }
+        const bool escaped = byte >= first_escape_code && byte <= last_escape_code;
+        output.push_back(escaped ? replacement[byte - first_escape_code]
+                                 : static_cast<char>(byte));
     }
     return output;
 }
@@ -29,7 +42,9 @@ std::string normalize_path(std::string input) {
                 parts.push_back(part);
             }
         }
-        if (end == std::string::npos) break;
+        if (end == std::string::npos) {
+            break;
+        }
         start = end + 1U;
     }
     std::string output = "/";
@@ -78,7 +93,7 @@ CommandMatch recognize_command(BytesView payload) {
         if (payload.size() >= rule.prefix.size() &&
             std::equal(rule.prefix.begin(), rule.prefix.end(), payload.begin())) {
             return {rule.kind, payload.size() > rule.offset ? rule.offset : payload.size(),
-                    rule.unlimited || payload.size() <= 128U};
+                    rule.unlimited || payload.size() <= maximum_bounded_command_size};
         }
     }
     return {};

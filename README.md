@@ -97,6 +97,12 @@ This separation has three purposes:
    rules or unrelated services.
 3. ESP-IDF types and lifetime rules do not leak into the portable core.
 
+Constants follow the same dependency direction. Shared packet identifiers and
+wire limits are defined by the core protocol contract, service-specific timing
+and capacities stay beside their application service, and hardware values stay
+in target configuration. This keeps numeric meaning explicit without creating
+cross-partition dependencies.
+
 ### Portable core
 
 `components/core` contains deterministic C++ code shared by host tests and the

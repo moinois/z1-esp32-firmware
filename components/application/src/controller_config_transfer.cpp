@@ -2,6 +2,7 @@
 #include "firmware/application/controller_config_transfer.hpp"
 
 #include "firmware/application/controller_transfer.hpp"
+#include "firmware/core/protocol_constants.hpp"
 
 #include <algorithm>
 #include <utility>
@@ -13,6 +14,8 @@ constexpr std::string_view configuration_path = "/sd/config.txt";
 constexpr std::size_t input_chunk_size = 255U;
 constexpr std::uint16_t response_data_size = 512U;
 constexpr std::size_t minimum_remaining_space = 80U;
+constexpr std::size_t maximum_unmodified_record_size = 64U;
+constexpr std::size_t truncated_record_size = maximum_unmodified_record_size - 2U;
 
 // Encodes retained configuration geometry as six big-endian bytes.
 core::ByteVector encode_geometry(std::uint32_t frame_count) {
@@ -21,8 +24,8 @@ core::ByteVector encode_geometry(std::uint32_t frame_count) {
         static_cast<std::uint8_t>(frame_count >> 16U),
         static_cast<std::uint8_t>(frame_count >> 8U),
         static_cast<std::uint8_t>(frame_count),
-        0x02U,
-        0x00U,
+        static_cast<std::uint8_t>(response_data_size >> 8U),
+        static_cast<std::uint8_t>(response_data_size),
     };
 }
 
@@ -36,10 +39,11 @@ bool eligible_record(const core::ByteVector& chunk, bool final_chunk) {
 
 // Applies the controller's maximum-length transformation to one record.
 core::ByteVector transform_record(const core::ByteVector& record) {
-    if (record.size() <= 64U) {
+    if (record.size() <= maximum_unmodified_record_size) {
         return record;
     }
-    core::ByteVector transformed(record.begin(), record.begin() + 62);
+    core::ByteVector transformed(record.begin(),
+                                 record.begin() + truncated_record_size);
     transformed.push_back('\n');
     transformed.push_back(0U);
     return transformed;
@@ -68,7 +72,8 @@ void ControllerConfigTransfer::handle(const core::Frame& frame, ControllerConfig
 }
 
 void ControllerConfigTransfer::handle_start(ControllerConfigPort& port) {
-    const bool acknowledgement_sent = port.send(make_transfer_reply(0xD0U, 1U));
+    const bool acknowledgement_sent = port.send(make_transfer_reply(
+        core::protocol::configuration_family, core::protocol::transfer_start));
     const bool available = port.file_exists(configuration_path);
     if (available) {
         active_ = true;
@@ -95,7 +100,9 @@ void ControllerConfigTransfer::handle_geometry(core::BytesView payload,
             return chunk.size() > 2U;
         }));
     frame_data_size_ = response_data_size;
-    if (!port.send(make_transfer_reply(0xD0U, 2U, encode_geometry(frame_count_)))) {
+    if (!port.send(make_transfer_reply(core::protocol::configuration_family,
+                                       core::protocol::transfer_geometry,
+                                       encode_geometry(frame_count_)))) {
         report_error(port);
     }
 }
@@ -140,7 +147,9 @@ void ControllerConfigTransfer::handle_data(core::BytesView payload,
 
     core::ByteVector response = request->wire_index;
     response.insert(response.end(), data.begin(), data.end());
-    if (!port.send(make_transfer_reply(0xD0U, 3U, std::move(response)))) {
+    if (!port.send(make_transfer_reply(core::protocol::configuration_family,
+                                       core::protocol::transfer_data,
+                                       std::move(response)))) {
         report_error(port);
     }
 }
@@ -152,7 +161,8 @@ void ControllerConfigTransfer::finish() {
 }
 
 void ControllerConfigTransfer::report_error(ControllerConfigPort& port) {
-    port.send(make_transfer_reply(0xD0U, 5U));
+    port.send(make_transfer_reply(core::protocol::configuration_family,
+                                  core::protocol::transfer_cancel));
 }
 
 bool ControllerConfigTransfer::active() const {

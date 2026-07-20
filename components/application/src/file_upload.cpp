@@ -1,6 +1,8 @@
 // Implements host upload sequencing, file lifecycle, retries, and timeout.
 #include "firmware/application/file_upload.hpp"
 
+#include "firmware/core/protocol_constants.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <utility>
@@ -9,10 +11,13 @@ namespace firmware::application {
 namespace {
 
 constexpr std::size_t maximum_data_size = 8192U;
+constexpr std::size_t md5_text_size = 32U;
+constexpr std::size_t sequence_size = core::protocol::big_endian_u32_size;
 constexpr std::uint64_t timed_retry_interval_milliseconds = 5010U;
 constexpr std::uint64_t inactivity_timeout_milliseconds = 9000U;
 constexpr std::uint8_t packets_per_retry_cycle = 51U;
 constexpr std::uint8_t maximum_retry_cycles = 51U;
+constexpr std::uint32_t parent_directory_mode = 0777U;
 constexpr std::string_view firmware_path = "/sd/firmware.bin";
 constexpr std::string_view firmware_partial_path = "/sd/firmware.bin.part";
 constexpr std::string_view timeout_message = "Info: Machine receive file time out!";
@@ -64,16 +69,17 @@ bool FileUpload::start(const HostIdentity& owner, std::string path,
     const core::FileCachePaths cache_paths = core::map_file_cache_paths(logical_path_);
     port.prepare_cache_paths(cache_paths);
     if (!cache_paths.md5_path.has_value()) {
-        port.send(owner_, {0xB5U, {'E', 'r', 'r', 'o', 'r', ':', ' ', 'I', 'n', 'v', 'a', 'l',
+        port.send(owner_, {core::protocol::file_cancel,
+                           {'E', 'r', 'r', 'o', 'r', ':', ' ', 'I', 'n', 'v', 'a', 'l',
                                     'i', 'd', ' ', 'f', 'i', 'l', 'e', 'n', 'a', 'm', 'e', '!'}});
         port.release_ownership();
         return false;
     }
 
     md5_path_ = *cache_paths.md5_path;
-    if (!port.create_parent_directories(md5_path_, 0777U)) {
-        port.send(owner_, {0xB5U, path_message("Error: failed to open file [",
-                                               logical_path_, "]!")});
+    if (!port.create_parent_directories(md5_path_, parent_directory_mode)) {
+        port.send(owner_, {core::protocol::file_cancel,
+                           path_message("Error: failed to open file [", logical_path_, "]!")});
         port.release_ownership();
         return false;
     }
@@ -91,8 +97,8 @@ bool FileUpload::start(const HostIdentity& owner, std::string path,
             port.close_files();
             static_cast<void>(port.remove_file(target_path_));
         }
-        port.send(owner_, {0xB5U, path_message("Error: failed to open file [",
-                                               logical_path_, "]!")});
+        port.send(owner_, {core::protocol::file_cancel,
+                           path_message("Error: failed to open file [", logical_path_, "]!")});
         port.release_ownership();
         return false;
     }
@@ -115,18 +121,21 @@ void FileUpload::handle(const core::Frame& frame,
     }
     last_activity_milliseconds_ = now_milliseconds;
     next_timed_retry_milliseconds_ = now_milliseconds + timed_retry_interval_milliseconds;
-    if (frame.type == 0xB5U) {
+    if (frame.type == core::protocol::file_cancel) {
         cancel(port);
         return;
     }
 
-    const bool md5_valid = expected_ == ExpectedPacket::md5 && frame.type == 0xB1U &&
-                           frame.payload.size() >= 32U;
+    const bool md5_valid = expected_ == ExpectedPacket::md5 &&
+                           frame.type == core::protocol::file_md5 &&
+                           frame.payload.size() >= md5_text_size;
     const bool geometry_valid = expected_ == ExpectedPacket::geometry &&
-                                frame.type == 0xB2U && frame.payload.size() >= 4U;
-    const bool data_valid = expected_ == ExpectedPacket::data && frame.type == 0xB3U &&
-                            frame.payload.size() >= 4U &&
-                            frame.payload.size() <= maximum_data_size + 4U &&
+                                frame.type == core::protocol::file_geometry &&
+                                frame.payload.size() >= sequence_size;
+    const bool data_valid = expected_ == ExpectedPacket::data &&
+                            frame.type == core::protocol::file_data &&
+                            frame.payload.size() >= sequence_size &&
+                            frame.payload.size() <= maximum_data_size + sequence_size &&
                             decode_u32(frame.payload) == requested_sequence_;
     if (md5_valid) {
         accept_md5(frame.payload, port);
@@ -161,8 +170,8 @@ bool FileUpload::active() const {
 }
 
 void FileUpload::accept_md5(core::BytesView payload, FileUploadPort& port) {
-    static_cast<void>(port.write_md5({payload.data(), 32U}));
-    port.send(owner_, {0xB2U, {}});
+    static_cast<void>(port.write_md5({payload.data(), md5_text_size}));
+    port.send(owner_, {core::protocol::file_geometry, {}});
     expected_ = ExpectedPacket::geometry;
     reset_retry_counters();
 }
@@ -170,16 +179,17 @@ void FileUpload::accept_md5(core::BytesView payload, FileUploadPort& port) {
 void FileUpload::accept_geometry(core::BytesView payload, FileUploadPort& port) {
     announced_frame_count_ = decode_u32(payload);
     requested_sequence_ = 1U;
-    port.send(owner_, {0xB3U, encode_u32(requested_sequence_)});
+    port.send(owner_, {core::protocol::file_data, encode_u32(requested_sequence_)});
     expected_ = ExpectedPacket::data;
     reset_retry_counters();
 }
 
 void FileUpload::accept_data(core::BytesView payload, FileUploadPort& port) {
-    const core::BytesView data{payload.data() + 4U, payload.size() - 4U};
+    const core::BytesView data{payload.data() + sequence_size,
+                               payload.size() - sequence_size};
     if (!port.write_primary(data)) {
         constexpr std::string_view error = "Error: File Write error!retry...";
-        port.send(owner_, {0xB6U, {error.begin(), error.end()}});
+        port.send(owner_, {core::protocol::file_retry, {error.begin(), error.end()}});
         return;
     }
     reset_retry_counters();
@@ -188,11 +198,11 @@ void FileUpload::accept_data(core::BytesView payload, FileUploadPort& port) {
         return;
     }
     ++requested_sequence_;
-    port.send(owner_, {0xB3U, encode_u32(requested_sequence_)});
+    port.send(owner_, {core::protocol::file_data, encode_u32(requested_sequence_)});
 }
 
 void FileUpload::complete(FileUploadPort& port) {
-    port.send(owner_, {0xB4U, {'o', 'k', '\r', '\n'}});
+    port.send(owner_, {core::protocol::file_complete, {'o', 'k', '\r', '\n'}});
     port.flush_and_close();
     if (firmware_upload_) {
         static_cast<void>(port.remove_file(firmware_path));
@@ -200,21 +210,22 @@ void FileUpload::complete(FileUploadPort& port) {
             static_cast<void>(port.remove_file(firmware_partial_path));
             constexpr std::string_view error =
                 "Error: failed to finalize firmware upload [/sd/firmware.bin].";
-            port.send(owner_, {0xB5U, {error.begin(), error.end()}});
+            port.send(owner_, {core::protocol::file_cancel, {error.begin(), error.end()}});
             active_ = false;
             port.release_ownership();
             return;
         }
     }
 
-    port.send(owner_, {0x90U, path_message("Info: upload success: ", logical_path_, ".")});
+    port.send(owner_, {core::protocol::console_message,
+                       path_message("Info: upload success: ", logical_path_, ".")});
     active_ = false;
     port.release_ownership();
 }
 
 void FileUpload::cancel(FileUploadPort& port) {
     constexpr std::string_view message = "Info: Upload canceled by remote!";
-    port.send(owner_, {0xB5U, {message.begin(), message.end()}});
+    port.send(owner_, {core::protocol::file_cancel, {message.begin(), message.end()}});
     cleanup(true, port);
 }
 
@@ -234,20 +245,20 @@ void FileUpload::record_unexpected(FileUploadPort& port) {
 void FileUpload::emit_current_request(FileUploadPort& port) {
     switch (expected_) {
         case ExpectedPacket::md5:
-            port.send(owner_, {0xB1U, {}});
+            port.send(owner_, {core::protocol::file_md5, {}});
             break;
         case ExpectedPacket::geometry:
-            port.send(owner_, {0xB2U, {}});
+            port.send(owner_, {core::protocol::file_geometry, {}});
             break;
         case ExpectedPacket::data:
-            port.send(owner_, {0xB3U, encode_u32(requested_sequence_)});
+            port.send(owner_, {core::protocol::file_data, encode_u32(requested_sequence_)});
             break;
     }
 }
 
 void FileUpload::emit_timed_retry(FileUploadPort& port) {
     constexpr std::string_view message = "Info: need retry!";
-    port.send(owner_, {0xB6U, {message.begin(), message.end()}});
+    port.send(owner_, {core::protocol::file_retry, {message.begin(), message.end()}});
     ++retry_cycles_;
     if (retry_cycles_ >= maximum_retry_cycles) {
         abort(excessive_retry_message, port);
@@ -255,7 +266,7 @@ void FileUpload::emit_timed_retry(FileUploadPort& port) {
 }
 
 void FileUpload::abort(std::string_view message, FileUploadPort& port) {
-    port.send(owner_, {0xB5U, {message.begin(), message.end()}});
+    port.send(owner_, {core::protocol::file_cancel, {message.begin(), message.end()}});
     cleanup(true, port);
 }
 

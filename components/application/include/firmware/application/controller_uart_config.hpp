@@ -25,22 +25,34 @@ struct ControllerUartConfig {
     std::uint32_t read_wait_milliseconds;
 };
 
+inline constexpr int controller_uart_port = 1;
+inline constexpr int controller_uart_tx_gpio = 42;
+inline constexpr int controller_uart_rx_gpio = 41;
+inline constexpr int controller_uart_unused_gpio = -1;
+inline constexpr int controller_uart_baud_rate = 230400;
+inline constexpr int controller_uart_data_bits = 8;
+inline constexpr int controller_uart_stop_bits = 1;
+inline constexpr std::size_t controller_uart_receive_buffer_size = 1024U;
+inline constexpr std::size_t controller_uart_transmit_buffer_size = 1024U;
+inline constexpr std::size_t controller_uart_maximum_read_size = 512U;
+inline constexpr std::uint32_t controller_uart_read_wait_milliseconds = 30U;
+
 constexpr ControllerUartConfig controller_uart{
-    1,
-    42,
-    41,
-    -1,
-    -1,
-    230400,
-    8,
-    1,
+    controller_uart_port,
+    controller_uart_tx_gpio,
+    controller_uart_rx_gpio,
+    controller_uart_unused_gpio,
+    controller_uart_unused_gpio,
+    controller_uart_baud_rate,
+    controller_uart_data_bits,
+    controller_uart_stop_bits,
     false,
     false,
     true,
-    1024U,
-    1024U,
-    512U,
-    30U,
+    controller_uart_receive_buffer_size,
+    controller_uart_transmit_buffer_size,
+    controller_uart_maximum_read_size,
+    controller_uart_read_wait_milliseconds,
 };
 
 }  // namespace firmware::application

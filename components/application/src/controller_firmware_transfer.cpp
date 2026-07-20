@@ -2,6 +2,7 @@
 #include "firmware/application/controller_firmware_transfer.hpp"
 
 #include "firmware/application/controller_transfer.hpp"
+#include "firmware/core/protocol_constants.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -64,7 +65,8 @@ void ControllerFirmwareTransfer::handle_start(std::uint64_t now_milliseconds,
     waiting_ = true;
     wait_started_milliseconds_ = now_milliseconds;
     port.publish(FirmwareTransferEvent::started, 0U, frame_count_);
-    if (!port.send(make_transfer_reply(0xC0U, 1U))) {
+    if (!port.send(make_transfer_reply(core::protocol::firmware_family,
+                                       core::protocol::transfer_start))) {
         report_error(port);
     }
 }
@@ -93,7 +95,8 @@ void ControllerFirmwareTransfer::handle_geometry(core::BytesView payload,
         waiting_ = true;
         wait_started_milliseconds_ = now_milliseconds;
     }
-    if (!port.send(make_transfer_reply(0xC0U, 2U,
+    if (!port.send(make_transfer_reply(core::protocol::firmware_family,
+                                       core::protocol::transfer_geometry,
                                        encode_geometry(frame_count_, frame_data_size_)))) {
         report_error(port);
     }
@@ -126,7 +129,9 @@ void ControllerFirmwareTransfer::handle_data(core::BytesView payload,
 
     core::ByteVector response = request->wire_index;
     response.insert(response.end(), data->begin(), data->end());
-    if (!port.send(make_transfer_reply(0xC0U, 3U, std::move(response)))) {
+    if (!port.send(make_transfer_reply(core::protocol::firmware_family,
+                                       core::protocol::transfer_data,
+                                       std::move(response)))) {
         report_error(port);
         return;
     }
@@ -144,7 +149,8 @@ void ControllerFirmwareTransfer::finish(FirmwareTransferEvent event,
 
 void ControllerFirmwareTransfer::report_error(ControllerFirmwarePort& port) {
     port.publish(FirmwareTransferEvent::error, 0U, frame_count_);
-    port.send(make_transfer_reply(0xC0U, 5U));
+    port.send(make_transfer_reply(core::protocol::firmware_family,
+                                  core::protocol::transfer_cancel));
 }
 
 void ControllerFirmwareTransfer::apply_timeout(std::uint64_t now_milliseconds,

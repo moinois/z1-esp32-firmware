@@ -11,7 +11,11 @@
 namespace firmware::target {
 namespace {
 
-constexpr uart_port_t uart_port = UART_NUM_1;
+constexpr uart_port_t uart_port = static_cast<uart_port_t>(
+    application::controller_uart.port);
+constexpr std::uint8_t disabled_rx_flow_threshold = 0U;
+constexpr int unused_event_queue_size = 0;
+constexpr int default_interrupt_flags = 0;
 
 }  // namespace
 
@@ -22,7 +26,7 @@ bool ControllerUartAdapter::initialize() {
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .rx_flow_ctrl_thresh = 0U,
+        .rx_flow_ctrl_thresh = disabled_rx_flow_threshold,
         .source_clk = UART_SCLK_APB,
         .flags = {},
     };
@@ -40,9 +44,9 @@ bool ControllerUartAdapter::initialize() {
     return uart_driver_install(uart_port,
                                application::controller_uart.receive_buffer_size,
                                application::controller_uart.transmit_buffer_size,
-                               0,
+                               unused_event_queue_size,
                                nullptr,
-                               0) == ESP_OK;
+                               default_interrupt_flags) == ESP_OK;
 }
 
 int ControllerUartAdapter::read(std::uint8_t* destination, std::size_t capacity) const {

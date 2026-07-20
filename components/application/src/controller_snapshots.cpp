@@ -1,6 +1,8 @@
 // Implements bounded snapshot retention and byte-exact local response formatting.
 #include "firmware/application/controller_snapshots.hpp"
 
+#include "firmware/core/protocol_constants.hpp"
+
 #include <algorithm>
 #include <cstdio>
 #include <string>
@@ -9,8 +11,10 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::size_t maximum_snapshot_size = 528U;
+constexpr std::size_t maximum_snapshot_size =
+    core::protocol::controller_maximum_frame_size;
 constexpr std::size_t maximum_pending_statuses = 3U;
+constexpr std::size_t maximum_controller_version_prefix = 63U;
 
 constexpr std::string_view initial_status =
     "<Idle|MPos:-1.0000,-1.0000,-1.0000,0.0000,0.0000|WPos:144.4120,158.7000,77.9550,8.0010,0.0000|"
@@ -76,7 +80,8 @@ std::optional<core::Frame> ControllerSnapshots::status_reply(const core::StatusE
     if (!extended.has_value()) {
         return std::nullopt;
     }
-    return core::Frame{0x81U, {extended->begin(), extended->end()}};
+    return core::Frame{core::protocol::machine_status,
+                       {extended->begin(), extended->end()}};
 }
 
 std::optional<core::Frame> ControllerSnapshots::diagnostic_reply(std::int32_t rssi) const {
@@ -95,8 +100,10 @@ std::optional<core::Frame> ControllerSnapshots::diagnostic_reply(std::int32_t rs
     if (insertion_length < 0 || static_cast<std::size_t>(insertion_length) >= sizeof(insertion) ||
         complete_size > maximum_snapshot_size) {
         const std::size_t fallback_size = std::min(diagnostic.size(), closing + 2U);
-        return core::Frame{0x82U, {diagnostic_.begin(), diagnostic_.begin() +
-                                                        static_cast<std::ptrdiff_t>(fallback_size)}};
+        return core::Frame{
+            core::protocol::diagnostic_data,
+            {diagnostic_.begin(),
+             diagnostic_.begin() + static_cast<std::ptrdiff_t>(fallback_size)}};
     }
 
     core::ByteVector payload;
@@ -105,7 +112,7 @@ std::optional<core::Frame> ControllerSnapshots::diagnostic_reply(std::int32_t rs
     payload.insert(payload.end(), insertion, insertion + insertion_length);
     payload.push_back('}');
     payload.push_back('\n');
-    return core::Frame{0x82U, std::move(payload)};
+    return core::Frame{core::protocol::diagnostic_data, std::move(payload)};
 }
 
 core::Frame ControllerSnapshots::version_reply() const {
@@ -115,11 +122,11 @@ core::Frame ControllerSnapshots::version_reply() const {
 
     const auto nul = std::find(version_.begin(), version_.end(), 0U);
     const std::size_t controller_length = static_cast<std::size_t>(nul - version_.begin());
-    if (controller_length > 0U && controller_length < 64U) {
+    if (controller_length > 0U && controller_length <= maximum_controller_version_prefix) {
         payload.insert(payload.end(), version_.begin(), nul);
     }
     payload.insert(payload.end(), suffix.begin(), suffix.end());
-    return {0x83U, std::move(payload)};
+    return {core::protocol::text_response, std::move(payload)};
 }
 
 std::size_t ControllerSnapshots::latest_status_size() const {

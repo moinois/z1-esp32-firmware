@@ -1,6 +1,7 @@
 // Defines common frame encoding and transport-specific incremental decoding.
 #pragma once
 #include "firmware/core/bytes.hpp"
+#include "firmware/core/protocol_constants.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -16,9 +17,20 @@ enum class RecoveryMode { scan_inside_candidate, discard_candidate };
 struct StreamPolicy {
     std::size_t maximum_frame_size;
     RecoveryMode recovery;
-    static constexpr StreamPolicy controller_uart() { return {528, RecoveryMode::scan_inside_candidate}; }
-    static constexpr StreamPolicy tcp() { return {8300, RecoveryMode::scan_inside_candidate}; }
-    static constexpr StreamPolicy usb() { return {8300, RecoveryMode::discard_candidate}; }
+    static constexpr StreamPolicy controller_uart() {
+        return {protocol::controller_maximum_frame_size,
+                RecoveryMode::scan_inside_candidate};
+    }
+
+    static constexpr StreamPolicy tcp() {
+        return {protocol::host_maximum_frame_size,
+                RecoveryMode::scan_inside_candidate};
+    }
+
+    static constexpr StreamPolicy usb() {
+        return {protocol::host_maximum_frame_size,
+                RecoveryMode::discard_candidate};
+    }
 };
 ByteVector encode_frame(const Frame& frame);
 class StreamDecoder {
