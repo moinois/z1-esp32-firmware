@@ -141,12 +141,14 @@ The first core-to-periphery development slice contains:
   dictionary with little-endian access and mapping validation;
 - expedited CANopen SDO uploads and downloads with exact scalar sizing,
   standard abort responses, disabled block transfer, and write effects;
+- concurrent `M942` forwarding and acknowledgement with single-exercise
+  admission, rotated digital-I/O patterns, bounded SDO retries, and deadline;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 457 tests. The firmware also builds successfully as
+The current host suite has 464 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
@@ -332,7 +334,7 @@ The following major areas remain:
   ESP-IDF's independent standard-BLUFI protocol owner;
 - HTTP, WebSocket, camera, AVI preview, recording, and retention;
 - runtime service adapters and composition-root wiring;
-- CANopen PDO behavior, TWAI integration, and `M942`; and
+- CANopen PDO behavior and TWAI integration; and
 - physical-device verification of hardware and coexistence behavior.
 
 These areas will be implemented in dependency order. Hardware validation will

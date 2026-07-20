@@ -22,6 +22,7 @@ set(APPLICATION_SOURCES
     src/file_upload.cpp
     src/filesystem_commands.cpp
     src/live_configuration.cpp
+    src/m942_exercise.cpp
     src/controller_config_transfer.cpp
     src/controller_factory_transfer.cpp
     src/controller_firmware_transfer.cpp
