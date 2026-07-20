@@ -36,6 +36,7 @@ set(APPLICATION_SOURCES
     src/router.cpp
     src/runtime_commands.cpp
     src/runtime_counters.cpp
+    src/runtime_status.cpp
     src/sd_card_lifecycle.cpp
     src/serial_number.cpp
     src/station_connection.cpp

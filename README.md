@@ -133,12 +133,14 @@ The first core-to-periphery development slice contains:
   accounting with per-save fractional discard and silent write failures;
 - persisted `sys-time` reporting and first-boot-only `clearftm` handling with
   exact capacity, fallback, UTC, and response behavior;
+- aggregate machine-status composition from replaceable transfer, recording,
+  SD-capacity, update-phase, and station-RSSI sources;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 428 tests. The firmware also builds successfully as
+The current host suite has 432 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
@@ -323,7 +325,7 @@ The following major areas remain:
 - a raw ESP-IDF GATT adapter for the byte-exact BLUFI stack, kept separate from
   ESP-IDF's independent standard-BLUFI protocol owner;
 - HTTP, WebSocket, camera, AVI preview, recording, and retention;
-- runtime counters and identity commands;
+- runtime service adapters and composition-root wiring;
 - CANopen object dictionary, NMT, SDO/PDO behavior, and `M942`; and
 - physical-device verification of hardware and coexistence behavior.
 
