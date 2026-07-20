@@ -7,6 +7,7 @@
 #include "firmware/application/runtime_counters.hpp"
 #include "nvs_runtime_counter_adapter.hpp"
 
+#include <ctime>
 #include <cstdint>
 
 namespace firmware::target {
@@ -20,6 +21,8 @@ void runtime_counter_task(void*) {
     active_service = &service;
     const std::uint64_t start = xTaskGetTickCount() * portTICK_PERIOD_MS;
     service.initialize(start);
+    // Capture the first-boot wall-clock value once the persistent service is ready.
+    service.record_first_boot(static_cast<std::int64_t>(std::time(nullptr)));
     for (;;) {
         const std::uint64_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
         service.save_power_on(now);
