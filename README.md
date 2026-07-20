@@ -254,6 +254,7 @@ The first core-to-periphery development slice contains:
 - ESP-IDF BLUFI lifecycle adapter initializes BLE/Bluedroid, the standard BLUFI profile, and advertising;
 - mbedTLS BLUFI crypto adapter provides bounded DH, MD5, and AES-CFB128 operations;
 - ESP-IDF BLUFI provisioning adapter provides Wi-Fi configuration, scanning, status/list reports, and advertising controls;
+- ESP-IDF BLUFI callback adapter forwards supported BLE events into the tested provisioning policy;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;

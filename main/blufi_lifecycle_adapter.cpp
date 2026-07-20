@@ -24,7 +24,7 @@ esp_blufi_callbacks_t lifecycle_callbacks{
 
 }  // namespace
 
-bool BlufiLifecycleAdapter::start() {
+bool BlufiLifecycleAdapter::start(const esp_blufi_callbacks_t* callbacks) {
     if (esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_IDLE) {
         esp_bt_controller_config_t controller_config = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
         if (esp_bt_controller_init(&controller_config) != ESP_OK) {
@@ -43,7 +43,10 @@ bool BlufiLifecycleAdapter::start() {
         esp_bluedroid_enable() != ESP_OK) {
             return false;
     }
-    if (esp_blufi_register_callbacks(&lifecycle_callbacks) != ESP_OK ||
+    const esp_blufi_callbacks_t& selected_callbacks =
+        callbacks != nullptr ? *callbacks : lifecycle_callbacks;
+    if (esp_blufi_register_callbacks(
+            const_cast<esp_blufi_callbacks_t*>(&selected_callbacks)) != ESP_OK ||
         esp_blufi_profile_init() != ESP_OK) {
         return false;
     }

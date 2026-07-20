@@ -20,6 +20,8 @@
 #include "connectivity_startup_adapter.hpp"
 #include "automatic_connection_adapter.hpp"
 #include "blufi_lifecycle_adapter.hpp"
+#include "blufi_provisioning_adapter.hpp"
+#include "blufi_callback_adapter.hpp"
 #include "diagnostic_capture_adapter.hpp"
 #include "runtime_counter_task.hpp"
 
@@ -106,8 +108,14 @@ extern "C" void app_main() {
         ESP_LOGE(tag, "Connectivity startup failed; restarting");
         esp_restart();
     }
+    static firmware::target::BlufiProvisioningAdapter blufi_port;
+    static firmware::application::StationRuntime blufi_station_runtime;
+    static firmware::application::BleProvisioning blufi_provisioning(
+        blufi_station_runtime, blufi_port);
+    static firmware::target::BlufiCallbackAdapter blufi_callbacks(blufi_provisioning);
     static firmware::target::BlufiLifecycleAdapter blufi_lifecycle;
-    if (!blufi_lifecycle.start()) {
+    if (!blufi_lifecycle.start(&blufi_callbacks.callbacks()) ||
+        !blufi_provisioning.start()) {
         ESP_LOGW(tag, "BLUFI lifecycle did not start");
     }
     static firmware::target::WebVolumeAdapter web_volume_adapter;

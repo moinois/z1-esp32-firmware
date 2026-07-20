@@ -31,6 +31,7 @@ idf_component_register(
         "blufi_lifecycle_adapter.cpp"
         "blufi_crypto_adapter.cpp"
         "blufi_provisioning_adapter.cpp"
+        "blufi_callback_adapter.cpp"
         "tcp_control_adapter.cpp"
         "recording_request_state.cpp"
     REQUIRES
