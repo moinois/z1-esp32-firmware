@@ -4,6 +4,7 @@
 #include "controller_command_loop.hpp"
 #include "esp_image_validator.hpp"
 #include "ota_update_adapter.hpp"
+#include "nvs_key_value_adapter.hpp"
 
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -121,6 +122,14 @@ void process_update_once() {
 
 void update_task(void*) {
     vTaskDelay(pdMS_TO_TICKS(1000U));
+    const auto persisted_phase = NvsKeyValueAdapter{}.read_u8("ota_state", "phase");
+    if (persisted_phase.has_value()) {
+        ESP_LOGI(tag, "recovered OTA phase %u",
+                 static_cast<unsigned>(*persisted_phase));
+        if (*persisted_phase == 4U) {
+            static_cast<void>(NvsKeyValueAdapter{}.write_u8("ota_state", "phase", 0U));
+        }
+    }
     update_requested.store(true);
     for (;;) {
         if (update_requested.exchange(false)) {

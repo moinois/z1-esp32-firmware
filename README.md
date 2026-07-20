@@ -264,6 +264,7 @@ The first core-to-periphery development slice contains:
 - Firmware update task composes SD aggregate loading, validation, OTA application, controller staging, and restart effects after SD startup;
 - Local `upgrade` and `reset` commands now coalesce into a thread-safe update-processing request;
 - OTA phase publication persists the specified byte in NVS namespace `ota_state`, key `phase`;
+- Update boot processing reads the persisted OTA phase and clears completed phase 4 before retrying aggregate work;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
