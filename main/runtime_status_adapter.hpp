@@ -31,4 +31,7 @@ private:
 // Returns the process-wide controller snapshot store used by TCP and UART tasks.
 firmware::application::ControllerSnapshots& shared_controller_snapshots();
 
+// Publishes the newest update phase for aggregate status composition.
+void publish_runtime_update_phase(std::uint8_t phase);
+
 }  // namespace firmware::target

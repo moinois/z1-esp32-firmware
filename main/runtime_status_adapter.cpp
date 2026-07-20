@@ -5,12 +5,16 @@
 #include "runtime_play_observer.hpp"
 
 #include "esp_vfs_fat.h"
+#include "esp_wifi.h"
 #include "firmware/application/router.hpp"
 #include "firmware/application/update_phase.hpp"
+
+#include <atomic>
 
 namespace firmware::target {
 namespace {
 firmware::application::ControllerSnapshots snapshots;
+std::atomic_uint8_t update_phase{0U};
 }  // namespace
 
 RuntimeStatusAdapter::RuntimeStatusAdapter(
@@ -41,15 +45,23 @@ RuntimeStatusAdapter::sd_capacity() const {
 }
 
 firmware::application::UpdateStatus RuntimeStatusAdapter::update_status() const {
-    return {};
+    return {update_phase.load(std::memory_order_acquire), 0U};
 }
 
 std::optional<std::int32_t> RuntimeStatusAdapter::station_rssi() const {
-    return std::nullopt;
+    wifi_ap_record_t access_point{};
+    if (esp_wifi_sta_get_ap_info(&access_point) != ESP_OK) {
+        return std::nullopt;
+    }
+    return static_cast<std::int32_t>(access_point.rssi);
 }
 
 firmware::application::ControllerSnapshots& shared_controller_snapshots() {
     return snapshots;
+}
+
+void publish_runtime_update_phase(std::uint8_t phase) {
+    update_phase.store(phase, std::memory_order_release);
 }
 
 }  // namespace firmware::target
