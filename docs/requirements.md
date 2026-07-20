@@ -55,7 +55,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | Terminal service integration pending |
 | LPC-001--LPC-002 periodic controller queries | Application scheduler plus ESP-IDF controller UART task | Target build verified for periodic status/diagnostic query emission and bounded serial transport | Physical controller timing verification pending |
 | LPC-003 initial controller status | Controller UART task using scheduler at startup | Target build verified for immediate first query opportunity | Physical controller verification pending |
-| STAT-001--STAT-010 controller snapshots and replies | Core and application implementation | Yes | UART snapshot retention and TCP `?` response routing integrated; physical verification pending |
+| STAT-001--STAT-010 controller snapshots and replies | Core and application implementation | Yes | UART snapshot retention and TCP `?`/`diagnose`/`version` routing integrated; physical verification pending |
 | UART-003--UART-008 controller link policy | Application implementation | Yes | UART adapter integration pending |
 | DIAG-021 controller write failure message | Application implementation | Yes | Diagnostic sink integration pending |
 | HW-020--HW-022 controller UART configuration | ESP-IDF adapter | Exact settings verified | Adapter startup deferred by BOOT-012 |
