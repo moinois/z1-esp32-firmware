@@ -86,6 +86,7 @@ add_executable(
     test_media_messages.cpp
     test_preview_path_policy.cpp
     test_avi_preview.cpp
+    test_avi_writer.cpp
     test_preview_request.cpp
     test_preview_metadata.cpp
     test_preview_open.cpp
