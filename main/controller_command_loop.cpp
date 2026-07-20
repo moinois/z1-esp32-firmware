@@ -10,6 +10,7 @@
 #include "wall_clock_adapter.hpp"
 #include "wall_clock_command_dispatcher.hpp"
 #include "serial_number_adapter.hpp"
+#include "controller_runtime_command_adapter.hpp"
 #include "firmware/application/serial_number.hpp"
 #include "firmware/application/recording_commands.hpp"
 #include "recording_request_state.hpp"
@@ -69,6 +70,8 @@ void controller_command_task(void*) {
     WallClockCommandDispatcher dispatcher(wall_clock);
     NvsSerialNumberAdapter serial_port(&uart);
     firmware::application::SerialNumberService serial_service(serial_port);
+    ControllerRuntimeCommandAdapter runtime_port(uart);
+    firmware::application::RuntimeCommandService runtime_service(runtime_port);
     RecordingRequestState recording_state;
     ControllerTransferAdapter transfer_port(uart);
     firmware::application::ControllerFirmwareTransfer firmware_transfer;
@@ -139,6 +142,7 @@ void controller_command_task(void*) {
             const auto match = firmware::core::recognize_command(frame.payload);
             if (match.kind == firmware::core::CommandKind::serial_get ||
                 match.kind == firmware::core::CommandKind::serial_set ||
+                match.kind == firmware::core::CommandKind::clear_first_time ||
                 match.kind == firmware::core::CommandKind::record_start ||
                 match.kind == firmware::core::CommandKind::record_stop) {
                 static_cast<void>(local_commands.enqueue(frame));
@@ -155,6 +159,8 @@ void controller_command_task(void*) {
                 serial_service.handle_get(command);
             } else if (match.kind == firmware::core::CommandKind::serial_set) {
                 serial_service.handle_set(command);
+            } else if (match.kind == firmware::core::CommandKind::clear_first_time) {
+                runtime_service.handle_clear_first_boot(command);
             } else {
                 const auto result = firmware::application::handle_recording_command(
                     match.kind, recording_state.requested());

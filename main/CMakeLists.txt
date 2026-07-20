@@ -31,6 +31,7 @@ idf_component_register(
         "serial_number_adapter.cpp"
         "tcp_serial_number_adapter.cpp"
         "tcp_runtime_command_adapter.cpp"
+        "controller_runtime_command_adapter.cpp"
         "tcp_filesystem_adapter.cpp"
         "tcp_filesystem_query_adapter.cpp"
         "tcp_file_transfer_adapter.cpp"
