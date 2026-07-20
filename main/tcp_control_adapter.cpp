@@ -14,6 +14,8 @@
 #include "recording_request_state.hpp"
 #include "tcp_serial_number_adapter.hpp"
 #include "tcp_runtime_command_adapter.hpp"
+#include "tcp_filesystem_adapter.hpp"
+#include "firmware/application/filesystem_commands.hpp"
 #include "firmware/application/runtime_commands.hpp"
 #include "firmware/application/serial_number.hpp"
 #include "firmware/application/recording_commands.hpp"
@@ -58,7 +60,11 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
         if (match.kind != firmware::core::CommandKind::serial_get
             && match.kind != firmware::core::CommandKind::serial_set
             && match.kind != firmware::core::CommandKind::system_time
-            && match.kind != firmware::core::CommandKind::clear_first_time) {
+            && match.kind != firmware::core::CommandKind::clear_first_time
+            && match.kind != firmware::core::CommandKind::make_directory
+            && match.kind != firmware::core::CommandKind::remove
+            && match.kind != firmware::core::CommandKind::move
+            && match.kind != firmware::core::CommandKind::file_type) {
             return;
         }
         const std::string_view command(
@@ -73,13 +79,28 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             } else {
                 serial_service.handle_set(command);
             }
-        } else {
+        } else if (match.kind == firmware::core::CommandKind::system_time
+                   || match.kind == firmware::core::CommandKind::clear_first_time) {
             TcpRuntimeCommandAdapter runtime_port(session);
             firmware::application::RuntimeCommandService runtime_service(runtime_port);
             if (match.kind == firmware::core::CommandKind::system_time) {
                 runtime_service.handle_system_time(command);
             } else {
                 runtime_service.handle_clear_first_boot(command);
+            }
+        } else {
+            TcpFilesystemAdapter filesystem_port(session);
+            if (match.kind == firmware::core::CommandKind::make_directory) {
+                firmware::application::FilesystemCommands::make_directory(
+                    frame.payload, filesystem_port);
+            } else if (match.kind == firmware::core::CommandKind::remove) {
+                firmware::application::FilesystemCommands::remove(
+                    frame.payload, filesystem_port);
+            } else if (match.kind == firmware::core::CommandKind::move) {
+                firmware::application::FilesystemCommands::move(
+                    frame.payload, filesystem_port);
+            } else {
+                firmware::application::FilesystemCommands::file_type(filesystem_port);
             }
         }
         return;

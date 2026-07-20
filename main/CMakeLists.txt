@@ -20,6 +20,7 @@ idf_component_register(
         "serial_number_adapter.cpp"
         "tcp_serial_number_adapter.cpp"
         "tcp_runtime_command_adapter.cpp"
+        "tcp_filesystem_adapter.cpp"
         "tcp_control_adapter.cpp"
         "recording_request_state.cpp"
     REQUIRES
