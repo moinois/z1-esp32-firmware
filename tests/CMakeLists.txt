@@ -40,6 +40,7 @@ add_executable(
     test_automatic_connection.cpp
     test_ble_provisioning.cpp
     test_blufi_fragment.cpp
+    test_blufi_product.cpp
     test_blufi_security.cpp
     test_blufi_wire.cpp
     test_station_connection.cpp
