@@ -2,6 +2,7 @@
 set(CORE_SOURCES
     src/canopen_dictionary.cpp
     src/canopen_node.cpp
+    src/canopen_sdo.cpp
     src/configuration_syntax.cpp
     src/crc.cpp
     src/discovery_policy.cpp

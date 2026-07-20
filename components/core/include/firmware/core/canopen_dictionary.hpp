@@ -40,6 +40,7 @@ inline constexpr std::uint16_t digital_output = 0x6001U;
 // Uses standard CANopen abort codes needed by local dictionary accesses.
 enum class SdoAbort : std::uint32_t {
     none = 0x00000000U,
+    command_specifier = 0x05040001U,
     read_only = 0x06010002U,
     object_not_found = 0x06020000U,
     pdo_mapping = 0x06040041U,

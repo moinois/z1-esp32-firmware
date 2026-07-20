@@ -18,6 +18,9 @@ inline constexpr std::uint16_t initial_heartbeat_period_milliseconds = 0U;
 inline constexpr std::uint16_t first_heartbeat_limit_milliseconds = 500U;
 inline constexpr std::uint16_t processing_period_milliseconds = 10U;
 inline constexpr std::uint16_t restart_delay_milliseconds = 100U;
+inline constexpr std::uint16_t sdo_server_timeout_milliseconds = 2000U;
+inline constexpr std::uint16_t sdo_client_timeout_milliseconds = 500U;
+inline constexpr bool block_transfer_enabled = false;
 
 }  // namespace canopen
 

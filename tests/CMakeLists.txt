@@ -5,6 +5,7 @@ add_executable(
     test_crc.cpp
     test_canopen_node.cpp
     test_canopen_dictionary.cpp
+    test_canopen_sdo.cpp
     test_controller_query.cpp
     test_controller_link.cpp
     test_controller_firmware_transfer.cpp
