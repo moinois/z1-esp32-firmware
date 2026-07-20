@@ -695,6 +695,7 @@ private:
 
 UsbFileDownloadPort usb_download_port;
 firmware::application::FileDownload usb_download;
+SemaphoreHandle_t usb_file_mutex = nullptr;
 
 class UsbSerialPort final : public firmware::application::SerialNumberPort {
 public:
@@ -1006,6 +1007,10 @@ void usb_transmit_task(void*) {
 
 // Handles one USB-origin file transfer frame and releases ownership on completion.
 void handle_usb_file_transfer(const firmware::core::Frame& frame) {
+    if (usb_file_mutex == nullptr ||
+        xSemaphoreTake(usb_file_mutex, portMAX_DELAY) != pdTRUE) {
+        return;
+    }
     const std::uint64_t now =
         static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
     if (frame.type == firmware::core::protocol::file_command) {
@@ -1014,6 +1019,7 @@ void handle_usb_file_transfer(const firmware::core::Frame& frame) {
             usb_upload.active() ||
             usb_download.active() ||
             !shared_host_router().ownership().claim_file(usb_host_identity)) {
+            xSemaphoreGive(usb_file_mutex);
             return;
         }
         const bool started = start->direction ==
@@ -1025,6 +1031,7 @@ void handle_usb_file_transfer(const firmware::core::Frame& frame) {
         if (!started) {
             shared_host_router().ownership().release_file();
         }
+        xSemaphoreGive(usb_file_mutex);
         return;
     }
     if (usb_upload.active()) {
@@ -1037,24 +1044,24 @@ void handle_usb_file_transfer(const firmware::core::Frame& frame) {
         shared_host_router().ownership().is_file_owner(usb_host_identity)) {
         shared_host_router().ownership().release_file();
     }
+    xSemaphoreGive(usb_file_mutex);
 }
 
 // Polls USB upload inactivity and retry deadlines independently of RX callbacks.
 void usb_upload_task(void*) {
     for (;;) {
-        if (usb_upload.active()) {
-            usb_upload.poll(
-                static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL),
-                usb_upload_port);
-        }
-        if (usb_download.active()) {
-            usb_download.poll(
-                static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL),
-                usb_download_port);
-        }
-        if (!usb_upload.active() && !usb_download.active() &&
-            shared_host_router().ownership().is_file_owner(usb_host_identity)) {
-            shared_host_router().ownership().release_file();
+        if (xSemaphoreTake(usb_file_mutex, portMAX_DELAY) == pdTRUE) {
+            const std::uint64_t now =
+                static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
+            if (usb_upload.active()) usb_upload.poll(now, usb_upload_port);
+            if (usb_download.active()) {
+                usb_download.poll(now, usb_download_port);
+            }
+            if (!usb_upload.active() && !usb_download.active() &&
+                shared_host_router().ownership().is_file_owner(usb_host_identity)) {
+                shared_host_router().ownership().release_file();
+            }
+            xSemaphoreGive(usb_file_mutex);
         }
         vTaskDelay(pdMS_TO_TICKS(50U));
     }
@@ -1287,6 +1294,11 @@ bool UsbDeviceAdapter::start() {
     const esp_err_t result = tinyusb_driver_install(&configuration);
     if (result != ESP_OK) {
         ESP_LOGW(tag, "TinyUSB installation failed: %s", esp_err_to_name(result));
+        return false;
+    }
+    usb_file_mutex = xSemaphoreCreateMutex();
+    if (usb_file_mutex == nullptr) {
+        ESP_LOGW(tag, "USB file-transfer mutex allocation failed");
         return false;
     }
     xTaskCreate(usb_transmit_task, "usb_tx", 4096U, nullptr, 4U, nullptr);
