@@ -18,6 +18,7 @@
 #include "tcp_wlan_scan_adapter.hpp"
 #include "tcp_wlan_station_adapter.hpp"
 #include "tcp_wlan_connection_adapter.hpp"
+#include "tcp_discovery_adapter.hpp"
 #include "firmware/application/filesystem_commands.hpp"
 #include "firmware/application/wlan_command.hpp"
 #include "firmware/application/wlan_request.hpp"
@@ -111,6 +112,12 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
                 firmware::application::WlanConnectionCommand::connect(
                     tcp_station_runtime, station, responses,
                     request.ssid, request.password);
+                if (tcp_station_runtime.state ==
+                    firmware::application::StationConnectionState::address_ready) {
+                    update_tcp_discovery_station(
+                        tcp_station_runtime.ipv4, "255.255.255.0",
+                        active_tcp_client_count());
+                }
             }
         } else {
             TcpFilesystemAdapter filesystem_port(session);
