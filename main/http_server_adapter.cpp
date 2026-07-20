@@ -101,6 +101,22 @@ esp_err_t firmware_info_handler(httpd_req_t* request) {
     return httpd_resp_send(request, payload.data(), payload.size());
 }
 
+// Accepts the WebSocket handshake; media message processing is injected later.
+esp_err_t video_websocket_handler(httpd_req_t* request) {
+    if (request->method == HTTP_GET) {
+        return ESP_OK;
+    }
+    return ESP_FAIL;
+}
+
+// Accepts the preview WebSocket handshake; session processing is injected later.
+esp_err_t preview_websocket_handler(httpd_req_t* request) {
+    if (request->method == HTTP_GET) {
+        return ESP_OK;
+    }
+    return ESP_FAIL;
+}
+
 // Registers the exact GET handlers available before update/camera adapters.
 void register_main_handlers(httpd_handle_t handle) {
     static const httpd_uri_t firmware_info_uri{
@@ -115,8 +131,28 @@ void register_main_handlers(httpd_handle_t handle) {
         .handler = static_file_handler,
         .user_ctx = nullptr,
     };
+#if CONFIG_HTTPD_WS_SUPPORT
+    static const httpd_uri_t video_websocket_uri{
+        .uri = "/ws_video",
+        .method = HTTP_GET,
+        .handler = video_websocket_handler,
+        .user_ctx = nullptr,
+        .is_websocket = true,
+    };
+    static const httpd_uri_t preview_websocket_uri{
+        .uri = "/ws_preview",
+        .method = HTTP_GET,
+        .handler = preview_websocket_handler,
+        .user_ctx = nullptr,
+        .is_websocket = true,
+    };
+#endif
     httpd_register_uri_handler(handle, &firmware_info_uri);
     httpd_register_uri_handler(handle, &static_file_uri);
+#if CONFIG_HTTPD_WS_SUPPORT
+    httpd_register_uri_handler(handle, &video_websocket_uri);
+    httpd_register_uri_handler(handle, &preview_websocket_uri);
+#endif
 }
 
 // Applies shared and server-specific portable policy to an ESP-IDF config.
