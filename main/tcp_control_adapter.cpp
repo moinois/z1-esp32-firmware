@@ -20,6 +20,7 @@
 #include "tcp_play_adapter.hpp"
 #include "tcp_configuration_file_adapter.hpp"
 #include "tcp_configuration_adapter.hpp"
+#include "runtime_status_adapter.hpp"
 #include "play_runtime_state.hpp"
 #include "tcp_wlan_scan_adapter.hpp"
 #include "tcp_wlan_station_adapter.hpp"
@@ -34,6 +35,7 @@
 #include "firmware/application/configuration_files.hpp"
 #include "firmware/application/configuration_get.hpp"
 #include "firmware/application/configuration_set.hpp"
+#include "firmware/application/controller_snapshots.hpp"
 #include "firmware/application/wlan_command.hpp"
 #include "firmware/application/wlan_request.hpp"
 #include "firmware/application/runtime_commands.hpp"
@@ -76,6 +78,15 @@ void forward_tcp_controller_frame(firmware::application::TcpClientSession&,
 
 void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
                             const firmware::core::Frame& frame) {
+    if (frame.type == firmware::core::protocol::single_command &&
+        !frame.payload.empty() && frame.payload.front() == '?') {
+        RuntimeStatusAdapter status_sources(tcp_router);
+        firmware::application::AggregatedStatusService status_service(status_sources);
+        const auto response = shared_controller_snapshots().status_reply(
+            status_service.extension());
+        if (response.has_value()) static_cast<void>(session.queue_frame(*response));
+        return;
+    }
     if (frame.type != firmware::core::protocol::general_command) {
         return;
     }

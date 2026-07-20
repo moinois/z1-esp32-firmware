@@ -5,6 +5,7 @@
 #include "controller_transfer_adapter.hpp"
 #include "controller_play_adapter.hpp"
 #include "play_runtime_state.hpp"
+#include "runtime_status_adapter.hpp"
 #include "wall_clock_adapter.hpp"
 #include "wall_clock_command_dispatcher.hpp"
 #include "serial_number_adapter.hpp"
@@ -89,6 +90,13 @@ void controller_command_task(void*) {
         const auto frames = decoder.push(
             {input, static_cast<std::size_t>(count)});
         for (const auto& frame : frames) {
+            if (frame.type == firmware::core::protocol::machine_status) {
+                shared_controller_snapshots().update_status(frame.payload);
+            } else if (frame.type == firmware::core::protocol::diagnostic_data) {
+                shared_controller_snapshots().update_diagnostic(frame.payload);
+            } else if (frame.type == firmware::core::protocol::controller_version) {
+                shared_controller_snapshots().update_version(frame.payload);
+            }
             const std::uint8_t family =
                 frame.type & firmware::core::protocol::family_mask;
             if (family == firmware::core::protocol::firmware_family) {
