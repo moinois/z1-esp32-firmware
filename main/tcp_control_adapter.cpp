@@ -652,4 +652,12 @@ firmware::application::Router& shared_host_router() {
     return tcp_router;
 }
 
+bool claim_m942_worker() {
+    return !m942_exercise_active.exchange(true, std::memory_order_acq_rel);
+}
+
+void release_m942_worker() {
+    m942_exercise_active.store(false, std::memory_order_release);
+}
+
 }  // namespace firmware::target

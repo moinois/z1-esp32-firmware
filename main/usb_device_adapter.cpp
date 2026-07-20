@@ -747,14 +747,13 @@ public:
 };
 
 UsbM942Port usb_m942_port;
-std::atomic_bool usb_m942_active{false};
 
 // Owns one asynchronous USB M942 execution until its service terminates.
 void usb_m942_task(void* parameter) {
     auto* service = static_cast<firmware::application::M942ExerciseService*>(
         parameter);
     service->run();
-    usb_m942_active.store(false, std::memory_order_release);
+    release_m942_worker();
     delete service;
     vTaskDelete(nullptr);
 }
@@ -1202,20 +1201,19 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::can_exercise) {
-                const bool capacity = !usb_m942_active.exchange(
-                    true, std::memory_order_acq_rel);
+                const bool capacity = claim_m942_worker();
                 auto* service = new firmware::application::M942ExerciseService(
                     usb_m942_port);
                 if (!service->submit(usb_host_identity, frame, capacity)) {
                     delete service;
                     if (capacity) {
-                        usb_m942_active.store(false, std::memory_order_release);
+                        release_m942_worker();
                     }
                     continue;
                 }
                 if (xTaskCreate(usb_m942_task, "usb_m942", 6144U, service,
                                 4U, nullptr) != pdPASS) {
-                    usb_m942_active.store(false, std::memory_order_release);
+                    release_m942_worker();
                     delete service;
                 }
                 continue;

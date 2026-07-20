@@ -34,4 +34,10 @@ void broadcast_tcp_frame(const firmware::core::Frame& frame);
 // Exposes the shared ownership/router state to other host transports.
 firmware::application::Router& shared_host_router();
 
+// Claims the single global M942 worker slot across all host transports.
+bool claim_m942_worker();
+
+// Releases the global M942 worker slot after worker termination or failure.
+void release_m942_worker();
+
 }  // namespace firmware::target
