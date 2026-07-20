@@ -13,6 +13,7 @@ add_executable(
     test_controller_uart_config.cpp
     test_configuration_syntax.cpp
     test_configuration_files.cpp
+    test_configuration_get.cpp
     test_directory_listing.cpp
     test_frame.cpp
     test_live_configuration.cpp

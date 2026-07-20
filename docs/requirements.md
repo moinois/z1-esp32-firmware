@@ -29,6 +29,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | CFG-010 configuration command tokenization | Core implementation | Yes | Command-service integration pending |
 | CFG-001, CFG-004--CFG-006 configuration file copies | Application implementation with replaceable bytewise file port | Yes | Filesystem and response adapters pending |
 | CFG-020--CFG-023 live configuration view | Core chunk parser and application implementation with replaceable load port | Yes | Filesystem and command adapters pending |
+| CFG-011--CFG-013 configuration reads | Application implementation with replaceable live/SD read port | Yes | Filesystem and response adapters pending |
 | CMD-001--CMD-003 recognition and limits | Core implementation | Partial: 001, 003 | Not required |
 | ROUTE-001--ROUTE-018 routing policy | Application implementation | Yes | Transport integration pending |
 | OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | Terminal service integration pending |
