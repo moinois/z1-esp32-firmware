@@ -155,12 +155,14 @@ The first core-to-periphery development slice contains:
   normalization, all 15 frame-size mappings, and UXGA dimension fallback;
 - exact camera DVP/SCCB/XCLK pins, JPEG/PSRAM/buffer policy, UXGA startup,
   sensor orientation, stream-size application, and capture timeout contract;
+- exact main/video HTTP listener limits and web-volume mount/SPIFFS format
+  settings, including 512-byte parser storage and 63-byte names;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 484 tests. The firmware also builds successfully as
+The current host suite has 487 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
