@@ -206,6 +206,7 @@ The first core-to-periphery development slice contains:
 - storage retention service with delete sequencing and usage refresh;
 - ESP-IDF POSIX directory enumeration, regular-file checks, timestamps, and deletion adapter;
 - FAT usage reporting through `esp_vfs_fat_info` for retention decisions;
+- SDMMC slot-1 mount lifecycle with GPIO2 detect and specified four-bit pins;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
