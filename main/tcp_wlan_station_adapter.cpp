@@ -2,6 +2,7 @@
 #include "tcp_wlan_station_adapter.hpp"
 
 #include "nvs_key_value_adapter.hpp"
+#include "wifi_persistence_constants.hpp"
 
 #include "esp_netif.h"
 #include "esp_wifi.h"
@@ -86,10 +87,12 @@ firmware::application::StationApiResult
 TcpWlanStationAdapter::save_credentials(std::string_view ssid,
                                         std::string_view password) {
     NvsKeyValueAdapter nvs;
-    if (!nvs.write_string("wifi_config", "ssid", ssid)) {
+    if (!nvs.write_string(wifi_persistence::name_space,
+                          wifi_persistence::ssid_key, ssid)) {
         return {false, "save_ssid"};
     }
-    if (!nvs.write_string("wifi_config", "password", password)) {
+    if (!nvs.write_string(wifi_persistence::name_space,
+                          wifi_persistence::password_key, password)) {
         return {false, "save_password"};
     }
     return {true, {}};

@@ -13,7 +13,6 @@
 namespace firmware::target {
 namespace {
 
-constexpr char credential_namespace[] = "wifi_config";
 constexpr char automatic_task_name[] = "wifi_auto_connect";
 constexpr std::uint32_t task_stack_size = 3072U;
 constexpr UBaseType_t task_priority = 4U;
