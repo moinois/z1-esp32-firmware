@@ -1,0 +1,35 @@
+// Declares a small ESP-IDF NVS adapter for persistent scalar values.
+#pragma once
+
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <string_view>
+
+namespace firmware::target {
+
+enum class NvsReadState { found, missing, failure };
+
+struct NvsStringRead {
+    NvsReadState state = NvsReadState::failure;
+    std::string value;
+};
+
+// Reads and writes NVS values while keeping namespace/key handling centralized.
+class NvsKeyValueAdapter {
+public:
+    NvsStringRead read_string(std::string_view name_space,
+                              std::string_view key) const;
+    std::optional<std::uint64_t> read_u64(std::string_view name_space,
+                                          std::string_view key) const;
+    std::optional<std::int64_t> read_i64(std::string_view name_space,
+                                         std::string_view key) const;
+    bool write_string(std::string_view name_space, std::string_view key,
+                      std::string_view value) const;
+    bool write_u64(std::string_view name_space, std::string_view key,
+                   std::uint64_t value) const;
+    bool write_i64(std::string_view name_space, std::string_view key,
+                   std::int64_t value) const;
+};
+
+}  // namespace firmware::target

@@ -10,6 +10,7 @@ idf_component_register(
         "storage_retention_adapter.cpp"
         "sd_card_adapter.cpp"
         "diagnostic_capture_adapter.cpp"
+        "nvs_key_value_adapter.cpp"
     REQUIRES
         application
         core

@@ -210,6 +210,7 @@ The first core-to-periphery development slice contains:
 - SD diagnostic log adapter with buffered append, rotation, markers, and shutdown drain;
 - ESP-IDF `vprintf` diagnostic hook preserving console output and bounded capture;
 - SD-monitor draining of captured diagnostic records into the log writer;
+- reusable ESP-IDF NVS scalar/string adapter with explicit missing-key handling;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and

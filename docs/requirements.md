@@ -129,6 +129,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | BOOT-013, DIAG logging SD adapter | ESP-IDF buffered POSIX log port composed with `DiagnosticLogWriter` | Yes for append buffering, flush/close, rotation file operations, session/shutdown hooks, and target composition; target build verified | Physical SD write and global log-capture wiring pending |
 | DIAG capture global hook | ESP-IDF `esp_log_set_vprintf` adapter over bounded `DiagnosticCapture` | Yes for preserving original console output, bounded formatting, nonblocking capture path, and target startup installation; target build verified | Capture queue consumption by SD writer pending |
 | DIAG capture-to-log composition | ESP-IDF SD-monitor drain over `DiagnosticLogWriter` | Yes for oldest-first queue consumption and writer handoff while the SD log is active; target build verified | Physical concurrency and write verification pending |
+| BOOT-001--BOOT-003 persistence adapter | ESP-IDF NVS key/value adapter | Yes for namespace/key open, string and 64-bit scalar reads/writes, missing-key distinction for strings, commit handling, and target build verification | Composition into runtime/serial/update services pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
 | HW-004--HW-005 CPU, flash, PSRAM, security | Target defaults | Build verification only | No |
