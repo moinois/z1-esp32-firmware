@@ -5,6 +5,7 @@
 #include "esp_system.h"
 
 #include "controller_command_loop.hpp"
+#include "nvs_key_value_adapter.hpp"
 
 #include "firmware/core/bytes.hpp"
 
@@ -19,6 +20,7 @@ constexpr char tag[] = "OTA";
 }  // namespace
 
 void OtaUpdateAdapter::publish_phase(std::uint8_t phase) {
+    static_cast<void>(NvsKeyValueAdapter{}.write_u8("ota_state", "phase", phase));
     ESP_LOGI(tag, "update phase %u", static_cast<unsigned>(phase));
 }
 

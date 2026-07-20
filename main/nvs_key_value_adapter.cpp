@@ -59,6 +59,18 @@ NvsU64Read NvsKeyValueAdapter::read_u64_state(
     return {};
 }
 
+std::optional<std::uint8_t> NvsKeyValueAdapter::read_u8(
+    std::string_view name_space, std::string_view key) const {
+    nvs_handle_t handle = 0;
+    if (!open_namespace(name_space, read_only, handle)) {
+        return std::nullopt;
+    }
+    std::uint8_t value = 0U;
+    const esp_err_t result = nvs_get_u8(handle, std::string(key).c_str(), &value);
+    nvs_close(handle);
+    return result == ESP_OK ? std::optional<std::uint8_t>(value) : std::nullopt;
+}
+
 std::optional<std::int64_t> NvsKeyValueAdapter::read_i64(
     std::string_view name_space, std::string_view key) const {
     const auto value = read_u64(name_space, key);
@@ -83,6 +95,18 @@ bool NvsKeyValueAdapter::write_u64(std::string_view name_space,
     nvs_handle_t handle = 0;
     if (!open_namespace(name_space, read_write, handle)) return false;
     const esp_err_t result = nvs_set_u64(handle, std::string(key).c_str(), value);
+    const esp_err_t commit = result == ESP_OK ? nvs_commit(handle) : result;
+    nvs_close(handle);
+    return commit == ESP_OK;
+}
+
+bool NvsKeyValueAdapter::write_u8(std::string_view name_space,
+                                  std::string_view key, std::uint8_t value) const {
+    nvs_handle_t handle = 0;
+    if (!open_namespace(name_space, read_write, handle)) {
+        return false;
+    }
+    const esp_err_t result = nvs_set_u8(handle, std::string(key).c_str(), value);
     const esp_err_t commit = result == ESP_OK ? nvs_commit(handle) : result;
     nvs_close(handle);
     return commit == ESP_OK;

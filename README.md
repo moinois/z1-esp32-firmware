@@ -263,6 +263,7 @@ The first core-to-periphery development slice contains:
 - OTA controller-only completion now queues the exact `0xa2 reset\0` frame through the serialized UART forwarder;
 - Firmware update task composes SD aggregate loading, validation, OTA application, controller staging, and restart effects after SD startup;
 - Local `upgrade` and `reset` commands now coalesce into a thread-safe update-processing request;
+- OTA phase publication persists the specified byte in NVS namespace `ota_state`, key `phase`;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
