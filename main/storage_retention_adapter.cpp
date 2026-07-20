@@ -2,6 +2,7 @@
 #include "storage_retention_adapter.hpp"
 
 #include "esp_log.h"
+#include "esp_vfs_fat.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -24,8 +25,12 @@ constexpr char videos_directory[] = "/sd/videos";
 class PosixRetentionPort final : public firmware::application::StorageRetentionPort {
 public:
     std::optional<firmware::application::StorageUsage> read_usage() override {
-        // The filesystem-specific usage provider is supplied by the mounted-volume adapter.
-        return std::nullopt;
+        std::uint64_t total_bytes = 0U;
+        std::uint64_t free_bytes = 0U;
+        if (esp_vfs_fat_info("/sd", &total_bytes, &free_bytes) != ESP_OK) {
+            return std::nullopt;
+        }
+        return firmware::application::StorageUsage{total_bytes, free_bytes};
     }
 
     std::optional<std::vector<firmware::application::RetentionCandidate>>
