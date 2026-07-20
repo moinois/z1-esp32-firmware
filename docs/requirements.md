@@ -10,6 +10,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | USB-007 transmit queue | Application implementation | Yes for 30-frame FIFO, 544-byte bound, empty/overflow rejection, and completion-driven removal | TinyUSB transport integration and physical verification pending |
 | USB-006 receive staging | Application implementation | Yes for 32768-byte capacity, complete-block admission, whole-session discard on overflow, and clear-on-disconnect | TinyUSB transport integration and physical verification pending |
 | USB-004--USB-005, USB-009--USB-010 protocol activity state | Application implementation | Yes for enumeration gating, valid-frame activation, disconnect receive clearing, send gating, and retained transmit queue | TinyUSB callbacks and physical verification pending |
+| USB-001--USB-003 descriptors | Application implementation | Yes for device identity, vendor interface, bulk endpoint geometry, bus power, and required strings | TinyUSB registration and physical enumeration pending |
 | ESC-001--ESC-002 escaping | Core implementation | Yes | Not required |
 | HFT-004 path normalization | Core implementation | Yes | Not required |
 | HFT-001--HFT-003 transfer start and path validation | Core implementation | Yes | TCP service integration and target build verified; runtime filesystem verification pending |
