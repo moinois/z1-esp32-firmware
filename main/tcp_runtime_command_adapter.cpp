@@ -2,6 +2,7 @@
 #include "tcp_runtime_command_adapter.hpp"
 
 #include "nvs_key_value_adapter.hpp"
+#include "runtime_operation_capacity.hpp"
 #include "firmware/application/tcp_client_session.hpp"
 #include "firmware/core/frame.hpp"
 
@@ -13,8 +14,8 @@ TcpRuntimeCommandAdapter::TcpRuntimeCommandAdapter(
     firmware::application::TcpClientSession& session)
     : session_(session) {}
 
-bool TcpRuntimeCommandAdapter::admit_operation(std::uint32_t) {
-    return true;
+bool TcpRuntimeCommandAdapter::admit_operation(std::uint32_t wait_milliseconds) {
+    return admit_runtime_operation(wait_milliseconds);
 }
 
 bool TcpRuntimeCommandAdapter::open_namespace(std::string_view name_space) {
@@ -70,7 +71,9 @@ TcpRuntimeCommandAdapter::erase_first_boot(std::string_view name_space,
     return firmware::application::RuntimeEraseResult::failure;
 }
 
-void TcpRuntimeCommandAdapter::complete_operation() {}
+void TcpRuntimeCommandAdapter::complete_operation() {
+    complete_runtime_operation();
+}
 
 void TcpRuntimeCommandAdapter::send_response(std::uint8_t type,
                                              std::string_view payload) {

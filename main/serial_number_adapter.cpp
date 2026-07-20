@@ -3,6 +3,7 @@
 
 #include "controller_uart_adapter.hpp"
 #include "nvs_key_value_adapter.hpp"
+#include "runtime_operation_capacity.hpp"
 
 #include "firmware/core/frame.hpp"
 
@@ -11,7 +12,9 @@ namespace firmware::target {
 NvsSerialNumberAdapter::NvsSerialNumberAdapter(ControllerUartAdapter* uart)
     : uart_(uart) {}
 
-bool NvsSerialNumberAdapter::admit_operation(std::uint32_t) { return true; }
+bool NvsSerialNumberAdapter::admit_operation(std::uint32_t wait_milliseconds) {
+    return admit_runtime_operation(wait_milliseconds);
+}
 
 firmware::application::SerialNumberRead NvsSerialNumberAdapter::read_serial(
     std::string_view name_space, std::string_view key) {
@@ -34,7 +37,9 @@ bool NvsSerialNumberAdapter::write_serial(std::string_view name_space,
     return nvs.write_string(name_space, key, value);
 }
 
-void NvsSerialNumberAdapter::complete_operation() {}
+void NvsSerialNumberAdapter::complete_operation() {
+    complete_runtime_operation();
+}
 
 void NvsSerialNumberAdapter::send_response(std::uint8_t type,
                                            std::string_view payload) {

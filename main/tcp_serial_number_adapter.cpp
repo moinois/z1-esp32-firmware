@@ -2,6 +2,7 @@
 #include "tcp_serial_number_adapter.hpp"
 
 #include "nvs_key_value_adapter.hpp"
+#include "runtime_operation_capacity.hpp"
 #include "firmware/application/tcp_client_session.hpp"
 #include "firmware/core/frame.hpp"
 
@@ -11,8 +12,8 @@ TcpSerialNumberAdapter::TcpSerialNumberAdapter(
     firmware::application::TcpClientSession& session)
     : session_(session) {}
 
-bool TcpSerialNumberAdapter::admit_operation(std::uint32_t) {
-    return true;
+bool TcpSerialNumberAdapter::admit_operation(std::uint32_t wait_milliseconds) {
+    return admit_runtime_operation(wait_milliseconds);
 }
 
 firmware::application::SerialNumberRead TcpSerialNumberAdapter::read_serial(
@@ -36,7 +37,9 @@ bool TcpSerialNumberAdapter::write_serial(std::string_view name_space,
     return nvs.write_string(name_space, key, value);
 }
 
-void TcpSerialNumberAdapter::complete_operation() {}
+void TcpSerialNumberAdapter::complete_operation() {
+    complete_runtime_operation();
+}
 
 void TcpSerialNumberAdapter::send_response(std::uint8_t type,
                                            std::string_view payload) {

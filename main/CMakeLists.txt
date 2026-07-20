@@ -16,6 +16,7 @@ idf_component_register(
         "nvs_key_value_adapter.cpp"
         "nvs_runtime_counter_adapter.cpp"
         "runtime_counter_task.cpp"
+        "runtime_operation_capacity.cpp"
         "runtime_play_observer.cpp"
         "wall_clock_adapter.cpp"
         "wall_clock_command_dispatcher.cpp"
