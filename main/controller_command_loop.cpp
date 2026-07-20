@@ -6,6 +6,7 @@
 #include "controller_play_adapter.hpp"
 #include "play_runtime_state.hpp"
 #include "runtime_status_adapter.hpp"
+#include "runtime_play_observer.hpp"
 #include "wall_clock_adapter.hpp"
 #include "wall_clock_command_dispatcher.hpp"
 #include "serial_number_adapter.hpp"
@@ -14,6 +15,8 @@
 #include "recording_request_state.hpp"
 #include "firmware/core/text.hpp"
 #include "firmware/core/frame.hpp"
+
+#include <string_view>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -100,6 +103,10 @@ void controller_command_task(void*) {
         for (const auto& frame : frames) {
             if (frame.type == firmware::core::protocol::machine_status) {
                 shared_controller_snapshots().update_status(frame.payload);
+                set_controller_running(firmware::core::status_reports_running(
+                    std::string_view(reinterpret_cast<const char*>(
+                                         frame.payload.data()),
+                                     frame.payload.size())));
             } else if (frame.type == firmware::core::protocol::diagnostic_data) {
                 shared_controller_snapshots().update_diagnostic(frame.payload);
             } else if (frame.type == firmware::core::protocol::controller_version) {

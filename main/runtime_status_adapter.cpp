@@ -9,6 +9,7 @@
 #include "esp_timer.h"
 #include "firmware/application/router.hpp"
 #include "firmware/application/update_phase.hpp"
+#include "firmware/application/recording_policy.hpp"
 
 #include <atomic>
 
@@ -37,7 +38,8 @@ bool RuntimeStatusAdapter::recording_requested() const {
 }
 
 bool RuntimeStatusAdapter::recording_active() const {
-    return recording_requested() && streamed_play_running();
+    return firmware::application::recording_conditions_active(
+        recording_requested(), streamed_play_running(), controller_running());
 }
 
 std::optional<firmware::application::SdCapacity>

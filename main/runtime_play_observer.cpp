@@ -8,6 +8,7 @@
 namespace firmware::target {
 namespace {
 std::atomic_bool play_running{false};
+std::atomic_bool controller_is_running{false};
 }
 
 void RuntimePlayObserver::play_state_changed(
@@ -18,6 +19,14 @@ void RuntimePlayObserver::play_state_changed(
 
 bool streamed_play_running() {
     return play_running.load(std::memory_order_acquire);
+}
+
+bool controller_running() {
+    return controller_is_running.load(std::memory_order_acquire);
+}
+
+void set_controller_running(bool running) {
+    controller_is_running.store(running, std::memory_order_release);
 }
 
 }  // namespace firmware::target

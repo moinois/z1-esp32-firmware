@@ -12,4 +12,10 @@ public:
 // Reports whether streamed play is currently active for media tasks.
 bool streamed_play_running();
 
+// Reports whether the latest controller status indicates active operation.
+bool controller_running();
+
+// Publishes the controller running state derived from one status payload.
+void set_controller_running(bool running);
+
 }  // namespace firmware::target

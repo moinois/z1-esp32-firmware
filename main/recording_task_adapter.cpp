@@ -49,7 +49,8 @@ void recording_task(void*) {
     firmware::application::RecordingSegmentState state;
     const auto dimensions = firmware::application::camera_dimensions(15U);
     for (;;) {
-        const bool active = request.requested() && streamed_play_running();
+        const bool active = firmware::application::recording_conditions_active(
+            request.requested(), streamed_play_running(), controller_running());
         if (active && !writer.has_value()) {
             camera_adapter().set_frame_dimensions(dimensions);
             path = firmware::application::recording_segment_path(
