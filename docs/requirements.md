@@ -52,7 +52,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | BWF-003, BWF-005--BWF-007, BWF-045 deterministic GATT policy | Application implementation with replaceable allocation/callback/notification port | Yes for fixed reads, response ordering, descriptor writes, aggregate limits, echoes, execute/cancel, reset, and retry | Attribute schema, unsafe overlap/gap behavior, and ESP-IDF GATT adapter pending |
 | CMD-001--CMD-003 recognition and limits | Core implementation | Partial: 001, 003 | Not required |
 | ROUTE-001--ROUTE-018 routing policy | Application implementation | Yes | Transport integration pending |
-| OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | Terminal service integration pending |
+| OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | TCP file-transfer terminal cleanup and target build verified; runtime contention verification pending |
 | LPC-001--LPC-002 periodic controller queries | Application scheduler plus ESP-IDF controller UART task | Target build verified for periodic status/diagnostic query emission and bounded serial transport | Physical controller timing verification pending |
 | LPC-003 initial controller status | Controller UART task using scheduler at startup | Target build verified for immediate first query opportunity | Physical controller verification pending |
 | STAT-001--STAT-010 controller snapshots and replies | Core and application implementation | Yes | UART snapshot retention and TCP `?`/`diagnose`/`version` routing integrated; physical verification pending |
@@ -60,7 +60,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | DIAG-021 controller write failure message | Application implementation | Yes | Diagnostic sink integration pending |
 | HW-020--HW-022 controller UART configuration | ESP-IDF adapter | Exact settings verified | Adapter startup deferred by BOOT-012 |
 | UART-002 bounded controller reads | ESP-IDF adapter | Exact settings verified | Adapter startup deferred by BOOT-012 |
-| LPC-010--LPC-014 common controller-transfer wire layer | Application implementation | Partial: 010--012, 014 queue and parsing | Service integration pending |
+| LPC-010--LPC-014 common controller-transfer wire layer | Application implementation | Yes for framing, queue, parsing, and family dispatch | Controller-task service integration target-built; physical controller verification pending |
 | LPC-015--LPC-019 common transfer state behavior | Firmware-family implementation | Yes for firmware family | Configuration and factory families pending |
 | LPCFW-001--LPCFW-006 controller firmware transfer | Application implementation with replaceable port | Yes | POSIX storage, UART response, and controller-task routing integrated; physical controller verification pending |
 | LPCCFG-001--LPCCFG-006 controller configuration transfer | Application implementation with replaceable port | Yes | POSIX storage, UART response, and controller-task routing integrated; physical controller verification pending |
