@@ -7,6 +7,8 @@
 
 #include "firmware/core/frame.hpp"
 #include "firmware/application/tcp_frame_sender.hpp"
+#include "firmware/application/tcp_client_session.hpp"
+#include "firmware/application/router.hpp"
 
 #include <arpa/inet.h>
 #include <cerrno>
@@ -27,6 +29,13 @@ constexpr int control_port = 2222;
 constexpr int listen_backlog = 4;
 constexpr int maximum_clients = 4;
 std::atomic_int active_clients{0};
+std::atomic_uint32_t next_generation{1U};
+firmware::application::Router tcp_router;
+
+struct TcpClientContext {
+    int socket;
+    firmware::application::HostIdentity identity;
+};
 
 void send_rejection(int client) {
     constexpr std::string_view message =
@@ -74,17 +83,25 @@ void configure_socket(int socket) {
 }
 
 void tcp_client_task(void* parameter) {
-    const int client = static_cast<int>(reinterpret_cast<intptr_t>(parameter));
+    auto* context = static_cast<TcpClientContext*>(parameter);
+    const int client = context->socket;
+    firmware::application::TcpClientSession session(context->identity);
     configure_socket(client);
-    firmware::core::StreamDecoder decoder(firmware::core::StreamPolicy::tcp());
     std::uint8_t input[2048];
     for (;;) {
         const int count = recv(client, input, sizeof(input), 0);
         if (count <= 0) break;
-        static_cast<void>(decoder.push({input, static_cast<std::size_t>(count)}));
+        session.receive({input, static_cast<std::size_t>(count)},
+            [](const firmware::application::HostIdentity& identity,
+               const firmware::core::Frame& frame) {
+                const auto decision = tcp_router.from_host(identity, frame);
+                ESP_LOGD("TCP", "routed type=0x%02x targets=0x%04x",
+                         frame.type, decision.targets);
+            });
     }
     close(client);
     active_clients.fetch_sub(1, std::memory_order_release);
+    delete context;
     vTaskDelete(nullptr);
 }
 
@@ -121,9 +138,18 @@ void tcp_accept_task(void*) {
             close(client);
             continue;
         }
-        xTaskCreate(tcp_client_task, "tcp_client", 4096U,
-                    reinterpret_cast<void*>(static_cast<intptr_t>(client)),
-                    4U, nullptr);
+        auto* context = new TcpClientContext{
+            client,
+            {firmware::application::HostTransport::tcp,
+             static_cast<std::uint8_t>(expected),
+             next_generation.fetch_add(1U, std::memory_order_relaxed)}};
+        TaskHandle_t task = nullptr;
+        if (xTaskCreate(tcp_client_task, "tcp_client", 4096U, context,
+                        4U, &task) != pdPASS) {
+            delete context;
+            close(client);
+            active_clients.fetch_sub(1, std::memory_order_release);
+        }
     }
 }
 

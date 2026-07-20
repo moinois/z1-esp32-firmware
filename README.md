@@ -227,6 +227,7 @@ The first core-to-periphery development slice contains:
 - TCP whole-frame sender policy with short-write continuation and temporary-failure retry;
 - TCP overflow rejection wired to the whole-frame sender with a one-second call timeout;
 - per-client TCP session composition for incremental frames, stable identity, and queued responses;
+- target TCP tasks now retain per-connection identities and make explicit routing decisions;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
