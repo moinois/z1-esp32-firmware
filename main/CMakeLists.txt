@@ -18,6 +18,7 @@ idf_component_register(
         "wall_clock_command_dispatcher.cpp"
         "controller_command_loop.cpp"
         "serial_number_adapter.cpp"
+        "tcp_serial_number_adapter.cpp"
         "tcp_control_adapter.cpp"
         "recording_request_state.cpp"
     REQUIRES
