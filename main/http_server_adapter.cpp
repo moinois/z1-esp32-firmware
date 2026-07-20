@@ -15,6 +15,7 @@
 #include "firmware/core/web_static.hpp"
 #include "firmware_update_adapter.hpp"
 #include "ota_update_adapter.hpp"
+#include "camera_adapter.hpp"
 #include "firmware/core/multipart_extractor.hpp"
 #include "firmware/core/multipart_policy.hpp"
 #include "firmware/application/direct_application_update.hpp"
@@ -39,7 +40,9 @@ public:
     explicit DirectHttpOtaPort(httpd_req_t* request) : request_(request) {}
 
     // Stops camera ownership before changing the bootable application image.
-    bool deinitialize_camera() override { return true; }
+    bool deinitialize_camera() override {
+        return firmware::target::camera_adapter().deinitialize();
+    }
     // Selects the inactive application partition as the update destination.
     bool select_inactive_partition() override {
         return ota_.select_inactive_partition();
@@ -178,6 +181,8 @@ public:
     // Maps the portable status code to the HTTP reason phrase required by IDF.
     static const char* status_text(std::uint16_t status) {
         switch (status) {
+            case 200U:
+                return "200 OK";
             case 400U:
                 return "400 Bad Request";
             case 404U:
@@ -231,6 +236,25 @@ esp_err_t firmware_info_handler(httpd_req_t* request) {
     httpd_resp_set_type(request, "application/json");
     const std::string_view payload = firmware::core::firmware_identity_json();
     return httpd_resp_send(request, payload.data(), payload.size());
+}
+
+// Applies a bounded camera-resolution JSON request through the portable policy.
+esp_err_t camera_resolution_handler(httpd_req_t* request) {
+    constexpr std::size_t maximum_request_body = 63U;
+    std::vector<std::uint8_t> body(maximum_request_body);
+    const int count = httpd_req_recv(request, reinterpret_cast<char*>(body.data()),
+                                     body.size());
+    if (count < 0) {
+        return ESP_FAIL;
+    }
+    firmware::application::CameraResolutionEndpoint endpoint;
+    const auto response = endpoint.handle(
+        firmware::core::BytesView(body.data(), static_cast<std::size_t>(count)),
+        firmware::target::camera_adapter());
+    httpd_resp_set_status(request,
+                          EspHttpStaticResponse::status_text(response.status_code));
+    httpd_resp_set_type(request, std::string(response.content_type).c_str());
+    return httpd_resp_send(request, response.body.data(), response.body.size());
 }
 
 // Extracts the first multipart image and applies it through the direct OTA service.
@@ -375,6 +399,12 @@ void register_main_handlers(httpd_handle_t handle) {
         .handler = firmware_info_handler,
         .user_ctx = nullptr,
     };
+    static const httpd_uri_t camera_resolution_uri{
+        .uri = "/api/camera/resolution",
+        .method = HTTP_POST,
+        .handler = camera_resolution_handler,
+        .user_ctx = nullptr,
+    };
     static const httpd_uri_t static_file_uri{
         .uri = "/*",
         .method = HTTP_GET,
@@ -410,6 +440,7 @@ void register_main_handlers(httpd_handle_t handle) {
     };
 #endif
     httpd_register_uri_handler(handle, &firmware_info_uri);
+    httpd_register_uri_handler(handle, &camera_resolution_uri);
     httpd_register_uri_handler(handle, &static_file_uri);
     httpd_register_uri_handler(handle, &firmware_update_uri);
     httpd_register_uri_handler(handle, &web_volume_update_uri);

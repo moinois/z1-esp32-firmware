@@ -165,6 +165,8 @@ The first core-to-periphery development slice contains:
   case-insensitive member lookup;
 - camera-resolution endpoint validation, 63-byte request limits, CAM-001
   normalization, and exact sensor success/failure responses;
+- ESP-IDF `esp32-camera` integration for the configured DVP/SCCB camera, sensor
+  orientation, startup allocation, and `/api/camera/resolution` routing;
 - multipart Content-Type boundary extraction with the 512-byte limit and
   matching outer-quote removal;
 - streaming first-part multipart extraction with split-safe headers and

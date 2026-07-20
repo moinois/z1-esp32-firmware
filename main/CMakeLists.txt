@@ -6,6 +6,7 @@ idf_component_register(
         "controller_uart_adapter.cpp"
         "main.cpp"
         "http_server_adapter.cpp"
+        "camera_adapter.cpp"
         "web_volume_adapter.cpp"
         "storage_retention_adapter.cpp"
         "sd_card_adapter.cpp"
@@ -59,6 +60,7 @@ idf_component_register(
         mbedtls
         bootloader_support
         app_update
+        esp32-camera
     PRIV_INCLUDE_DIRS
         "$ENV{IDF_PATH}/components/bt/common/api/include/api"
         "$ENV{IDF_PATH}/components/bt/common/btc/profile/esp/blufi/include"
