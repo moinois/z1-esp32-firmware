@@ -32,6 +32,7 @@ idf_component_register(
         "blufi_crypto_adapter.cpp"
         "blufi_provisioning_adapter.cpp"
         "blufi_callback_adapter.cpp"
+        "esp_image_validator.cpp"
         "tcp_control_adapter.cpp"
         "recording_request_state.cpp"
     REQUIRES
@@ -54,6 +55,7 @@ idf_component_register(
         lwip
         bt
         mbedtls
+        bootloader_support
     PRIV_INCLUDE_DIRS
         "$ENV{IDF_PATH}/components/bt/common/api/include/api"
         "$ENV{IDF_PATH}/components/bt/common/btc/profile/esp/blufi/include"

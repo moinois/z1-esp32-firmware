@@ -258,6 +258,7 @@ The first core-to-periphery development slice contains:
 - BLUFI callback table now uses the portable security session for negotiation, AES-CFB128, and CRC callbacks;
 - Wi-Fi/IP event adapter forwards station association, address-ready, and disconnect state to BLUFI provisioning;
 - Controller UART task now emits drift-free periodic status and diagnostic queries through the tested scheduler;
+- ESP32 image validator checks application headers, bounded segments, and image checksum before update acceptance;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
