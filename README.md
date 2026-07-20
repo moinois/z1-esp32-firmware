@@ -236,6 +236,7 @@ The first core-to-periphery development slice contains:
 - origin-aware TCP dispatch context for per-client response queueing;
 - TCP-local M951/M952 recording control with per-client `0xa2 ok\n` responses;
 - TCP-local serial-number get/set using NVS persistence and origin-aware replies;
+- TCP-local `sys-time` and `clearftm` using persisted runtime counters and UTC formatting;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;

@@ -94,4 +94,26 @@ bool NvsKeyValueAdapter::write_i64(std::string_view name_space,
     return write_u64(name_space, key, static_cast<std::uint64_t>(value));
 }
 
+NvsReadState NvsKeyValueAdapter::erase_key(std::string_view name_space,
+                                           std::string_view key) const {
+    nvs_handle_t handle = 0;
+    const esp_err_t open_result = nvs_open(
+        std::string(name_space).c_str(), NVS_READWRITE, &handle);
+    if (open_result != ESP_OK) {
+        return NvsReadState::failure;
+    }
+    const esp_err_t erase_result = nvs_erase_key(handle,
+                                                  std::string(key).c_str());
+    if (erase_result == ESP_ERR_NVS_NOT_FOUND) {
+        nvs_close(handle);
+        return NvsReadState::missing;
+    }
+    if (erase_result != ESP_OK || nvs_commit(handle) != ESP_OK) {
+        nvs_close(handle);
+        return NvsReadState::failure;
+    }
+    nvs_close(handle);
+    return NvsReadState::found;
+}
+
 }  // namespace firmware::target

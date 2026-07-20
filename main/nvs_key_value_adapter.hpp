@@ -37,6 +37,9 @@ public:
                    std::uint64_t value) const;
     bool write_i64(std::string_view name_space, std::string_view key,
                    std::int64_t value) const;
+    // Erases one key and distinguishes missing keys from storage failures.
+    NvsReadState erase_key(std::string_view name_space,
+                           std::string_view key) const;
 };
 
 }  // namespace firmware::target

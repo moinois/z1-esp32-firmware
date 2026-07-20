@@ -13,6 +13,8 @@
 #include "controller_command_loop.hpp"
 #include "recording_request_state.hpp"
 #include "tcp_serial_number_adapter.hpp"
+#include "tcp_runtime_command_adapter.hpp"
+#include "firmware/application/runtime_commands.hpp"
 #include "firmware/application/serial_number.hpp"
 #include "firmware/application/recording_commands.hpp"
 #include "firmware/core/text.hpp"
@@ -54,18 +56,31 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
     if (match.kind != firmware::core::CommandKind::record_start
         && match.kind != firmware::core::CommandKind::record_stop) {
         if (match.kind != firmware::core::CommandKind::serial_get
-            && match.kind != firmware::core::CommandKind::serial_set) {
+            && match.kind != firmware::core::CommandKind::serial_set
+            && match.kind != firmware::core::CommandKind::system_time
+            && match.kind != firmware::core::CommandKind::clear_first_time) {
             return;
         }
         const std::string_view command(
             reinterpret_cast<const char*>(frame.payload.data()),
             frame.payload.size());
-        TcpSerialNumberAdapter serial_port(session);
-        firmware::application::SerialNumberService serial_service(serial_port);
-        if (match.kind == firmware::core::CommandKind::serial_get) {
-            serial_service.handle_get(command);
+        if (match.kind == firmware::core::CommandKind::serial_get
+            || match.kind == firmware::core::CommandKind::serial_set) {
+            TcpSerialNumberAdapter serial_port(session);
+            firmware::application::SerialNumberService serial_service(serial_port);
+            if (match.kind == firmware::core::CommandKind::serial_get) {
+                serial_service.handle_get(command);
+            } else {
+                serial_service.handle_set(command);
+            }
         } else {
-            serial_service.handle_set(command);
+            TcpRuntimeCommandAdapter runtime_port(session);
+            firmware::application::RuntimeCommandService runtime_service(runtime_port);
+            if (match.kind == firmware::core::CommandKind::system_time) {
+                runtime_service.handle_system_time(command);
+            } else {
+                runtime_service.handle_clear_first_boot(command);
+            }
         }
         return;
     }
