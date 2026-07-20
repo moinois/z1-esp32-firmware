@@ -12,9 +12,12 @@
 namespace firmware::target {
 namespace {
 
+firmware::application::RuntimeCounterService* active_service = nullptr;
+
 void runtime_counter_task(void*) {
     NvsRuntimeCounterAdapter nvs;
     firmware::application::RuntimeCounterService service(nvs);
+    active_service = &service;
     const std::uint64_t start = xTaskGetTickCount() * portTICK_PERIOD_MS;
     service.initialize(start);
     for (;;) {
@@ -25,6 +28,12 @@ void runtime_counter_task(void*) {
 }
 
 }  // namespace
+
+void record_runtime_first_boot(std::int64_t unix_seconds) {
+    if (active_service != nullptr) {
+        active_service->record_first_boot(unix_seconds);
+    }
+}
 
 void RuntimeCounterTask::start() {
     xTaskCreate(runtime_counter_task, "runtime_counters", 4096U, nullptr, 3U,
