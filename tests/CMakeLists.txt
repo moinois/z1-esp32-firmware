@@ -76,6 +76,7 @@ add_executable(
     test_json_input.cpp
     test_camera_resolution_endpoint.cpp
     test_multipart_policy.cpp
+    test_multipart_extractor.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
 target_compile_options(core_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)

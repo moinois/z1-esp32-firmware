@@ -12,6 +12,7 @@ set(CORE_SOURCES
     src/http_policy.cpp
     src/json_input.cpp
     src/multipart_policy.cpp
+    src/multipart_extractor.cpp
     src/network_policy.cpp
     src/status.cpp
     src/text.cpp
