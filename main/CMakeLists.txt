@@ -7,6 +7,7 @@ idf_component_register(
         "main.cpp"
         "http_server_adapter.cpp"
         "web_volume_adapter.cpp"
+        "storage_retention_adapter.cpp"
     REQUIRES
         application
         core

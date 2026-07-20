@@ -1,0 +1,12 @@
+// Declares the ESP-IDF storage adapter and periodic retention task.
+#pragma once
+
+namespace firmware::target {
+
+class StorageRetentionAdapter {
+public:
+    // Starts the immediate and periodic storage retention checks.
+    void start();
+};
+
+}  // namespace firmware::target

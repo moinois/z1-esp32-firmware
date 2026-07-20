@@ -10,6 +10,7 @@
 #include "canopen_target_service.hpp"
 #include "http_server_adapter.hpp"
 #include "web_volume_adapter.hpp"
+#include "storage_retention_adapter.hpp"
 
 #include "firmware/application/web_volume_startup.hpp"
 
@@ -85,4 +86,6 @@ extern "C" void app_main() {
     http_server.start();
     static firmware::target::CanopenTargetService canopen_service;
     canopen_service.start();
+    static firmware::target::StorageRetentionAdapter retention_adapter;
+    retention_adapter.start();
 }

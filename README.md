@@ -204,6 +204,7 @@ The first core-to-periphery development slice contains:
 - M951/M952 recording command state and `0xa2` `ok` responses;
 - storage usage monitoring and recording-file retention candidate policy;
 - storage retention service with delete sequencing and usage refresh;
+- ESP-IDF POSIX directory enumeration, regular-file checks, timestamps, and deletion adapter;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
