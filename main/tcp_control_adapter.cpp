@@ -526,6 +526,10 @@ void tcp_client_task(void* parameter) {
     for (;;) {
         const int count = recv(client, input, sizeof(input), 0);
         if (count <= 0) break;
+        tcp_router.set_controller_transfer_active(
+            controller_firmware_transfer_active() ||
+            controller_configuration_transfer_active() ||
+            controller_factory_transfer_active());
         session.receive({input, static_cast<std::size_t>(count)},
             [&session, &dispatcher](const firmware::application::HostIdentity&,
                                      const firmware::core::Frame& frame) {

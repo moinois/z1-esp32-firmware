@@ -60,7 +60,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | DIAG-021 controller write failure message | Application implementation | Yes | Diagnostic sink integration pending |
 | HW-020--HW-022 controller UART configuration | ESP-IDF adapter | Exact settings verified | Adapter startup deferred by BOOT-012 |
 | UART-002 bounded controller reads | ESP-IDF adapter | Exact settings verified | Adapter startup deferred by BOOT-012 |
-| LPC-010--LPC-014 common controller-transfer wire layer | Application implementation | Yes for framing, queue, parsing, and family dispatch | Controller-task service integration target-built; physical controller verification pending |
+| LPC-010--LPC-014 common controller-transfer wire layer | Application implementation | Yes for framing, queue, parsing, family dispatch, and host-forwarding suppression | Controller-task service integration and TCP router transfer gating target-built; physical controller verification pending |
 | LPC-015--LPC-019 common transfer state behavior | Firmware-family implementation | Yes for firmware family | Configuration and factory families pending |
 | LPCFW-001--LPCFW-006 controller firmware transfer | Application implementation with replaceable port | Yes | POSIX storage, UART response, controller-task routing, and machine-status phase/progress publication integrated; physical controller verification pending |
 | LPCCFG-001--LPCCFG-006 controller configuration transfer | Application implementation with replaceable port | Yes | POSIX storage, UART response, and controller-task routing integrated; physical controller verification pending |
