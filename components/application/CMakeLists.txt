@@ -42,6 +42,7 @@ set(APPLICATION_SOURCES
     src/ownership.cpp
     src/play_controller.cpp
     src/preview_request.cpp
+    src/preview_metadata.cpp
     src/play_line_reader.cpp
     src/play_session.cpp
     src/router.cpp

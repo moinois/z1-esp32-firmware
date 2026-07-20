@@ -87,6 +87,7 @@ add_executable(
     test_preview_path_policy.cpp
     test_avi_preview.cpp
     test_preview_request.cpp
+    test_preview_metadata.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
 target_compile_options(core_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
