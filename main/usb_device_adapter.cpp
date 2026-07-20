@@ -1033,7 +1033,8 @@ void handle_usb_file_transfer(const firmware::core::Frame& frame) {
     if (usb_download.active()) {
         usb_download.handle(frame, now, usb_download_port);
     }
-    if (!usb_upload.active() && !usb_download.active()) {
+    if (!usb_upload.active() && !usb_download.active() &&
+        shared_host_router().ownership().is_file_owner(usb_host_identity)) {
         shared_host_router().ownership().release_file();
     }
 }
@@ -1051,7 +1052,8 @@ void usb_upload_task(void*) {
                 static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL),
                 usb_download_port);
         }
-        if (!usb_upload.active() && !usb_download.active()) {
+        if (!usb_upload.active() && !usb_download.active() &&
+            shared_host_router().ownership().is_file_owner(usb_host_identity)) {
             shared_host_router().ownership().release_file();
         }
         vTaskDelay(pdMS_TO_TICKS(50U));
