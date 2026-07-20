@@ -12,6 +12,7 @@ add_executable(core_tests
     test_controller_uart_config.cpp
     test_frame.cpp
     test_play_session.cpp
+    test_play_controller.cpp
     test_routing.cpp
     test_text.cpp
     test_status.cpp
