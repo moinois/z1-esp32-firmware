@@ -34,6 +34,7 @@ set(APPLICATION_SOURCES
     src/play_line_reader.cpp
     src/play_session.cpp
     src/router.cpp
+    src/runtime_counters.cpp
     src/sd_card_lifecycle.cpp
     src/serial_number.cpp
     src/station_connection.cpp

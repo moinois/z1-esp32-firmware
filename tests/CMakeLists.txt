@@ -36,6 +36,7 @@ add_executable(
     test_play_line_reader.cpp
     test_play_goto.cpp
     test_routing.cpp
+    test_runtime_counters.cpp
     test_sd_card_lifecycle.cpp
     test_serial_number.cpp
     test_automatic_connection.cpp
