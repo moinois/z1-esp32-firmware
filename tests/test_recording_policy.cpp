@@ -11,6 +11,13 @@ TEST_CASE(rec_003_and_004_segment_path_uses_utc_and_base_name) {
     REQUIRE(!firmware::application::recording_segment_path("/sd/ride", 0).has_value());
 }
 
+TEST_CASE(rec_002_conditions_require_request_and_running_source) {
+    REQUIRE(!firmware::application::recording_conditions_active(false, true, true));
+    REQUIRE(!firmware::application::recording_conditions_active(true, false, false));
+    REQUIRE(firmware::application::recording_conditions_active(true, true, false));
+    REQUIRE(firmware::application::recording_conditions_active(true, false, true));
+}
+
 TEST_CASE(rec_007_to_010_attempts_and_inactive_intervals_close_segments) {
     firmware::application::RecordingSegmentState state;
     state.initialized = true;

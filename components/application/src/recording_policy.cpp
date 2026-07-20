@@ -30,6 +30,12 @@ std::optional<std::string> recording_segment_path(
     return path;
 }
 
+bool recording_conditions_active(bool recording_requested,
+                                 bool streamed_play_running,
+                                 bool controller_running) {
+    return recording_requested && (streamed_play_running || controller_running);
+}
+
 bool advance_recording_segment(RecordingSegmentState& state,
                                bool conditions_active,
                                bool capture_succeeded,

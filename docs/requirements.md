@@ -140,6 +140,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | RUN-010 serial-number target composition | NVS/UART adapter over `SerialNumberService` | Yes for NVS read/write state mapping, operation admission, command recognition, and framed response transport; target build verified | Physical routing and persistence verification pending |
 | REC-001 recording command wiring | Controller-loop dispatch over recording command policy | Yes for M951/M952 recognition, request-state update, exact `0xa2 ok\n` frame encoding, and UART submission; target build verified | Recording task consumption pending |
 | REC-001--REC-002 recording request state | Target atomic state port shared by command and media tasks | Yes for transport-independent request storage and command-loop updates; target build verified | Camera/recording task consumption pending |
+| REC-002 recording condition policy | Portable application policy | Yes for requiring recording request plus streamed-play or controller-running state; host tests and target build verified | Recording task timing/camera composition pending |
 | RUN-033--RUN-035 play-state bridge | Target runtime observer | Yes for forwarding play start/stop transitions with monotonic timestamps to runtime accounting; target build verified | Controller/play composition pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |

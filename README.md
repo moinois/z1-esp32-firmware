@@ -222,12 +222,13 @@ The first core-to-periphery development slice contains:
 - NVS-backed serial-number service with framed UART responses;
 - M951/M952 recording control wired through recognition, state policy, and UART response;
 - shared atomic recording-request state available to media tasks;
+- recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 563 tests. The firmware also builds successfully as
+The current host suite has 564 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
