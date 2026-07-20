@@ -24,7 +24,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | FILE-020--FILE-026 filesystem mutations and type reply | Core parsing and application implementation with replaceable port | Yes | POSIX recursive removal and TCP response adapter implemented |
 | FILE-027--FILE-029 MD5 command | Application implementation with replaceable metadata and hash port | Yes | POSIX/mbedTLS hashing and TCP response adapter implemented |
 | SD-001--SD-008 SD-card lifecycle and capacity | Application implementation with replaceable port | Yes for policy and ordering | GPIO, SDMMC, FAT, and logging adapters pending |
-| SD-009--SD-010 FAT filename, sector, and lock policy | Target defaults | Build verification only | Physical-card verification pending |
+| SD-009--SD-010 FAT filename, sector, and lock policy | Target defaults | Build verification for code page 437, short names, 4096-byte sectors, 16 lock slots, and 10-second timeout | Physical-card verification pending |
 | CFG-002--CFG-003 SD configuration line parsing | Core implementation | Yes | Not required |
 | CFG-010 configuration command tokenization | Core implementation | Yes | Command-service integration pending |
 | CFG-001, CFG-004--CFG-006 configuration file copies | Application implementation with replaceable bytewise file port | Yes | POSIX bytewise adapter and TCP command routing integrated; physical storage verification pending |
