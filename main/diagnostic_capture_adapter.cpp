@@ -53,4 +53,8 @@ void DiagnosticCaptureAdapter::start() {
     original_vprintf = esp_log_set_vprintf(capture_vprintf);
 }
 
+std::optional<firmware::core::ByteVector> take_captured_diagnostic() {
+    return capture.take_pending();
+}
+
 }  // namespace firmware::target

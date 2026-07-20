@@ -12,6 +12,7 @@
 
 #include "firmware/application/sd_card_lifecycle.hpp"
 #include "firmware/application/diagnostic_log_writer.hpp"
+#include "diagnostic_capture_adapter.hpp"
 
 #include <optional>
 #include <cstdio>
@@ -66,6 +67,13 @@ public:
 
     std::optional<std::uint64_t> total_bytes() override { return volume_bytes(true); }
     std::optional<std::uint64_t> free_bytes() override { return volume_bytes(false); }
+
+    // Drains queued diagnostic records into the active SD writer.
+    void drain_captured_records() {
+        while (const auto record = take_captured_diagnostic()) {
+            writer_.write_record(*record, *this);
+        }
+    }
 
     std::optional<std::uint64_t> open_append(std::string_view path,
                                               std::size_t buffer_size) override {
@@ -127,6 +135,7 @@ void sd_monitor_task(void*) {
     for (;;) {
         const std::uint64_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
         lifecycle.poll(now, port);
+        port.drain_captured_records();
         vTaskDelay(pdMS_TO_TICKS(50U));
     }
 }

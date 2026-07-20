@@ -209,6 +209,7 @@ The first core-to-periphery development slice contains:
 - SDMMC slot-1 mount lifecycle with GPIO2 detect and specified four-bit pins;
 - SD diagnostic log adapter with buffered append, rotation, markers, and shutdown drain;
 - ESP-IDF `vprintf` diagnostic hook preserving console output and bounded capture;
+- SD-monitor draining of captured diagnostic records into the log writer;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
