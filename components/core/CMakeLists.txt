@@ -9,6 +9,7 @@ set(CORE_SOURCES
     src/file_transfer_paths.cpp
     src/filesystem_syntax.cpp
     src/frame.cpp
+    src/http_policy.cpp
     src/network_policy.cpp
     src/status.cpp
     src/text.cpp

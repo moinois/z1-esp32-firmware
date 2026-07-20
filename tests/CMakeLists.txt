@@ -72,6 +72,7 @@ add_executable(
     test_wall_clock.cpp
     test_web_config.cpp
     test_web_static.cpp
+    test_http_policy.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
 target_compile_options(core_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
