@@ -99,6 +99,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | WEB-020--WEB-022 camera resolution endpoint | Application endpoint with replaceable camera-resolution port and existing CAM-001 mapping | Yes for 63-byte body limit, empty/invalid/missing/type errors, normalization, sensor failure, success text, and status codes; clean target build verified | HTTP server and live camera-driver adapters pending |
 | WEBUP-001 multipart Content-Type policy | Portable bounded boundary parser | Yes for 1--512-byte header limits, required marker, suffix preservation, and matching outer quotes; clean target build verified | HTTP header adapter pending |
 | WEBUP-002--WEBUP-003 multipart first-part extraction | Portable streaming extractor with replaceable transport feed | Yes for split headers/boundaries, first-marker termination, 4096-byte header limit, terminator-at-limit handling, and EOF after headers; clean target build verified | HTTP receive-loop adapter pending |
+| WEB-003, WEB-008 main/video route selection | Portable case-sensitive route table | Yes for all main endpoints, both WebSockets, query exclusion, GET static fallback, and method rejection; clean target build verified | ESP-IDF handler registration pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
 | HW-004--HW-005 CPU, flash, PSRAM, security | Target defaults | Build verification only | No |

@@ -169,12 +169,14 @@ The first core-to-periphery development slice contains:
   matching outer-quote removal;
 - streaming first-part multipart extraction with split-safe headers and
   boundaries, header overflow handling, and end-of-input behavior;
+- case-sensitive main/video HTTP route selection with query exclusion and
+  GET-only static fallback;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 511 tests. The firmware also builds successfully as
+The current host suite has 514 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).

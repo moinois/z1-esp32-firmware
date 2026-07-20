@@ -18,6 +18,7 @@ set(CORE_SOURCES
     src/text.cpp
     src/update_package.cpp
     src/web_static.cpp
+    src/web_routes.cpp
 )
 if(COMMAND idf_component_register)
     idf_component_register(SRCS ${CORE_SOURCES} INCLUDE_DIRS include)
