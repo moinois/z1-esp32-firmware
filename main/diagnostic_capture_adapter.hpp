@@ -2,6 +2,7 @@
 #pragma once
 
 #include "firmware/core/bytes.hpp"
+#include "firmware/application/diagnostic_capture.hpp"
 
 #include <optional>
 
@@ -15,5 +16,8 @@ public:
 
 // Removes the oldest captured record for consumption by the SD log writer.
 std::optional<firmware::core::ByteVector> take_captured_diagnostic();
+
+// Provides the global capture state to the SD writer shutdown drain.
+firmware::application::DiagnosticCapture& diagnostic_capture_state();
 
 }  // namespace firmware::target

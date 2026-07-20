@@ -58,7 +58,8 @@ public:
 
     void stop_and_drain_logging() override {
         writer_.begin_shutdown(now_milliseconds());
-        writer_.poll_shutdown(now_milliseconds() + 5000U, capture_, *this);
+        writer_.poll_shutdown(now_milliseconds() + 5000U,
+                              diagnostic_capture_state(), *this);
     }
 
     bool unmount() override {
@@ -113,7 +114,6 @@ private:
     sdmmc_card_t* card_ = nullptr;
     std::FILE* file_ = nullptr;
     firmware::application::DiagnosticLogWriter writer_;
-    firmware::application::DiagnosticCapture capture_;
 
     static std::uint64_t now_milliseconds() {
         return xTaskGetTickCount() * portTICK_PERIOD_MS;

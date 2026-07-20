@@ -57,4 +57,8 @@ std::optional<firmware::core::ByteVector> take_captured_diagnostic() {
     return capture.take_pending();
 }
 
+firmware::application::DiagnosticCapture& diagnostic_capture_state() {
+    return capture;
+}
+
 }  // namespace firmware::target
