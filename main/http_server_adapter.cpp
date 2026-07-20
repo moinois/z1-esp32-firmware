@@ -7,12 +7,15 @@
 
 #include "firmware/application/web_config.hpp"
 #include "firmware/application/static_file_server.hpp"
+#include "firmware/application/preview_socket_input.hpp"
 #include "firmware/core/web_static.hpp"
 
 #include <cstdio>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace firmware::target {
 namespace {
@@ -101,21 +104,32 @@ esp_err_t firmware_info_handler(httpd_req_t* request) {
     return httpd_resp_send(request, payload.data(), payload.size());
 }
 
-// Accepts the WebSocket handshake; media message processing is injected later.
+#if CONFIG_HTTPD_WS_SUPPORT
+// Receives one video WebSocket frame and applies the shared message boundary.
 esp_err_t video_websocket_handler(httpd_req_t* request) {
-    if (request->method == HTTP_GET) {
-        return ESP_OK;
-    }
-    return ESP_FAIL;
+    httpd_ws_frame_t frame{};
+    if (httpd_ws_recv_frame(request, &frame, 0U) != ESP_OK) return ESP_FAIL;
+    if (frame.len == 0U) return ESP_OK;
+    std::vector<std::uint8_t> payload(frame.len);
+    frame.payload = payload.data();
+    return httpd_ws_recv_frame(request, &frame, frame.len);
 }
 
-// Accepts the preview WebSocket handshake; session processing is injected later.
+// Receives one preview WebSocket frame and delegates text parsing to the application.
 esp_err_t preview_websocket_handler(httpd_req_t* request) {
-    if (request->method == HTTP_GET) {
-        return ESP_OK;
-    }
-    return ESP_FAIL;
+    httpd_ws_frame_t frame{};
+    if (httpd_ws_recv_frame(request, &frame, 0U) != ESP_OK) return ESP_FAIL;
+    if (frame.type != HTTPD_WS_TYPE_TEXT || frame.len == 0U) return ESP_OK;
+    std::vector<std::uint8_t> payload(frame.len);
+    frame.payload = payload.data();
+    if (httpd_ws_recv_frame(request, &frame, frame.len) != ESP_OK) return ESP_FAIL;
+    const auto request_value = firmware::application::accept_preview_socket_message(
+        firmware::application::PreviewSocketMessageType::text,
+        firmware::core::BytesView(payload));
+    (void)request_value;
+    return ESP_OK;
 }
+#endif
 
 // Registers the exact GET handlers available before update/camera adapters.
 void register_main_handlers(httpd_handle_t handle) {

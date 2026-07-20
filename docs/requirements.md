@@ -118,6 +118,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | PREV-028--PREV-029 preview frame scheduling | Portable application frame-step policy | Yes for one-frame delivery, ten-millisecond delay rounding, minimum delay, failure termination, and clean EOS gating; clean target build verified | AVI read, WebSocket send, timer, and close adapters pending |
 | PREV-001, PREV-006 preview WebSocket input boundary | Application adapter over normalized request parser | Yes for text-only acceptance, empty-message ignore, binary-message ignore, and parser delegation; clean target build verified | ESP-IDF WebSocket receive adapter pending |
 | WEB-003, WEB-008 WebSocket route registration | ESP-IDF HTTP server adapter with configurable WebSocket support | Yes for separate `/ws_video` and `/ws_preview` GET handlers and WebSocket Kconfig default; target build verified | Media receive/send/session adapters pending |
+| PREV-001, PREV-006 WebSocket frame receive adapter | ESP-IDF `httpd_ws_recv_frame` adapter over application input policy | Yes for frame-length probing, bounded payload receive, text/empty filtering, and parser delegation; target build verified | Session dispatch, response send, and live-video command dispatch pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
 | HW-004--HW-005 CPU, flash, PSRAM, security | Target defaults | Build verification only | No |

@@ -198,6 +198,7 @@ The first core-to-periphery development slice contains:
 - preview frame scheduling, failure termination, and EOS policy;
 - preview WebSocket text-only and empty-message admission;
 - ESP-IDF WebSocket route registration for `/ws_video` and `/ws_preview`;
+- ESP-IDF WebSocket frame receive adapters connected to the text-input policy;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
