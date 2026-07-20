@@ -8,6 +8,9 @@
 #include "nvs_flash.h"
 
 #include "canopen_target_service.hpp"
+#include "web_volume_adapter.hpp"
+
+#include "firmware/application/web_volume_startup.hpp"
 
 #include <cstdint>
 
@@ -74,7 +77,9 @@ extern "C" void app_main() {
         esp_restart();
     }
     start_heartbeat();
+    static firmware::target::WebVolumeAdapter web_volume_adapter;
+    static firmware::application::WebVolumeStartup web_volume_startup;
+    web_volume_startup.start(web_volume_adapter);
     static firmware::target::CanopenTargetService canopen_service;
     canopen_service.start();
-    // Subsequent adapters are added only after their contract tests exist.
 }

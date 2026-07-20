@@ -5,6 +5,7 @@ idf_component_register(
         "canopen_target_service.cpp"
         "controller_uart_adapter.cpp"
         "main.cpp"
+        "web_volume_adapter.cpp"
     REQUIRES
         application
         core
@@ -12,4 +13,5 @@ idf_component_register(
         esp_driver_gpio
         esp_driver_uart
         nvs_flash
+        spiffs
 )

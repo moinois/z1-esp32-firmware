@@ -173,12 +173,14 @@ The first core-to-periphery development slice contains:
   GET-only static fallback;
 - static-file serving through replaceable file/response ports, exact 404
   behavior, MIME selection, 256-byte chunks, and terminating empty chunk;
+- nonfatal web-volume startup with format-and-retry policy and an ESP-IDF
+  SPIFFS adapter;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 517 tests. The firmware also builds successfully as
+The current host suite has 519 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).

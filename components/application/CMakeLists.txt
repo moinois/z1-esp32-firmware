@@ -6,6 +6,7 @@ set(APPLICATION_SOURCES
     src/camera_settings.cpp
     src/camera_resolution_endpoint.cpp
     src/static_file_server.cpp
+    src/web_volume_startup.cpp
     src/ble_provisioning.cpp
     src/blufi_fragment.cpp
     src/blufi_gatt.cpp
