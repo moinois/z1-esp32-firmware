@@ -29,6 +29,7 @@
 #include "firmware/core/text.hpp"
 #include "firmware/core/frame.hpp"
 #include "controller_command_loop.hpp"
+#include "tcp_control_adapter.hpp"
 #include "firmware_update_adapter.hpp"
 #include "firmware/application/controller_snapshots.hpp"
 #include "runtime_status_adapter.hpp"
@@ -868,6 +869,7 @@ extern "C" void tud_mount_cb(void) {
 extern "C" void tud_umount_cb(void) {
     decoder.reset();
     protocol_state.disconnected();
+    tcp_router_usb_disconnected();
 }
 
 extern "C" void tud_vendor_rx_cb(uint8_t index, const uint8_t*, uint16_t) {

@@ -634,6 +634,11 @@ void tcp_router_play_ownership_release() {
     tcp_router.ownership().release_play();
 }
 
+void tcp_router_usb_disconnected() {
+    tcp_router.ownership().transport_disconnected(
+        {firmware::application::HostTransport::usb, 0U, 0U});
+}
+
 void broadcast_tcp_frame(const firmware::core::Frame& frame) {
     std::lock_guard<std::mutex> lock(tcp_session_registry_mutex);
     for (auto* session : tcp_sessions) {
