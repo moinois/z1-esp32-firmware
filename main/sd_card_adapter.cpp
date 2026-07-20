@@ -23,6 +23,8 @@ namespace {
 
 constexpr gpio_num_t card_detect_gpio = GPIO_NUM_2;
 constexpr char tag[] = "SD";
+constexpr firmware::application::SdMountConfig mount_policy{
+    "/sd", false, 16U, 16U * 1024U};
 
 class EspSdPort final : public firmware::application::SdCardPort,
                         public firmware::application::DiagnosticLogPort {
@@ -32,6 +34,9 @@ public:
     }
 
     bool mount(const firmware::application::SdMountConfig& config) override {
+        if (card_ != nullptr) {
+            return true;
+        }
         sdmmc_host_t host = SDMMC_HOST_DEFAULT();
         host.max_freq_khz = 20000U;
         sdmmc_slot_config_t slot = SDMMC_SLOT_CONFIG_DEFAULT();
@@ -53,6 +58,9 @@ public:
     }
 
     void start_logging() override {
+        if (writer_.active()) {
+            return;
+        }
         writer_.open_session(now_milliseconds(), *this);
     }
 
@@ -63,7 +71,14 @@ public:
     }
 
     bool unmount() override {
-        return esp_vfs_fat_sdcard_unmount("/sd", card_) == ESP_OK;
+        if (card_ == nullptr) {
+            return true;
+        }
+        const bool unmounted = esp_vfs_fat_sdcard_unmount("/sd", card_) == ESP_OK;
+        if (unmounted) {
+            card_ = nullptr;
+        }
+        return unmounted;
     }
 
     std::optional<std::uint64_t> total_bytes() override { return volume_bytes(true); }
@@ -120,27 +135,44 @@ private:
     }
 };
 
+EspSdPort shared_sd_port;
+
+void configure_card_detect() {
+    const gpio_config_t detect_config{
+        .pin_bit_mask = 1ULL << card_detect_gpio,
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE};
+    static_cast<void>(gpio_config(&detect_config));
+}
+
 void sd_monitor_task(void*) {
-    gpio_config_t detect_config{};
-    detect_config.pin_bit_mask = 1ULL << card_detect_gpio;
-    detect_config.mode = GPIO_MODE_INPUT;
-    detect_config.pull_up_en = GPIO_PULLUP_ENABLE;
-    detect_config.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    detect_config.intr_type = GPIO_INTR_DISABLE;
-    gpio_config(&detect_config);
-    EspSdPort port;
+    configure_card_detect();
     firmware::application::SdCardLifecycle lifecycle;
     const std::uint64_t start = xTaskGetTickCount() * portTICK_PERIOD_MS;
-    lifecycle.start(start, port);
+    lifecycle.start(start, shared_sd_port);
     for (;;) {
         const std::uint64_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
-        lifecycle.poll(now, port);
-        port.drain_captured_records();
+        lifecycle.poll(now, shared_sd_port);
+        shared_sd_port.drain_captured_records();
         vTaskDelay(pdMS_TO_TICKS(50U));
     }
 }
 
 }  // namespace
+
+bool SdCardAdapter::mount_for_boot() {
+    configure_card_detect();
+    if (!shared_sd_port.card_inserted()) {
+        return false;
+    }
+    if (!shared_sd_port.mount(mount_policy)) {
+        return false;
+    }
+    shared_sd_port.start_logging();
+    return true;
+}
 
 void SdCardAdapter::start() {
     xTaskCreate(sd_monitor_task, "sd_monitor", 4096U, nullptr, 4U, nullptr);
