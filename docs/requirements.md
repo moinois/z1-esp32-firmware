@@ -135,6 +135,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | RUN-031 wall-clock first-boot bridge | Target runtime-task notification function | Yes for forwarding successful wall-clock first-boot values to `RuntimeCounterService`; target build verified | Concrete wall-clock port and play-state bridge pending |
 | RUN-020--RUN-023 wall-clock target adapter | ESP-IDF POSIX `time`/`settimeofday` adapter | Yes for Unix reads, zero-microsecond set, UTC formatting, diagnostic forwarding, and first-boot notification; target build verified | Command-routing composition pending |
 | RUN-020--RUN-023 wall-clock command composition | Target dispatcher over `WallClockService` | Yes for general-command filtering and exact `time` prefix dispatch; target build verified | UART/router receive-loop wiring pending |
+| RUN-020--RUN-023 controller command wiring | ESP-IDF UART task over controller stream decoder | Yes for UART initialization, bounded reads, incremental framing, and dispatch of decoded wall-clock commands; target build verified | Full command-family routing and response transport pending |
 | RUN-033--RUN-035 play-state bridge | Target runtime observer | Yes for forwarding play start/stop transitions with monotonic timestamps to runtime accounting; target build verified | Controller/play composition pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |

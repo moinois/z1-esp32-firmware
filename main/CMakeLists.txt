@@ -16,6 +16,7 @@ idf_component_register(
         "runtime_play_observer.cpp"
         "wall_clock_adapter.cpp"
         "wall_clock_command_dispatcher.cpp"
+        "controller_command_loop.cpp"
     REQUIRES
         application
         core
