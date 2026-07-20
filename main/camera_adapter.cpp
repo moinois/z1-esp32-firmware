@@ -20,15 +20,17 @@ namespace firmware::target {
 namespace {
 
 constexpr char tag[] = "CAMERA";
+constexpr char camera_configuration_path[] = "/sd/config.txt";
+constexpr std::size_t configuration_line_capacity = 256U;
 
 // Exposes the SD configuration file through the portable camera source port.
 class SdCameraConfigSource final
     : public firmware::application::CameraConfigSource {
 public:
     SdCameraConfigSource() {
-        std::FILE* file = std::fopen("/sd/config.txt", "rb");
+        std::FILE* file = std::fopen(camera_configuration_path, "rb");
         if (file == nullptr) return;
-        char buffer[256];
+        char buffer[configuration_line_capacity];
         while (std::fgets(buffer, sizeof(buffer), file) != nullptr) {
             std::string line(buffer);
             const auto is_ascii_space = [](unsigned char value) {
