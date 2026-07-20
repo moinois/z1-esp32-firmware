@@ -40,6 +40,7 @@
 #include "firmware/application/router.hpp"
 #include "play_runtime_state.hpp"
 #include "firmware/core/file_transfer_paths.hpp"
+#include "firmware/application/file_upload.hpp"
 
 #include <array>
 #include <algorithm>
@@ -51,6 +52,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <cerrno>
 #include "mbedtls/md5.h"
 #include <esp_timer.h>
 #include "esp_wifi.h"
@@ -469,6 +471,114 @@ private:
 
 UsbPlayPreparationPort usb_play_port;
 
+// Implements upload filesystem effects and USB-origin response delivery.
+class UsbFileUploadPort final : public firmware::application::FileUploadPort {
+public:
+    ~UsbFileUploadPort() override { close_files(); }
+
+    void prepare_cache_paths(const firmware::core::FileCachePaths& paths) override {
+        if (paths.md5_path.has_value()) create_parent_directories(*paths.md5_path, 0777U);
+        if (paths.compressed_path.has_value()) {
+            create_parent_directories(*paths.compressed_path, 0777U);
+        }
+    }
+
+    bool create_parent_directories(std::string_view path,
+                                   std::uint32_t mode) override {
+        std::string value(path);
+        const std::size_t slash = value.find_last_of('/');
+        if (slash == std::string::npos) return true;
+        value.resize(slash);
+        for (std::size_t position = 1U; position <= value.size(); ++position) {
+            if (position != value.size() && value[position] != '/') continue;
+            const std::string part = value.substr(0U, position);
+            if (mkdir(part.c_str(), static_cast<mode_t>(mode)) != 0 &&
+                errno != EEXIST) return false;
+        }
+        return true;
+    }
+
+    bool open_primary(std::string_view path) override {
+        close_files();
+        primary_ = std::fopen(std::string(path).c_str(), "wb");
+        return primary_ != nullptr;
+    }
+
+    bool open_md5(std::string_view path) override {
+        md5_ = std::fopen(std::string(path).c_str(), "wb");
+        return md5_ != nullptr;
+    }
+
+    bool write_primary(firmware::core::BytesView data) override {
+        return write_all(primary_, data);
+    }
+
+    bool write_md5(firmware::core::BytesView data) override {
+        return write_all(md5_, data);
+    }
+
+    void close_files() override {
+        if (primary_ != nullptr) std::fclose(primary_);
+        if (md5_ != nullptr) std::fclose(md5_);
+        primary_ = nullptr;
+        md5_ = nullptr;
+    }
+
+    void flush_and_close() override {
+        if (primary_ != nullptr) {
+            std::fflush(primary_);
+            fsync(fileno(primary_));
+        }
+        if (md5_ != nullptr) {
+            std::fflush(md5_);
+            fsync(fileno(md5_));
+        }
+        close_files();
+    }
+
+    bool remove_file(std::string_view path) override {
+        return unlink(std::string(path).c_str()) == 0;
+    }
+
+    bool rename_file(std::string_view source,
+                     std::string_view destination) override {
+        return rename(std::string(source).c_str(),
+                      std::string(destination).c_str()) == 0;
+    }
+
+    void send(const firmware::application::HostIdentity&,
+              firmware::core::Frame frame) override {
+        const auto encoded = firmware::core::encode_frame(frame);
+        if (!encoded.empty()) {
+            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+        }
+    }
+
+    void release_ownership() override {}
+
+private:
+    static bool write_all(FILE* file, firmware::core::BytesView data) {
+        if (file == nullptr) return false;
+        std::size_t written = 0U;
+        while (written < data.size()) {
+            const std::size_t count =
+                std::fwrite(data.data() + written, 1U, data.size() - written,
+                            file);
+            if (count == 0U) return false;
+            written += count;
+        }
+        return true;
+    }
+
+    FILE* primary_ = nullptr;
+    FILE* md5_ = nullptr;
+};
+
+UsbFileUploadPort usb_upload_port;
+firmware::application::FileUpload usb_upload;
+const firmware::application::HostIdentity usb_host_identity{
+    firmware::application::HostTransport::usb, 0U, 0U};
+
 class UsbSerialPort final : public firmware::application::SerialNumberPort {
 public:
     bool admit_operation(std::uint32_t wait_milliseconds) override {
@@ -777,6 +887,47 @@ void usb_transmit_task(void*) {
     }
 }
 
+// Handles one USB-origin upload start or data frame and releases ownership on completion.
+void handle_usb_upload(const firmware::core::Frame& frame) {
+    const std::uint64_t now =
+        static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
+    if (frame.type == firmware::core::protocol::file_command) {
+        const auto start = firmware::core::parse_file_transfer_start(frame.payload);
+        if (!start.has_value() ||
+            start->direction != firmware::core::FileTransferDirection::upload ||
+            usb_upload.active() ||
+            !shared_host_router().ownership().claim_file(usb_host_identity)) {
+            return;
+        }
+        if (!usb_upload.start(usb_host_identity, start->path, now,
+                              usb_upload_port)) {
+            shared_host_router().ownership().release_file();
+        }
+        return;
+    }
+    if (usb_upload.active()) {
+        usb_upload.handle(frame, now, usb_upload_port);
+        if (!usb_upload.active()) {
+            shared_host_router().ownership().release_file();
+        }
+    }
+}
+
+// Polls USB upload inactivity and retry deadlines independently of RX callbacks.
+void usb_upload_task(void*) {
+    for (;;) {
+        if (usb_upload.active()) {
+            usb_upload.poll(
+                static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL),
+                usb_upload_port);
+            if (!usb_upload.active()) {
+                shared_host_router().ownership().release_file();
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(50U));
+    }
+}
+
 void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
     if (bytes == nullptr || size == 0U) return;
     firmware::application::UsbReceiveStaging& staging =
@@ -785,6 +936,12 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
     const auto staged = staging.take();
     for (const auto& frame : decoder.push(staged)) {
         protocol_state.valid_frame_received();
+        if (frame.type == firmware::core::protocol::file_command ||
+            (frame.type >= firmware::core::protocol::file_md5 &&
+             frame.type <= firmware::core::protocol::file_retry)) {
+            handle_usb_upload(frame);
+            continue;
+        }
         if (frame.type == firmware::core::protocol::single_command &&
             !frame.payload.empty() && frame.payload.front() == '?') {
             firmware::target::RuntimeStatusAdapter status_sources(
@@ -1001,6 +1158,7 @@ bool UsbDeviceAdapter::start() {
         return false;
     }
     xTaskCreate(usb_transmit_task, "usb_tx", 4096U, nullptr, 4U, nullptr);
+    xTaskCreate(usb_upload_task, "usb_upload", 4096U, nullptr, 4U, nullptr);
     return true;
 }
 
