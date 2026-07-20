@@ -30,6 +30,7 @@
 #include "firmware/core/text.hpp"
 #include "firmware/core/frame.hpp"
 #include "controller_command_loop.hpp"
+#include "canopen_target_service.hpp"
 #include "tcp_control_adapter.hpp"
 #include "tcp_discovery_adapter.hpp"
 #include "firmware_update_adapter.hpp"
@@ -42,12 +43,15 @@
 #include "firmware/core/file_transfer_paths.hpp"
 #include "firmware/application/file_upload.hpp"
 #include "firmware/application/file_download.hpp"
+#include "firmware/application/m942_exercise.hpp"
 
 #include <array>
 #include <algorithm>
 #include <cstring>
 #include <ctime>
 #include <optional>
+#include <memory>
+#include <atomic>
 #include <cerrno>
 #include <cstdio>
 #include <dirent.h>
@@ -695,6 +699,64 @@ private:
 
 UsbFileDownloadPort usb_download_port;
 firmware::application::FileDownload usb_download;
+
+// Adapts M942 CAN exercise responses and remote SDO access to USB.
+class UsbM942Port final : public firmware::application::M942ExercisePort {
+public:
+    void forward_to_controller(const firmware::core::Frame& frame) override {
+        static_cast<void>(enqueue_controller_frame(frame));
+    }
+
+    void respond(const firmware::application::HostIdentity& host,
+                 const firmware::core::Frame& frame) override {
+        if (!(host == usb_host_identity)) return;
+        const auto encoded = firmware::core::encode_frame(frame);
+        if (!encoded.empty()) {
+            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+        }
+    }
+
+    std::uint64_t monotonic_milliseconds() const override {
+        return static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
+    }
+
+    void delay_milliseconds(std::uint32_t duration) override {
+        vTaskDelay(pdMS_TO_TICKS(duration));
+    }
+
+    void lock_sdo_client() override {}
+    void unlock_sdo_client() override {}
+
+    std::optional<std::uint32_t> read_remote_u32(
+        std::uint8_t node, std::uint16_t index, std::uint8_t subindex,
+        std::uint32_t timeout, std::uint64_t) override {
+        auto* service = active_canopen_target_service();
+        return service == nullptr
+                   ? std::nullopt
+                   : service->read_remote_u32(node, index, subindex, timeout);
+    }
+
+    bool write_remote_u32(std::uint8_t node, std::uint16_t index,
+                          std::uint8_t subindex, std::uint32_t value,
+                          std::uint32_t timeout, std::uint64_t) override {
+        auto* service = active_canopen_target_service();
+        return service != nullptr && service->write_remote_u32(
+            node, index, subindex, value, timeout);
+    }
+};
+
+UsbM942Port usb_m942_port;
+std::atomic_bool usb_m942_active{false};
+
+// Owns one asynchronous USB M942 execution until its service terminates.
+void usb_m942_task(void* parameter) {
+    auto* service = static_cast<firmware::application::M942ExerciseService*>(
+        parameter);
+    service->run();
+    usb_m942_active.store(false, std::memory_order_release);
+    delete service;
+    vTaskDelete(nullptr);
+}
 SemaphoreHandle_t usb_file_mutex = nullptr;
 
 class UsbSerialPort final : public firmware::application::SerialNumberPort {
@@ -1119,6 +1181,25 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                     } else {
                         shared_host_router().ownership().release_play();
                     }
+                }
+                continue;
+            }
+            if (match.kind == firmware::core::CommandKind::can_exercise) {
+                const bool capacity = !usb_m942_active.exchange(
+                    true, std::memory_order_acq_rel);
+                auto* service = new firmware::application::M942ExerciseService(
+                    usb_m942_port);
+                if (!service->submit(usb_host_identity, frame, capacity)) {
+                    delete service;
+                    if (capacity) {
+                        usb_m942_active.store(false, std::memory_order_release);
+                    }
+                    continue;
+                }
+                if (xTaskCreate(usb_m942_task, "usb_m942", 6144U, service,
+                                4U, nullptr) != pdPASS) {
+                    usb_m942_active.store(false, std::memory_order_release);
+                    delete service;
                 }
                 continue;
             }
