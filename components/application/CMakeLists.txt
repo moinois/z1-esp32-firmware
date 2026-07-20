@@ -57,6 +57,7 @@ set(APPLICATION_SOURCES
     src/tcp_client_session.cpp
     src/tcp_frame_dispatcher.cpp
     src/controller_frame_forwarder.cpp
+    src/local_command_classifier.cpp
     src/play_line_reader.cpp
     src/play_session.cpp
     src/router.cpp
