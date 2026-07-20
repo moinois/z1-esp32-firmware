@@ -13,7 +13,8 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | ROUTE-001--ROUTE-018 routing policy | Application implementation | Yes | Transport integration pending |
 | OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | Terminal service integration pending |
 | LPC-001--LPC-002 periodic controller queries | Application implementation | Yes | UART integration pending |
-| STAT-005--STAT-006 status transformation | Core implementation | Yes | No |
+| LPC-003 initial controller status | Application implementation | Yes | UART integration pending |
+| STAT-001--STAT-010 controller snapshots and replies | Core and application implementation | Yes | Routing integration pending |
 | UPD-010--UPD-014 package validation | Core implementation | Partial: 010--013 | No |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |

@@ -24,15 +24,16 @@ The first core-to-periphery development slice contains:
 - controller-forwarding suppression, size, and capacity admission;
 - independent file-transfer and streamed-play ownership identities;
 - independent drift-free 300 ms status and 500 ms diagnostic query schedules;
-- controller status validation, running-state detection, and local status
-  extension generation;
+- bounded controller status, diagnostic, and version snapshot retention;
+- pending-status selection, fallback status, RSSI insertion, running-state
+  detection, and local snapshot response generation;
 - aggregate firmware-header, size, flag, and checksum validation;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 42 tests. The firmware also builds successfully as
+The current host suite has 54 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
