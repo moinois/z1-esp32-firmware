@@ -5,6 +5,7 @@
 #include "nvs_key_value_adapter.hpp"
 #include "runtime_operation_capacity.hpp"
 #include "firmware/core/frame.hpp"
+#include "esp_log.h"
 
 #include <ctime>
 
@@ -79,7 +80,10 @@ void ControllerRuntimeCommandAdapter::send_response(std::uint8_t type,
         type, firmware::core::ByteVector(payload.begin(), payload.end())};
     const auto encoded = firmware::core::encode_frame(response);
     if (!encoded.empty()) {
-        static_cast<void>(uart_.write(encoded));
+        const int written = uart_.write(encoded);
+        if (written != static_cast<int>(encoded.size())) {
+            ESP_LOGE("uart_task", "UART send failed");
+        }
     }
 }
 

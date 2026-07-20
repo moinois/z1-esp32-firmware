@@ -59,7 +59,12 @@ void EspWallClockAdapter::send_response(std::uint8_t type,
         type,
         firmware::core::ByteVector(payload.begin(), payload.end())};
     const auto encoded = firmware::core::encode_frame(response);
-    if (!encoded.empty()) uart_->write(encoded);
+    if (!encoded.empty()) {
+        const int written = uart_->write(encoded);
+        if (written != static_cast<int>(encoded.size())) {
+            ESP_LOGE("uart_task", "UART send failed");
+        }
+    }
 }
 
 }  // namespace firmware::target

@@ -24,6 +24,7 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_timer.h"
+#include "esp_log.h"
 
 #include "firmware/application/controller_frame_forwarder.hpp"
 #include "firmware/application/controller_query.hpp"
@@ -39,6 +40,17 @@
 
 namespace firmware::target {
 namespace {
+
+constexpr char controller_uart_tag[] = "uart_task";
+
+// Writes one complete frame and emits the specified diagnostic on failure.
+void write_controller_frame(ControllerUartAdapter& uart,
+                            firmware::core::BytesView frame) {
+    const int written = uart.write(frame);
+    if (written != static_cast<int>(frame.size())) {
+        ESP_LOGE(controller_uart_tag, "UART send failed");
+    }
+}
 
 firmware::application::ControllerFrameForwarder controller_forwarder;
 SemaphoreHandle_t controller_forwarder_mutex = nullptr;
@@ -57,7 +69,7 @@ void drain_forwarded_frames(ControllerUartAdapter& uart) {
         if (!item.has_value()) {
             return;
         }
-        static_cast<void>(uart.write(*item));
+        write_controller_frame(uart, *item);
     }
 }
 
@@ -97,7 +109,7 @@ void controller_command_task(void*) {
         for (const auto& query : due_queries) {
             const auto encoded = firmware::core::encode_frame(query);
             if (!encoded.empty()) {
-                static_cast<void>(uart.write(encoded));
+                write_controller_frame(uart, encoded);
             }
         }
         const int count = uart.read(input, sizeof(input));
@@ -173,7 +185,7 @@ void controller_command_task(void*) {
                 recording_state.set_requested(result.requested);
                 const auto encoded = firmware::core::encode_frame(result.response);
                 if (!encoded.empty()) {
-                    static_cast<void>(uart.write(encoded));
+                    write_controller_frame(uart, encoded);
                 }
             }
             vTaskDelay(pdMS_TO_TICKS(10U));

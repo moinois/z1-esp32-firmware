@@ -1,5 +1,6 @@
 // Implements bounded POSIX file reads and serialized controller UART replies.
 #include "controller_transfer_adapter.hpp"
+#include "esp_log.h"
 
 #include "controller_uart_adapter.hpp"
 #include "runtime_status_adapter.hpp"
@@ -76,7 +77,13 @@ bool ControllerTransferAdapter::remove_file(std::string_view path) {
 
 bool ControllerTransferAdapter::send(firmware::core::Frame frame) {
     const auto encoded = firmware::core::encode_frame(frame);
-    return !encoded.empty() && uart_.write(encoded);
+    if (encoded.empty()) return false;
+    const int written = uart_.write(encoded);
+    if (written != static_cast<int>(encoded.size())) {
+        ESP_LOGE("uart_task", "UART send failed");
+        return false;
+    }
+    return true;
 }
 
 void ControllerTransferAdapter::publish(

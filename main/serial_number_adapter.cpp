@@ -1,5 +1,6 @@
 // Implements serial-number persistence and framed UART response transport.
 #include "serial_number_adapter.hpp"
+#include "esp_log.h"
 
 #include "controller_uart_adapter.hpp"
 #include "nvs_key_value_adapter.hpp"
@@ -47,7 +48,12 @@ void NvsSerialNumberAdapter::send_response(std::uint8_t type,
     const firmware::core::Frame response{
         type, firmware::core::ByteVector(payload.begin(), payload.end())};
     const auto encoded = firmware::core::encode_frame(response);
-    if (!encoded.empty()) uart_->write(encoded);
+    if (!encoded.empty()) {
+        const int written = uart_->write(encoded);
+        if (written != static_cast<int>(encoded.size())) {
+            ESP_LOGE("uart_task", "UART send failed");
+        }
+    }
 }
 
 }  // namespace firmware::target

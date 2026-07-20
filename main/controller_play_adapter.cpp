@@ -1,5 +1,6 @@
 // Implements streamed-play file access, checksum lookup, and UART responses.
 #include "controller_play_adapter.hpp"
+#include "esp_log.h"
 
 #include "controller_uart_adapter.hpp"
 #include "runtime_play_observer.hpp"
@@ -60,7 +61,13 @@ void ControllerPlayAdapter::broadcast(firmware::core::Frame frame) {
 
 bool ControllerPlayAdapter::send(firmware::core::Frame frame) {
     const auto encoded = firmware::core::encode_frame(frame);
-    return !encoded.empty() && uart_.write(encoded);
+    if (encoded.empty()) return false;
+    const int written = uart_.write(encoded);
+    if (written != static_cast<int>(encoded.size())) {
+        ESP_LOGE("uart_task", "UART send failed");
+        return false;
+    }
+    return true;
 }
 
 void ControllerPlayAdapter::play_state_changed(bool running) {
