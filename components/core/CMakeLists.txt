@@ -5,6 +5,7 @@ set(CORE_SOURCES
     src/avi_writer.cpp
     src/canopen_node.cpp
     src/canopen_sdo.cpp
+    src/canopen_sdo_client.cpp
     src/configuration_syntax.cpp
     src/crc.cpp
     src/discovery_policy.cpp
