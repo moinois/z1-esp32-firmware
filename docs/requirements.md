@@ -103,6 +103,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | WEB-011 static-file serving | Application service with replaceable file and response ports | Yes for exact 404 body, path resolution, MIME selection, 256-byte chunks, terminating empty chunk, and close behavior; clean target build verified | SPIFFS and HTTP response adapters pending |
 | WEB-002 web-volume startup | Application mount/format policy plus ESP-IDF SPIFFS adapter | Yes for nonfatal mount failure, one format, one retry, and target SPIFFS registration; host suite and target build verified | Physical flash/filesystem verification pending |
 | WEB-001 HTTP listener startup | ESP-IDF listener adapter over immutable main/video configuration | Target build verified for ports, control ports, socket limits, backlog, waits, wildcard matching, keepalive/LRU policy, and independent startup failure logging | URI handlers, WebSockets, and physical network verification pending |
+| WEB-011, WEB-013 main HTTP handlers | ESP-IDF VFS/HTTP adapter over static-file and identity policies | Target build verified for wildcard static handler, SPIFFS-backed reads, chunked response calls, 404 path, MIME selection, and exact firmware-info payload | Runtime HTTP/SPIFFS verification pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
 | HW-004--HW-005 CPU, flash, PSRAM, security | Target defaults | Build verification only | No |

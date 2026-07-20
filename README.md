@@ -177,6 +177,8 @@ The first core-to-periphery development slice contains:
   SPIFFS adapter;
 - ESP-IDF main/video HTTP listener startup using the exact independent limits,
   ports, waits, wildcard setting, and nonfatal failure behavior;
+- main-server firmware-info and wildcard static-file handlers connected to the
+  portable policy and SPIFFS-backed VFS;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
