@@ -11,10 +11,12 @@
 
 #include "firmware/application/usb_descriptors.hpp"
 #include "firmware/application/usb_protocol_state.hpp"
+#include "firmware/application/usb_transmit_progress.hpp"
 #include "firmware/core/frame.hpp"
 #include "controller_command_loop.hpp"
 
 #include <array>
+#include <esp_timer.h>
 
 namespace firmware::target {
 namespace {
@@ -34,17 +36,38 @@ firmware::application::UsbProtocolState protocol_state;
 firmware::core::StreamDecoder decoder(firmware::core::StreamPolicy::usb());
 
 void usb_transmit_task(void*) {
+    firmware::application::UsbTransmitProgress progress;
+    const firmware::core::ByteVector* tracked_frame = nullptr;
     for (;;) {
         if (protocol_state.can_send()) {
             const auto* frame = protocol_state.transmit_queue().front();
+            if (frame != tracked_frame) {
+                tracked_frame = frame;
+                progress.begin(static_cast<std::uint64_t>(
+                    esp_timer_get_time() / 1000LL));
+            }
             if (frame != nullptr && tud_vendor_write_available() >= frame->size()) {
                 const std::uint32_t written =
                     tud_vendor_write(frame->data(), frame->size());
                 if (written == frame->size()) {
                     tud_vendor_flush();
                     protocol_state.transmit_queue().pop_front();
+                    progress.clear();
+                    tracked_frame = nullptr;
+                } else if (written > 0U) {
+                    progress.record_progress(static_cast<std::uint64_t>(
+                        esp_timer_get_time() / 1000LL));
                 }
             }
+            if (frame != nullptr && progress.expired(static_cast<std::uint64_t>(
+                    esp_timer_get_time() / 1000LL))) {
+                protocol_state.transmit_queue().pop_front();
+                progress.clear();
+                tracked_frame = nullptr;
+            }
+        } else {
+            tracked_frame = nullptr;
+            progress.clear();
         }
         vTaskDelay(pdMS_TO_TICKS(1U));
     }
