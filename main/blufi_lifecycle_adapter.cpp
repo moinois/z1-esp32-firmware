@@ -14,6 +14,26 @@ namespace {
 constexpr char blufi_device_name[] = "BLUFI_DEVICE";
 std::uint8_t blufi_service_uuid[] = {0xffU, 0xffU};
 
+esp_ble_adv_params_t blufi_advertising_parameters{
+    .adv_int_min = 256U,
+    .adv_int_max = 256U,
+    .adv_type = ADV_TYPE_IND,
+    .own_addr_type = BLE_ADDR_TYPE_PUBLIC,
+    .peer_addr = {},
+    .peer_addr_type = BLE_ADDR_TYPE_PUBLIC,
+    .channel_map = ADV_CHNL_ALL,
+    .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
+};
+
+// Starts advertising only after ESP-IDF confirms the data is installed.
+void blufi_gap_callback(esp_gap_ble_cb_event_t event,
+                        esp_ble_gap_cb_param_t*) {
+    if (event == ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT) {
+        static_cast<void>(esp_ble_gap_start_advertising(
+            &blufi_advertising_parameters));
+    }
+}
+
 // Applies the product advertising contract before the BLUFI profile starts.
 bool configure_blufi_advertising() {
     if (esp_ble_gap_set_device_name(blufi_device_name) != ESP_OK) {
@@ -32,18 +52,6 @@ bool configure_blufi_advertising() {
     return esp_ble_gap_config_adv_data(&advertising) == ESP_OK;
 }
 
-// Selects public, undirected advertising on all three primary channels.
-bool start_blufi_advertising() {
-    esp_ble_adv_params_t parameters{};
-    parameters.adv_int_min = 256U;
-    parameters.adv_int_max = 256U;
-    parameters.adv_type = ADV_TYPE_IND;
-    parameters.own_addr_type = BLE_ADDR_TYPE_PUBLIC;
-    parameters.channel_map = ADV_CHNL_ALL;
-    parameters.adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY;
-    return esp_ble_gap_start_advertising(&parameters) == ESP_OK;
-}
-
 // BLUFI requires a callback table even before product callbacks are composed.
 void lifecycle_event_callback(esp_blufi_cb_event_t, esp_blufi_cb_param_t*) {}
 
@@ -58,7 +66,7 @@ esp_blufi_callbacks_t lifecycle_callbacks{
 }  // namespace
 
 bool restart_blufi_advertising() {
-    return configure_blufi_advertising() && start_blufi_advertising();
+    return configure_blufi_advertising();
 }
 
 bool BlufiLifecycleAdapter::start(const esp_blufi_callbacks_t* callbacks) {
@@ -79,6 +87,9 @@ bool BlufiLifecycleAdapter::start(const esp_blufi_callbacks_t* callbacks) {
     if (esp_bluedroid_get_status() != ESP_BLUEDROID_STATUS_ENABLED &&
         esp_bluedroid_enable() != ESP_OK) {
             return false;
+    }
+    if (esp_ble_gap_register_callback(blufi_gap_callback) != ESP_OK) {
+        return false;
     }
     const esp_blufi_callbacks_t& selected_callbacks =
         callbacks != nullptr ? *callbacks : lifecycle_callbacks;
