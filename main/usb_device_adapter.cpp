@@ -35,6 +35,7 @@
 #include "firmware_update_adapter.hpp"
 #include "firmware/application/controller_snapshots.hpp"
 #include "runtime_status_adapter.hpp"
+#include "firmware/application/runtime_status.hpp"
 
 #include <array>
 #include <algorithm>
@@ -727,6 +728,20 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
     const auto staged = staging.take();
     for (const auto& frame : decoder.push(staged)) {
         protocol_state.valid_frame_received();
+        if (frame.type == firmware::core::protocol::single_command &&
+            !frame.payload.empty() && frame.payload.front() == '?') {
+            firmware::target::RuntimeStatusAdapter status_sources(
+                firmware::target::shared_host_router());
+            firmware::application::AggregatedStatusService status_service(
+                status_sources);
+            const auto response = shared_controller_snapshots().status_reply(
+                status_service.extension());
+            if (response.has_value()) {
+                static_cast<void>(protocol_state.transmit_queue().enqueue(
+                    firmware::core::encode_frame(*response)));
+            }
+            continue;
+        }
         if (frame.type == firmware::core::protocol::general_command) {
             const auto match = firmware::core::recognize_command(frame.payload);
             if (match.kind == firmware::core::CommandKind::record_start ||

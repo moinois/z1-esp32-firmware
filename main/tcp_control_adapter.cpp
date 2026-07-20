@@ -648,4 +648,8 @@ void broadcast_tcp_frame(const firmware::core::Frame& frame) {
     }
 }
 
+firmware::application::Router& shared_host_router() {
+    return tcp_router;
+}
+
 }  // namespace firmware::target

@@ -7,6 +7,10 @@ namespace firmware::core {
 struct Frame;
 }
 
+namespace firmware::application {
+class Router;
+}
+
 namespace firmware::target {
 
 class TcpControlAdapter {
@@ -26,5 +30,8 @@ void tcp_router_usb_disconnected();
 
 // Queues one response frame for every currently connected TCP session.
 void broadcast_tcp_frame(const firmware::core::Frame& frame);
+
+// Exposes the shared ownership/router state to other host transports.
+firmware::application::Router& shared_host_router();
 
 }  // namespace firmware::target
