@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include <optional>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -21,13 +22,15 @@ namespace {
 
 constexpr char tag[] = "RETENTION";
 constexpr char videos_directory[] = "/sd/videos";
+constexpr char sd_mount_path[] = "/sd";
+constexpr std::uint32_t retention_interval_milliseconds = 60000U;
 
 class PosixRetentionPort final : public firmware::application::StorageRetentionPort {
 public:
     std::optional<firmware::application::StorageUsage> read_usage() override {
         std::uint64_t total_bytes = 0U;
         std::uint64_t free_bytes = 0U;
-        if (esp_vfs_fat_info("/sd", &total_bytes, &free_bytes) != ESP_OK) {
+        if (esp_vfs_fat_info(sd_mount_path, &total_bytes, &free_bytes) != ESP_OK) {
             return std::nullopt;
         }
         return firmware::application::StorageUsage{total_bytes, free_bytes};
@@ -64,7 +67,7 @@ void retention_task(void*) {
     firmware::application::StorageRetentionService service;
     for (;;) {
         service.run_check(port);
-        vTaskDelay(pdMS_TO_TICKS(60000U));
+        vTaskDelay(pdMS_TO_TICKS(retention_interval_milliseconds));
     }
 }
 
