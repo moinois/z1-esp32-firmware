@@ -6,6 +6,8 @@
 #include "class/vendor/vendor_device.h"
 
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "firmware/application/usb_descriptors.hpp"
 #include "firmware/application/usb_protocol_state.hpp"
@@ -30,6 +32,23 @@ constexpr std::array<std::uint8_t, 32> configuration_descriptor{
 const char* string_descriptors[] = {"Espressif", "MakeraZ1 (USB)", "123456"};
 firmware::application::UsbProtocolState protocol_state;
 firmware::core::StreamDecoder decoder(firmware::core::StreamPolicy::usb());
+
+void usb_transmit_task(void*) {
+    for (;;) {
+        if (protocol_state.can_send()) {
+            const auto* frame = protocol_state.transmit_queue().front();
+            if (frame != nullptr && tud_vendor_write_available() >= frame->size()) {
+                const std::uint32_t written =
+                    tud_vendor_write(frame->data(), frame->size());
+                if (written == frame->size()) {
+                    tud_vendor_flush();
+                    protocol_state.transmit_queue().pop_front();
+                }
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(1U));
+    }
+}
 
 void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
     if (bytes == nullptr || size == 0U) return;
@@ -81,7 +100,14 @@ bool UsbDeviceAdapter::start() {
         ESP_LOGW(tag, "TinyUSB installation failed: %s", esp_err_to_name(result));
         return false;
     }
+    xTaskCreate(usb_transmit_task, "usb_tx", 4096U, nullptr, 4U, nullptr);
     return true;
+}
+
+bool queue_usb_frame(const firmware::core::Frame& frame) {
+    const auto encoded = firmware::core::encode_frame(frame);
+    if (encoded.empty()) return false;
+    return protocol_state.transmit_queue().enqueue(encoded);
 }
 
 }  // namespace firmware::target
