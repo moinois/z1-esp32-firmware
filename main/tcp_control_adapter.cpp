@@ -10,6 +10,7 @@
 #include "firmware/application/tcp_client_session.hpp"
 #include "firmware/application/router.hpp"
 #include "firmware/application/tcp_frame_dispatcher.hpp"
+#include "firmware/application/local_command_queue.hpp"
 #include "controller_command_loop.hpp"
 #include "recording_request_state.hpp"
 #include "tcp_serial_number_adapter.hpp"
@@ -514,15 +515,15 @@ void tcp_client_task(void* parameter) {
         tcp_sessions.push_back(&session);
     }
     TcpFileTransferRuntime transfer_runtime(session, tcp_router);
+    firmware::application::LocalCommandQueue local_commands;
     TaskHandle_t m942_worker = nullptr;
     firmware::application::TcpFrameDispatcher dispatcher(
         tcp_router,
         firmware::application::TcpDispatchSinks{
             forward_tcp_controller_frame,
-            [&m942_worker](firmware::application::TcpClientSession& client_session,
+            [&local_commands](firmware::application::TcpClientSession&,
                            const firmware::core::Frame& local_frame) {
-                handle_tcp_local_frame(client_session, local_frame,
-                                       &m942_worker);
+                static_cast<void>(local_commands.enqueue(local_frame));
             },
             [&transfer_runtime](firmware::application::TcpClientSession&,
                                 const firmware::core::Frame& frame) {
@@ -542,8 +543,13 @@ void tcp_client_task(void* parameter) {
         session.receive({input, static_cast<std::size_t>(count)},
             [&session, &dispatcher](const firmware::application::HostIdentity&,
                                      const firmware::core::Frame& frame) {
-                dispatcher.dispatch(session, frame);
+                                     dispatcher.dispatch(session, frame);
             });
+        if (const auto local_frame = local_commands.dequeue();
+            local_frame.has_value()) {
+            handle_tcp_local_frame(session, *local_frame, &m942_worker);
+            vTaskDelay(pdMS_TO_TICKS(10U));
+        }
         transfer_runtime.poll(
             static_cast<std::uint64_t>(esp_timer_get_time() / 1000));
         if (!drain_tcp_transmit_queue(client, session)) {
