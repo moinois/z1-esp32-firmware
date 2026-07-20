@@ -11,11 +11,13 @@ add_executable(
     test_controller_snapshots.cpp
     test_controller_transfer.cpp
     test_controller_uart_config.cpp
+    test_directory_listing.cpp
     test_frame.cpp
     test_file_transfer_paths.cpp
     test_file_transfer_admission.cpp
     test_file_download.cpp
     test_file_upload.cpp
+    test_filesystem_syntax.cpp
     test_play_session.cpp
     test_play_controller.cpp
     test_play_data.cpp

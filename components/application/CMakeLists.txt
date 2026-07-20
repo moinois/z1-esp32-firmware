@@ -1,5 +1,6 @@
 # Builds portable application policy as an ESP-IDF component or host library.
 set(APPLICATION_SOURCES
+    src/directory_listing.cpp
     src/file_transfer_admission.cpp
     src/file_download.cpp
     src/file_upload.cpp

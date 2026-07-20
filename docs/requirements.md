@@ -18,6 +18,9 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | HFT-020--HFT-021, HFT-023, HFT-025 download timing and errors | Application implementation | Yes for download | Runtime clock integration pending |
 | HFTU-001--HFTU-010 host upload | Application implementation with replaceable port | Yes | Filesystem, transport, and ownership adapters pending |
 | HFT-020--HFT-022, HFT-024--HFT-025 upload timing and retries | Application implementation | Yes for upload | Runtime clock integration pending |
+| FILE-001--FILE-003 common filesystem path syntax | Core implementation | Yes | Not required |
+| FILE-010 directory-list argument and option parsing | Core implementation | Yes | Not required |
+| FILE-011--FILE-015 directory listing | Application implementation with replaceable port | Yes | Filesystem and response adapters pending |
 | CMD-001--CMD-003 recognition and limits | Core implementation | Partial: 001, 003 | Not required |
 | ROUTE-001--ROUTE-018 routing policy | Application implementation | Yes | Transport integration pending |
 | OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | Terminal service integration pending |

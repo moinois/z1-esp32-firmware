@@ -2,6 +2,7 @@
 set(CORE_SOURCES
     src/crc.cpp
     src/file_transfer_paths.cpp
+    src/filesystem_syntax.cpp
     src/frame.cpp
     src/status.cpp
     src/text.cpp
