@@ -248,6 +248,7 @@ The first core-to-periphery development slice contains:
 - discovery subnet selection uses the actual ESP-IDF STA netmask;
 - connect-triggered discovery bursts occur only after subnet state is ready;
 - successful WLAN disconnect clears station-specific discovery state;
+- ESP-IDF Wi-Fi/IP event adapter synchronizes discovery state on station disconnect and IPv4 assignment;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;

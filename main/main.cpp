@@ -14,6 +14,7 @@
 #include "sd_card_adapter.hpp"
 #include "controller_command_loop.hpp"
 #include "tcp_control_adapter.hpp"
+#include "wlan_event_adapter.hpp"
 #include "diagnostic_capture_adapter.hpp"
 #include "runtime_counter_task.hpp"
 
@@ -102,5 +103,7 @@ extern "C" void app_main() {
     static firmware::target::ControllerCommandLoop controller_command_loop;
     controller_command_loop.start();
     static firmware::target::TcpControlAdapter tcp_control;
+    static firmware::target::WlanEventAdapter wlan_events;
+    wlan_events.start();
     tcp_control.start();
 }
