@@ -17,6 +17,9 @@ public:
     // Queues one standard data frame without waiting for transmit capacity.
     bool transmit(const core::CanFrame& frame) const;
 
+    // Samples the physical controller and returns the CANopen error register.
+    std::uint8_t error_register() const;
+
     // Stops and uninstalls a driver after outer startup cannot continue.
     void shutdown() const;
 };

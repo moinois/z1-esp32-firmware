@@ -2,6 +2,7 @@
 #include "test.hpp"
 
 #include "firmware/core/canopen_node.hpp"
+#include "firmware/core/can_error_policy.hpp"
 
 using firmware::core::CanFrame;
 using firmware::core::CanopenNode;
@@ -139,4 +140,15 @@ TEST_CASE(can_006_observed_error_bits_leave_operational_state_only) {
     REQUIRE_EQ(node.state(), NmtState::pre_operational);
     node.set_error_register(0U);
     REQUIRE_EQ(node.state(), NmtState::pre_operational);
+}
+
+TEST_CASE(can_006_physical_bus_errors_map_to_communication_error_bit) {
+    REQUIRE_EQ(firmware::core::can_error_register_from_status(false, 0U, 0U),
+               0U);
+    REQUIRE_EQ(firmware::core::can_error_register_from_status(false, 1U, 0U),
+               0x10U);
+    REQUIRE_EQ(firmware::core::can_error_register_from_status(false, 0U, 1U),
+               0x10U);
+    REQUIRE_EQ(firmware::core::can_error_register_from_status(true, 0U, 0U),
+               0x10U);
 }

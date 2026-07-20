@@ -85,6 +85,7 @@ void CanopenTargetService::run() {
             }
             service_.receive(frame);
         }
+        service_.set_error_register(adapter_.error_register());
         service_.process_cycle();
 
         vTaskDelayUntil(

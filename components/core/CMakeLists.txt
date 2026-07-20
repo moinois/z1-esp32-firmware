@@ -1,5 +1,6 @@
 # Builds portable logic as either an ESP-IDF component or a host-side library.
 set(CORE_SOURCES
+    src/can_error_policy.cpp
     src/canopen_dictionary.cpp
     src/canopen_pdo.cpp
     src/canopen_tpdo.cpp

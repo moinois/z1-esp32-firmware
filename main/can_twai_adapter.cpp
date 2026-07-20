@@ -2,6 +2,7 @@
 #include "can_twai_adapter.hpp"
 
 #include "firmware/application/can_twai_config.hpp"
+#include "firmware/core/can_error_policy.hpp"
 
 #include "driver/twai.h"
 #include "freertos/FreeRTOS.h"
@@ -79,6 +80,17 @@ bool CanTwaiAdapter::transmit(const core::CanFrame& frame) const {
     message.data_length_code = frame.size;
     std::copy_n(frame.data.begin(), frame.size, message.data);
     return twai_transmit(&message, nonblocking_wait) == ESP_OK;
+}
+
+std::uint8_t CanTwaiAdapter::error_register() const {
+    twai_status_info_t status{};
+    if (twai_get_status_info(&status) != ESP_OK) {
+        return firmware::core::can_error_register_from_status(true, 0U, 0U);
+    }
+    return firmware::core::can_error_register_from_status(
+        status.state == TWAI_STATE_BUS_OFF,
+        static_cast<std::uint8_t>(status.tx_error_counter),
+        static_cast<std::uint8_t>(status.rx_error_counter));
 }
 
 void CanTwaiAdapter::shutdown() const {
