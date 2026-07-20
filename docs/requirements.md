@@ -20,6 +20,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | USB local directory and MD5 queries | Target POSIX/mbedTLS query ports over application services | Target-built for `ls`, `md5sum`, metadata enumeration, regular-file checks, and queued responses | Physical USB/filesystem verification pending |
 | USB local configuration commands | Target POSIX configuration ports over configuration policies | Target-built for `config-get`, `config-set`, `config-restore`, and `config-default` routing and queued responses | Physical USB/storage verification pending |
 | USB local WLAN scan | Target ESP-IDF scan port over WLAN scan policy | Target-built for USB `wlan scan` parsing, bounded blocking scan, observation conversion, and queued responses | Physical USB/RF verification pending |
+| USB local WLAN connection control | Target ESP-IDF station port over manual connection policy | Target-built for USB `wlan connect`/`wlan disconnect`, bounded credentials, state polling, NVS persistence, and queued responses | Physical USB/RF/NVS verification pending |
 | ESC-001--ESC-002 escaping | Core implementation | Yes | Not required |
 | HFT-004 path normalization | Core implementation | Yes | Not required |
 | HFT-001--HFT-003 transfer start and path validation | Core implementation | Yes | TCP service integration and target build verified; runtime filesystem verification pending |

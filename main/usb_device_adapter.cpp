@@ -34,6 +34,8 @@
 #include "runtime_status_adapter.hpp"
 
 #include <array>
+#include <algorithm>
+#include <cstring>
 #include <ctime>
 #include <optional>
 #include <cerrno>
@@ -44,6 +46,9 @@
 #include "mbedtls/md5.h"
 #include <esp_timer.h>
 #include "esp_wifi.h"
+#include "esp_netif.h"
+#include <lwip/inet.h>
+#include <lwip/sockets.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -298,6 +303,106 @@ public:
 };
 
 UsbWlanScanPort wlan_scan_port;
+
+// Converts an ESP-IDF result into the transport-neutral station result.
+firmware::application::StationApiResult api_result(esp_err_t result,
+                                                    const char* operation) {
+    return result == ESP_OK
+               ? firmware::application::StationApiResult{true, {}}
+               : firmware::application::StationApiResult{false, operation};
+}
+
+// Implements manual station operations using ESP-IDF and shared NVS storage.
+class UsbWlanStationPort final
+    : public firmware::application::StationConnectionPort {
+public:
+    firmware::application::StationApiResult request_disconnect() override {
+        return api_result(esp_wifi_disconnect(), "disconnect");
+    }
+
+    firmware::application::StationApiResult apply_station_config(
+        const firmware::application::StationConfiguration& configuration) override {
+        wifi_config_t wifi_config{};
+        const std::size_t ssid_size =
+            std::min(configuration.ssid.size(), sizeof(wifi_config.sta.ssid));
+        const std::size_t password_size =
+            std::min(configuration.password.size(), sizeof(wifi_config.sta.password));
+        std::memcpy(wifi_config.sta.ssid, configuration.ssid.data(), ssid_size);
+        std::memcpy(wifi_config.sta.password, configuration.password.data(),
+                    password_size);
+        wifi_config.sta.scan_method = WIFI_FAST_SCAN;
+        wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
+        wifi_config.sta.threshold.authmode = static_cast<wifi_auth_mode_t>(
+            configuration.minimum_authentication_mode);
+        const esp_err_t mode_result = esp_wifi_set_mode(WIFI_MODE_STA);
+        if (mode_result != ESP_OK) return api_result(mode_result, "set_mode");
+        return api_result(esp_wifi_set_config(WIFI_IF_STA, &wifi_config),
+                          "set_config");
+    }
+
+    firmware::application::StationApiResult request_connect() override {
+        return api_result(esp_wifi_connect(), "connect");
+    }
+
+    void delay_milliseconds(std::uint32_t duration) override {
+        vTaskDelay(pdMS_TO_TICKS(duration));
+    }
+
+    firmware::application::StationSnapshot station_snapshot() const override {
+        wifi_ap_record_t access_point{};
+        if (esp_wifi_sta_get_ap_info(&access_point) != ESP_OK) return {};
+        const std::string ssid(reinterpret_cast<const char*>(access_point.ssid));
+        esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+        if (netif == nullptr) {
+            return {firmware::application::StationConnectionState::associated,
+                    ssid, {}};
+        }
+        esp_netif_ip_info_t ip_info{};
+        if (esp_netif_get_ip_info(netif, &ip_info) != ESP_OK ||
+            ip_info.ip.addr == 0U) {
+            return {firmware::application::StationConnectionState::associated,
+                    ssid, {}};
+        }
+        char address[INET_ADDRSTRLEN]{};
+        inet_ntop(AF_INET, &ip_info.ip.addr, address, sizeof(address));
+        return {firmware::application::StationConnectionState::address_ready,
+                ssid, address};
+    }
+
+    firmware::application::StationApiResult save_credentials(
+        std::string_view ssid, std::string_view password) override {
+        NvsKeyValueAdapter nvs;
+        if (!nvs.write_string("wifi_config", "ssid", ssid)) {
+            return {false, "save_ssid"};
+        }
+        if (!nvs.write_string("wifi_config", "password", password)) {
+            return {false, "save_password"};
+        }
+        return {true, {}};
+    }
+};
+
+// Routes WLAN connection responses to the USB transmit queue.
+class UsbWlanResponsePort final
+    : public firmware::application::WlanConnectionResponsePort {
+public:
+    void send(firmware::core::Frame frame) override {
+        const auto encoded = firmware::core::encode_frame(frame);
+        if (!encoded.empty()) {
+            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+        }
+    }
+
+    void delay_milliseconds(std::uint32_t duration) override {
+        vTaskDelay(pdMS_TO_TICKS(duration));
+    }
+
+    void send_discovery_burst() override {}
+};
+
+UsbWlanStationPort wlan_station_port;
+UsbWlanResponsePort wlan_response_port;
+firmware::application::StationRuntime usb_station_runtime;
 
 class UsbSerialPort final : public firmware::application::SerialNumberPort {
 public:
@@ -692,6 +797,15 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                 if (request.kind == firmware::application::WlanRequestKind::scan) {
                     firmware::application::WlanScanCommand::execute(
                         wlan_scan_port);
+                } else if (request.kind ==
+                           firmware::application::WlanRequestKind::disconnect) {
+                    firmware::application::WlanConnectionCommand::disconnect(
+                        usb_station_runtime, wlan_station_port,
+                        wlan_response_port);
+                } else {
+                    firmware::application::WlanConnectionCommand::connect(
+                        usb_station_runtime, wlan_station_port,
+                        wlan_response_port, request.ssid, request.password);
                 }
                 continue;
             }
