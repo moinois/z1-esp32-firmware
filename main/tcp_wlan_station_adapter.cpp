@@ -1,6 +1,8 @@
 // Implements ESP-IDF station configuration, association, and IPv4 polling.
 #include "tcp_wlan_station_adapter.hpp"
 
+#include "nvs_key_value_adapter.hpp"
+
 #include "esp_netif.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
@@ -81,7 +83,15 @@ TcpWlanStationAdapter::station_snapshot() const {
 }
 
 firmware::application::StationApiResult
-TcpWlanStationAdapter::save_credentials(std::string_view, std::string_view) {
+TcpWlanStationAdapter::save_credentials(std::string_view ssid,
+                                        std::string_view password) {
+    NvsKeyValueAdapter nvs;
+    if (!nvs.write_string("wifi", "ssid", ssid)) {
+        return {false, "save_ssid"};
+    }
+    if (!nvs.write_string("wifi", "password", password)) {
+        return {false, "save_password"};
+    }
     return {true, {}};
 }
 
