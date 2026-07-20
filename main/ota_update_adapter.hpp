@@ -12,6 +12,8 @@ class OtaUpdateAdapter final : public firmware::application::UpdateApplicationPo
 public:
     void publish_phase(std::uint8_t phase) override;
     bool select_inactive_partition() override;
+    // Erases the complete selected partition for a direct web update.
+    bool erase_inactive_partition();
     bool begin_mainboard_write(std::uint32_t size) override;
     bool write_mainboard(firmware::core::BytesView image) override;
     bool finalize_mainboard_write() override;

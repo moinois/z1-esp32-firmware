@@ -4,12 +4,19 @@
 #include "esp_err.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
+#include "esp_system.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "firmware/application/web_config.hpp"
 #include "firmware/application/static_file_server.hpp"
 #include "firmware/application/preview_socket_input.hpp"
 #include "firmware/core/web_static.hpp"
 #include "firmware_update_adapter.hpp"
+#include "ota_update_adapter.hpp"
+#include "firmware/core/multipart_extractor.hpp"
+#include "firmware/core/multipart_policy.hpp"
+#include "firmware/application/direct_application_update.hpp"
 
 #include <cstdio>
 #include <cstdint>
@@ -22,6 +29,52 @@ namespace firmware::target {
 namespace {
 
 constexpr char tag[] = "HTTP";
+
+class DirectHttpOtaPort final
+    : public firmware::application::DirectApplicationUpdatePort {
+public:
+    explicit DirectHttpOtaPort(httpd_req_t* request) : request_(request) {}
+
+    // Stops camera ownership before changing the bootable application image.
+    bool deinitialize_camera() override { return true; }
+    // Selects the inactive application partition as the update destination.
+    bool select_inactive_partition() override {
+        return ota_.select_inactive_partition();
+    }
+    // Clears the destination partition before streaming the new image.
+    bool erase_partition() override { return ota_.erase_inactive_partition(); }
+    // Starts the ESP-IDF OTA write transaction.
+    bool begin_update(std::size_t size) override {
+        return ota_.begin_mainboard_write(static_cast<std::uint32_t>(size));
+    }
+    bool write_image(firmware::core::BytesView image) override {
+        return ota_.write_mainboard(image);
+    }
+    // Completes and validates the ESP-IDF OTA write transaction.
+    bool finish_update() override { return ota_.finalize_mainboard_write(); }
+    // Marks the freshly written partition as the next boot target.
+    bool select_boot_partition() override {
+        return ota_.select_mainboard_for_boot();
+    }
+    // Aborts an in-progress OTA write after a validation or I/O failure.
+    void abort_update() override { ota_.abort_mainboard_write(); }
+    // Sends the service result through the active HTTP request.
+    void send_response(std::uint16_t status, std::string_view body) override {
+        const char* text = status == 200U ? "200 OK" : "500 Internal Server Error";
+        httpd_resp_set_status(request_, text);
+        httpd_resp_set_type(request_, "text/html");
+        httpd_resp_send(request_, body.data(), body.size());
+    }
+    void delay_milliseconds(std::uint32_t milliseconds) override {
+        vTaskDelay(pdMS_TO_TICKS(milliseconds));
+    }
+    // Reboots the controller after a successful direct update.
+    void restart() override { esp_restart(); }
+
+private:
+    httpd_req_t* request_;
+    firmware::target::OtaUpdateAdapter ota_;
+};
 
 // Reads SPIFFS files through the standard C file API used by VFS.
 class StdioStaticFile final : public firmware::application::StaticFilePort {
@@ -123,29 +176,53 @@ esp_err_t firmware_info_handler(httpd_req_t* request) {
     return httpd_resp_send(request, payload.data(), payload.size());
 }
 
-// Accepts a bounded update request and wakes the shared update-processing task.
+// Extracts the first multipart image and applies it through the direct OTA service.
 esp_err_t firmware_update_handler(httpd_req_t* request) {
-    constexpr std::size_t maximum_request_body = 4096U;
-    if (request->content_len > maximum_request_body) {
-        httpd_resp_set_status(request, "413 Payload Too Large");
-        return httpd_resp_send(request, "Payload Too Large", HTTPD_RESP_USE_STRLEN);
+    constexpr std::size_t maximum_request_body = 2U * 1024U * 1024U;
+    const std::size_t header_length = httpd_req_get_hdr_value_len(request, "Content-Type");
+    if (header_length == 0U || header_length >= firmware::core::web_update::content_type_capacity) {
+        httpd_resp_set_status(request, "400 Bad Request");
+        return httpd_resp_send(request, "Invalid multipart Content-Type", HTTPD_RESP_USE_STRLEN);
     }
-    std::vector<std::uint8_t> body(static_cast<std::size_t>(request->content_len));
+    std::string content_type(header_length + 1U, '\0');
+    if (httpd_req_get_hdr_value_str(request, "Content-Type", content_type.data(),
+                                    content_type.size()) != ESP_OK) {
+        httpd_resp_set_status(request, "400 Bad Request");
+        return httpd_resp_send(request, "Invalid multipart Content-Type", HTTPD_RESP_USE_STRLEN);
+    }
+    content_type.resize(header_length);
+    const auto boundary = firmware::core::parse_multipart_content_type(content_type);
+    if (!boundary.has_value() || request->content_len > maximum_request_body) {
+        httpd_resp_set_status(request, "400 Bad Request");
+        return httpd_resp_send(request, "Invalid multipart request", HTTPD_RESP_USE_STRLEN);
+    }
+    firmware::core::MultipartPartExtractor extractor(*boundary);
+    std::vector<std::uint8_t> block(1024U);
     std::size_t received = 0U;
-    while (received < body.size()) {
+    while (received < static_cast<std::size_t>(request->content_len)) {
+        const std::size_t remaining = static_cast<std::size_t>(request->content_len) - received;
         const int count = httpd_req_recv(
-            request, reinterpret_cast<char*>(body.data() + received),
-            body.size() - received);
+            request, reinterpret_cast<char*>(block.data()),
+            std::min(block.size(), remaining));
         if (count <= 0) {
             httpd_resp_set_status(request, "400 Bad Request");
             return httpd_resp_send(request, "Bad Request", HTTPD_RESP_USE_STRLEN);
         }
         received += static_cast<std::size_t>(count);
+        const bool final_block = received == static_cast<std::size_t>(request->content_len);
+        if (!extractor.feed({block.data(), static_cast<std::size_t>(count)}, final_block)) {
+            httpd_resp_set_status(request, "400 Bad Request");
+            return httpd_resp_send(request, "Invalid multipart request", HTTPD_RESP_USE_STRLEN);
+        }
     }
-    request_firmware_update_processing();
-    httpd_resp_set_status(request, "202 Accepted");
-    httpd_resp_set_type(request, "text/plain");
-    return httpd_resp_send(request, "Update accepted", HTTPD_RESP_USE_STRLEN);
+    if (extractor.status() != firmware::core::MultipartExtractStatus::complete) {
+        httpd_resp_set_status(request, "400 Bad Request");
+        return httpd_resp_send(request, "Invalid multipart request", HTTPD_RESP_USE_STRLEN);
+    }
+    DirectHttpOtaPort port(request);
+    firmware::application::DirectApplicationUpdateService service;
+    static_cast<void>(service.apply(extractor.content(), port));
+    return ESP_OK;
 }
 
 #if CONFIG_HTTPD_WS_SUPPORT

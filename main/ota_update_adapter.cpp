@@ -29,6 +29,12 @@ bool OtaUpdateAdapter::select_inactive_partition() {
     return inactive_partition_ != nullptr;
 }
 
+bool OtaUpdateAdapter::erase_inactive_partition() {
+    return inactive_partition_ != nullptr &&
+           esp_partition_erase_range(inactive_partition_, 0U,
+                                     inactive_partition_->size) == ESP_OK;
+}
+
 bool OtaUpdateAdapter::begin_mainboard_write(std::uint32_t size) {
     if (inactive_partition_ == nullptr || ota_active_) {
         return false;
