@@ -36,6 +36,10 @@
 #include "firmware/application/controller_snapshots.hpp"
 #include "runtime_status_adapter.hpp"
 #include "firmware/application/runtime_status.hpp"
+#include "firmware/application/play_session.hpp"
+#include "firmware/application/router.hpp"
+#include "play_runtime_state.hpp"
+#include "firmware/core/file_transfer_paths.hpp"
 
 #include <array>
 #include <algorithm>
@@ -412,6 +416,59 @@ UsbWlanStationPort wlan_station_port;
 UsbWlanResponsePort wlan_response_port;
 firmware::application::StationRuntime usb_station_runtime;
 
+// Provides POSIX file preparation and origin-aware responses for USB play.
+class UsbPlayPreparationPort final
+    : public firmware::application::PlayPreparationPort {
+public:
+    ~UsbPlayPreparationPort() override {
+        close_file();
+    }
+
+    void close_file() override {
+        if (file_ != nullptr) std::fclose(file_);
+        file_ = nullptr;
+    }
+
+    std::optional<std::uint64_t> open_file(std::string_view path) override {
+        close_file();
+        file_ = std::fopen(std::string(path).c_str(), "rb");
+        if (file_ == nullptr || std::fseek(file_, 0L, SEEK_END) != 0) {
+            close_file();
+            return std::nullopt;
+        }
+        const long size = std::ftell(file_);
+        if (size < 0L || std::fseek(file_, 0L, SEEK_SET) != 0) {
+            close_file();
+            return std::nullopt;
+        }
+        return static_cast<std::uint64_t>(size);
+    }
+
+    std::optional<std::string> cached_md5(std::string_view path) override {
+        const auto cache = firmware::core::map_file_cache_paths(path).md5_path;
+        if (!cache.has_value()) return std::nullopt;
+        FILE* input = std::fopen(std::string(*cache).c_str(), "rb");
+        if (input == nullptr) return std::nullopt;
+        std::uint8_t bytes[63]{};
+        const std::size_t count = std::fread(bytes, 1U, sizeof(bytes), input);
+        std::fclose(input);
+        return firmware::core::extract_cached_md5({bytes, count});
+    }
+
+    void broadcast(firmware::core::Frame frame) override {
+        const auto encoded = firmware::core::encode_frame(frame);
+        if (!encoded.empty()) {
+            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+            firmware::target::broadcast_tcp_frame(frame);
+        }
+    }
+
+private:
+    FILE* file_ = nullptr;
+};
+
+UsbPlayPreparationPort usb_play_port;
+
 class UsbSerialPort final : public firmware::application::SerialNumberPort {
 public:
     bool admit_operation(std::uint32_t wait_milliseconds) override {
@@ -744,6 +801,31 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
         }
         if (frame.type == firmware::core::protocol::general_command) {
             const auto match = firmware::core::recognize_command(frame.payload);
+            if (frame.payload.size() >= 4U && frame.payload[0] == 'p' &&
+                frame.payload[1] == 'l' && frame.payload[2] == 'a' &&
+                frame.payload[3] == 'y') {
+                const firmware::application::HostIdentity usb_identity{
+                    firmware::application::HostTransport::usb, 0U, 0U};
+                if (shared_host_router().ownership().claim_play(usb_identity)) {
+                    auto& play_session = shared_play_session();
+                    if (play_session.prepare(
+                            frame.payload,
+                            static_cast<std::uint64_t>(esp_timer_get_time() /
+                                                       1000LL),
+                            usb_play_port)) {
+                        const auto response = play_session.status_reply();
+                        const auto encoded =
+                            firmware::core::encode_frame(response);
+                        if (!encoded.empty()) {
+                            static_cast<void>(protocol_state.transmit_queue().enqueue(
+                                encoded));
+                        }
+                    } else {
+                        shared_host_router().ownership().release_play();
+                    }
+                }
+                continue;
+            }
             if (match.kind == firmware::core::CommandKind::record_start ||
                 match.kind == firmware::core::CommandKind::record_stop) {
                 const auto result = firmware::application::handle_recording_command(
