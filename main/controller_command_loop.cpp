@@ -6,6 +6,7 @@
 #include "wall_clock_command_dispatcher.hpp"
 #include "serial_number_adapter.hpp"
 #include "firmware/application/serial_number.hpp"
+#include "firmware/application/recording_commands.hpp"
 #include "firmware/core/text.hpp"
 #include "firmware/core/frame.hpp"
 
@@ -27,6 +28,7 @@ void controller_command_task(void*) {
     WallClockCommandDispatcher dispatcher(wall_clock);
     NvsSerialNumberAdapter serial_port(&uart);
     firmware::application::SerialNumberService serial_service(serial_port);
+    bool recording_requested = false;
     firmware::core::StreamDecoder decoder(
         firmware::core::StreamPolicy::controller_uart());
     std::uint8_t input[256];
@@ -46,6 +48,13 @@ void controller_command_task(void*) {
                 serial_service.handle_get(command);
             } else if (match.kind == firmware::core::CommandKind::serial_set) {
                 serial_service.handle_set(command);
+            } else if (match.kind == firmware::core::CommandKind::record_start ||
+                       match.kind == firmware::core::CommandKind::record_stop) {
+                const auto result = firmware::application::handle_recording_command(
+                    match.kind, recording_requested);
+                recording_requested = result.requested;
+                const auto encoded = firmware::core::encode_frame(result.response);
+                if (!encoded.empty()) uart.write(encoded);
             }
         }
     }

@@ -138,6 +138,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | RUN-020--RUN-023 controller command wiring | ESP-IDF UART task over controller stream decoder | Yes for UART initialization, bounded reads, incremental framing, and dispatch of decoded wall-clock commands; target build verified | Full command-family routing and response transport pending |
 | RUN-020--RUN-023 wall-clock response transport | UART-bound wall-clock adapter over common frame encoder | Yes for response type/payload framing and single UART write submission; target build verified | Other command-family responses pending |
 | RUN-010 serial-number target composition | NVS/UART adapter over `SerialNumberService` | Yes for NVS read/write state mapping, operation admission, command recognition, and framed response transport; target build verified | Physical routing and persistence verification pending |
+| REC-001 recording command wiring | Controller-loop dispatch over recording command policy | Yes for M951/M952 recognition, request-state update, exact `0xa2 ok\n` frame encoding, and UART submission; target build verified | Recording task consumption pending |
 | RUN-033--RUN-035 play-state bridge | Target runtime observer | Yes for forwarding play start/stop transitions with monotonic timestamps to runtime accounting; target build verified | Controller/play composition pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
