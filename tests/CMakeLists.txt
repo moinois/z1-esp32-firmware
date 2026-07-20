@@ -96,6 +96,7 @@ add_executable(
     test_preview_socket_input.cpp
     test_recording_policy.cpp
     test_recording_commands.cpp
+    test_storage_retention.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
 target_compile_options(core_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
