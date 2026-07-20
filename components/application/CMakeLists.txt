@@ -3,6 +3,7 @@ set(APPLICATION_SOURCES
     src/automatic_connection.cpp
     src/can_output_monitor.cpp
     src/canopen_service.cpp
+    src/camera_settings.cpp
     src/ble_provisioning.cpp
     src/blufi_fragment.cpp
     src/blufi_gatt.cpp

@@ -9,6 +9,7 @@ add_executable(
     test_can_twai_config.cpp
     test_canopen_service.cpp
     test_can_output_monitor.cpp
+    test_camera_settings.cpp
     test_controller_query.cpp
     test_controller_link.cpp
     test_controller_firmware_transfer.cpp
