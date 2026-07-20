@@ -11,8 +11,11 @@
 #include "driver/sdmmc_default_configs.h"
 
 #include "firmware/application/sd_card_lifecycle.hpp"
+#include "firmware/application/diagnostic_log_writer.hpp"
 
 #include <optional>
+#include <cstdio>
+#include <string>
 
 namespace firmware::target {
 namespace {
@@ -20,7 +23,8 @@ namespace {
 constexpr gpio_num_t card_detect_gpio = GPIO_NUM_2;
 constexpr char tag[] = "SD";
 
-class EspSdPort final : public firmware::application::SdCardPort {
+class EspSdPort final : public firmware::application::SdCardPort,
+                        public firmware::application::DiagnosticLogPort {
 public:
     bool card_inserted() override {
         return gpio_get_level(card_detect_gpio) == 0;
@@ -47,8 +51,14 @@ public:
                                        &mount_config, &card_) == ESP_OK;
     }
 
-    void start_logging() override {}
-    void stop_and_drain_logging() override {}
+    void start_logging() override {
+        writer_.open_session(now_milliseconds(), *this);
+    }
+
+    void stop_and_drain_logging() override {
+        writer_.begin_shutdown(now_milliseconds());
+        writer_.poll_shutdown(now_milliseconds() + 5000U, capture_, *this);
+    }
 
     bool unmount() override {
         return esp_vfs_fat_sdcard_unmount("/sd", card_) == ESP_OK;
@@ -56,6 +66,31 @@ public:
 
     std::optional<std::uint64_t> total_bytes() override { return volume_bytes(true); }
     std::optional<std::uint64_t> free_bytes() override { return volume_bytes(false); }
+
+    std::optional<std::uint64_t> open_append(std::string_view path,
+                                              std::size_t buffer_size) override {
+        close();
+        file_ = std::fopen(std::string(path).c_str(), "ab");
+        if (file_ == nullptr) return std::nullopt;
+        std::setvbuf(file_, nullptr, _IOFBF, buffer_size);
+        std::fseek(file_, 0L, SEEK_END);
+        return static_cast<std::uint64_t>(std::ftell(file_));
+    }
+
+    std::size_t write(firmware::core::BytesView record) override {
+        return file_ == nullptr ? 0U : std::fwrite(record.data(), 1U, record.size(), file_);
+    }
+    void flush() override { if (file_ != nullptr) std::fflush(file_); }
+    void close() override {
+        if (file_ != nullptr) { std::fclose(file_); file_ = nullptr; }
+    }
+    void remove_file(std::string_view path) override { std::remove(std::string(path).c_str()); }
+    void rename_file(std::string_view source, std::string_view destination) override {
+        std::rename(std::string(source).c_str(), std::string(destination).c_str());
+    }
+    firmware::application::DiagnosticTime current_time() override {
+        return {0U, 0U, 0U, 0U, 0U, 0U, 0U, now_milliseconds()};
+    }
 
 private:
     std::optional<std::uint64_t> volume_bytes(bool total) {
@@ -68,6 +103,13 @@ private:
     }
 
     sdmmc_card_t* card_ = nullptr;
+    std::FILE* file_ = nullptr;
+    firmware::application::DiagnosticLogWriter writer_;
+    firmware::application::DiagnosticCapture capture_;
+
+    static std::uint64_t now_milliseconds() {
+        return xTaskGetTickCount() * portTICK_PERIOD_MS;
+    }
 };
 
 void sd_monitor_task(void*) {
