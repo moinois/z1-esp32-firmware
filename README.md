@@ -259,6 +259,7 @@ The first core-to-periphery development slice contains:
 - Wi-Fi/IP event adapter forwards station association, address-ready, and disconnect state to BLUFI provisioning;
 - Controller UART task now emits drift-free periodic status and diagnostic queries through the tested scheduler;
 - ESP32 image validator checks application headers, bounded segments, and image checksum before update acceptance;
+- ESP-IDF OTA adapter selects inactive partitions, writes/finalizes images, selects boot, aborts failures, and stages controller images;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
