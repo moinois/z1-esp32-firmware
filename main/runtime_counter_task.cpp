@@ -35,6 +35,12 @@ void record_runtime_first_boot(std::int64_t unix_seconds) {
     }
 }
 
+void notify_runtime_play_state(bool running, std::uint64_t monotonic_milliseconds) {
+    if (active_service != nullptr) {
+        active_service->play_running_changed(running, monotonic_milliseconds);
+    }
+}
+
 void RuntimeCounterTask::start() {
     xTaskCreate(runtime_counter_task, "runtime_counters", 4096U, nullptr, 3U,
                 nullptr);

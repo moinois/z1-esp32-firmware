@@ -13,6 +13,7 @@ idf_component_register(
         "nvs_key_value_adapter.cpp"
         "nvs_runtime_counter_adapter.cpp"
         "runtime_counter_task.cpp"
+        "runtime_play_observer.cpp"
     REQUIRES
         application
         core

@@ -133,6 +133,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | RUN-030--RUN-035 runtime persistence backend | ESP-IDF NVS adapter over `RuntimeCounterPort` | Yes for exact runtime keys, signed first-boot missing/present/failure mapping, unsigned counter reads, writes, and target build verification | Runtime service startup composition pending |
 | RUN-030--RUN-035 runtime startup composition | ESP-IDF FreeRTOS runtime-counter task | Yes for NVS-backed initialization, monotonic baseline, and one-second persistence scheduling; target build verified | Wall-clock first-boot recording and play-state notifications pending |
 | RUN-031 wall-clock first-boot bridge | Target runtime-task notification function | Yes for forwarding successful wall-clock first-boot values to `RuntimeCounterService`; target build verified | Concrete wall-clock port and play-state bridge pending |
+| RUN-033--RUN-035 play-state bridge | Target runtime observer | Yes for forwarding play start/stop transitions with monotonic timestamps to runtime accounting; target build verified | Controller/play composition pending |
 | BOOT-001--BOOT-003 persistent-store recovery | ESP-IDF composition root | Build verification only | No |
 | HW-002 partition table | Target configuration | Build verification only | No |
 | HW-004--HW-005 CPU, flash, PSRAM, security | Target defaults | Build verification only | No |
