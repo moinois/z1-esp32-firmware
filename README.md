@@ -230,6 +230,7 @@ The first core-to-periphery development slice contains:
 - target TCP tasks now retain per-connection identities and make explicit routing decisions;
 - callback-based TCP dispatch ports for controller, local, file, and play services;
 - mutex-protected TCP-to-controller forwarding through the existing UART output scheduler;
+- target TCP receive processing routed through the shared callback dispatcher;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;

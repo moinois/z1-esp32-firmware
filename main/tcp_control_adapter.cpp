@@ -9,6 +9,7 @@
 #include "firmware/application/tcp_frame_sender.hpp"
 #include "firmware/application/tcp_client_session.hpp"
 #include "firmware/application/router.hpp"
+#include "firmware/application/tcp_frame_dispatcher.hpp"
 #include "controller_command_loop.hpp"
 
 #include <arpa/inet.h>
@@ -32,6 +33,16 @@ constexpr int maximum_clients = 4;
 std::atomic_int active_clients{0};
 std::atomic_uint32_t next_generation{1U};
 firmware::application::Router tcp_router;
+
+void forward_tcp_controller_frame(const firmware::application::HostIdentity&,
+                                  const firmware::core::Frame& frame) {
+    static_cast<void>(enqueue_controller_frame(frame));
+}
+
+firmware::application::TcpFrameDispatcher tcp_dispatcher(
+    tcp_router,
+    firmware::application::TcpDispatchSinks{forward_tcp_controller_frame,
+                                            {}, {}, {}});
 
 struct TcpClientContext {
     int socket;
@@ -95,10 +106,7 @@ void tcp_client_task(void* parameter) {
         session.receive({input, static_cast<std::size_t>(count)},
             [](const firmware::application::HostIdentity& identity,
                const firmware::core::Frame& frame) {
-                const auto decision = tcp_router.from_host(identity, frame);
-                if (decision.has(firmware::application::RouteTarget::controller)) {
-                    static_cast<void>(enqueue_controller_frame(frame));
-                }
+                tcp_dispatcher.dispatch(identity, frame);
             });
     }
     close(client);
