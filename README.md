@@ -241,6 +241,7 @@ The first core-to-periphery development slice contains:
 - TCP-local WLAN scan command using ESP-IDF blocking scan parameters;
 - ESP-IDF WLAN station adapter for bounded manual connect/disconnect polling;
 - WLAN station credentials persisted through the shared NVS adapter after IPv4 assignment;
+- portable `wlan` request parser with exact `-d`/`-e` option precedence;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;
@@ -248,7 +249,7 @@ The first core-to-periphery development slice contains:
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 578 tests. The firmware also builds successfully as
+The current host suite has 580 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).

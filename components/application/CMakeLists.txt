@@ -58,6 +58,7 @@ set(APPLICATION_SOURCES
     src/tcp_frame_dispatcher.cpp
     src/controller_frame_forwarder.cpp
     src/local_command_classifier.cpp
+    src/wlan_request.cpp
     src/play_line_reader.cpp
     src/play_session.cpp
     src/router.cpp
