@@ -20,6 +20,7 @@ add_executable(
     test_diagnostic_log_writer.cpp
     test_frame.cpp
     test_live_configuration.cpp
+    test_network_policy.cpp
     test_file_transfer_paths.cpp
     test_file_transfer_admission.cpp
     test_file_download.cpp

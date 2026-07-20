@@ -33,6 +33,8 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | CFG-030--CFG-034 configuration updates | Core rewrite logic and application implementation with replaceable persistence port | Yes | Filesystem and response adapters pending |
 | LOG-001--LOG-006 diagnostic capture and record formatting | Application implementation with replaceable output/buffer/clock port | Yes | ESP-IDF log-hook and writer integration pending |
 | LOG-007--LOG-013 diagnostic log writer | Application implementation with replaceable buffered-file port | Yes for session, flush, rotation, short write, and shutdown policy | Filesystem/task integration pending |
+| NET-001--NET-002 machine name | Core implementation | Yes | Configuration/MAC adapter integration pending |
+| NET-004--NET-005 AP channel selection | Core implementation | Yes for counting, wrapping, tie, and fallback | Wi-Fi scan/startup integration pending |
 | CMD-001--CMD-003 recognition and limits | Core implementation | Partial: 001, 003 | Not required |
 | ROUTE-001--ROUTE-018 routing policy | Application implementation | Yes | Transport integration pending |
 | OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | Terminal service integration pending |
