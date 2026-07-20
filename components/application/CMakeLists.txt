@@ -18,6 +18,7 @@ set(APPLICATION_SOURCES
     src/play_line_reader.cpp
     src/play_session.cpp
     src/router.cpp
+    src/sd_card_lifecycle.cpp
 )
 
 if(COMMAND idf_component_register)
