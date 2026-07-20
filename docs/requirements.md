@@ -20,9 +20,9 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | HFT-020--HFT-022, HFT-024--HFT-025 upload timing and retries | Application implementation | Yes for upload | Runtime clock integration pending |
 | FILE-001--FILE-003 common filesystem path syntax | Core implementation | Yes | Not required |
 | FILE-010 directory-list argument and option parsing | Core implementation | Yes | Not required |
-| FILE-011--FILE-015 directory listing | Application implementation with replaceable port | Yes | Filesystem and response adapters pending |
-| FILE-020--FILE-026 filesystem mutations and type reply | Core parsing and application implementation with replaceable port | Yes | Filesystem and response adapters pending |
-| FILE-027--FILE-029 MD5 command | Application implementation with replaceable metadata and hash port | Yes | Filesystem, MD5, and response adapters pending |
+| FILE-011--FILE-015 directory listing | Application implementation with replaceable port | Yes | POSIX enumeration and TCP response adapter implemented |
+| FILE-020--FILE-026 filesystem mutations and type reply | Core parsing and application implementation with replaceable port | Yes | POSIX recursive removal and TCP response adapter implemented |
+| FILE-027--FILE-029 MD5 command | Application implementation with replaceable metadata and hash port | Yes | POSIX/mbedTLS hashing and TCP response adapter implemented |
 | SD-001--SD-008 SD-card lifecycle and capacity | Application implementation with replaceable port | Yes for policy and ordering | GPIO, SDMMC, FAT, and logging adapters pending |
 | SD-009--SD-010 FAT filename, sector, and lock policy | Target defaults | Build verification only | Physical-card verification pending |
 | CFG-002--CFG-003 SD configuration line parsing | Core implementation | Yes | Not required |
@@ -146,10 +146,10 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | TCP-004, TCP-006--TCP-008 TCP client session composition | Portable per-client session | Yes for incremental decoding, stable TCP identity, encoded response queueing, and bounded transmit ownership; host tests and target build verified | Listener callback and router/service wiring pending |
 | ROUTE-001--ROUTE-018 TCP dispatch composition | Portable callback dispatcher over `Router` | Yes for selected controller/local/file/play sinks and ownership-aware file routing; host tests and target build verified | Concrete target service sinks pending |
 | TCP controller forwarding | Target FreeRTOS bridge over `ControllerFrameForwarder` | Target build verified for mutex-protected enqueue, controller-task-only UART writes, existing 10 ms spacing, and queue failure isolation | Physical UART and runtime contention verification pending |
-| TCP dispatcher target wiring | ESP-IDF TCP task using `TcpFrameDispatcher` | Target build verified for reuse of the tested route/sink boundary and controller sink selection | Local/file/play target sinks pending |
+| TCP dispatcher target wiring | ESP-IDF TCP task using `TcpFrameDispatcher` | Target build verified for controller, local, file, and filesystem-query sinks | Play-status target sink pending |
 | TCP-006--TCP-008 target transmit drain | ESP-IDF client task over `TcpTransmitQueue` and `TcpFrameSender` | Target build verified for FIFO drain, pop-after-completion, short-write continuation, temporary retry, and permanent-failure connection close | Runtime socket stress verification pending |
 | ROUTE local-command classification | Portable `LocalCommandFamily` mapping over `CommandKind` | Yes for runtime, serial, recording, filesystem, WLAN, and unknown mappings; host tests and target build verified | Concrete TCP local-command response ports pending |
-| TCP origin-aware dispatch | `TcpFrameDispatcher` with explicit `TcpClientSession` context | Yes for per-client sink invocation and response queueing without global client lookup; host tests and target build verified | Concrete local/file/play service implementations pending |
+| TCP origin-aware dispatch | `TcpFrameDispatcher` with explicit `TcpClientSession` context | Yes for per-client sink invocation and response queueing without global client lookup; host tests and target build verified | Play-status service implementation pending |
 | REC-001 TCP-local recording control | ESP-IDF local sink over `RecordingRequestState` and recording command policy | Target build verified for M951/M952 recognition, shared request-state updates, exact response frame queuing, and origin-preserving delivery | Runtime TCP recording verification pending |
 | RUN-010 TCP-local serial number | ESP-IDF `TcpSerialNumberAdapter` over NVS and `SerialNumberService` | Target build verified for serial get/set routing, NVS delegation, validation reuse, and per-session response queueing | Runtime NVS/TCP verification pending |
 | RUN-030 TCP-local runtime commands | ESP-IDF `TcpRuntimeCommandAdapter` over NVS and `RuntimeCommandService` | Target build verified for `sys-time`, `clearftm`, persisted counters, UTC-minute formatting, erase semantics, and per-session responses | Runtime NVS/TCP verification pending |
