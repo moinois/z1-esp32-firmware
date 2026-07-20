@@ -7,6 +7,7 @@ add_executable(
     test_canopen_dictionary.cpp
     test_canopen_sdo.cpp
     test_canopen_sdo_client.cpp
+    test_canopen_sdo_mailbox.cpp
     test_can_twai_config.cpp
     test_canopen_service.cpp
     test_can_output_monitor.cpp
