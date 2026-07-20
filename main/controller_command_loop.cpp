@@ -2,6 +2,7 @@
 #include "controller_command_loop.hpp"
 
 #include "controller_uart_adapter.hpp"
+#include "controller_transfer_adapter.hpp"
 #include "wall_clock_adapter.hpp"
 #include "wall_clock_command_dispatcher.hpp"
 #include "serial_number_adapter.hpp"
@@ -18,6 +19,10 @@
 
 #include "firmware/application/controller_frame_forwarder.hpp"
 #include "firmware/application/controller_query.hpp"
+#include "firmware/application/controller_firmware_transfer.hpp"
+#include "firmware/application/controller_config_transfer.hpp"
+#include "firmware/application/controller_factory_transfer.hpp"
+#include "firmware/core/protocol_constants.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -54,6 +59,10 @@ void controller_command_task(void*) {
     NvsSerialNumberAdapter serial_port(&uart);
     firmware::application::SerialNumberService serial_service(serial_port);
     RecordingRequestState recording_state;
+    ControllerTransferAdapter transfer_port(uart);
+    firmware::application::ControllerFirmwareTransfer firmware_transfer;
+    firmware::application::ControllerConfigTransfer config_transfer;
+    firmware::application::ControllerFactoryTransfer factory_transfer;
     firmware::core::StreamDecoder decoder(
         firmware::core::StreamPolicy::controller_uart());
     firmware::application::ControllerQueryScheduler query_scheduler(
@@ -74,6 +83,22 @@ void controller_command_task(void*) {
         const auto frames = decoder.push(
             {input, static_cast<std::size_t>(count)});
         for (const auto& frame : frames) {
+            const std::uint8_t family =
+                frame.type & firmware::core::protocol::family_mask;
+            if (family == firmware::core::protocol::firmware_family) {
+                firmware_transfer.handle(
+                    frame, static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL),
+                    transfer_port);
+                continue;
+            }
+            if (family == firmware::core::protocol::configuration_family) {
+                config_transfer.handle(frame, transfer_port);
+                continue;
+            }
+            if (family == firmware::core::protocol::factory_family) {
+                factory_transfer.handle(frame, transfer_port);
+                continue;
+            }
             dispatcher.dispatch(frame);
             if (frame.type != firmware::core::protocol::general_command) continue;
             const std::string_view command(
