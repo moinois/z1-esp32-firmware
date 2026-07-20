@@ -122,12 +122,14 @@ The first core-to-periphery development slice contains:
 - validated aggregate application with controller-only handoff, inactive
   mainboard OTA sequencing, active-write abort policy, and exact terminal
   phase/delete/restart ordering;
+- controller-update handoff monitoring with immediate drift-free reset checks,
+  transfer-channel suppression, staged-content failure gates, and completion;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 392 tests. The firmware also builds successfully as
+The current host suite has 397 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).

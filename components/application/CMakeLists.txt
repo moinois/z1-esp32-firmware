@@ -37,6 +37,7 @@ set(APPLICATION_SOURCES
     src/sd_card_lifecycle.cpp
     src/station_connection.cpp
     src/update_application.cpp
+    src/update_controller.cpp
     src/update_deletion.cpp
     src/update_phase.cpp
     src/update_validation.cpp

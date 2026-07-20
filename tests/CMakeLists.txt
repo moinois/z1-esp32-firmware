@@ -50,6 +50,7 @@ add_executable(
     test_status.cpp
     test_update.cpp
     test_update_application.cpp
+    test_update_controller.cpp
     test_update_deletion.cpp
     test_update_phase.cpp
     test_update_validation.cpp
