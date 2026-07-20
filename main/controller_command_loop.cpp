@@ -20,7 +20,7 @@ void controller_command_task(void*) {
         vTaskDelete(nullptr);
         return;
     }
-    EspWallClockAdapter wall_clock;
+    EspWallClockAdapter wall_clock(&uart);
     WallClockCommandDispatcher dispatcher(wall_clock);
     firmware::core::StreamDecoder decoder(
         firmware::core::StreamPolicy::controller_uart());

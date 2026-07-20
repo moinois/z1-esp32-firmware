@@ -4,11 +4,17 @@
 #include "esp_log.h"
 
 #include "runtime_counter_task.hpp"
+#include "controller_uart_adapter.hpp"
+
+#include "firmware/core/frame.hpp"
 
 #include <ctime>
 #include <sys/time.h>
 
 namespace firmware::target {
+
+EspWallClockAdapter::EspWallClockAdapter(ControllerUartAdapter* uart)
+    : uart_(uart) {}
 
 std::int64_t EspWallClockAdapter::unix_seconds() const {
     return static_cast<std::int64_t>(std::time(nullptr));
@@ -46,6 +52,14 @@ void EspWallClockAdapter::log_error(std::string_view tag,
     ESP_LOGE(std::string(tag).c_str(), "%s", std::string(message).c_str());
 }
 
-void EspWallClockAdapter::send_response(std::uint8_t, std::string_view) {}
+void EspWallClockAdapter::send_response(std::uint8_t type,
+                                        std::string_view payload) {
+    if (uart_ == nullptr) return;
+    const firmware::core::Frame response{
+        type,
+        firmware::core::ByteVector(payload.begin(), payload.end())};
+    const auto encoded = firmware::core::encode_frame(response);
+    if (!encoded.empty()) uart_->write(encoded);
+}
 
 }  // namespace firmware::target
