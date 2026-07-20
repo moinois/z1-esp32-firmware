@@ -20,18 +20,12 @@ public:
         transmitted.push_back(frame);
     }
 
-    // Reports a digital output dictionary write to diagnostics.
-    void report_digital_output(std::uint32_t value) override {
-        digital_outputs.push_back(value);
-    }
-
     // Requests the delayed mainboard reset selected by NMT.
     void restart_mainboard() override {
         ++restart_count;
     }
 
     std::vector<CanFrame> transmitted;
-    std::vector<std::uint32_t> digital_outputs;
     std::size_t restart_count = 0U;
 };
 
@@ -79,15 +73,15 @@ TEST_CASE(can_002_service_cycle_transmits_bootup_and_sdo_heartbeat_effect) {
     REQUIRE_EQ(port.transmitted[2].data[0], 5U);
 }
 
-TEST_CASE(od_051_service_reports_successful_digital_output_write) {
+TEST_CASE(od_051_service_retains_successful_digital_output_write) {
     FakeCanopenServicePort port;
     CanopenService service(port);
 
     service.receive(sdo_write(0x6001U, 1U, 0x23U, 0x12345678U));
 
-    REQUIRE_EQ(port.digital_outputs,
-               std::vector<std::uint32_t>({0x12345678U}));
     REQUIRE_EQ(port.transmitted.back().data[0], 0x60U);
+    REQUIRE_EQ(service.dictionary().read(0x6001U, 1U).data,
+               firmware::core::ByteVector({0x78U, 0x56U, 0x34U, 0x12U}));
 }
 
 TEST_CASE(can_002_communication_reset_retains_dictionary_and_restarts_bootup) {

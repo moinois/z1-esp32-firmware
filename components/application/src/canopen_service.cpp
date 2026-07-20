@@ -51,9 +51,6 @@ void CanopenService::apply_write_effects(
         node_.set_producer_heartbeat_period(
             *effects.producer_heartbeat_period);
     }
-    if (effects.digital_output.has_value()) {
-        port_.report_digital_output(*effects.digital_output);
-    }
 }
 
 }  // namespace firmware::application

@@ -147,12 +147,14 @@ The first core-to-periphery development slice contains:
   capacities, and an ESP-IDF classic-CAN frame adapter;
 - composed CANopen NMT, object-dictionary, and SDO service effects with one
   10 ms cycle surface, consistent error state, diagnostics, and delayed reset;
+- 50 ms CAN digital-output observation with exact startup records, first-value
+  reporting, change collapsing, lowercase hexadecimal, and DO2 extraction;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 472 tests. The firmware also builds successfully as
+The current host suite has 475 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).

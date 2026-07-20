@@ -18,9 +18,6 @@ public:
     // Queues one CANopen output frame for the target bus.
     virtual void transmit(const core::CanFrame& frame) = 0;
 
-    // Reports a digital output dictionary write to diagnostics.
-    virtual void report_digital_output(std::uint32_t value) = 0;
-
     // Requests the delayed mainboard reset selected by NMT.
     virtual void restart_mainboard() = 0;
 };
@@ -47,7 +44,7 @@ public:
     const core::CanopenNode& node() const;
 
 private:
-    // Publishes all target-independent effects from a successful SDO write.
+    // Applies node state effects from a successful SDO write.
     void apply_write_effects(const core::DictionaryWriteEffects& effects);
 
     CanopenServicePort& port_;
