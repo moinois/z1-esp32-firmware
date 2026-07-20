@@ -30,6 +30,7 @@ set(APPLICATION_SOURCES
     src/file_upload.cpp
     src/filesystem_commands.cpp
     src/live_configuration.cpp
+    src/live_control_policy.cpp
     src/m942_exercise.cpp
     src/controller_config_transfer.cpp
     src/controller_factory_transfer.cpp
