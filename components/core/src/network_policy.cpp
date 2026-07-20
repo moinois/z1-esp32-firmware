@@ -18,6 +18,9 @@ constexpr std::uint8_t first_wifi_channel = 1U;
 constexpr std::uint8_t last_wifi_channel = 14U;
 constexpr std::size_t maximum_scan_observations = 20U;
 constexpr std::size_t maximum_ssid_size = 31U;
+constexpr std::size_t wlan_prefix_size = 4U;
+constexpr std::size_t minimum_wlan_argument_payload_size = 6U;
+constexpr std::size_t maximum_wlan_payload_size = 128U;
 
 // Formats the exact default name from the final two station-MAC bytes.
 std::string fallback_machine_name(
@@ -134,6 +137,49 @@ std::string format_wifi_scan(const std::vector<WifiScanResult>& results) {
         formatted += '\n';
     }
     return formatted;
+}
+
+WlanCommand parse_wlan_command(BytesView payload) {
+    constexpr std::string_view prefix = "wlan";
+    const bool correct_prefix =
+        payload.size() >= prefix.size() &&
+        std::equal(prefix.begin(), prefix.end(), payload.begin());
+    const bool valid_argument_shape =
+        correct_prefix && payload.size() >= minimum_wlan_argument_payload_size &&
+        payload.size() <= maximum_wlan_payload_size &&
+        payload[wlan_prefix_size] == ' ';
+    if (!valid_argument_shape) {
+        return {};
+    }
+
+    const BytesView arguments{
+        payload.data() + wlan_prefix_size + 1U,
+        payload.size() - wlan_prefix_size - 1U,
+    };
+    const std::vector<std::string> tokens =
+        parse_configuration_tokens(arguments, payload.size());
+    WlanCommand command;
+    bool disconnect = false;
+    for (const std::string& token : tokens) {
+        if (token == "-d") {
+            disconnect = true;
+            continue;
+        }
+        if (token == "-e") {
+            continue;
+        }
+        if (command.ssid.empty()) {
+            command.ssid = token;
+        } else if (command.password.empty()) {
+            command.password = token;
+        }
+    }
+    if (disconnect) {
+        command.action = WlanAction::disconnect;
+    } else if (!command.ssid.empty()) {
+        command.action = WlanAction::connect;
+    }
+    return command;
 }
 
 }  // namespace firmware::core

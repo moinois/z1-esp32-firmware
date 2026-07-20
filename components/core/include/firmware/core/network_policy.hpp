@@ -44,4 +44,21 @@ std::vector<WifiScanResult> process_wifi_scan(
 // Formats retained scan results into newline-terminated host records.
 std::string format_wifi_scan(const std::vector<WifiScanResult>& results);
 
+// Identifies the operation selected by one host `wlan` command.
+enum class WlanAction {
+    scan,
+    connect,
+    disconnect,
+};
+
+// Holds the first two non-option tokens and selected WLAN action.
+struct WlanCommand {
+    WlanAction action = WlanAction::scan;
+    std::string ssid;
+    std::string password;
+};
+
+// Parses the bounded full wlan payload using pre-decode literal-space tokens.
+WlanCommand parse_wlan_command(BytesView payload);
+
 }  // namespace firmware::core

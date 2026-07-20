@@ -25,6 +25,7 @@ set(APPLICATION_SOURCES
     src/play_session.cpp
     src/router.cpp
     src/sd_card_lifecycle.cpp
+    src/wlan_command.cpp
 )
 
 if(COMMAND idf_component_register)

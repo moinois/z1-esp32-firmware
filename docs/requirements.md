@@ -35,7 +35,8 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | LOG-007--LOG-013 diagnostic log writer | Application implementation with replaceable buffered-file port | Yes for session, flush, rotation, short write, and shutdown policy | Filesystem/task integration pending |
 | NET-001--NET-002 machine name | Core implementation | Yes | Configuration/MAC adapter integration pending |
 | NET-004--NET-005 AP channel selection | Core implementation | Yes for counting, wrapping, tie, and fallback | Wi-Fi scan/startup integration pending |
-| NET-031--NET-033 Wi-Fi scan result policy | Core implementation | Yes | Wi-Fi scan and command integration pending |
+| NET-030--NET-033 Wi-Fi scan policy | Core result policy and application command implementation with replaceable Wi-Fi port | Yes | ESP-IDF Wi-Fi adapter pending |
+| NET-040--NET-043 host WLAN parsing and scan command | Core parser and application implementation with replaceable Wi-Fi port | Yes | Command routing, transport, and ESP-IDF Wi-Fi adapters pending |
 | CMD-001--CMD-003 recognition and limits | Core implementation | Partial: 001, 003 | Not required |
 | ROUTE-001--ROUTE-018 routing policy | Application implementation | Yes | Transport integration pending |
 | OWN-001--OWN-008 ownership policy | Application implementation | Claim, identity, independence, disconnect verified | Terminal service integration pending |
