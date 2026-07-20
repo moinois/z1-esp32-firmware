@@ -2,11 +2,14 @@
 #include "test.hpp"
 
 #include "firmware/core/canopen_dictionary.hpp"
+#include "firmware/core/canopen_node.hpp"
+#include "firmware/core/canopen_pdo.hpp"
 
 #include <cstdint>
 
 using firmware::core::ByteVector;
 using firmware::core::CanopenObjectDictionary;
+using firmware::core::CanopenReceivePdoRouter;
 using firmware::core::SdoAbort;
 
 namespace {
@@ -176,4 +179,22 @@ TEST_CASE(od_011_error_history_clear_and_od_051_output_effects_are_reported) {
                                          le(0x89abcdefU, 4U));
     REQUIRE_EQ(output.abort, SdoAbort::none);
     REQUIRE_EQ(output.effects.digital_output, 0x89abcdefU);
+}
+
+TEST_CASE(od_031_rpdo_routes_little_endian_mapping_into_dictionary) {
+    CanopenObjectDictionary dictionary;
+    REQUIRE_EQ(dictionary.write(0x1400U, 1U, le(0x00000200U, 4U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1600U, 0U, le(1U, 1U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1600U, 1U, le(0x60010120U, 4U)).abort,
+               SdoAbort::none);
+
+    CanopenReceivePdoRouter router(dictionary);
+    firmware::core::CanFrame frame;
+    frame.identifier = 0x200U;
+    frame.size = 4U;
+    frame.data = {0x78U, 0x56U, 0x34U, 0x12U, 0U, 0U, 0U, 0U};
+    REQUIRE(router.receive(frame));
+    REQUIRE_EQ(read_value(dictionary, 0x6001U, 1U), 0x12345678U);
 }

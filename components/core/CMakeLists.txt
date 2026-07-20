@@ -1,6 +1,7 @@
 # Builds portable logic as either an ESP-IDF component or a host-side library.
 set(CORE_SOURCES
     src/canopen_dictionary.cpp
+    src/canopen_pdo.cpp
     src/avi_preview.cpp
     src/avi_writer.cpp
     src/canopen_node.cpp

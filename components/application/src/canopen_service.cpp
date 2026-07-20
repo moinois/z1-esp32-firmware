@@ -6,12 +6,18 @@
 namespace firmware::application {
 
 CanopenService::CanopenService(CanopenServicePort& port)
-    : port_(port), sdo_server_(dictionary_) {}
+    : port_(port),
+      receive_pdo_router_(dictionary_),
+      sdo_server_(dictionary_) {}
 
 void CanopenService::receive(const core::CanFrame& frame) {
     const core::NmtRequestEffect nmt_effect = node_.accept_nmt(frame);
     if (nmt_effect == core::NmtRequestEffect::communication_reset) {
         dictionary_.communication_reset();
+    }
+
+    if (receive_pdo_router_.receive(frame)) {
+        return;
     }
 
     const auto response = sdo_server_.handle(frame);
