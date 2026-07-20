@@ -1,5 +1,6 @@
 # Builds portable application policy as an ESP-IDF component or host library.
 set(APPLICATION_SOURCES
+    src/automatic_connection.cpp
     src/configuration_files.cpp
     src/configuration_get.cpp
     src/configuration_set.cpp

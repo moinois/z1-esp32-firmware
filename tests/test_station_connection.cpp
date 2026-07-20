@@ -14,6 +14,7 @@ using firmware::application::ManualStationConnection;
 using firmware::application::StationApiResult;
 using firmware::application::StationConnectionPort;
 using firmware::application::StationConnectionState;
+using firmware::application::StationConfiguration;
 using firmware::application::StationRuntime;
 using firmware::application::StationSnapshot;
 using firmware::application::WlanConnectionCommand;
@@ -33,13 +34,13 @@ public:
     }
 
     // Records the exact credentials and protected-management setting.
-    StationApiResult apply_station_config(std::string_view requested_ssid,
-                                          std::string_view requested_password,
-                                          bool optional_pmf) override {
+    StationApiResult apply_station_config(
+        const StationConfiguration& requested) override {
         calls.emplace_back("configure");
-        ssid = std::string(requested_ssid);
-        password = std::string(requested_password);
-        protected_management_optional = optional_pmf;
+        ssid = requested.ssid;
+        password = requested.password;
+        protected_management_optional =
+            requested.optional_protected_management;
         return configure_result;
     }
 
@@ -157,7 +158,7 @@ TEST_CASE(net_021_manual_connection_disconnects_clears_and_stages_credentials) {
     REQUIRE_EQ(port.password, std::string(63U, 'p'));
     REQUIRE(port.protected_management_optional);
     REQUIRE(runtime.error_detail.empty());
-    REQUIRE_EQ(runtime.automatic_retry_number, 3U);
+    REQUIRE_EQ(runtime.automatic_retry_number, 0U);
 }
 
 TEST_CASE(net_022_configuration_and_connection_api_failures_retain_exact_text) {

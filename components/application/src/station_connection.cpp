@@ -15,7 +15,6 @@ constexpr std::size_t maximum_error_detail_size = 64U;
 constexpr std::uint32_t prior_connection_settle_milliseconds = 1000U;
 constexpr std::uint32_t poll_interval_milliseconds = 100U;
 constexpr std::uint32_t connection_phase_timeout_milliseconds = 10000U;
-constexpr bool optional_protected_management = true;
 
 // Copies at most the field capacity without exposing fixed buffers to policy.
 std::string bounded(std::string_view value, std::size_t maximum_size) {
@@ -44,12 +43,9 @@ ManualConnectionResult fail(StationRuntime& runtime, std::string detail,
 // Applies event-derived identity and address fields to retained runtime state.
 void retain_snapshot(StationRuntime& runtime, const StationSnapshot& snapshot) {
     if (snapshot.state == StationConnectionState::associated) {
-        runtime.state = StationConnectionState::associated;
-        runtime.ssid = bounded(snapshot.ssid, maximum_ssid_size);
+        StationRuntimeEvents::associated(runtime, snapshot.ssid);
     } else if (snapshot.state == StationConnectionState::address_ready) {
-        runtime.state = StationConnectionState::address_ready;
-        runtime.ssid = bounded(snapshot.ssid, maximum_ssid_size);
-        runtime.ipv4 = snapshot.ipv4;
+        StationRuntimeEvents::address_ready(runtime, snapshot.ipv4);
     }
 }
 
@@ -67,8 +63,11 @@ ManualConnectionResult ManualStationConnection::connect(
     runtime.ssid = bounded(ssid, maximum_ssid_size);
     runtime.password = bounded(password, maximum_password_size);
 
-    const StationApiResult configured = port.apply_station_config(
-        runtime.ssid, runtime.password, optional_protected_management);
+    StationConfiguration configuration;
+    configuration.ssid = runtime.ssid;
+    configuration.password = runtime.password;
+    const StationApiResult configured =
+        port.apply_station_config(configuration);
     if (!configured.success) {
         return fail(runtime, "Failed to set WiFi config: " +
                                  configured.error_name,
@@ -123,6 +122,26 @@ StationApiResult ManualStationConnection::disconnect(
         clear_connection_data(runtime);
     }
     return result;
+}
+
+void StationRuntimeEvents::associated(StationRuntime& runtime,
+                                      std::string_view ssid) {
+    runtime.state = StationConnectionState::associated;
+    runtime.ssid = bounded(ssid, maximum_ssid_size);
+}
+
+void StationRuntimeEvents::address_ready(StationRuntime& runtime,
+                                         std::string_view ipv4) {
+    runtime.state = StationConnectionState::address_ready;
+    runtime.ipv4 = std::string(ipv4);
+    runtime.automatic_retry_number = 0U;
+    runtime.has_error = false;
+    runtime.error_detail.clear();
+}
+
+std::int32_t StationRuntimeEvents::current_rssi(bool available,
+                                               std::int32_t rssi) {
+    return available ? rssi : 0;
 }
 
 }  // namespace firmware::application

@@ -40,6 +40,18 @@ struct StationSnapshot {
     std::string ipv4;
 };
 
+// Holds the station selection and security policy passed to the Wi-Fi adapter.
+struct StationConfiguration {
+    std::string ssid;
+    std::string password;
+    bool scan_all_channels = true;
+    bool sort_by_strongest_signal = true;
+    bool use_fixed_bssid = false;
+    std::uint8_t channel = 0U;
+    std::uint8_t minimum_authentication_mode = 0U;
+    bool optional_protected_management = true;
+};
+
 // Reports the result needed by the host WLAN response layer.
 struct ManualConnectionResult {
     bool success;
@@ -56,10 +68,9 @@ public:
     // Requests disassociation from the current station network.
     virtual StationApiResult request_disconnect() = 0;
 
-    // Applies bounded credentials and optional protected-management frames.
+    // Applies bounded credentials and station selection/security policy.
     virtual StationApiResult apply_station_config(
-        std::string_view ssid, std::string_view password,
-        bool optional_protected_management) = 0;
+        const StationConfiguration& configuration) = 0;
 
     // Requests association using the currently applied station configuration.
     virtual StationApiResult request_connect() = 0;
@@ -87,6 +98,19 @@ public:
     // Clears runtime connection data only after a successful API disconnect.
     static StationApiResult disconnect(StationRuntime& runtime,
                                        StationConnectionPort& port);
+};
+
+// Applies asynchronous station events to the shared runtime view.
+class StationRuntimeEvents {
+public:
+    // Replaces the staged SSID while retaining the staged password.
+    static void associated(StationRuntime& runtime, std::string_view ssid);
+
+    // Retains IPv4 assignment and clears the automatic retry counter.
+    static void address_ready(StationRuntime& runtime, std::string_view ipv4);
+
+    // Returns an associated access point's RSSI or zero when unavailable.
+    static std::int32_t current_rssi(bool available, std::int32_t rssi);
 };
 
 }  // namespace firmware::application
