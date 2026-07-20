@@ -565,16 +565,20 @@ esp_err_t video_websocket_handler(httpd_req_t* request) {
         static_cast<std::uint32_t>(httpd_req_to_sockfd(request));
     httpd_ws_frame_t frame{};
     if (httpd_ws_recv_frame(request, &frame, 0U) != ESP_OK) {
-        static_cast<void>(live_control_policy.on_disconnect(socket_id));
-        live_generation.fetch_add(1U, std::memory_order_acq_rel);
+        const auto decisions = live_control_policy.on_disconnect(socket_id);
+        if (!decisions.empty()) {
+            live_generation.fetch_add(1U, std::memory_order_acq_rel);
+        }
         return ESP_FAIL;
     }
     if (frame.len == 0U) return ESP_OK;
     std::vector<std::uint8_t> payload(frame.len);
     frame.payload = payload.data();
     if (httpd_ws_recv_frame(request, &frame, frame.len) != ESP_OK) {
-        static_cast<void>(live_control_policy.on_disconnect(socket_id));
-        live_generation.fetch_add(1U, std::memory_order_acq_rel);
+        const auto decisions = live_control_policy.on_disconnect(socket_id);
+        if (!decisions.empty()) {
+            live_generation.fetch_add(1U, std::memory_order_acq_rel);
+        }
         return ESP_FAIL;
     }
     if (frame.type != HTTPD_WS_TYPE_TEXT) {
