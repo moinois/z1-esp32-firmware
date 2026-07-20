@@ -149,6 +149,8 @@ The first core-to-periphery development slice contains:
   10 ms cycle surface, consistent error state, diagnostics, and delayed reset;
 - 50 ms CAN digital-output observation with exact startup records, first-value
   reporting, change collapsing, lowercase hexadecimal, and DO2 extraction;
+- optional target CAN startup with an immediate boot-up cycle, drift-free
+  10 ms receive/service processing, 50 ms output sampling, and nonfatal setup;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
@@ -217,8 +219,8 @@ persistence, and monotonic time.
 
 `main/main.cpp` is the target-only composition root. It creates adapters and
 starts services in the order required by the startup contract. It currently
-contains NVS recovery and heartbeat startup; later services remain deliberately
-absent until their contract tests exist.
+contains NVS recovery, heartbeat startup, and the optional CANopen service;
+later services remain deliberately absent until their contract tests exist.
 
 ### Configuration artifacts
 
@@ -340,7 +342,7 @@ The following major areas remain:
   ESP-IDF's independent standard-BLUFI protocol owner;
 - HTTP, WebSocket, camera, AVI preview, recording, and retention;
 - runtime service adapters and composition-root wiring;
-- CANopen PDO behavior and CAN service composition; and
+- CANopen PDO behavior and `M942` target command/SDO-client wiring; and
 - physical-device verification of hardware and coexistence behavior.
 
 These areas will be implemented in dependency order. Hardware validation will

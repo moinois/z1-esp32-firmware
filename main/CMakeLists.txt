@@ -2,6 +2,7 @@
 idf_component_register(
     SRCS
         "can_twai_adapter.cpp"
+        "canopen_target_service.cpp"
         "controller_uart_adapter.cpp"
         "main.cpp"
     REQUIRES

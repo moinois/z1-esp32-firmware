@@ -16,6 +16,9 @@ public:
 
     // Queues one standard data frame without waiting for transmit capacity.
     bool transmit(const core::CanFrame& frame) const;
+
+    // Stops and uninstalls a driver after outer startup cannot continue.
+    void shutdown() const;
 };
 
 }  // namespace firmware::target

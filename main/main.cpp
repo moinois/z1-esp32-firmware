@@ -7,6 +7,8 @@
 #include "freertos/task.h"
 #include "nvs_flash.h"
 
+#include "canopen_target_service.hpp"
+
 #include <cstdint>
 
 namespace {
@@ -72,5 +74,7 @@ extern "C" void app_main() {
         esp_restart();
     }
     start_heartbeat();
+    static firmware::target::CanopenTargetService canopen_service;
+    canopen_service.start();
     // Subsequent adapters are added only after their contract tests exist.
 }

@@ -81,4 +81,9 @@ bool CanTwaiAdapter::transmit(const core::CanFrame& frame) const {
     return twai_transmit(&message, nonblocking_wait) == ESP_OK;
 }
 
+void CanTwaiAdapter::shutdown() const {
+    twai_stop();
+    twai_driver_uninstall();
+}
+
 }  // namespace firmware::target
