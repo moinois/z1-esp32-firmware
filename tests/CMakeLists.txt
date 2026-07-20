@@ -50,6 +50,7 @@ add_executable(
     test_status.cpp
     test_update.cpp
     test_update_deletion.cpp
+    test_update_phase.cpp
     test_wlan_command.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
