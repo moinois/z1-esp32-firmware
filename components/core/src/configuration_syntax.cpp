@@ -55,6 +55,28 @@ std::optional<ConfigurationEntry> parse_sd_config_line(std::string_view line) {
     };
 }
 
+std::optional<ConfigurationEntry> parse_live_config_chunk(BytesView chunk) {
+    if (chunk.size() == 0U || chunk[0] == ';' || chunk[0] == '\n' ||
+        chunk[0] == '\r') {
+        return std::nullopt;
+    }
+    const std::string_view text(
+        reinterpret_cast<const char*>(chunk.data()), chunk.size());
+    const std::size_t delimiter = text.find('=');
+    if (delimiter == std::string_view::npos) {
+        return std::nullopt;
+    }
+    const std::string_view key = trim_ascii(text.substr(0U, delimiter));
+    if (key.empty()) {
+        return std::nullopt;
+    }
+    const std::string_view value = trim_ascii(text.substr(delimiter + 1U));
+    return ConfigurationEntry{
+        std::string(key),
+        std::string(value),
+    };
+}
+
 std::vector<std::string> parse_configuration_tokens(
     BytesView argument, std::size_t maximum_tokens) {
     std::vector<std::string> tokens;

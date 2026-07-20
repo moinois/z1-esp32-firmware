@@ -20,6 +20,9 @@ struct ConfigurationEntry {
 // Parses one SD configuration line using delimiter and comment rules.
 std::optional<ConfigurationEntry> parse_sd_config_line(std::string_view line);
 
+// Parses one live-view chunk while retaining inline comment text.
+std::optional<ConfigurationEntry> parse_live_config_chunk(BytesView chunk);
+
 // Splits raw command bytes on literal spaces before decoding each token.
 std::vector<std::string> parse_configuration_tokens(BytesView argument,
                                                     std::size_t maximum_tokens);
