@@ -17,6 +17,9 @@
 #include "firmware/core/text.hpp"
 #include "firmware/core/frame.hpp"
 #include "controller_command_loop.hpp"
+#include "firmware_update_adapter.hpp"
+#include "firmware/application/controller_snapshots.hpp"
+#include "runtime_status_adapter.hpp"
 
 #include <array>
 #include <esp_timer.h>
@@ -96,6 +99,27 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                 if (!response.empty()) {
                     static_cast<void>(protocol_state.transmit_queue().enqueue(response));
                 }
+                continue;
+            }
+            if (match.kind == firmware::core::CommandKind::upgrade ||
+                match.kind == firmware::core::CommandKind::reset) {
+                request_firmware_update_processing();
+                continue;
+            }
+            if (match.kind == firmware::core::CommandKind::diagnose) {
+                const auto response =
+                    shared_controller_snapshots().diagnostic_reply(0);
+                if (response.has_value()) {
+                    static_cast<void>(protocol_state.transmit_queue().enqueue(
+                        firmware::core::encode_frame(*response)));
+                }
+                continue;
+            }
+            if (match.kind == firmware::core::CommandKind::version) {
+                const auto response =
+                    shared_controller_snapshots().version_reply();
+                static_cast<void>(protocol_state.transmit_queue().enqueue(
+                    firmware::core::encode_frame(response)));
                 continue;
             }
         }
