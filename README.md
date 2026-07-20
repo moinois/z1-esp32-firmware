@@ -201,12 +201,13 @@ The first core-to-periphery development slice contains:
 - ESP-IDF WebSocket frame receive adapters connected to the text-input policy;
 - in-memory MJPEG AVI writer with finalized header, padded frames, and `idx1` table;
 - recording segment UTC naming and interval/close policy;
+- M951/M952 recording command state and `0xa2` `ok` responses;
 - the fixed ESP32-S3 flash partition table;
 - ESP-IDF target defaults for flash, PSRAM, CPU, watchdogs, FAT, and sockets;
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 557 tests. The firmware also builds successfully as
+The current host suite has 559 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
