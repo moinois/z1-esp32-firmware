@@ -27,7 +27,7 @@ ESP-IDF behavior has either a target test or a documented hardware test.
 | SD-009--SD-010 FAT filename, sector, and lock policy | Target defaults | Build verification only | Physical-card verification pending |
 | CFG-002--CFG-003 SD configuration line parsing | Core implementation | Yes | Not required |
 | CFG-010 configuration command tokenization | Core implementation | Yes | Command-service integration pending |
-| CFG-001, CFG-004--CFG-006 configuration file copies | Application implementation with replaceable bytewise file port | Yes | Filesystem and response adapters pending |
+| CFG-001, CFG-004--CFG-006 configuration file copies | Application implementation with replaceable bytewise file port | Yes | POSIX bytewise adapter and TCP command routing integrated; physical storage verification pending |
 | CFG-020--CFG-023 live configuration view | Core chunk parser and application implementation with replaceable load port | Yes | Filesystem and command adapters pending |
 | CFG-011--CFG-013 configuration reads | Application implementation with replaceable live/SD read port | Yes | Filesystem and response adapters pending |
 | CFG-030--CFG-034 configuration updates | Core rewrite logic and application implementation with replaceable persistence port | Yes | Filesystem and response adapters pending |
