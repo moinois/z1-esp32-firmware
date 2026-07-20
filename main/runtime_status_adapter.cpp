@@ -6,6 +6,7 @@
 
 #include "esp_vfs_fat.h"
 #include "esp_wifi.h"
+#include "esp_timer.h"
 #include "firmware/application/router.hpp"
 #include "firmware/application/update_phase.hpp"
 
@@ -16,6 +17,12 @@ namespace {
 firmware::application::ControllerSnapshots snapshots;
 std::atomic_uint8_t update_phase{0U};
 std::atomic_uint8_t update_progress{0U};
+esp_timer_handle_t controller_success_timer = nullptr;
+
+void clear_controller_success_status(void*) {
+    update_progress.store(0U, std::memory_order_release);
+    update_phase.store(0U, std::memory_order_release);
+}
 }  // namespace
 
 RuntimeStatusAdapter::RuntimeStatusAdapter(
@@ -72,6 +79,22 @@ void publish_controller_transfer_status(std::uint8_t phase,
         static_cast<std::uint8_t>(progress > 100U ? 100U : progress),
         std::memory_order_release);
     update_phase.store(phase, std::memory_order_release);
+    if (phase == 4U) {
+        if (controller_success_timer == nullptr) {
+            const esp_timer_create_args_t arguments{
+                .callback = clear_controller_success_status,
+                .arg = nullptr,
+                .dispatch_method = ESP_TIMER_TASK,
+                .name = "controller_success",
+                .skip_unhandled_events = false,
+            };
+            if (esp_timer_create(&arguments, &controller_success_timer) != ESP_OK) {
+                return;
+            }
+        }
+        static_cast<void>(esp_timer_stop(controller_success_timer));
+        static_cast<void>(esp_timer_start_once(controller_success_timer, 3000000U));
+    }
 }
 
 }  // namespace firmware::target
