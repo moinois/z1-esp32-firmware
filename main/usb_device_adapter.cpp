@@ -15,6 +15,7 @@
 #include "firmware/application/recording_commands.hpp"
 #include "firmware/application/serial_number.hpp"
 #include "firmware/application/runtime_commands.hpp"
+#include "firmware/application/local_command_queue.hpp"
 #include "firmware/application/filesystem_commands.hpp"
 #include "firmware/application/directory_listing.hpp"
 #include "firmware/application/file_hash_command.hpp"
@@ -1028,6 +1029,53 @@ public:
 
 UsbDirectoryPort directory_port;
 UsbHashPort hash_port;
+firmware::application::LocalCommandQueue usb_local_commands;
+
+// Handles short USB-local commands outside the TinyUSB receive callback.
+void usb_local_command_task(void*) {
+    for (;;) {
+        const auto command_frame = usb_local_commands.dequeue();
+        if (!command_frame.has_value()) {
+            vTaskDelay(pdMS_TO_TICKS(1U));
+            continue;
+        }
+        const auto match = firmware::core::recognize_command(
+            command_frame->payload);
+        const std::string_view command(
+            reinterpret_cast<const char*>(command_frame->payload.data()),
+            command_frame->payload.size());
+        if (match.kind == firmware::core::CommandKind::record_start ||
+            match.kind == firmware::core::CommandKind::record_stop) {
+            const auto result = firmware::application::handle_recording_command(
+                match.kind, recording_state.requested());
+            recording_state.set_requested(result.requested);
+            const auto encoded = firmware::core::encode_frame(result.response);
+            if (!encoded.empty()) {
+                static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
+            }
+        } else if (match.kind == firmware::core::CommandKind::serial_get ||
+                   match.kind == firmware::core::CommandKind::serial_set) {
+            firmware::application::SerialNumberService service(serial_port);
+            if (match.kind == firmware::core::CommandKind::serial_get) {
+                service.handle_get(command);
+            } else {
+                service.handle_set(command);
+            }
+        } else if (match.kind == firmware::core::CommandKind::system_time ||
+                   match.kind == firmware::core::CommandKind::clear_first_time) {
+            firmware::application::RuntimeCommandService service(runtime_port);
+            if (match.kind == firmware::core::CommandKind::system_time) {
+                service.handle_system_time(command);
+            } else {
+                service.handle_clear_first_boot(command);
+            }
+        } else if (match.kind == firmware::core::CommandKind::upgrade ||
+                   match.kind == firmware::core::CommandKind::reset) {
+            request_firmware_update_processing();
+        }
+        vTaskDelay(pdMS_TO_TICKS(10U));
+    }
+}
 
 void usb_transmit_task(void*) {
     firmware::application::UsbTransmitProgress progress;
@@ -1228,39 +1276,22 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
             }
             if (match.kind == firmware::core::CommandKind::record_start ||
                 match.kind == firmware::core::CommandKind::record_stop) {
-                const auto result = firmware::application::handle_recording_command(
-                    match.kind, recording_state.requested());
-                recording_state.set_requested(result.requested);
-                const auto response = firmware::core::encode_frame(result.response);
-                if (!response.empty()) {
-                    static_cast<void>(protocol_state.transmit_queue().enqueue(response));
-                }
+                static_cast<void>(usb_local_commands.enqueue(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::serial_get ||
                 match.kind == firmware::core::CommandKind::serial_set) {
-                const std::string_view command(
-                    reinterpret_cast<const char*>(frame.payload.data()),
-                    frame.payload.size());
-                firmware::application::SerialNumberService service(serial_port);
-                if (match.kind == firmware::core::CommandKind::serial_get) {
-                    service.handle_get(command);
-                } else {
-                    service.handle_set(command);
-                }
+                static_cast<void>(usb_local_commands.enqueue(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::system_time ||
                 match.kind == firmware::core::CommandKind::clear_first_time) {
-                const std::string_view command(
-                    reinterpret_cast<const char*>(frame.payload.data()),
-                    frame.payload.size());
-                firmware::application::RuntimeCommandService service(runtime_port);
-                if (match.kind == firmware::core::CommandKind::system_time) {
-                    service.handle_system_time(command);
-                } else {
-                    service.handle_clear_first_boot(command);
-                }
+                static_cast<void>(usb_local_commands.enqueue(frame));
+                continue;
+            }
+            if (match.kind == firmware::core::CommandKind::upgrade ||
+                match.kind == firmware::core::CommandKind::reset) {
+                static_cast<void>(usb_local_commands.enqueue(frame));
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::make_directory ||
@@ -1415,6 +1446,7 @@ bool UsbDeviceAdapter::start() {
     }
     xTaskCreate(usb_transmit_task, "usb_tx", 4096U, nullptr, 4U, nullptr);
     xTaskCreate(usb_file_transfer_task, "usb_file", 4096U, nullptr, 4U, nullptr);
+    xTaskCreate(usb_local_command_task, "usb_local", 4096U, nullptr, 4U, nullptr);
     return true;
 }
 
