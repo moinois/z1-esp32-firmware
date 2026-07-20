@@ -34,6 +34,7 @@ idf_component_register(
         "blufi_callback_adapter.cpp"
         "esp_image_validator.cpp"
         "ota_update_adapter.cpp"
+        "firmware_update_adapter.cpp"
         "tcp_control_adapter.cpp"
         "recording_request_state.cpp"
     REQUIRES

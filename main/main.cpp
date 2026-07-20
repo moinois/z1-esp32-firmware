@@ -22,6 +22,7 @@
 #include "blufi_lifecycle_adapter.hpp"
 #include "blufi_provisioning_adapter.hpp"
 #include "blufi_callback_adapter.hpp"
+#include "firmware_update_adapter.hpp"
 #include "diagnostic_capture_adapter.hpp"
 #include "runtime_counter_task.hpp"
 
@@ -129,6 +130,8 @@ extern "C" void app_main() {
     retention_adapter.start();
     static firmware::target::SdCardAdapter sd_card_adapter;
     sd_card_adapter.start();
+    static firmware::target::FirmwareUpdateAdapter firmware_update;
+    firmware_update.start();
     static firmware::target::DiagnosticCaptureAdapter diagnostic_capture;
     diagnostic_capture.start();
     static firmware::target::RuntimeCounterTask runtime_counter_task;
