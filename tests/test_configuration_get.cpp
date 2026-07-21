@@ -38,9 +38,11 @@ public:
     }
 
     // Returns configured fresh SD lines and records each direct read.
-    std::optional<std::string> read_value(std::string_view,
-                                          std::string_view) override {
+    std::optional<std::string> read_value(std::string_view tag,
+                                          std::string_view key) override {
         ++sd_read_count;
+        if (tag == "camera" && key == "key") return sd_value;
+        if (!tag.empty()) return std::nullopt;
         return sd_value;
     }
 
@@ -97,6 +99,17 @@ TEST_CASE(cfg_012_sd_get_parses_the_file_afresh_and_uses_console_response) {
 
     REQUIRE_EQ(port.sd_read_count, 1U);
     REQUIRE_EQ(port.sent[0].type, 0x90U);
+    REQUIRE_EQ(text(port.sent[0].payload),
+               std::string("sd: key is set to sd-value\r\n"));
+}
+
+TEST_CASE(cfg_012_sd_get_forwards_tag_and_key_to_store) {
+    LiveConfiguration live;
+    FakeConfigurationGetPort port;
+
+    ConfigurationGet::execute(bytes(" sd camera key"), live, port);
+
+    REQUIRE_EQ(port.sd_read_count, 1U);
     REQUIRE_EQ(text(port.sent[0].payload),
                std::string("sd: key is set to sd-value\r\n"));
 }

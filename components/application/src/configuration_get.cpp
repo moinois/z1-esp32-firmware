@@ -12,7 +12,7 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::size_t maximum_get_tokens = 2U;
+constexpr std::size_t maximum_get_tokens = 3U;
 constexpr std::string_view cached_source = "cached";
 constexpr std::string_view sd_source = "sd";
 constexpr std::string_view live_source = "live";
@@ -33,12 +33,6 @@ void send_result(std::uint8_t packet_type, std::string_view source,
     }
     message += "\r\n";
     port.send({packet_type, {message.begin(), message.end()}});
-}
-
-// Loads and searches SD configuration lines using fresh file semantics.
-std::optional<std::string> find_sd_value(std::string_view key,
-                                         ConfigurationGetPort& port) {
-    return port.read_value("", key);
 }
 
 }  // namespace
@@ -63,8 +57,10 @@ void ConfigurationGet::execute(core::BytesView argument,
     }
 
     if (tokens[0] == sd_source) {
-        send_result(core::protocol::console_message, sd_source, tokens[1],
-                    find_sd_value(tokens[1], port), port);
+        const std::string tag = tokens.size() == 3U ? tokens[1] : std::string{};
+        const std::string_view key = tokens.size() == 3U ? tokens[2] : tokens[1];
+        send_result(core::protocol::console_message, sd_source, key,
+                    port.read_value(tag, key), port);
         return;
     }
     if (tokens[0] == live_source) {
