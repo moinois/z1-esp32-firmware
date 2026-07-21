@@ -7,7 +7,6 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::string_view active_configuration_path = "/sd/config.txt";
 constexpr std::size_t maximum_chunk_size = 511U;
 constexpr std::size_t maximum_entries = 100U;
 constexpr std::size_t maximum_key_size = 63U;
@@ -26,8 +25,7 @@ void LiveConfiguration::ensure_loaded(LiveConfigurationPort& port) {
     }
     loaded_ = true;
     entries_.clear();
-    const auto chunks = port.read_chunks(active_configuration_path,
-                                         maximum_chunk_size);
+    const auto chunks = port.read_configuration_chunks(maximum_chunk_size);
     if (!chunks.has_value()) {
         return;
     }

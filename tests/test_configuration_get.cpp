@@ -31,17 +31,17 @@ std::string text(const ByteVector& value) {
 class FakeConfigurationGetPort final : public ConfigurationGetPort {
 public:
     // Returns configured live chunks and records each lazy load.
-    std::optional<std::vector<ByteVector>> read_chunks(
-        std::string_view, std::size_t) override {
+    std::optional<std::vector<ByteVector>> read_configuration_chunks(
+        std::size_t) override {
         ++live_read_count;
         return live_chunks;
     }
 
     // Returns configured fresh SD lines and records each direct read.
-    std::optional<std::vector<std::string>> read_sd_lines(
-        std::string_view) override {
+    std::optional<std::string> read_value(std::string_view,
+                                          std::string_view) override {
         ++sd_read_count;
-        return sd_lines;
+        return sd_value;
     }
 
     // Records one response frame.
@@ -51,8 +51,7 @@ public:
 
     std::optional<std::vector<ByteVector>> live_chunks =
         std::vector<ByteVector>{};
-    std::optional<std::vector<std::string>> sd_lines =
-        std::vector<std::string>{};
+    std::optional<std::string> sd_value = std::string("sd-value");
     std::size_t live_read_count = 0U;
     std::size_t sd_read_count = 0U;
     std::vector<Frame> sent;
@@ -92,7 +91,7 @@ TEST_CASE(cfg_011_cached_get_reports_a_missing_key) {
 TEST_CASE(cfg_012_sd_get_parses_the_file_afresh_and_uses_console_response) {
     LiveConfiguration live;
     FakeConfigurationGetPort port;
-    port.sd_lines = std::vector<std::string>{"; ignored", " key = sd-value # note"};
+    port.sd_value = std::string("sd-value");
 
     ConfigurationGet::execute(bytes(" sd key"), live, port);
 

@@ -18,8 +18,8 @@ public:
     ~ConfigurationGetPort() override = default;
 
     // Reads active configuration lines afresh for the SD source.
-    virtual std::optional<std::vector<std::string>> read_sd_lines(
-        std::string_view path) = 0;
+    virtual std::optional<std::string> read_value(std::string_view tag,
+                                                  std::string_view key) = 0;
 
     // Sends one response to the destination selected by the command adapter.
     virtual void send(core::Frame frame) = 0;

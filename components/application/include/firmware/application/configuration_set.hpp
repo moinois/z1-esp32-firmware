@@ -17,22 +17,8 @@ public:
     ~ConfigurationSetPort() override = default;
 
     // Reads the complete active configuration or reports source failure.
-    virtual std::optional<std::string> read_active_text(
-        std::string_view path) = 0;
-
-    // Writes the complete temporary replacement and reports success.
-    virtual bool write_temporary(std::string_view path,
-                                 std::string_view content) = 0;
-
-    // Attempts unlink of the active file; the policy intentionally ignores result.
-    virtual bool unlink_active(std::string_view path) = 0;
-
-    // Renames the completed temporary file over the active path.
-    virtual bool rename_temporary(std::string_view source,
-                                  std::string_view destination) = 0;
-
-    // Removes the temporary file after rename failure.
-    virtual void remove_temporary(std::string_view path) = 0;
+    virtual bool set_value(std::string_view tag, std::string_view key,
+                           std::string_view value) = 0;
 
     // Sends one response to the destination selected by the command adapter.
     virtual void send(core::Frame frame) = 0;

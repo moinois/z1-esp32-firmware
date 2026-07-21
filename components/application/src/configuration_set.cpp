@@ -10,8 +10,6 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::string_view active_configuration_path = "/sd/config.txt";
-constexpr std::string_view temporary_configuration_path = "/sd/config.tmp";
 constexpr std::size_t maximum_set_tokens = 3U;
 constexpr std::string_view sd_source = "sd";
 constexpr std::string_view live_source = "live";
@@ -41,25 +39,10 @@ void send_result(std::string_view source, std::string_view key,
     send_console(std::move(message), port);
 }
 
-// Rewrites through the temporary path and applies the specified rename cleanup.
+// Stores one setting through the replaceable configuration store.
 bool set_sd(std::string_view key, std::string_view value,
             ConfigurationSetPort& port) {
-    const auto active = port.read_active_text(active_configuration_path);
-    if (!active.has_value()) {
-        return false;
-    }
-    const std::string rewritten =
-        core::rewrite_sd_configuration(*active, key, value);
-    if (!port.write_temporary(temporary_configuration_path, rewritten)) {
-        return false;
-    }
-    static_cast<void>(port.unlink_active(active_configuration_path));
-    if (!port.rename_temporary(temporary_configuration_path,
-                               active_configuration_path)) {
-        port.remove_temporary(temporary_configuration_path);
-        return false;
-    }
-    return true;
+    return port.set_value("", key, value);
 }
 
 }  // namespace

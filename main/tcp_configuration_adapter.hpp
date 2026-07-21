@@ -21,17 +21,13 @@ public:
     explicit TcpConfigurationAdapter(firmware::application::TcpClientSession& session);
     ~TcpConfigurationAdapter() override;
 
-    std::optional<std::vector<firmware::core::ByteVector>> read_chunks(
-        std::string_view path, std::size_t maximum_chunk_size) override;
-    std::optional<std::vector<std::string>> read_sd_lines(
-        std::string_view path) override;
+    std::optional<std::vector<firmware::core::ByteVector>>
+    read_configuration_chunks(std::size_t maximum_chunk_size) override;
+    std::optional<std::string> read_value(std::string_view tag,
+                                          std::string_view key) override;
     void send(firmware::core::Frame frame) override;
-    std::optional<std::string> read_active_text(std::string_view path) override;
-    bool write_temporary(std::string_view path, std::string_view content) override;
-    bool unlink_active(std::string_view path) override;
-    bool rename_temporary(std::string_view source,
-                          std::string_view destination) override;
-    void remove_temporary(std::string_view path) override;
+    bool set_value(std::string_view tag, std::string_view key,
+                   std::string_view value) override;
 
 private:
     firmware::application::TcpClientSession& session_;

@@ -19,8 +19,8 @@ public:
     virtual ~LiveConfigurationPort() = default;
 
     // Reads bounded source chunks or reports that the active file is absent.
-    virtual std::optional<std::vector<core::ByteVector>> read_chunks(
-        std::string_view path, std::size_t maximum_chunk_size) = 0;
+    virtual std::optional<std::vector<core::ByteVector>> read_configuration_chunks(
+        std::size_t maximum_chunk_size) = 0;
 };
 
 // Retains a lazy, bounded configuration snapshot independent of SD rewrites.

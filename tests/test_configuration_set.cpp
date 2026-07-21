@@ -32,45 +32,15 @@ std::string text(const ByteVector& value) {
 class FakeConfigurationSetPort final : public ConfigurationSetPort {
 public:
     // Returns configured live chunks.
-    std::optional<std::vector<ByteVector>> read_chunks(
-        std::string_view, std::size_t) override {
+    std::optional<std::vector<ByteVector>> read_configuration_chunks(
+        std::size_t) override {
         return live_chunks;
     }
 
-    // Returns the configured active SD text.
-    std::optional<std::string> read_active_text(std::string_view path) override {
-        read_path = path;
-        return active_text;
-    }
-
-    // Records the complete temporary file content.
-    bool write_temporary(std::string_view path, std::string_view content) override {
-        events.emplace_back("write");
-        temporary_path = path;
-        temporary_text = content;
-        return temporary_write_succeeds;
-    }
-
-    // Records best-effort unlink of the active file.
-    bool unlink_active(std::string_view path) override {
-        events.emplace_back("unlink");
-        unlink_path = path;
-        return unlink_succeeds;
-    }
-
-    // Records temporary-to-active rename and returns its configured result.
-    bool rename_temporary(std::string_view source,
-                          std::string_view destination) override {
-        events.emplace_back("rename");
-        rename_source = source;
-        rename_destination = destination;
-        return rename_succeeds;
-    }
-
-    // Records cleanup after rename failure.
-    void remove_temporary(std::string_view path) override {
-        events.emplace_back("remove_temp");
-        removed_path = path;
+    bool set_value(std::string_view, std::string_view,
+                   std::string_view) override {
+        events.emplace_back("set");
+        return set_succeeds;
     }
 
     // Records one response frame.
@@ -80,6 +50,7 @@ public:
 
     std::optional<std::vector<ByteVector>> live_chunks =
         std::vector<ByteVector>{};
+    bool set_succeeds = true;
     std::optional<std::string> active_text = std::string{};
     bool temporary_write_succeeds = true;
     bool unlink_succeeds = true;
@@ -113,17 +84,10 @@ TEST_CASE(cfg_030_missing_sd_key_appends_after_a_required_line_boundary) {
 TEST_CASE(cfg_031_sd_set_writes_unlinks_and_renames_even_if_unlink_fails) {
     LiveConfiguration live;
     FakeConfigurationSetPort port;
-    port.active_text = std::string("key=old\n");
-    port.unlink_succeeds = false;
 
     ConfigurationSet::execute(bytes(" sd key new"), live, port);
 
-    REQUIRE_EQ(port.read_path, std::string("/sd/config.txt"));
-    REQUIRE_EQ(port.temporary_path, std::string("/sd/config.tmp"));
-    REQUIRE_EQ(port.temporary_text, std::string("key=new\n"));
-    REQUIRE_EQ(port.events,
-               std::vector<std::string>({"write", "unlink", "rename"}));
-    REQUIRE_EQ(port.rename_destination, std::string("/sd/config.txt"));
+    REQUIRE_EQ(port.events, std::vector<std::string>({"set"}));
     REQUIRE_EQ(text(port.sent[0].payload),
                std::string("sd: key has been set to new\r\n"));
 }
@@ -131,13 +95,11 @@ TEST_CASE(cfg_031_sd_set_writes_unlinks_and_renames_even_if_unlink_fails) {
 TEST_CASE(cfg_031_rename_failure_removes_temporary_and_reports_set_failure) {
     LiveConfiguration live;
     FakeConfigurationSetPort port;
-    port.rename_succeeds = false;
+    port.set_succeeds = false;
 
     ConfigurationSet::execute(bytes(" sd key value"), live, port);
 
-    REQUIRE_EQ(port.events,
-               std::vector<std::string>({"write", "unlink", "rename", "remove_temp"}));
-    REQUIRE_EQ(port.removed_path, std::string("/sd/config.tmp"));
+    REQUIRE_EQ(port.events, std::vector<std::string>({"set"}));
     REQUIRE_EQ(text(port.sent[0].payload),
                std::string("sd: key not enough space to overwrite existing key/value\r\n"));
 }

@@ -12,7 +12,6 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::string_view active_configuration_path = "/sd/config.txt";
 constexpr std::size_t maximum_get_tokens = 2U;
 constexpr std::string_view cached_source = "cached";
 constexpr std::string_view sd_source = "sd";
@@ -39,17 +38,7 @@ void send_result(std::uint8_t packet_type, std::string_view source,
 // Loads and searches SD configuration lines using fresh file semantics.
 std::optional<std::string> find_sd_value(std::string_view key,
                                          ConfigurationGetPort& port) {
-    const auto lines = port.read_sd_lines(active_configuration_path);
-    if (!lines.has_value()) {
-        return std::nullopt;
-    }
-    for (const std::string& line : *lines) {
-        const auto entry = core::parse_sd_config_line(line);
-        if (entry.has_value() && entry->key == key) {
-            return entry->value;
-        }
-    }
-    return std::nullopt;
+    return port.read_value("", key);
 }
 
 }  // namespace

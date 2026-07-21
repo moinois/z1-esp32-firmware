@@ -45,6 +45,7 @@
 #include "firmware/application/file_upload.hpp"
 #include "firmware/application/file_download.hpp"
 #include "firmware/application/m942_exercise.hpp"
+#include "configuration_file_store.hpp"
 
 #include <array>
 #include <algorithm>
@@ -94,78 +95,34 @@ class UsbConfigurationPort final
     : public firmware::application::ConfigurationGetPort,
       public firmware::application::ConfigurationSetPort {
 public:
-    std::optional<std::vector<firmware::core::ByteVector>> read_chunks(
-        std::string_view path, std::size_t maximum_chunk_size) override {
+    std::optional<std::vector<firmware::core::ByteVector>>
+    read_configuration_chunks(std::size_t maximum_chunk_size) override {
         if (maximum_chunk_size == 0U) return std::nullopt;
-        FILE* file = std::fopen(std::string(path).c_str(), "rb");
-        if (file == nullptr) return std::nullopt;
-        std::vector<firmware::core::ByteVector> chunks;
-        for (;;) {
-            firmware::core::ByteVector chunk(maximum_chunk_size);
-            const std::size_t count =
-                std::fread(chunk.data(), 1U, chunk.size(), file);
-            if (std::ferror(file) != 0) {
-                std::fclose(file);
-                return std::nullopt;
-            }
-            if (count == 0U) break;
-            chunk.resize(count);
-            chunks.push_back(std::move(chunk));
+        const auto lines = ConfigurationFileStore{}.read_lines();
+        std::string content;
+        for (const auto& line : lines) {
+            content += line;
+            content.push_back('\n');
         }
-        std::fclose(file);
+        std::vector<firmware::core::ByteVector> chunks;
+        for (std::size_t offset = 0U; offset < content.size();
+             offset += maximum_chunk_size) {
+            const std::size_t count =
+                std::min(maximum_chunk_size, content.size() - offset);
+            chunks.emplace_back(content.begin() + offset,
+                                content.begin() + offset + count);
+        }
         return chunks;
     }
 
-    std::optional<std::string> read_active_text(std::string_view path) override {
-        const auto chunks = read_chunks(path, 512U);
-        if (!chunks.has_value()) return std::nullopt;
-        std::string content;
-        for (const auto& chunk : *chunks) {
-            content.append(reinterpret_cast<const char*>(chunk.data()),
-                           chunk.size());
-        }
-        return content;
+    std::optional<std::string> read_value(std::string_view tag,
+                                          std::string_view key) override {
+        return ConfigurationFileStore{}.get(tag, key);
     }
 
-    std::optional<std::vector<std::string>> read_sd_lines(
-        std::string_view path) override {
-        const auto content = read_active_text(path);
-        if (!content.has_value()) return std::nullopt;
-        std::vector<std::string> lines;
-        std::size_t start = 0U;
-        while (start <= content->size()) {
-            const std::size_t end = content->find('\n', start);
-            const std::size_t limit =
-                end == std::string::npos ? content->size() : end;
-            lines.push_back(content->substr(start, limit - start));
-            if (end == std::string::npos) break;
-            start = end + 1U;
-        }
-        return lines;
-    }
-
-    bool write_temporary(std::string_view path, std::string_view content) override {
-        FILE* file = std::fopen(std::string(path).c_str(), "wb");
-        if (file == nullptr) return false;
-        const bool written = std::fwrite(content.data(), 1U, content.size(), file) ==
-                             content.size();
-        const bool flushed = std::fflush(file) == 0;
-        const bool closed = std::fclose(file) == 0;
-        return written && flushed && closed;
-    }
-
-    bool unlink_active(std::string_view path) override {
-        return unlink(std::string(path).c_str()) == 0;
-    }
-
-    bool rename_temporary(std::string_view source,
-                          std::string_view destination) override {
-        return rename(std::string(source).c_str(),
-                      std::string(destination).c_str()) == 0;
-    }
-
-    void remove_temporary(std::string_view path) override {
-        static_cast<void>(unlink(std::string(path).c_str()));
+    bool set_value(std::string_view tag, std::string_view key,
+                   std::string_view value) override {
+        return ConfigurationFileStore{}.set(tag, key, value);
     }
 
     void send(firmware::core::Frame frame) override {

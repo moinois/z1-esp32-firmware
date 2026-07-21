@@ -23,10 +23,9 @@ ByteVector bytes(std::string_view text) {
 class FakeLiveConfigurationPort final : public LiveConfigurationPort {
 public:
     // Returns configured chunks and records the bounded read size.
-    std::optional<std::vector<ByteVector>> read_chunks(
-        std::string_view path, std::size_t maximum_chunk_size) override {
+    std::optional<std::vector<ByteVector>> read_configuration_chunks(
+        std::size_t maximum_chunk_size) override {
         ++read_count;
-        read_path = path;
         requested_chunk_size = maximum_chunk_size;
         return chunks;
     }
@@ -35,7 +34,6 @@ public:
         std::vector<ByteVector>{};
     std::size_t read_count = 0U;
     std::size_t requested_chunk_size = 0U;
-    std::string read_path;
 };
 
 }  // namespace
@@ -53,7 +51,6 @@ TEST_CASE(cfg_020_and_021_live_load_is_bounded_and_applies_chunk_rules) {
 
     live.ensure_loaded(port);
 
-    REQUIRE_EQ(port.read_path, std::string("/sd/config.txt"));
     REQUIRE_EQ(port.requested_chunk_size, 511U);
     REQUIRE_EQ(live.entry_count(), 1U);
     REQUIRE_EQ(live.find("key"),
