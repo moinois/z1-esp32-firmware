@@ -11,6 +11,25 @@ bool space(char value) {
            value == '\f' || value == '\v';
 }
 
+char lower_ascii(char value) {
+    return value >= 'A' && value <= 'Z'
+               ? static_cast<char>(value - 'A' + 'a')
+               : value;
+}
+
+bool equal_case_insensitive(std::string_view left, std::string_view right) {
+    if (left.size() != right.size()) return false;
+    for (std::size_t index = 0U; index < left.size(); ++index) {
+        if (lower_ascii(left[index]) != lower_ascii(right[index])) return false;
+    }
+    return true;
+}
+
+bool begins_case_insensitive(std::string_view value, std::string_view prefix) {
+    return value.size() >= prefix.size() &&
+           equal_case_insensitive(value.substr(0U, prefix.size()), prefix);
+}
+
 std::string_view trim(std::string_view value) {
     while (!value.empty() && space(value.front())) value.remove_prefix(1U);
     while (!value.empty() && space(value.back())) value.remove_suffix(1U);
@@ -55,14 +74,16 @@ ConfigurationDocument ConfigurationDocument::parse(std::string_view text) {
 std::optional<std::string_view> ConfigurationDocument::get(
     std::string_view key) const {
     for (const Line& line : lines_) {
-        if (line.is_entry && line.key == key) return line.value;
+        if (line.is_entry && equal_case_insensitive(line.key, key)) {
+            return line.value;
+        }
     }
     return std::nullopt;
 }
 
 void ConfigurationDocument::set(std::string_view key, std::string_view value) {
     for (Line& line : lines_) {
-        if (line.is_entry && line.key == key) {
+        if (line.is_entry && equal_case_insensitive(line.key, key)) {
             line.original = std::string(key) + "=" + std::string(value);
             line.value = value;
             return;
@@ -114,7 +135,7 @@ void ConfigurationNamespace::set(std::string_view key, std::string_view value) {
 std::vector<ConfigurationEntry> ConfigurationNamespace::get_all() const {
     std::vector<ConfigurationEntry> result;
     for (ConfigurationEntry entry : document_.entries()) {
-        if (entry.key.rfind(prefix_, 0U) == 0U) {
+        if (begins_case_insensitive(entry.key, prefix_)) {
             entry.key.erase(0U, prefix_.size());
             result.push_back(std::move(entry));
         }

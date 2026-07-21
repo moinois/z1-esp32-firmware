@@ -32,3 +32,12 @@ TEST_CASE(configuration_document_returns_first_duplicate_and_appends_missing) {
     document.set("new", "value");
     REQUIRE_EQ(*document.get("new"), std::string("value"));
 }
+
+TEST_CASE(configuration_lookup_ignores_case_but_values_retain_case) {
+    auto document = ConfigurationDocument::parse("CaMeRa_Mode=MiXeDValue\n");
+    ConfigurationNamespace camera(document, "camera");
+
+    REQUIRE_EQ(*camera.get("MODE"), std::string("MiXeDValue"));
+    camera.set("mode", "NewMiXeDValue");
+    REQUIRE_EQ(*document.get("CAMERA_MODE"), std::string("NewMiXeDValue"));
+}
