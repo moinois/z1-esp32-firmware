@@ -24,6 +24,12 @@ std::string text(const firmware::core::ByteVector& value) {
 // Emulates bytewise source and destination operations in memory.
 class FakeConfigurationFilePort final : public ConfigurationFilePort {
 public:
+    std::string_view active_configuration_path() const override {
+        return "/sd/config.txt";
+    }
+    std::string_view default_configuration_path() const override {
+        return "/sd/config.default";
+    }
     // Reports configured source presence and records its path.
     bool file_exists(std::string_view path) override {
         existence_path = path;

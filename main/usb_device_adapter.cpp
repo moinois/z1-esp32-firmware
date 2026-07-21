@@ -139,6 +139,12 @@ UsbConfigurationPort configuration_port;
 class UsbConfigurationFilePort final
     : public firmware::application::ConfigurationFilePort {
 public:
+    std::string_view active_configuration_path() const override {
+        return firmware::target::active_configuration_path();
+    }
+    std::string_view default_configuration_path() const override {
+        return "/sd/config.default";
+    }
     ~UsbConfigurationFilePort() override {
         close_source();
         close_destination();

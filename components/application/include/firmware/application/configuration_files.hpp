@@ -27,6 +27,12 @@ public:
     // Enables safe destruction through a substituted port implementation.
     virtual ~ConfigurationFilePort() = default;
 
+    // Returns the active configuration path owned by the storage adapter.
+    virtual std::string_view active_configuration_path() const = 0;
+
+    // Returns the saved default path owned by the storage adapter.
+    virtual std::string_view default_configuration_path() const = 0;
+
     // Reports whether the selected source file exists.
     virtual bool file_exists(std::string_view path) = 0;
 

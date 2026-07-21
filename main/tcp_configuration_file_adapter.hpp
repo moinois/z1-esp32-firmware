@@ -13,6 +13,8 @@ namespace firmware::target {
 class TcpConfigurationFileAdapter final
     : public firmware::application::ConfigurationFilePort {
 public:
+    std::string_view active_configuration_path() const override;
+    std::string_view default_configuration_path() const override;
     // Binds copy responses to the originating TCP session.
     explicit TcpConfigurationFileAdapter(
         firmware::application::TcpClientSession& session);

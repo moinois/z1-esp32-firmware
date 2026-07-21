@@ -8,8 +8,6 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::string_view active_configuration_path = "/sd/config.txt";
-constexpr std::string_view default_configuration_path = "/sd/config.default";
 constexpr std::string_view missing_default_message =
     "Default file not found: /sd/config.default\r\n";
 constexpr std::string_view missing_active_message =
@@ -76,13 +74,15 @@ void execute_copy(std::string_view source, std::string_view destination,
 }  // namespace
 
 void ConfigurationFiles::restore(ConfigurationFilePort& port) {
-    execute_copy(default_configuration_path, active_configuration_path,
+    execute_copy(port.default_configuration_path(),
+                 port.active_configuration_path(),
                  missing_default_message, restore_failure_message,
                  restore_success_message, port);
 }
 
 void ConfigurationFiles::save_default(ConfigurationFilePort& port) {
-    execute_copy(active_configuration_path, default_configuration_path,
+    execute_copy(port.active_configuration_path(),
+                 port.default_configuration_path(),
                  missing_active_message, save_failure_message,
                  save_success_message, port);
 }

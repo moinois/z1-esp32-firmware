@@ -1,5 +1,6 @@
 // Implements bytewise configuration copies using POSIX VFS files.
 #include "tcp_configuration_file_adapter.hpp"
+#include "configuration_file_store.hpp"
 
 #include "firmware/application/tcp_client_session.hpp"
 
@@ -8,6 +9,14 @@
 #include <sys/stat.h>
 
 namespace firmware::target {
+
+std::string_view TcpConfigurationFileAdapter::active_configuration_path() const {
+    return "/sd/config.txt";
+}
+
+std::string_view TcpConfigurationFileAdapter::default_configuration_path() const {
+    return "/sd/config.default";
+}
 
 TcpConfigurationFileAdapter::TcpConfigurationFileAdapter(
     firmware::application::TcpClientSession& session) : session_(session) {}
