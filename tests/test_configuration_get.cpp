@@ -2,6 +2,8 @@
 #include "test.hpp"
 
 #include "firmware/application/configuration_get.hpp"
+#include "firmware/application/configuration_tags.hpp"
+#include "firmware/application/camera_settings.hpp"
 
 #include <optional>
 #include <string>
@@ -41,8 +43,13 @@ public:
     std::optional<std::string> read_value(std::string_view tag,
                                           std::string_view key) override {
         ++sd_read_count;
-        if (tag == "camera" && key == "key") return sd_value;
-        if (tag != "MAINBOARD") return std::nullopt;
+        if (tag == firmware::application::camera_configuration_tag &&
+            key == "key") {
+            return sd_value;
+        }
+        if (tag != firmware::application::mainboard_configuration_tag) {
+            return std::nullopt;
+        }
         return sd_value;
     }
 
@@ -107,7 +114,11 @@ TEST_CASE(cfg_012_sd_get_forwards_tag_and_key_to_store) {
     LiveConfiguration live;
     FakeConfigurationGetPort port;
 
-    ConfigurationGet::execute(bytes(" sd camera key"), live, port);
+    const std::string command =
+        std::string(" sd ") +
+        std::string(firmware::application::camera_configuration_tag) +
+        " key";
+    ConfigurationGet::execute(bytes(command), live, port);
 
     REQUIRE_EQ(port.sd_read_count, 1U);
     REQUIRE_EQ(text(port.sent[0].payload),
