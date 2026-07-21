@@ -1,5 +1,6 @@
 // Implements config-get cache lifetime, fresh SD parsing, and exact replies.
 #include "firmware/application/configuration_get.hpp"
+#include "firmware/application/configuration_tags.hpp"
 
 #include "firmware/core/configuration_syntax.hpp"
 #include "firmware/core/protocol_constants.hpp"
@@ -57,7 +58,9 @@ void ConfigurationGet::execute(core::BytesView argument,
     }
 
     if (tokens[0] == sd_source) {
-        const std::string tag = tokens.size() == 3U ? tokens[1] : std::string{};
+        const std::string tag = tokens.size() == 3U
+                                    ? tokens[1]
+                                    : std::string(mainboard_configuration_tag);
         const std::string_view key = tokens.size() == 3U ? tokens[2] : tokens[1];
         send_result(core::protocol::console_message, sd_source, key,
                     port.read_value(tag, key), port);

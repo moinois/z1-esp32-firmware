@@ -1,5 +1,6 @@
 // Implements config-set source selection, atomic replacement steps, and replies.
 #include "firmware/application/configuration_set.hpp"
+#include "firmware/application/configuration_tags.hpp"
 
 #include "firmware/core/configuration_syntax.hpp"
 #include "firmware/core/protocol_constants.hpp"
@@ -65,7 +66,9 @@ void ConfigurationSet::execute(core::BytesView argument,
         return;
     }
     if (tokens[0] == sd_source) {
-        const std::string tag = tokens.size() == 4U ? tokens[1] : std::string{};
+        const std::string tag = tokens.size() == 4U
+                                    ? tokens[1]
+                                    : std::string(mainboard_configuration_tag);
         const std::string_view key = tokens.size() == 4U ? tokens[2] : tokens[1];
         const std::string_view value = tokens.size() == 4U ? tokens[3] : tokens[2];
         send_result(sd_source, key, value, set_sd(tag, key, value, port), port);

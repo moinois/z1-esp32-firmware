@@ -1,6 +1,8 @@
 // Implements fresh SD reads and atomic config.txt updates.
 #include "configuration_file_store.hpp"
 
+#include "firmware/application/configuration_tags.hpp"
+
 #include <cstdio>
 #include <utility>
 
@@ -10,6 +12,10 @@ namespace {
 constexpr char active_path[] = "/sd/config.txt";
 constexpr char temporary_path[] = "/sd/config.tmp";
 constexpr std::size_t buffer_size = 256U;
+
+std::string_view effective_tag(std::string_view tag) {
+    return tag.empty() ? firmware::application::mainboard_configuration_tag : tag;
+}
 
 std::optional<std::string> read_file(std::string_view path) {
     std::FILE* file = std::fopen(std::string(path).c_str(), "rb");
@@ -55,7 +61,8 @@ ConfigurationFileStore::read_document() const {
 std::optional<std::string> ConfigurationFileStore::get(
     std::string_view tag, std::string_view key) const {
     auto document = read_document();
-    firmware::application::ConfigurationNamespace configuration(document, tag);
+    firmware::application::ConfigurationNamespace configuration(
+        document, effective_tag(tag));
     const auto value = configuration.get(key);
     if (!value.has_value()) return std::nullopt;
     return std::string(*value);
@@ -64,14 +71,16 @@ std::optional<std::string> ConfigurationFileStore::get(
 std::vector<firmware::application::ConfigurationEntry>
 ConfigurationFileStore::get_all(std::string_view tag) const {
     auto document = read_document();
-    firmware::application::ConfigurationNamespace configuration(document, tag);
+    firmware::application::ConfigurationNamespace configuration(
+        document, effective_tag(tag));
     return configuration.get_all();
 }
 
 bool ConfigurationFileStore::set(std::string_view tag, std::string_view key,
                                  std::string_view value) const {
     auto document = read_document();
-    firmware::application::ConfigurationNamespace configuration(document, tag);
+    firmware::application::ConfigurationNamespace configuration(
+        document, effective_tag(tag));
     configuration.set(key, value);
     if (!write_file(temporary_path, document.serialize())) return false;
     if (std::rename(temporary_path, active_path) != 0) {

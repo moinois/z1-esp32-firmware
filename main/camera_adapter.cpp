@@ -24,7 +24,8 @@ public:
     SdCameraConfigSource() = default;
 
     std::optional<std::string_view> find(std::string_view key) const override {
-        const auto value = firmware::target::ConfigurationFileStore{}.get("", key);
+        const auto value = firmware::target::ConfigurationFileStore{}.get(
+            firmware::application::camera_configuration_tag, key);
         if (!value.has_value()) return std::nullopt;
         values_.emplace_back(*value);
         return values_.back();

@@ -34,10 +34,10 @@ public:
 
 TEST_CASE(cam_001_missing_and_invalid_values_keep_field_specific_defaults) {
     FakeCameraConfigSource source;
-    source.values["*mainboard.video_stream_framesize"] = "10x";
-    source.values["*mainboard.video_rec_framesize"] = "";
-    source.values["*mainboard.Time_interval_frames"] = "+";
-    source.values["*mainboard.frames_of_one_file"] = " 300";
+    source.values["video_stream_framesize"] = "10x";
+    source.values["video_rec_framesize"] = "";
+    source.values["Time_interval_frames"] = "+";
+    source.values["frames_of_one_file"] = " 300";
     CameraSettingsLoader loader;
 
     const auto& settings = loader.load_once(source);
@@ -50,10 +50,10 @@ TEST_CASE(cam_001_missing_and_invalid_values_keep_field_specific_defaults) {
 
 TEST_CASE(cam_001_complete_values_are_normalized_by_each_setting_rule) {
     FakeCameraConfigSource source;
-    source.values["*mainboard.video_stream_framesize"] = "16";
-    source.values["*mainboard.video_rec_framesize"] = "0";
-    source.values["*mainboard.Time_interval_frames"] = "250";
-    source.values["*mainboard.frames_of_one_file"] = "0";
+    source.values["video_stream_framesize"] = "16";
+    source.values["video_rec_framesize"] = "0";
+    source.values["Time_interval_frames"] = "250";
+    source.values["frames_of_one_file"] = "0";
     CameraSettingsLoader loader;
 
     const auto& settings = loader.load_once(source);
@@ -66,13 +66,13 @@ TEST_CASE(cam_001_complete_values_are_normalized_by_each_setting_rule) {
 
 TEST_CASE(cam_001_negative_frame_limit_keeps_default_but_large_values_work) {
     FakeCameraConfigSource negative;
-    negative.values["*mainboard.frames_of_one_file"] = "-1";
+    negative.values["frames_of_one_file"] = "-1";
     CameraSettingsLoader negative_loader;
     REQUIRE_EQ(negative_loader.load_once(negative).frames_per_file, 300U);
 
     FakeCameraConfigSource valid;
-    valid.values["*mainboard.Time_interval_frames"] = "2500";
-    valid.values["*mainboard.frames_of_one_file"] = "4294967295";
+    valid.values["Time_interval_frames"] = "2500";
+    valid.values["frames_of_one_file"] = "4294967295";
     CameraSettingsLoader valid_loader;
     REQUIRE_EQ(valid_loader.load_once(valid).frame_interval_milliseconds,
                2500U);
@@ -99,11 +99,11 @@ TEST_CASE(cam_005_unavailable_dimensions_use_uxga_fallback) {
 
 TEST_CASE(cam_008_settings_are_loaded_only_once_per_loader_lifetime) {
     FakeCameraConfigSource source;
-    source.values["*mainboard.video_stream_framesize"] = "9";
+    source.values["video_stream_framesize"] = "9";
     CameraSettingsLoader loader;
     REQUIRE_EQ(loader.load_once(source).stream_frame_size, 9U);
     const std::size_t initial_reads = source.find_count;
-    source.values["*mainboard.video_stream_framesize"] = "4";
+    source.values["video_stream_framesize"] = "4";
 
     REQUIRE_EQ(loader.load_once(source).stream_frame_size, 9U);
     REQUIRE_EQ(source.find_count, initial_reads);

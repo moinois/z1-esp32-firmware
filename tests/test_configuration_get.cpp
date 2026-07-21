@@ -42,7 +42,7 @@ public:
                                           std::string_view key) override {
         ++sd_read_count;
         if (tag == "camera" && key == "key") return sd_value;
-        if (!tag.empty()) return std::nullopt;
+        if (tag != "MAINBOARD") return std::nullopt;
         return sd_value;
     }
 

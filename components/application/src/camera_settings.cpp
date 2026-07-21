@@ -10,13 +10,13 @@ namespace firmware::application {
 namespace {
 
 constexpr std::string_view stream_size_key =
-    "*mainboard.video_stream_framesize";
+    camera_stream_frame_size_key;
 constexpr std::string_view recording_size_key =
-    "*mainboard.video_rec_framesize";
+    camera_recording_frame_size_key;
 constexpr std::string_view frame_interval_key =
-    "*mainboard.Time_interval_frames";
+    camera_frame_interval_key;
 constexpr std::string_view frames_per_file_key =
-    "*mainboard.frames_of_one_file";
+    camera_frames_per_file_key;
 constexpr std::uint8_t minimum_frame_size = 1U;
 constexpr std::uint8_t maximum_frame_size = 15U;
 constexpr std::uint8_t invalid_normalized_frame_size = 10U;

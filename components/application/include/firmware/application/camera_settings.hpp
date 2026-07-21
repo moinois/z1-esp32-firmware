@@ -7,6 +7,17 @@
 
 namespace firmware::application {
 
+// Groups all camera settings under the CAMERA_ namespace in config.txt.
+inline constexpr std::string_view camera_configuration_tag = "CAMERA";
+inline constexpr std::string_view camera_stream_frame_size_key =
+    "video_stream_framesize";
+inline constexpr std::string_view camera_recording_frame_size_key =
+    "video_rec_framesize";
+inline constexpr std::string_view camera_frame_interval_key =
+    "time_interval_frames";
+inline constexpr std::string_view camera_frames_per_file_key =
+    "frames_of_one_file";
+
 // Holds pixel dimensions corresponding to one camera frame-size number.
 struct FrameDimensions {
     std::uint16_t width;
