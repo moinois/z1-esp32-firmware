@@ -30,13 +30,13 @@
 #include "runtime_counter_task.hpp"
 #include "usb_device_adapter.hpp"
 #include "recording_task_adapter.hpp"
+#include "configuration_file_store.hpp"
 
 #include "firmware/application/web_volume_startup.hpp"
 #include "firmware/application/connectivity_startup.hpp"
 #include "firmware/core/network_policy.hpp"
 
 #include <array>
-#include <cstdio>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -50,15 +50,8 @@ constexpr char tag[] = "MAIN";
 
 // Loads the optional machine-name configuration and derives the MAC fallback.
 std::string configured_machine_name() {
-    std::vector<std::string> lines;
-    std::FILE* file = std::fopen("/sd/config.txt", "rb");
-    if (file != nullptr) {
-        char buffer[256];
-        while (std::fgets(buffer, sizeof(buffer), file) != nullptr) {
-            lines.emplace_back(buffer);
-        }
-        std::fclose(file);
-    }
+    const std::vector<std::string> lines =
+        firmware::target::ConfigurationFileStore{}.read_lines();
     std::array<std::uint8_t, 6U> station_mac{};
     if (esp_read_mac(station_mac.data(), ESP_MAC_WIFI_STA) != ESP_OK) {
         station_mac.fill(0U);

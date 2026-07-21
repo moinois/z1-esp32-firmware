@@ -6,80 +6,32 @@
 
 #include "firmware/application/camera_hardware_config.hpp"
 #include "firmware/application/camera_settings.hpp"
+#include "configuration_file_store.hpp"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
-#include <cctype>
 #include <string>
-#include <vector>
-#include <utility>
 
 namespace firmware::target {
 namespace {
 
 constexpr char tag[] = "CAMERA";
-constexpr char camera_configuration_path[] = "/sd/config.txt";
-constexpr std::size_t configuration_line_capacity = 256U;
-
 // Exposes the SD configuration file through the portable camera source port.
 class SdCameraConfigSource final
     : public firmware::application::CameraConfigSource {
 public:
-    SdCameraConfigSource() {
-        std::FILE* file = std::fopen(camera_configuration_path, "rb");
-        if (file == nullptr) return;
-        char buffer[configuration_line_capacity];
-        while (std::fgets(buffer, sizeof(buffer), file) != nullptr) {
-            std::string line(buffer);
-            const auto is_ascii_space = [](unsigned char value) {
-                return value == ' ' || value == '\t' || value == '\r' ||
-                       value == '\n' || value == '\f' || value == '\v';
-            };
-            std::size_t first = 0U;
-            while (first < line.size() &&
-                   is_ascii_space(static_cast<unsigned char>(line[first]))) {
-                ++first;
-            }
-            if (first == line.size() || line[first] == '#') continue;
-            std::size_t last = line.size();
-            while (last > first &&
-                   is_ascii_space(static_cast<unsigned char>(line[last - 1U]))) {
-                --last;
-            }
-            line = line.substr(first, last - first);
-            std::size_t separator = line.find('=');
-            if (separator == std::string::npos) {
-                separator = line.find_first_of(" \t");
-            }
-            if (separator == std::string::npos) continue;
-            std::string key = line.substr(0U, separator);
-            std::size_t value_start = separator + 1U;
-            while (value_start < line.size() &&
-                   is_ascii_space(static_cast<unsigned char>(line[value_start]))) {
-                ++value_start;
-            }
-            std::string value = line.substr(value_start);
-            while (!key.empty() &&
-                   is_ascii_space(static_cast<unsigned char>(key.back()))) {
-                key.pop_back();
-            }
-            if (key.empty()) continue;
-            values_.push_back({std::move(key), std::move(value)});
-        }
-        std::fclose(file);
-    }
+    SdCameraConfigSource() = default;
 
     std::optional<std::string_view> find(std::string_view key) const override {
-        for (const auto& entry : values_) {
-            if (entry.first == key) return entry.second;
-        }
-        return std::nullopt;
+        const auto value = firmware::target::ConfigurationFileStore{}.get("", key);
+        if (!value.has_value()) return std::nullopt;
+        values_.emplace_back(*value);
+        return values_.back();
     }
 
 private:
-    std::vector<std::pair<std::string, std::string>> values_;
+    mutable std::vector<std::string> values_;
 };
 
 firmware::application::CameraSettings& cached_camera_settings() {
