@@ -22,7 +22,7 @@ ControllerTransferAdapter::ControllerTransferAdapter(ControllerUartAdapter& uart
     : uart_(uart) {}
 
 bool ControllerTransferAdapter::configuration_available() {
-    return !ConfigurationFileStore{}.read_lines().empty();
+    return ConfigurationFileStore{}.exists();
 }
 
 std::optional<std::vector<firmware::core::ByteVector>>

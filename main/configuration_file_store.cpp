@@ -36,6 +36,13 @@ bool write_file(std::string_view path, std::string_view content) {
 
 }  // namespace
 
+bool ConfigurationFileStore::exists() const {
+    std::FILE* file = std::fopen(active_path, "rb");
+    if (file == nullptr) return false;
+    std::fclose(file);
+    return true;
+}
+
 firmware::application::ConfigurationDocument
 ConfigurationFileStore::read_document() const {
     const auto content = read_file(active_path);

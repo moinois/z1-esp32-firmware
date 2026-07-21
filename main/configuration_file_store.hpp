@@ -13,6 +13,9 @@ namespace firmware::target {
 // Owns config.txt paths and performs one fresh operation per request.
 class ConfigurationFileStore {
 public:
+    // Reports whether the active configuration file exists as a readable file.
+    bool exists() const;
+
     // Returns one value under the normalized tag_ namespace.
     std::optional<std::string> get(std::string_view tag,
                                    std::string_view key) const;
