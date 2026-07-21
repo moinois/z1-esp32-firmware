@@ -1,5 +1,6 @@
 // Implements bounded POSIX file reads and serialized controller UART replies.
 #include "controller_transfer_adapter.hpp"
+#include "configuration_file_store.hpp"
 #include "esp_log.h"
 
 #include "controller_uart_adapter.hpp"
@@ -19,6 +20,28 @@ namespace firmware::target {
 
 ControllerTransferAdapter::ControllerTransferAdapter(ControllerUartAdapter& uart)
     : uart_(uart) {}
+
+bool ControllerTransferAdapter::configuration_available() {
+    return !ConfigurationFileStore{}.read_lines().empty();
+}
+
+std::optional<std::vector<firmware::core::ByteVector>>
+ControllerTransferAdapter::read_configuration_chunks(std::size_t chunk_size) {
+    if (chunk_size == 0U) return std::nullopt;
+    const auto lines = ConfigurationFileStore{}.read_lines();
+    std::string content;
+    for (const auto& line : lines) {
+        content += line;
+        content.push_back('\n');
+    }
+    std::vector<firmware::core::ByteVector> chunks;
+    for (std::size_t offset = 0U; offset < content.size(); offset += chunk_size) {
+        const std::size_t count = std::min(chunk_size, content.size() - offset);
+        chunks.emplace_back(content.begin() + offset,
+                            content.begin() + offset + count);
+    }
+    return chunks;
+}
 
 bool ControllerTransferAdapter::file_exists(std::string_view path) {
     struct stat information{};

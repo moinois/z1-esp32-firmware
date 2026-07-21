@@ -18,12 +18,15 @@ public:
     explicit ControllerTransferAdapter(ControllerUartAdapter& uart);
 
     bool file_exists(std::string_view path) override;
+    bool configuration_available() override;
     std::optional<std::uint64_t> file_size(std::string_view path) override;
     std::optional<firmware::core::ByteVector> read_file(
         std::string_view path, std::uint64_t offset,
         std::size_t maximum_size) override;
     std::optional<std::vector<firmware::core::ByteVector>> read_chunks(
         std::string_view path, std::size_t chunk_size) override;
+    std::optional<std::vector<firmware::core::ByteVector>>
+    read_configuration_chunks(std::size_t chunk_size) override;
     bool remove_file(std::string_view path) override;
     bool send(firmware::core::Frame frame) override;
     void publish(firmware::application::FirmwareTransferEvent event,

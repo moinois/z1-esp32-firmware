@@ -18,11 +18,11 @@ public:
     virtual ~ControllerConfigPort() = default;
 
     // Reports whether the configuration file is currently available.
-    virtual bool file_exists(std::string_view path) = 0;
+    virtual bool configuration_available() = 0;
 
     // Reads the file as fixed-size input chunks or reports failure.
-    virtual std::optional<std::vector<core::ByteVector>> read_chunks(
-        std::string_view path, std::size_t chunk_size) = 0;
+    virtual std::optional<std::vector<core::ByteVector>>
+    read_configuration_chunks(std::size_t chunk_size) = 0;
 
     // Submits one complete response and reports queue acceptance.
     virtual bool send(core::Frame frame) = 0;

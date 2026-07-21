@@ -22,15 +22,13 @@ ByteVector bytes(std::string_view text) {
 class FakeConfigPort final : public ControllerConfigPort {
 public:
     // Reports configured presence and records the requested path.
-    bool file_exists(std::string_view path) override {
-        last_path = path;
+    bool configuration_available() override {
         return exists;
     }
 
     // Returns configured 255-byte input chunks and records the requested path.
-    std::optional<std::vector<ByteVector>> read_chunks(std::string_view path,
-                                                       std::size_t chunk_size) override {
-        last_path = path;
+    std::optional<std::vector<ByteVector>> read_configuration_chunks(
+        std::size_t chunk_size) override {
         requested_chunk_size = chunk_size;
         return chunks;
     }
@@ -43,7 +41,6 @@ public:
 
     bool exists = true;
     bool send_succeeds = true;
-    std::string_view last_path;
     std::size_t requested_chunk_size = 0U;
     std::optional<std::vector<ByteVector>> chunks = std::vector<ByteVector>{};
     std::vector<Frame> sent;
@@ -62,7 +59,6 @@ TEST_CASE(lpccfg_001_start_acknowledges_before_reporting_an_absent_exact_path) {
 
     transfer.handle({0xD1U, {}}, port);
 
-    REQUIRE_EQ(port.last_path, std::string_view("/sd/config.txt"));
     REQUIRE_EQ(port.sent.size(), 2U);
     REQUIRE_EQ(port.sent[0].type, 0xD1U);
     REQUIRE_EQ(port.sent[1].type, 0xD5U);

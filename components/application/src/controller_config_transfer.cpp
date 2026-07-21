@@ -10,7 +10,6 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::string_view configuration_path = "/sd/config.txt";
 constexpr std::size_t input_chunk_size = 255U;
 constexpr std::uint16_t response_data_size = 512U;
 constexpr std::size_t minimum_remaining_space = 80U;
@@ -74,7 +73,7 @@ void ControllerConfigTransfer::handle(const core::Frame& frame, ControllerConfig
 void ControllerConfigTransfer::handle_start(ControllerConfigPort& port) {
     const bool acknowledgement_sent = port.send(make_transfer_reply(
         core::protocol::configuration_family, core::protocol::transfer_start));
-    const bool available = port.file_exists(configuration_path);
+    const bool available = port.configuration_available();
     if (available) {
         active_ = true;
     }
@@ -89,7 +88,7 @@ void ControllerConfigTransfer::handle_geometry(core::BytesView payload,
         report_error(port);
         return;
     }
-    const auto chunks = port.read_chunks(configuration_path, input_chunk_size);
+    const auto chunks = port.read_configuration_chunks(input_chunk_size);
     if (!chunks.has_value()) {
         report_error(port);
         return;
@@ -117,7 +116,7 @@ void ControllerConfigTransfer::handle_data(core::BytesView payload,
     if (frame_data_size_ == 0U) {
         return;
     }
-    const auto chunks = port.read_chunks(configuration_path, input_chunk_size);
+    const auto chunks = port.read_configuration_chunks(input_chunk_size);
     if (!chunks.has_value()) {
         report_error(port);
         return;
