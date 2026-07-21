@@ -15,6 +15,7 @@ set(APPLICATION_SOURCES
     src/blufi_session.cpp
     src/blufi_wire.cpp
     src/configuration_files.cpp
+    src/configuration_document.cpp
     src/configuration_get.cpp
     src/configuration_set.cpp
     src/connectivity_startup.cpp
