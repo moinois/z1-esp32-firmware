@@ -5,6 +5,7 @@ idf_component_register(
         "canopen_target_service.cpp"
         "controller_uart_adapter.cpp"
         "main.cpp"
+        "configuration_file_store.cpp"
         "http_server_adapter.cpp"
         "camera_adapter.cpp"
         "recording_file_adapter.cpp"
