@@ -17,6 +17,16 @@ char lower_ascii(char value) {
                : value;
 }
 
+std::string uppercase_ascii(std::string_view value) {
+    std::string result(value);
+    for (char& character : result) {
+        if (character >= 'a' && character <= 'z') {
+            character = static_cast<char>(character - 'a' + 'A');
+        }
+    }
+    return result;
+}
+
 bool equal_case_insensitive(std::string_view left, std::string_view right) {
     if (left.size() != right.size()) return false;
     for (std::size_t index = 0U; index < left.size(); ++index) {
@@ -82,15 +92,25 @@ std::optional<std::string_view> ConfigurationDocument::get(
 }
 
 void ConfigurationDocument::set(std::string_view key, std::string_view value) {
+    const std::string canonical_key = uppercase_ascii(key);
     for (Line& line : lines_) {
         if (line.is_entry && equal_case_insensitive(line.key, key)) {
-            line.original = std::string(key) + "=" + std::string(value);
+            line.original = canonical_key + "=" + std::string(value);
+            line.key = canonical_key;
             line.value = value;
             return;
         }
     }
-    lines_.push_back({std::string(key) + "=" + std::string(value),
-                      std::string(key), std::string(value), true});
+    lines_.push_back({canonical_key + "=" + std::string(value), canonical_key,
+                      std::string(value), true});
+}
+
+void ConfigurationDocument::uppercase_keys() {
+    for (Line& line : lines_) {
+        if (!line.is_entry) continue;
+        line.key = uppercase_ascii(line.key);
+        line.original = line.key + "=" + line.value;
+    }
 }
 
 std::vector<ConfigurationEntry> ConfigurationDocument::entries() const {

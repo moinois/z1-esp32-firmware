@@ -26,6 +26,9 @@ public:
     // Replaces the first key or appends a new key/value line.
     void set(std::string_view key, std::string_view value);
 
+    // Canonicalizes every parsed key before a complete document is persisted.
+    void uppercase_keys();
+
     // Returns all parsed entries in source order.
     std::vector<ConfigurationEntry> entries() const;
 

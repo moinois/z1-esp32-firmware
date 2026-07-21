@@ -82,6 +82,7 @@ bool ConfigurationFileStore::set(std::string_view tag, std::string_view key,
     firmware::application::ConfigurationNamespace configuration(
         document, effective_tag(tag));
     configuration.set(key, value);
+    document.uppercase_keys();
     if (!write_file(temporary_path, document.serialize())) return false;
     if (std::rename(temporary_path, active_path) != 0) {
         std::remove(temporary_path);

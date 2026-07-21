@@ -41,3 +41,14 @@ TEST_CASE(configuration_lookup_ignores_case_but_values_retain_case) {
     camera.set("mode", "NewMiXeDValue");
     REQUIRE_EQ(*document.get("CAMERA_MODE"), std::string("NewMiXeDValue"));
 }
+
+TEST_CASE(configuration_set_serializes_keys_in_uppercase) {
+    auto document = ConfigurationDocument::parse("camera_mode=old\n");
+    ConfigurationNamespace camera(document, "camera");
+
+    camera.set("newMode", "VaLuE");
+    document.uppercase_keys();
+
+    REQUIRE_EQ(document.serialize(),
+               std::string("CAMERA_MODE=old\nCAMERA_NEWMODE=VaLuE\n"));
+}
