@@ -87,12 +87,16 @@ camera_config_t make_camera_config() {
 }  // namespace
 
 bool CameraAdapter::initialize() {
+    if (initialized_) {
+        return true;
+    }
     SdCameraConfigSource source;
     firmware::application::CameraSettingsLoader loader;
     cached_camera_settings() = loader.load_once(source);
     const auto config = make_camera_config();
     const esp_err_t result = esp_camera_init(&config);
     if (result != ESP_OK) {
+        initialized_ = false;
         ESP_LOGW(tag, "Camera initialization failed: %s", esp_err_to_name(result));
         return false;
     }
@@ -100,6 +104,7 @@ bool CameraAdapter::initialize() {
     if (sensor == nullptr) {
         ESP_LOGW(tag, "Camera sensor was not detected after initialization");
         static_cast<void>(esp_camera_deinit());
+        initialized_ = false;
         return false;
     }
     sensor->set_hmirror(sensor, firmware::application::camera_hardware.horizontal_mirror);
@@ -108,11 +113,21 @@ bool CameraAdapter::initialize() {
             cached_camera_settings().stream_frame_size - 1U]) != 0) {
         ESP_LOGW(tag, "Configured stream frame size could not be applied");
     }
+    initialized_ = true;
     return true;
 }
 
 bool CameraAdapter::deinitialize() {
-    return esp_camera_deinit() == ESP_OK;
+    // OTA may be requested when camera probing failed during boot. That state
+    // is already safely deinitialized and must not prevent an update.
+    if (!initialized_) {
+        return true;
+    }
+    if (esp_camera_deinit() != ESP_OK) {
+        return false;
+    }
+    initialized_ = false;
+    return true;
 }
 
 bool CameraAdapter::set_frame_dimensions(

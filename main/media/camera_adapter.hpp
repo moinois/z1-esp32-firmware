@@ -30,6 +30,9 @@ public:
 
     // Returns the cached normalized settings loaded during initialization.
     const firmware::application::CameraSettings& settings() const;
+
+private:
+    bool initialized_ = false;
 };
 
 // Returns the process-wide camera adapter used by HTTP and update services.
