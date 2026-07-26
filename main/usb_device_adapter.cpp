@@ -996,6 +996,9 @@ UsbHashPort hash_port;
 firmware::application::LocalCommandQueue usb_local_commands;
 SemaphoreHandle_t usb_local_command_mutex = nullptr;
 
+// Forwards USB bytes from TinyUSB into the transport-neutral frame decoder.
+void consume_received_bytes(const std::uint8_t* bytes, std::size_t size);
+
 // Enqueues one USB-local frame while serializing callback/task access.
 bool enqueue_usb_local_command(const firmware::core::Frame& frame) {
     if (usb_local_command_mutex == nullptr ||
@@ -1164,6 +1167,22 @@ void usb_transmit_task(void*) {
         } else {
             tracked_frame = nullptr;
             progress.clear();
+        }
+        vTaskDelay(pdMS_TO_TICKS(
+            firmware::application::usb_task_poll_delay_milliseconds));
+    }
+}
+
+// Polls the buffered TinyUSB vendor FIFO so incoming frames are consumed
+// consistently across the ESP-IDF TinyUSB buffer configurations.
+void usb_receive_task(void*) {
+    std::array<std::uint8_t, 512> buffered_bytes{};
+    for (;;) {
+        while (tud_vendor_available()) {
+            const std::uint32_t count =
+                tud_vendor_read(buffered_bytes.data(), buffered_bytes.size());
+            if (count == 0U) break;
+            consume_received_bytes(buffered_bytes.data(), count);
         }
         vTaskDelay(pdMS_TO_TICKS(
             firmware::application::usb_task_poll_delay_milliseconds));
@@ -1463,6 +1482,7 @@ bool UsbDeviceAdapter::start() {
         return false;
     }
     xTaskCreate(usb_transmit_task, "usb_tx", 4096U, nullptr, 4U, nullptr);
+    xTaskCreate(usb_receive_task, "usb_rx", 4096U, nullptr, 4U, nullptr);
     xTaskCreate(usb_file_transfer_task, "usb_file", 4096U, nullptr, 4U, nullptr);
     xTaskCreate(usb_local_command_task, "usb_local", 4096U, nullptr, 4U, nullptr);
     return true;
