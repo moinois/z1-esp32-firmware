@@ -2,6 +2,7 @@
 #include "tcp_discovery_adapter.hpp"
 
 #include "firmware/application/discovery_service.hpp"
+#include "firmware/application/connectivity_defaults.hpp"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "tcp_control_adapter.hpp"
@@ -89,7 +90,8 @@ private:
 
 EspDiscoveryPort discovery_port;
 firmware::application::DiscoveryService discovery_service(discovery_port,
-                                                          "espressif");
+                                                          std::string(
+                                                              firmware::application::connectivity_defaults::network_hostname));
 
 // Keeps periodic discovery traffic alive without coupling policy to TCP code.
 void discovery_task(void*) {
