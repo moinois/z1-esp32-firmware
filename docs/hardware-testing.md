@@ -104,6 +104,18 @@ make partition transitions unambiguous in the COM log. They are neither the
 aggregate package-format version nor the product-facing `version` response. The
 normal project application version was reset to 1 after the test.
 
+Read-only HTTP HIL on 2026-07-26 verified the exact JSON response from
+`GET /api/firmware/info`, the exact 404 response for missing SPIFFS resources,
+invalid-JSON rejection by `POST /api/camera/resolution`, and non-multipart
+rejection by both update endpoints. A valid camera-resolution request reached
+the adapter and returned the expected controlled 500 response because the sensor
+is unavailable. Initial WebSocket upgrade requests returned 404 because the
+handlers were incorrectly registered after the wildcard route on port 80 and no
+handlers were registered on the specified video port 82. The handlers were moved
+to the dedicated server, version 1 was installed by OTA, and both `/ws_video` and
+`/ws_preview` then returned HTTP 101 on port 82. The combined HTTP/TCP HIL suite
+passed 9 of 9 checks after the correction.
+
 ## Current fixture coverage
 
 The initial executable suite covers native USB descriptors and read-only round

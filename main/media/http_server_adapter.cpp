@@ -761,7 +761,7 @@ esp_err_t preview_websocket_handler(httpd_req_t* request) {
 }
 #endif
 
-// Registers the exact GET handlers available before update/camera adapters.
+// Registers the main API, update, and wildcard static-file handlers on port 80.
 void register_main_handlers(httpd_handle_t handle) {
     static const httpd_uri_t firmware_info_uri{
         .uri = "/api/firmware/info",
@@ -793,7 +793,16 @@ void register_main_handlers(httpd_handle_t handle) {
         .handler = web_volume_update_handler,
         .user_ctx = nullptr,
     };
+    httpd_register_uri_handler(handle, &firmware_info_uri);
+    httpd_register_uri_handler(handle, &camera_resolution_uri);
+    httpd_register_uri_handler(handle, &static_file_uri);
+    httpd_register_uri_handler(handle, &firmware_update_uri);
+    httpd_register_uri_handler(handle, &web_volume_update_uri);
+}
+
 #if CONFIG_HTTPD_WS_SUPPORT
+// Registers video and preview WebSockets only on the dedicated video server.
+void register_video_handlers(httpd_handle_t handle) {
     static const httpd_uri_t video_websocket_uri{
         .uri = "/ws_video",
         .method = HTTP_GET,
@@ -808,17 +817,10 @@ void register_main_handlers(httpd_handle_t handle) {
         .user_ctx = nullptr,
         .is_websocket = true,
     };
-#endif
-    httpd_register_uri_handler(handle, &firmware_info_uri);
-    httpd_register_uri_handler(handle, &camera_resolution_uri);
-    httpd_register_uri_handler(handle, &static_file_uri);
-    httpd_register_uri_handler(handle, &firmware_update_uri);
-    httpd_register_uri_handler(handle, &web_volume_update_uri);
-#if CONFIG_HTTPD_WS_SUPPORT
     httpd_register_uri_handler(handle, &video_websocket_uri);
     httpd_register_uri_handler(handle, &preview_websocket_uri);
-#endif
 }
+#endif
 
 // Applies shared and server-specific portable policy to an ESP-IDF config.
 httpd_config_t make_config(
@@ -855,6 +857,10 @@ void HttpServerAdapter::start() {
         firmware::application::video_http_server);
     if (httpd_start(&video_handle_, &video_config) != ESP_OK) {
         ESP_LOGW(tag, "video HTTP server did not start");
+    } else {
+#if CONFIG_HTTPD_WS_SUPPORT
+        register_video_handlers(video_handle_);
+#endif
     }
 }
 
