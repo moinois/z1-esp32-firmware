@@ -87,6 +87,7 @@ CommandMatch recognize_command(BytesView payload) {
         {"upgrade", CommandKind::upgrade, 0, true},
         {"reset", CommandKind::reset, 0, true},
         {"diagnose", CommandKind::diagnose, 0, true},
+        {"wifi-diag", CommandKind::wifi_diagnose, 0, true},
         {"version", CommandKind::version, 0, true},
     };
     for (const auto& rule : rules) {

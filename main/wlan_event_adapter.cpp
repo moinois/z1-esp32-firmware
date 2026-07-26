@@ -9,6 +9,7 @@
 #include "tcp_control_adapter.hpp"
 #include "automatic_connection_adapter.hpp"
 #include "firmware/application/ble_provisioning.hpp"
+#include "wifi_diagnostic_log.hpp"
 
 #include <lwip/inet.h>
 #include <lwip/sockets.h>
@@ -25,12 +26,21 @@ std::atomic<std::uint8_t> latest_disconnect_reason{0U};
 
 void station_event_handler(void* context, esp_event_base_t base, int32_t id,
                            void* event_data) {
+    if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
+        static_cast<void>(wifi_diagnostic_log().append("wifi.event.station_start"));
+    }
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
         if (event_data != nullptr) {
             const auto* disconnected =
                 static_cast<const wifi_event_sta_disconnected_t*>(event_data);
             latest_disconnect_reason.store(disconnected->reason,
                                            std::memory_order_relaxed);
+            static_cast<void>(wifi_diagnostic_log().append(
+                "wifi.disconnected.reason=" +
+                std::to_string(disconnected->reason)));
+        } else {
+            static_cast<void>(wifi_diagnostic_log().append(
+                "wifi.disconnected.reason=unknown"));
         }
         clear_tcp_discovery_station();
         auto* adapter = static_cast<WlanEventAdapter*>(context);
@@ -68,6 +78,8 @@ void station_event_handler(void* context, esp_event_base_t base, int32_t id,
     char netmask[INET_ADDRSTRLEN]{};
     inet_ntop(AF_INET, &ip_info.ip.addr, address, sizeof(address));
     inet_ntop(AF_INET, &ip_info.netmask.addr, netmask, sizeof(netmask));
+    static_cast<void>(wifi_diagnostic_log().append(
+        std::string("wifi.event.got_ip address=") + address));
     update_tcp_discovery_station(address, netmask, active_tcp_client_count());
     if (adapter->ble_provisioning() != nullptr) {
         adapter->ble_provisioning()->station_address_ready(address);

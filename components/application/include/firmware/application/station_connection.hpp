@@ -85,6 +85,9 @@ public:
     // Returns target-specific disconnect diagnostics for an association failure.
     virtual std::string connection_error_detail() const { return {}; }
 
+    // Records a transport-specific diagnostic without coupling policy to storage.
+    virtual void record_diagnostic(std::string_view) {}
+
     // Commits both credentials after IPv4 assignment; failure is nonfatal.
     virtual StationApiResult save_credentials(
         std::string_view ssid, std::string_view password) = 0;

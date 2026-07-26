@@ -54,7 +54,9 @@ void retain_snapshot(StationRuntime& runtime, const StationSnapshot& snapshot) {
 ManualConnectionResult ManualStationConnection::connect(
     StationRuntime& runtime, StationConnectionPort& port, std::string_view ssid,
     std::string_view password) {
+    port.record_diagnostic("policy.connect.begin");
     if (runtime.state != StationConnectionState::idle) {
+        port.record_diagnostic("policy.disconnect_previous");
         static_cast<void>(port.request_disconnect());
         port.delay_milliseconds(prior_connection_settle_milliseconds);
     }
@@ -69,6 +71,7 @@ ManualConnectionResult ManualStationConnection::connect(
     const StationApiResult configured =
         port.apply_station_config(configuration);
     if (!configured.success) {
+        port.record_diagnostic("policy.config.failed");
         return fail(runtime, "Failed to set WiFi config: " +
                                  configured.error_name,
                     configured.error_name);
@@ -77,6 +80,7 @@ ManualConnectionResult ManualStationConnection::connect(
     runtime.state = StationConnectionState::attempt_started;
     const StationApiResult started = port.request_connect();
     if (!started.success) {
+        port.record_diagnostic("policy.connect_request.failed");
         return fail(runtime, "Failed to start WiFi connection: " +
                                  started.error_name,
                     started.error_name);
@@ -90,11 +94,13 @@ ManualConnectionResult ManualStationConnection::connect(
         const StationSnapshot snapshot = port.station_snapshot();
         retain_snapshot(runtime, snapshot);
         if (snapshot.state == StationConnectionState::associated) {
+            port.record_diagnostic("policy.associated");
             associated = true;
             break;
         }
     }
     if (!associated) {
+        port.record_diagnostic("policy.association.timeout");
         const std::string detail = port.connection_error_detail();
         return fail(runtime, detail.empty() ? "Failed to connect to AP" : detail);
     }
@@ -108,11 +114,14 @@ ManualConnectionResult ManualStationConnection::connect(
         if (snapshot.state != StationConnectionState::address_ready) {
             continue;
         }
+        port.record_diagnostic("policy.address_ready");
         runtime.has_error = false;
         runtime.error_detail.clear();
         static_cast<void>(port.save_credentials(runtime.ssid, runtime.password));
+        port.record_diagnostic("policy.connect.success");
         return {true, runtime.ipv4, {}};
     }
+    port.record_diagnostic("policy.address.timeout");
     const std::string detail = port.connection_error_detail();
     return fail(runtime, detail.empty() ? "IP assignment timeout" : detail);
 }

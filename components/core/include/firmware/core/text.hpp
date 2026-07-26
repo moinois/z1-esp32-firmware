@@ -31,6 +31,7 @@ enum class CommandKind {
     upgrade,
     reset,
     diagnose,
+    wifi_diagnose,
     version
 };
 

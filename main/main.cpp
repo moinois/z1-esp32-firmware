@@ -27,6 +27,7 @@
 #include "blufi_callback_adapter.hpp"
 #include "firmware_update_adapter.hpp"
 #include "diagnostic_capture_adapter.hpp"
+#include "wifi_diagnostic_log.hpp"
 #include "runtime_counter_task.hpp"
 #include "usb_device_adapter.hpp"
 #include "recording_task_adapter.hpp"
@@ -113,6 +114,12 @@ void start_heartbeat() {
 extern "C" void app_main() {
     if (!initialize_persistent_store()) {
         esp_restart();
+    }
+    const std::string persisted_wifi_log =
+        firmware::target::wifi_diagnostic_log().read();
+    if (!persisted_wifi_log.empty()) {
+        ESP_LOGI(tag, "Persistent Wi-Fi diagnostic log:\n%s",
+                 persisted_wifi_log.c_str());
     }
     start_heartbeat();
     if (esp_netif_init() != ESP_OK || esp_event_loop_create_default() != ESP_OK) {

@@ -80,6 +80,11 @@ public:
         return error_detail;
     }
 
+    // Captures policy diagnostics without requiring a target logger in tests.
+    void record_diagnostic(std::string_view message) override {
+        diagnostics.emplace_back(message);
+    }
+
     StationApiResult disconnect_result{true, {}};
     StationApiResult configure_result{true, {}};
     StationApiResult connect_result{true, {}};
@@ -94,6 +99,7 @@ public:
     std::string persisted_password;
     bool protected_management_optional = false;
     std::string error_detail;
+    std::vector<std::string> diagnostics;
 };
 
 // Records host frames, the discovery delay, and the discovery burst.
@@ -206,6 +212,11 @@ TEST_CASE(net_022_and_025_association_then_address_succeeds_and_saves_credential
     REQUIRE_EQ(port.persisted_ssid, std::string("actual-ap"));
     REQUIRE_EQ(port.persisted_password, std::string("secret"));
     REQUIRE_EQ(port.delays, std::vector<std::uint32_t>({100U, 100U}));
+    REQUIRE_EQ(port.diagnostics,
+               std::vector<std::string>({"policy.connect.begin",
+                                          "policy.associated",
+                                          "policy.address_ready",
+                                          "policy.connect.success"}));
 }
 
 TEST_CASE(net_022_address_ready_before_observed_association_still_fails) {

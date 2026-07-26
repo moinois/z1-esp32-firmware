@@ -48,6 +48,7 @@
 #include "firmware/application/m942_exercise.hpp"
 #include "configuration_file_store.hpp"
 #include "wlan_event_adapter.hpp"
+#include "wifi_diagnostic_log.hpp"
 
 #include <array>
 #include <algorithm>
@@ -313,6 +314,9 @@ public:
         std::memcpy(wifi_config.sta.ssid, configuration.ssid.data(), ssid_size);
         std::memcpy(wifi_config.sta.password, configuration.password.data(),
                     password_size);
+        static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+            "wifi.config.request ssid_length=" + std::to_string(ssid_size) +
+            " password_length=" + std::to_string(password_size)));
         wifi_config.sta.scan_method = WIFI_FAST_SCAN;
         wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
         wifi_config.sta.threshold.authmode = static_cast<wifi_auth_mode_t>(
@@ -324,13 +328,23 @@ public:
         // Keep the provisioning access point alive while the station joins;
         // changing to station-only mode disrupts the native USB transport.
         const esp_err_t mode_result = esp_wifi_set_mode(WIFI_MODE_APSTA);
+        static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+            mode_result == ESP_OK ? "wifi.set_mode.ok" : "wifi.set_mode.error"));
         if (mode_result != ESP_OK) return api_result(mode_result, "set_mode");
-        return api_result(esp_wifi_set_config(WIFI_IF_STA, &wifi_config),
-                          "set_config");
+        const esp_err_t config_result =
+            esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+        static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+            config_result == ESP_OK ? "wifi.set_config.ok"
+                                    : "wifi.set_config.error"));
+        return api_result(config_result, "set_config");
     }
 
     firmware::application::StationApiResult request_connect() override {
-        return api_result(esp_wifi_connect(), "connect");
+        const esp_err_t result = esp_wifi_connect();
+        static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+            result == ESP_OK ? "wifi.connect.requested"
+                             : "wifi.connect.error"));
+        return api_result(result, "connect");
     }
 
     void delay_milliseconds(std::uint32_t duration) override {
@@ -339,27 +353,40 @@ public:
 
     firmware::application::StationSnapshot station_snapshot() const override {
         wifi_ap_record_t access_point{};
-        if (esp_wifi_sta_get_ap_info(&access_point) != ESP_OK) return {};
+        if (esp_wifi_sta_get_ap_info(&access_point) != ESP_OK) {
+            log_state(firmware::application::StationConnectionState::attempt_started);
+            return {};
+        }
         const std::string ssid(reinterpret_cast<const char*>(access_point.ssid));
         esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
         if (netif == nullptr) {
+            log_state(firmware::application::StationConnectionState::associated);
             return {firmware::application::StationConnectionState::associated,
                     ssid, {}};
         }
         esp_netif_ip_info_t ip_info{};
         if (esp_netif_get_ip_info(netif, &ip_info) != ESP_OK ||
             ip_info.ip.addr == 0U) {
+            log_state(firmware::application::StationConnectionState::associated);
             return {firmware::application::StationConnectionState::associated,
                     ssid, {}};
         }
         char address[INET_ADDRSTRLEN]{};
         inet_ntop(AF_INET, &ip_info.ip.addr, address, sizeof(address));
+        log_state(firmware::application::StationConnectionState::address_ready);
         return {firmware::application::StationConnectionState::address_ready,
                 ssid, address};
     }
 
     std::string connection_error_detail() const override {
-        return firmware::target::last_station_disconnect_detail();
+        const std::string detail = firmware::target::last_station_disconnect_detail();
+        static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+            "wifi.connection.detail=" + detail));
+        return detail;
+    }
+
+    void record_diagnostic(std::string_view message) override {
+        static_cast<void>(firmware::target::wifi_diagnostic_log().append(message));
     }
 
     firmware::application::StationApiResult save_credentials(
@@ -367,14 +394,40 @@ public:
         NvsKeyValueAdapter nvs;
         if (!nvs.write_string(wifi_persistence::name_space,
                               wifi_persistence::ssid_key, ssid)) {
+            static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+                "wifi.credentials.save_ssid.error"));
             return {false, "save_ssid"};
         }
         if (!nvs.write_string(wifi_persistence::name_space,
                               wifi_persistence::password_key, password)) {
+            static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+                "wifi.credentials.save_password.error"));
             return {false, "save_password"};
         }
+        static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+            "wifi.credentials.saved"));
         return {true, {}};
     }
+
+private:
+    // Records only state transitions so polling does not flood the persistent log.
+    void log_state(firmware::application::StationConnectionState state) const {
+        if (state == last_logged_state_) return;
+        last_logged_state_ = state;
+        const char* name = "unknown";
+        if (state == firmware::application::StationConnectionState::attempt_started) {
+            name = "attempt_started";
+        } else if (state == firmware::application::StationConnectionState::associated) {
+            name = "associated";
+        } else if (state == firmware::application::StationConnectionState::address_ready) {
+            name = "address_ready";
+        }
+        static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+            std::string("wifi.snapshot.state=") + name));
+    }
+
+    mutable firmware::application::StationConnectionState last_logged_state_{
+        firmware::application::StationConnectionState::idle};
 };
 
 // Routes WLAN connection responses to the USB transmit queue.
@@ -382,6 +435,8 @@ class UsbWlanResponsePort final
     : public firmware::application::WlanConnectionResponsePort {
 public:
     void send(firmware::core::Frame frame) override {
+        static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+            "wlan.response type=" + std::to_string(frame.type)));
         const auto encoded = firmware::core::encode_frame(frame);
         if (!encoded.empty()) {
             static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
@@ -1098,7 +1153,17 @@ void usb_local_command_task(void*) {
             firmware::application::FileHashCommand::execute(
                 command_frame->payload, hash_port);
         } else if (match.kind == firmware::core::CommandKind::wlan) {
+            static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+                "wlan.command.start"));
             const auto request = firmware::application::parse_wlan_request(command);
+            static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+                request.kind == firmware::application::WlanRequestKind::connect
+                    ? "wlan.request.connect"
+                    : request.kind == firmware::application::WlanRequestKind::disconnect
+                          ? "wlan.request.disconnect"
+                          : request.kind == firmware::application::WlanRequestKind::scan
+                                ? "wlan.request.scan"
+                                : "wlan.request.invalid"));
             if (request.kind == firmware::application::WlanRequestKind::scan) {
                 firmware::application::WlanScanCommand::execute(wlan_scan_port);
             } else if (request.kind ==
@@ -1110,6 +1175,8 @@ void usb_local_command_task(void*) {
                     usb_station_runtime, wlan_station_port, wlan_response_port,
                     request.ssid, request.password);
             }
+            static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+                "wlan.command.finish"));
         } else if (match.kind == firmware::core::CommandKind::config_restore ||
                    match.kind == firmware::core::CommandKind::config_default) {
             if (match.kind == firmware::core::CommandKind::config_restore) {
@@ -1135,6 +1202,20 @@ void usb_local_command_task(void*) {
             if (response.has_value()) {
                 static_cast<void>(protocol_state.transmit_queue().enqueue(
                     firmware::core::encode_frame(*response)));
+            }
+        } else if (match.kind == firmware::core::CommandKind::wifi_diagnose) {
+            const std::string log = firmware::target::wifi_diagnostic_log().read();
+            const std::string_view payload = log.empty() ? "<empty>\n" : log;
+            constexpr std::size_t diagnostic_chunk_size = 48U;
+            for (std::size_t offset = 0U; offset < payload.size();
+                 offset += diagnostic_chunk_size) {
+                const std::size_t count =
+                    std::min(diagnostic_chunk_size, payload.size() - offset);
+                static_cast<void>(protocol_state.transmit_queue().enqueue(
+                    firmware::core::encode_frame(
+                        {firmware::core::protocol::text_response,
+                         {payload.begin() + static_cast<std::ptrdiff_t>(offset),
+                          payload.begin() + static_cast<std::ptrdiff_t>(offset + count)}})));
             }
         } else if (match.kind == firmware::core::CommandKind::version) {
             const auto response = shared_controller_snapshots().version_reply();
