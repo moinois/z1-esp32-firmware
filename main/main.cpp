@@ -4,6 +4,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_mac.h"
+#include "esp_ota_ops.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
@@ -192,5 +193,17 @@ extern "C" void app_main() {
     static firmware::target::UsbDeviceAdapter usb_device;
     if (!usb_device.start()) {
         ESP_LOGW(tag, "USB device startup failed; USB remains unavailable");
+    }
+#if defined(Z1_OTA_ROLLBACK_TEST_FAILURE)
+    ESP_LOGE(tag, "Rollback HIL fault injected before OTA image validation");
+    esp_restart();
+    return;
+#endif
+    const esp_err_t validation_result = esp_ota_mark_app_valid_cancel_rollback();
+    if (validation_result == ESP_OK) {
+        ESP_LOGI(tag, "OTA image marked valid after critical startup");
+    } else if (validation_result != ESP_ERR_OTA_ROLLBACK_INVALID_STATE) {
+        ESP_LOGE(tag, "Could not mark OTA image valid: %s",
+                 esp_err_to_name(validation_result));
     }
 }

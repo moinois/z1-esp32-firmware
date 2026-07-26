@@ -77,6 +77,33 @@ an SD reader nor a card. The earlier directory-list `PASS` was also invalid:
 the protocol's completion-only response does not prove a mounted volume. Both
 results are treated as fixture-unavailable rather than requirement evidence.
 
+A destructive direct-OTA run on 2026-07-26 used COM monitoring and Wi-Fi HTTP.
+Version 2 was the known baseline in `ota_0`; raw version 3 was uploaded as the
+first multipart part to `/update`. The target returned the specified success
+text, restarted after two seconds, booted `ota_1` at `0x220000`, and reported
+`App version: 3`. A second upload then installed raw version 4 into the now
+inactive, previous partition `ota_0`; the target again returned the success
+text, restarted, booted at `0x20000`, and reported `App version: 4`. Both TCP HIL
+checks passed after each update. This verifies OTA alternation in both directions
+(`ota_0` to `ota_1` and `ota_1` back to `ota_0`). The first run also exposed and
+fixed a target edge case: camera deinitialization must succeed idempotently when
+camera probing already failed during boot.
+
+The same run enabled the ESP-IDF bootloader rollback state machine and verified
+the failure path. A valid but deliberately fault-injected version 5 was uploaded
+from healthy version 4 in `ota_0` to inactive `ota_1`. Version 5 booted once from
+`0x220000`, restarted before calling `esp_ota_mark_app_valid_cancel_rollback()`,
+and was rejected automatically. The next boot selected the previous healthy
+version 4 from `ota_0` at `0x20000`. Normal firmware marks itself valid only after
+the critical `app_main` startup sequence completes; failures that restart before
+that point therefore retain the previous image. The fault injection is available
+only when building with `Z1_OTA_ROLLBACK_TEST_FAILURE` set.
+
+Versions 2 through 5 above were temporary ESP-IDF application versions used to
+make partition transitions unambiguous in the COM log. They are neither the
+aggregate package-format version nor the product-facing `version` response. The
+normal project application version was reset to 1 after the test.
+
 ## Current fixture coverage
 
 The initial executable suite covers native USB descriptors and read-only round

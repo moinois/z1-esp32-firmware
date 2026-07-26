@@ -99,3 +99,10 @@ idf_component_register(
         "$ENV{IDF_PATH}/components/bt/host/bluedroid/api/include/api"
         "$ENV{IDF_PATH}/components/bt/include/esp32c3/include"
 )
+
+# Used only by the destructive HIL rollback test. A normal build never defines
+# this and marks the new OTA image valid after critical startup completes.
+if(DEFINED ENV{Z1_OTA_ROLLBACK_TEST_FAILURE})
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE
+        Z1_OTA_ROLLBACK_TEST_FAILURE=1)
+endif()

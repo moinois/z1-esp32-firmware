@@ -470,6 +470,15 @@ The application image is produced at:
 build/mainboard_firmware.bin
 ```
 
+Create a specification-compliant mainboard-only aggregate update package with:
+
+```sh
+python3 tools/package_firmware.py --mainboard build/mainboard_firmware.bin
+```
+
+The result is `build/firmware.bin`; see [`tools/README.md`](tools/README.md) for
+version metadata and alternate paths.
+
 ## Running hardware-in-the-loop tests
 
 Hardware tests automatically skip unavailable fixtures and never count a skip
