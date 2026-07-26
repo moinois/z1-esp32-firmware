@@ -6,4 +6,6 @@ managed_components/
 .vscode/settings.json
 .DS_Store
 __pycache__/
+.pytest_cache/
+.hil-reports/
 backups/

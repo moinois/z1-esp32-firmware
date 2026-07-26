@@ -12,6 +12,14 @@ The tool uses PyUSB. Install it in the active development Python environment:
 python3 -m pip install pyusb
 ```
 
+For optional physical regression tests, install the complete host-only set and
+follow the safety gates in `docs/hardware-testing.md`:
+
+```text
+python3 -m pip install -r requirements-hil.txt
+python3 -m pytest tests/hardware
+```
+
 On macOS, connect the board's `USB` connector, not only the `COM` connector.
 The native firmware interface has VID `0x303a` and PID `0x4002`.
 

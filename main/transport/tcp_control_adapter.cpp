@@ -71,6 +71,10 @@ namespace {
 constexpr int control_port = 2222;
 constexpr int listen_backlog = 4;
 constexpr int maximum_clients = 4;
+// Local command dispatch composes filesystem, configuration, status, and WLAN
+// adapters on this task's stack. The previous 4096-byte allocation overflowed
+// on a physical `version` request after the complete target was composed.
+constexpr std::uint32_t client_task_stack_bytes = 8192U;
 std::atomic_int active_clients{0};
 std::atomic_uint32_t next_generation{1U};
 firmware::application::Router tcp_router;
@@ -325,23 +329,26 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             }
         } else {
             TcpFilesystemAdapter filesystem_port(session);
+            const firmware::core::BytesView argument(
+                frame.payload.data() + match.argument_offset,
+                frame.payload.size() - match.argument_offset);
             if (match.kind == firmware::core::CommandKind::make_directory) {
                 firmware::application::FilesystemCommands::make_directory(
-                    frame.payload, filesystem_port);
+                    argument, filesystem_port);
             } else if (match.kind == firmware::core::CommandKind::remove) {
                 firmware::application::FilesystemCommands::remove(
-                    frame.payload, filesystem_port);
+                    argument, filesystem_port);
             } else if (match.kind == firmware::core::CommandKind::move) {
                 firmware::application::FilesystemCommands::move(
-                    frame.payload, filesystem_port);
+                    argument, filesystem_port);
             } else if (match.kind == firmware::core::CommandKind::list) {
                 TcpDirectoryListAdapter directory_port(session);
                 firmware::application::DirectoryListing::execute(
-                    frame.payload, directory_port);
+                    argument, directory_port);
             } else if (match.kind == firmware::core::CommandKind::md5_sum) {
                 TcpFileHashAdapter hash_port(session);
                 firmware::application::FileHashCommand::execute(
-                    frame.payload, hash_port);
+                    argument, hash_port);
             } else {
                 firmware::application::FilesystemCommands::file_type(filesystem_port);
             }
@@ -611,7 +618,7 @@ void tcp_accept_task(void*) {
              static_cast<std::uint8_t>(expected),
              next_generation.fetch_add(1U, std::memory_order_relaxed)}};
         TaskHandle_t task = nullptr;
-        if (xTaskCreate(tcp_client_task, "tcp_client", 4096U, context,
+        if (xTaskCreate(tcp_client_task, "tcp_client", client_task_stack_bytes, context,
                         4U, &task) != pdPASS) {
             delete context;
             close(client);

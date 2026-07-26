@@ -25,6 +25,8 @@ Allowed statuses are `Proposed`, `Accepted`, `Superseded`, and `Rejected`.
 | ADR-007 | Separate logical file ownership from physical play ownership | Accepted | 2026-07-20 |
 | ADR-008 | Keep generated build state outside version control | Accepted | 2026-07-20 |
 | ADR-009 | Assign constants to the innermost owning module | Accepted | 2026-07-20 |
+| ADR-010 | Share target mechanisms below transport adapters | Accepted | 2026-07-26 |
+| ADR-011 | Keep physical verification optional, explicit, and safety-gated | Accepted | 2026-07-26 |
 
 ---
 
@@ -273,3 +275,88 @@ dependency between core, application, and target partitions.
   coupled.
 - Literal zero, one, byte offsets, and bit shifts may remain where they express
   a local operation more clearly than an additional name would.
+
+---
+
+## ADR-010: Share target mechanisms below transport adapters
+
+- **Status:** Accepted
+- **Date:** 2026-07-26
+
+### Context
+
+TCP, USB, and controller-UART adapters developed repeated NVS result mapping,
+runtime command behavior, serial-number behavior, POSIX file ownership, MD5
+calculation, Wi-Fi scan conversion, and frame-response construction. These are
+target mechanisms rather than product policy, but leaving a copy in each
+transport allowed error handling and resource ownership to drift.
+
+Moving them into the portable core would be equally misleading because they
+depend on ESP-IDF, mounted POSIX VFS, mbedTLS, NVS, or a concrete transport
+delivery contract.
+
+### Decision
+
+Keep reusable target mechanisms under `main/` and compose them into narrow
+transport adapters:
+
+- `FrameSink` owns only delivery of an already constructed protocol frame;
+- shared NVS command ports own persistence mapping and delegate delivery;
+- `PosixFile` and related functions own target file handles, bounded I/O,
+  synchronization, path metadata, parent creation, and MD5 calculation;
+- `EspWifiScanner` owns ESP-IDF scan execution and record conversion; and
+- common controller-transfer wire encoding remains in the application transfer
+  module while family-specific state machines remain separate.
+
+Prefer composition and small interfaces over a transport inheritance hierarchy.
+Do not consolidate equal-looking behavior whose hardware mode, lifetime, or
+error contract differs.
+
+### Consequences
+
+- Persistence, file, hash, and scan behavior has one target implementation.
+- TCP, USB, and UART adapters retain only origin-specific delivery and policy.
+- Shared target utilities are target-built but are not linked into host tests.
+- Changes to target utilities require both a target build and all portable host
+  tests because they cross several integration paths.
+
+---
+
+## ADR-011: Keep physical verification optional, explicit, and safety-gated
+
+- **Status:** Accepted
+- **Date:** 2026-07-26
+
+### Context
+
+Many requirements have deterministic host coverage and successful ESP-IDF
+builds but still need physical evidence. Development machines do not always
+have the board, SD card, RF environment, controller, CAN fixture, camera, or BLE
+scanner attached. Making ordinary tests fail solely because a fixture is absent
+would discourage routine execution, while silently treating absence as success
+would overstate conformance. Some physical checks can also change NVS, files,
+network association, partitions, or firmware.
+
+### Decision
+
+Maintain a separate pytest HIL suite with runtime fixture discovery:
+
+1. absent fixtures or dependencies produce `SKIP` with a precise reason;
+2. `SKIP` never counts as physical evidence;
+3. read-only checks may run automatically after positive device detection;
+4. recoverable mutation requires `Z1_ALLOW_MUTATION=1`;
+5. destructive operations require `Z1_ALLOW_DESTRUCTIVE=1` and a documented
+   recovery procedure;
+6. firmware flashing is never implied by device detection; and
+7. tests carry requirement IDs and can emit a reviewed JSON evidence report.
+
+The C++ host suite remains dependency-free. Pytest, PyUSB, and pyserial are
+host-only HIL dependencies and are never part of the firmware build graph.
+
+### Consequences
+
+- The same command is useful with no hardware, one board, or a complete rig.
+- CI can distinguish unavailable equipment from observed product failures.
+- Physical conformance claims remain auditable at requirement level.
+- Fixture drivers and destructive recovery procedures must be added before the
+  corresponding skipped capability gates can become executable evidence.

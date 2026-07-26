@@ -189,8 +189,8 @@ The first core-to-periphery development slice contains:
   asynchronous WebSocket sends, EOS termination, and generation-based cancel;
 - Playback checks the ESP-IDF WebSocket connection state on each frame and
   releases the preview session when receive/send fails or the socket closes;
-- Camera adapter exposes bounded JPEG capture and current-dimension queries for
-  the upcoming recording task without coupling storage to the sensor driver;
+- Camera adapter exposes bounded JPEG capture and current-dimension queries to
+  the recording task without coupling storage to the sensor driver;
 - Recording file adapter writes finalized AVI buffers with short-write handling,
   flush, `fsync`, and durable close through the mounted FAT/POSIX VFS;
 - Recording task composes request/play state, configured recording dimensions,
@@ -299,10 +299,12 @@ The first core-to-periphery development slice contains:
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 580 tests. The firmware also builds successfully as
+The current host suite has 627 tests. The firmware also builds successfully as
 an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
+Optional physical verification is provided by the
+[`hardware-in-the-loop suite`](docs/hardware-testing.md).
 
 ## Architecture
 
@@ -358,12 +360,18 @@ in this layer will own queues, timeouts, and protocol state. They depend on
 narrow abstract ports for operations such as file access, packet delivery,
 persistence, and monotonic time.
 
-### ESP-IDF composition root
+### ESP-IDF target layer and composition root
 
 `main/main.cpp` is the target-only composition root. It creates adapters and
-starts services in the order required by the startup contract. It currently
-contains NVS recovery, heartbeat startup, and the optional CANopen service;
-later services remain deliberately absent until their contract tests exist.
+starts services in the order required by the startup contract. Domain-grouped
+adapters under `main/` provide USB, TCP, UART, SD/FAT, NVS, Wi-Fi/BLE, CAN,
+camera, HTTP, OTA, diagnostics, recording, and retention integration.
+
+Shared target infrastructure remains below those adapters: `FrameSink`
+separates response delivery from NVS-backed commands, `PosixFile` owns mounted
+VFS handles and common I/O/MD5 behavior, and `EspWifiScanner` owns
+transport-independent ESP-IDF scan conversion. These stay in the target layer
+because they intentionally depend on ESP-IDF, POSIX VFS, or mbedTLS.
 
 ### Configuration artifacts
 
@@ -386,7 +394,9 @@ implementation/
 │   └── src/               Domain-grouped service implementations
 ├── docs/                  Requirement traceability and architecture decisions
 ├── main/                  Composition root plus domain-grouped ESP-IDF adapters
-├── tests/                 Host tests grouped by the same domains
+├── tests/                 Host tests and optional hardware-in-the-loop tests
+├── pytest.ini             HIL discovery, safety, and marker configuration
+├── requirements-hil.txt   Host-only HIL dependencies
 ├── CMakeLists.txt         Host/ESP-IDF build entry point
 ├── CMakePresets.json      Reproducible host-test preset
 ├── partitions.csv         Normative 16 MiB flash layout for ESP32-S3-N16R8
@@ -460,6 +470,21 @@ The application image is produced at:
 build/mainboard_firmware.bin
 ```
 
+## Running hardware-in-the-loop tests
+
+Hardware tests automatically skip unavailable fixtures and never count a skip
+as conformance. Install their host-only dependencies and run:
+
+```sh
+python3 -m pip install -r requirements-hil.txt
+python3 -m pytest tests/hardware
+```
+
+Read-only tests run when their device is detected. Recoverable mutation and
+destructive update tests require separate opt-in environment flags. See
+[`docs/hardware-testing.md`](docs/hardware-testing.md) for detection rules,
+safety levels, fixture variables, and requirement-level JSON reports.
+
 ## Flashing an ESP32-S3-N16R8 development board
 
 The target defaults and partition table are configured for the 16 MB flash and
@@ -502,20 +527,18 @@ the board's strapping-pin levels have been verified.
 
 ## Current limitations and next steps
 
-The following major areas remain:
+Most deterministic behavior and target compositions listed above are
+implemented, host-tested where portable, and target-built. Remaining work is
+primarily physical verification and fixture-specific integration: raw
+byte-exact GATT coverage beyond the standard BLUFI callback bridge, controller
+and CAN rigs, RF/coexistence measurements, camera/recording endurance, SD/FAT
+failure injection, OTA recovery on real flash, resource-exhaustion stress, and
+long-running timing validation.
 
-- composition-root wiring and ESP-IDF adapters for the implemented portable
-  transport, storage, connectivity, controller, BLUFI, and update services;
-- a raw ESP-IDF GATT adapter for the byte-exact BLUFI stack, kept separate from
-  ESP-IDF's independent standard-BLUFI protocol owner;
-- HTTP, WebSocket, camera, AVI preview, recording, and retention;
-- runtime service adapters and composition-root wiring;
-- CANopen PDO behavior and `M942` target command/SDO-client wiring; and
-- physical-device verification of hardware and coexistence behavior.
-
-These areas will be implemented in dependency order. Hardware validation will
-then cover the actual ESP32-S3 module, octal PSRAM, camera sensor, SD card,
-controller UART, native USB, Wi-Fi/BLE coexistence, and TWAI transceiver.
+The optional HIL framework provides USB, TCP, SD/filesystem, and diagnostic
+checks when corresponding hardware is present. Controller, CAN, BLE, camera,
+recording, and destructive OTA tests remain skipped until their fixture drivers
+and recovery procedures are supplied.
 
 ## Conformance policy
 

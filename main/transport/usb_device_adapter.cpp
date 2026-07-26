@@ -939,25 +939,34 @@ void usb_local_command_task(void*) {
                    match.kind == firmware::core::CommandKind::remove ||
                    match.kind == firmware::core::CommandKind::move ||
                    match.kind == firmware::core::CommandKind::file_type) {
+            const firmware::core::BytesView argument(
+                command_frame->payload.data() + match.argument_offset,
+                command_frame->payload.size() - match.argument_offset);
             if (match.kind == firmware::core::CommandKind::make_directory) {
                 firmware::application::FilesystemCommands::make_directory(
-                    command_frame->payload, filesystem_port);
+                    argument, filesystem_port);
             } else if (match.kind == firmware::core::CommandKind::remove) {
                 firmware::application::FilesystemCommands::remove(
-                    command_frame->payload, filesystem_port);
+                    argument, filesystem_port);
             } else if (match.kind == firmware::core::CommandKind::move) {
                 firmware::application::FilesystemCommands::move(
-                    command_frame->payload, filesystem_port);
+                    argument, filesystem_port);
             } else {
                 firmware::application::FilesystemCommands::file_type(
                     filesystem_port);
             }
         } else if (match.kind == firmware::core::CommandKind::list) {
+            const firmware::core::BytesView argument(
+                command_frame->payload.data() + match.argument_offset,
+                command_frame->payload.size() - match.argument_offset);
             firmware::application::DirectoryListing::execute(
-                command_frame->payload, directory_port);
+                argument, directory_port);
         } else if (match.kind == firmware::core::CommandKind::md5_sum) {
+            const firmware::core::BytesView argument(
+                command_frame->payload.data() + match.argument_offset,
+                command_frame->payload.size() - match.argument_offset);
             firmware::application::FileHashCommand::execute(
-                command_frame->payload, hash_port);
+                argument, hash_port);
         } else if (match.kind == firmware::core::CommandKind::wlan) {
             static_cast<void>(firmware::target::wifi_diagnostic_log().append(
                 "wlan.command.start"));
