@@ -1,11 +1,16 @@
 // Declares ESP-IDF Wi-Fi/IP event registration for discovery lifecycle updates.
 #pragma once
 
+#include <string>
+
 namespace firmware::application {
 class BleProvisioning;
 }
 
 namespace firmware::target {
+
+// Returns the latest ESP-IDF station disconnect reason for diagnostics.
+std::string last_station_disconnect_detail();
 
 class AutomaticConnectionAdapter;
 

@@ -95,7 +95,8 @@ ManualConnectionResult ManualStationConnection::connect(
         }
     }
     if (!associated) {
-        return fail(runtime, "Failed to connect to AP");
+        const std::string detail = port.connection_error_detail();
+        return fail(runtime, detail.empty() ? "Failed to connect to AP" : detail);
     }
 
     for (std::uint32_t elapsed = 0U;
@@ -112,7 +113,8 @@ ManualConnectionResult ManualStationConnection::connect(
         static_cast<void>(port.save_credentials(runtime.ssid, runtime.password));
         return {true, runtime.ipv4, {}};
     }
-    return fail(runtime, "IP assignment timeout");
+    const std::string detail = port.connection_error_detail();
+    return fail(runtime, detail.empty() ? "IP assignment timeout" : detail);
 }
 
 StationApiResult ManualStationConnection::disconnect(

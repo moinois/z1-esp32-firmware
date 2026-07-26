@@ -15,12 +15,23 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
+#include <string>
 
 namespace firmware::target {
 namespace {
 
-void station_event_handler(void* context, esp_event_base_t base, int32_t id, void*) {
+std::atomic<std::uint8_t> latest_disconnect_reason{0U};
+
+void station_event_handler(void* context, esp_event_base_t base, int32_t id,
+                           void* event_data) {
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
+        if (event_data != nullptr) {
+            const auto* disconnected =
+                static_cast<const wifi_event_sta_disconnected_t*>(event_data);
+            latest_disconnect_reason.store(disconnected->reason,
+                                           std::memory_order_relaxed);
+        }
         clear_tcp_discovery_station();
         auto* adapter = static_cast<WlanEventAdapter*>(context);
         if (adapter->automatic_connection() != nullptr) {
@@ -64,6 +75,12 @@ void station_event_handler(void* context, esp_event_base_t base, int32_t id, voi
 }
 
 }  // namespace
+
+std::string last_station_disconnect_detail() {
+    return "WiFi association failed; ESP-IDF disconnect reason=" +
+           std::to_string(latest_disconnect_reason.load(
+               std::memory_order_relaxed));
+}
 
 void WlanEventAdapter::set_automatic_connection(
     AutomaticConnectionAdapter* adapter) {

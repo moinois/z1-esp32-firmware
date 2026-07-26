@@ -82,6 +82,9 @@ public:
     // Returns the most recently observed asynchronous station state.
     virtual StationSnapshot station_snapshot() const = 0;
 
+    // Returns target-specific disconnect diagnostics for an association failure.
+    virtual std::string connection_error_detail() const { return {}; }
+
     // Commits both credentials after IPv4 assignment; failure is nonfatal.
     virtual StationApiResult save_credentials(
         std::string_view ssid, std::string_view password) = 0;

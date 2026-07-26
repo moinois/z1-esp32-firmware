@@ -47,6 +47,7 @@
 #include "firmware/application/file_download.hpp"
 #include "firmware/application/m942_exercise.hpp"
 #include "configuration_file_store.hpp"
+#include "wlan_event_adapter.hpp"
 
 #include <array>
 #include <algorithm>
@@ -355,6 +356,10 @@ public:
         inet_ntop(AF_INET, &ip_info.ip.addr, address, sizeof(address));
         return {firmware::application::StationConnectionState::address_ready,
                 ssid, address};
+    }
+
+    std::string connection_error_detail() const override {
+        return firmware::target::last_station_disconnect_detail();
     }
 
     firmware::application::StationApiResult save_credentials(

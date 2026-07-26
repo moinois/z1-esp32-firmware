@@ -72,8 +72,14 @@ void WlanConnectionCommand::connect(
         report.append(detail.substr(0U, maximum_connection_error_detail_size));
         report.push_back('\n');
         responses.send(text_frame(core::protocol::text_response, report));
-        responses.send(text_frame(core::protocol::operation_failure,
-                                  connection_failure_message));
+        if (detail.rfind("WiFi association failed", 0U) == 0U) {
+            std::string failure = report;
+            responses.send(text_frame(core::protocol::operation_failure,
+                                      failure));
+        } else {
+            responses.send(text_frame(core::protocol::operation_failure,
+                                      connection_failure_message));
+        }
         return;
     }
 

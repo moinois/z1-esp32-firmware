@@ -76,6 +76,10 @@ public:
         return save_result;
     }
 
+    std::string connection_error_detail() const override {
+        return error_detail;
+    }
+
     StationApiResult disconnect_result{true, {}};
     StationApiResult configure_result{true, {}};
     StationApiResult connect_result{true, {}};
@@ -89,6 +93,7 @@ public:
     std::string persisted_ssid;
     std::string persisted_password;
     bool protected_management_optional = false;
+    std::string error_detail;
 };
 
 // Records host frames, the discovery delay, and the discovery burst.
@@ -219,6 +224,19 @@ TEST_CASE(net_022_address_ready_before_observed_association_still_fails) {
     REQUIRE_EQ(port.delays.size(), 100U);
 }
 
+TEST_CASE(net_022_association_failure_preserves_target_diagnostic) {
+    StationRuntime runtime;
+    FakeStationConnectionPort port;
+    port.error_detail = "WiFi association failed; reason=15";
+
+    const auto result =
+        ManualStationConnection::connect(runtime, port, "ap", "secret");
+
+    REQUIRE(!result.success);
+    REQUIRE_EQ(runtime.error_detail,
+               std::string("WiFi association failed; reason=15"));
+}
+
 TEST_CASE(net_022_ipv4_timeout_retains_exact_error) {
     StationRuntime runtime;
     FakeStationConnectionPort port;
@@ -315,6 +333,19 @@ TEST_CASE(net_045_manual_connection_failure_reports_retained_detail) {
                std::string("Connect error.\r\n"));
     REQUIRE_EQ(responses.delay, 0U);
     REQUIRE(!responses.discovery_sent);
+}
+
+TEST_CASE(net_045_association_failure_repeats_disconnect_detail_in_failure_frame) {
+    StationRuntime runtime;
+    FakeStationConnectionPort station;
+    station.error_detail = "WiFi association failed; reason=15";
+    FakeWlanConnectionResponsePort responses;
+
+    WlanConnectionCommand::connect(runtime, station, responses, "ap", "pw");
+
+    REQUIRE_EQ(responses.sent.size(), 2U);
+    REQUIRE_EQ(text(responses.sent[1].payload),
+               std::string("Error: WiFi association failed; reason=15\n"));
 }
 
 TEST_CASE(net_046_manual_disconnect_success_reports_completion) {

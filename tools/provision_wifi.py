@@ -104,6 +104,7 @@ def provision_wifi(
 
     received = b""
     deadline = time.monotonic() + total_timeout_seconds
+    next_keepalive = time.monotonic() + 2.0
     while time.monotonic() < deadline:
         try:
             chunk = bytes(
@@ -113,6 +114,14 @@ def provision_wifi(
                 )
             )
         except usb.core.USBTimeoutError:
+            if time.monotonic() >= next_keepalive:
+                try:
+                    output.write(
+                        encode_frame(SINGLE_COMMAND, b"?"), timeout=timeout_ms
+                    )
+                except usb.core.USBError:
+                    pass
+                next_keepalive = time.monotonic() + 2.0
             continue
         except usb.core.USBError as error:
             # Wi-Fi mode changes can briefly reset the native USB endpoint.
