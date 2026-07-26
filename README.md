@@ -380,16 +380,23 @@ later services remain deliberately absent until their contract tests exist.
 implementation/
 ├── components/core/       Portable C++ protocol and domain logic
 │   ├── include/           Public core interfaces
-│   └── src/               Core implementations
+│   └── src/               Implementations grouped by domain
 ├── components/application/ Routing, ownership, and application services
+│   ├── include/           Stable public application interfaces
+│   └── src/               Domain-grouped service implementations
 ├── docs/                  Requirement traceability and architecture decisions
-├── main/                  ESP-IDF composition root and target adapters
-├── tests/                 Host-side specification tests
+├── main/                  Composition root plus domain-grouped ESP-IDF adapters
+├── tests/                 Host tests grouped by the same domains
 ├── CMakeLists.txt         Host/ESP-IDF build entry point
 ├── CMakePresets.json      Reproducible host-test preset
 ├── partitions.csv         Normative 16 MiB flash layout for ESP32-S3-N16R8
 └── sdkconfig.defaults     Normative target defaults
 ```
+
+The implementation and test directories use domain names such as `can`,
+`configuration`, `connectivity`, `media`, `storage`, `transport`, and `update`.
+Public component include paths remain stable so this physical organization does
+not change the libraries' API.
 
 ## Test-driven development workflow
 
