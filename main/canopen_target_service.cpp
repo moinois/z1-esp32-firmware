@@ -76,6 +76,11 @@ void CanopenTargetService::run() {
     for (;;) {
         core::CanFrame frame;
         while (adapter_.receive(frame)) {
+            if (frame.identifier == core::canopen::nmt_identifier &&
+                frame.size >= 2U && frame.data[0] == 0x81U) {
+                ESP_LOGW("CANOPEN", "NMT reset-node received target=%u",
+                         static_cast<unsigned>(frame.data[1]));
+            }
             if (sdo_mailbox_.pending()) {
                 const auto response = sdo_mailbox_.accept(frame);
                 if (response.has_value()) {
