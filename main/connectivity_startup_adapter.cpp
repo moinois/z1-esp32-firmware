@@ -12,9 +12,6 @@
 namespace firmware::target {
 namespace {
 
-// Keeps the specified concurrent access-point and station operation enabled.
-constexpr bool station_only_diagnostic_mode = false;
-
 using firmware::application::StartupScanOutcome;
 using firmware::application::StartupScanState;
 
@@ -65,19 +62,8 @@ StartupScanOutcome ConnectivityStartupAdapter::scan_channels(
 
 bool ConnectivityStartupAdapter::start_access_point_and_station(
     const firmware::application::ConnectivityStartupConfig& policy) {
-    if (esp_wifi_set_mode(station_only_diagnostic_mode ? WIFI_MODE_STA
-                                                        : WIFI_MODE_APSTA) != ESP_OK) {
+    if (esp_wifi_set_mode(WIFI_MODE_APSTA) != ESP_OK) {
         return false;
-    }
-
-    if (station_only_diagnostic_mode) {
-        esp_netif_t* station_netif =
-            esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
-        return station_netif != nullptr &&
-               esp_netif_set_hostname(station_netif,
-                                      policy.default_hostname.c_str()) == ESP_OK &&
-               esp_wifi_set_ps(policy.power_save_enabled ? WIFI_PS_MIN_MODEM
-                                                         : WIFI_PS_NONE) == ESP_OK;
     }
 
     wifi_config_t access_point{};

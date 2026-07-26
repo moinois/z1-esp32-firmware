@@ -14,9 +14,6 @@
 namespace firmware::target {
 namespace {
 
-// Keeps automatic connection behavior aligned with the normal APSTA service.
-constexpr bool station_only_diagnostic_mode = false;
-
 constexpr char automatic_task_name[] = "wifi_auto_connect";
 constexpr std::uint32_t task_stack_size = 3072U;
 constexpr UBaseType_t task_priority = 4U;
@@ -83,8 +80,7 @@ firmware::application::StationApiResult AutomaticConnectionAdapter::apply_statio
         " password_length=" + std::to_string(password_size)));
     wifi_config.sta.scan_method = WIFI_FAST_SCAN;
     wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
-    if (esp_wifi_set_mode(station_only_diagnostic_mode ? WIFI_MODE_STA
-                                                        : WIFI_MODE_APSTA) != ESP_OK) {
+    if (esp_wifi_set_mode(WIFI_MODE_APSTA) != ESP_OK) {
         return {false, "set_mode"};
     }
     const esp_err_t result = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);

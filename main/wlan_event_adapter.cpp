@@ -51,27 +51,6 @@ void station_event_handler(void* context, esp_event_base_t base, int32_t id,
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_CONNECTED) {
         static_cast<void>(wifi_diagnostic_log().trace(
             "wifi.event.station_connected"));
-        wifi_ap_record_t station_record{};
-        wifi_config_t access_point_config{};
-        if (esp_wifi_sta_get_ap_info(&station_record) == ESP_OK &&
-            esp_wifi_get_config(WIFI_IF_AP, &access_point_config) == ESP_OK) {
-            // APSTA requires both interfaces to use the station's channel.
-            if (access_point_config.ap.channel != station_record.primary) {
-                access_point_config.ap.channel = station_record.primary;
-                const esp_err_t channel_result =
-                    esp_wifi_set_config(WIFI_IF_AP, &access_point_config);
-                static_cast<void>(wifi_diagnostic_log().append(
-                    channel_result == ESP_OK
-                        ? "wifi.ap_channel.synchronized"
-                        : "wifi.ap_channel.synchronize_error"));
-            } else {
-                static_cast<void>(wifi_diagnostic_log().append(
-                    "wifi.ap_channel.already_synchronized"));
-            }
-        } else {
-            static_cast<void>(wifi_diagnostic_log().append(
-                "wifi.ap_channel.read_error"));
-        }
         log_dhcp_status();
     }
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
