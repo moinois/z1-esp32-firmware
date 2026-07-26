@@ -99,6 +99,7 @@ void OtaUpdateAdapter::send_controller_reset() {
 }
 
 void OtaUpdateAdapter::restart_mainboard() {
+    ESP_LOGW(tag, "restart requested after OTA update");
     esp_restart();
 }
 

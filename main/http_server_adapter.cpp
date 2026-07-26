@@ -270,7 +270,10 @@ public:
         vTaskDelay(pdMS_TO_TICKS(milliseconds));
     }
     // Reboots the controller after a successful direct update.
-    void restart() override { esp_restart(); }
+    void restart() override {
+        ESP_LOGW(tag, "restart requested after direct application update");
+        esp_restart();
+    }
 
 private:
     httpd_req_t* request_;
@@ -324,7 +327,10 @@ public:
     }
 
     // Reboots after a successful web-volume replacement.
-    void restart() override { esp_restart(); }
+    void restart() override {
+        ESP_LOGW(tag, "restart requested after web-volume update");
+        esp_restart();
+    }
 
 private:
     httpd_req_t* request_;
