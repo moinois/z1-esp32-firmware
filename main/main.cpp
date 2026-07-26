@@ -113,6 +113,7 @@ void start_heartbeat() {
 
 extern "C" void app_main() {
     if (!initialize_persistent_store()) {
+        ESP_LOGE(tag, "Restarting because NVS initialization failed");
         esp_restart();
     }
     const std::string persisted_wifi_log =
@@ -123,12 +124,14 @@ extern "C" void app_main() {
     }
     start_heartbeat();
     if (esp_netif_init() != ESP_OK || esp_event_loop_create_default() != ESP_OK) {
+        ESP_LOGE(tag, "Restarting because network event initialization failed");
         esp_restart();
     }
     esp_netif_create_default_wifi_ap();
     esp_netif_create_default_wifi_sta();
     wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
     if (esp_wifi_init(&wifi_config) != ESP_OK) {
+        ESP_LOGE(tag, "Restarting because Wi-Fi initialization failed");
         esp_restart();
     }
     // Install capture before storage startup so early diagnostics are retained.

@@ -39,18 +39,39 @@ void log_dhcp_status() {
             "dhcp.status.read_error=" + std::to_string(result)));
         return;
     }
-    static_cast<void>(wifi_diagnostic_log().append(
+    static_cast<void>(wifi_diagnostic_log().trace(
         "dhcp.status=" + std::to_string(static_cast<int>(status))));
 }
 
 void station_event_handler(void* context, esp_event_base_t base, int32_t id,
                            void* event_data) {
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
-        static_cast<void>(wifi_diagnostic_log().append("wifi.event.station_start"));
+        static_cast<void>(wifi_diagnostic_log().trace("wifi.event.station_start"));
     }
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_CONNECTED) {
-        static_cast<void>(wifi_diagnostic_log().append(
+        static_cast<void>(wifi_diagnostic_log().trace(
             "wifi.event.station_connected"));
+        wifi_ap_record_t station_record{};
+        wifi_config_t access_point_config{};
+        if (esp_wifi_sta_get_ap_info(&station_record) == ESP_OK &&
+            esp_wifi_get_config(WIFI_IF_AP, &access_point_config) == ESP_OK) {
+            // APSTA requires both interfaces to use the station's channel.
+            if (access_point_config.ap.channel != station_record.primary) {
+                access_point_config.ap.channel = station_record.primary;
+                const esp_err_t channel_result =
+                    esp_wifi_set_config(WIFI_IF_AP, &access_point_config);
+                static_cast<void>(wifi_diagnostic_log().append(
+                    channel_result == ESP_OK
+                        ? "wifi.ap_channel.synchronized"
+                        : "wifi.ap_channel.synchronize_error"));
+            } else {
+                static_cast<void>(wifi_diagnostic_log().append(
+                    "wifi.ap_channel.already_synchronized"));
+            }
+        } else {
+            static_cast<void>(wifi_diagnostic_log().append(
+                "wifi.ap_channel.read_error"));
+        }
         log_dhcp_status();
     }
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
@@ -59,7 +80,7 @@ void station_event_handler(void* context, esp_event_base_t base, int32_t id,
                 static_cast<const wifi_event_sta_disconnected_t*>(event_data);
             latest_disconnect_reason.store(disconnected->reason,
                                            std::memory_order_relaxed);
-            static_cast<void>(wifi_diagnostic_log().append(
+            static_cast<void>(wifi_diagnostic_log().trace(
                 "wifi.disconnected.reason=" +
                 std::to_string(disconnected->reason)));
         } else {
@@ -113,7 +134,7 @@ void station_event_handler(void* context, esp_event_base_t base, int32_t id,
     char netmask[INET_ADDRSTRLEN]{};
     inet_ntop(AF_INET, &ip_info.ip.addr, address, sizeof(address));
     inet_ntop(AF_INET, &ip_info.netmask.addr, netmask, sizeof(netmask));
-    static_cast<void>(wifi_diagnostic_log().append(
+    static_cast<void>(wifi_diagnostic_log().trace(
         std::string("wifi.event.got_ip address=") + address));
     update_tcp_discovery_station(address, netmask, active_tcp_client_count());
     if (adapter->ble_provisioning() != nullptr) {

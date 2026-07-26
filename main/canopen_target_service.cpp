@@ -56,6 +56,7 @@ void CanopenTargetService::transmit(const core::CanFrame& frame) {
 }
 
 void CanopenTargetService::restart_mainboard() {
+    ESP_LOGW("CANOPEN", "Mainboard restart requested by CANopen service");
     esp_restart();
 }
 

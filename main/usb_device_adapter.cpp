@@ -314,7 +314,7 @@ public:
         std::memcpy(wifi_config.sta.ssid, configuration.ssid.data(), ssid_size);
         std::memcpy(wifi_config.sta.password, configuration.password.data(),
                     password_size);
-        static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+        static_cast<void>(firmware::target::wifi_diagnostic_log().trace(
             "wifi.config.request ssid_length=" + std::to_string(ssid_size) +
             " password_length=" + std::to_string(password_size)));
         wifi_config.sta.scan_method = WIFI_FAST_SCAN;
@@ -328,12 +328,12 @@ public:
         // Keep the provisioning access point alive while the station joins;
         // changing to station-only mode disrupts the native USB transport.
         const esp_err_t mode_result = esp_wifi_set_mode(WIFI_MODE_APSTA);
-        static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+        static_cast<void>(firmware::target::wifi_diagnostic_log().trace(
             mode_result == ESP_OK ? "wifi.set_mode.ok" : "wifi.set_mode.error"));
         if (mode_result != ESP_OK) return api_result(mode_result, "set_mode");
         const esp_err_t config_result =
             esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
-        static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+        static_cast<void>(firmware::target::wifi_diagnostic_log().trace(
             config_result == ESP_OK ? "wifi.set_config.ok"
                                     : "wifi.set_config.error"));
         return api_result(config_result, "set_config");
@@ -341,13 +341,17 @@ public:
 
     firmware::application::StationApiResult request_connect() override {
         const esp_err_t result = esp_wifi_connect();
-        static_cast<void>(firmware::target::wifi_diagnostic_log().append(
+        static_cast<void>(firmware::target::wifi_diagnostic_log().trace(
             result == ESP_OK ? "wifi.connect.requested"
                              : "wifi.connect.error"));
         return api_result(result, "connect");
     }
 
     void delay_milliseconds(std::uint32_t duration) override {
+        if (duration >= 1000U) {
+            static_cast<void>(firmware::target::wifi_diagnostic_log().trace(
+                "manual.delay ms=" + std::to_string(duration)));
+        }
         vTaskDelay(pdMS_TO_TICKS(duration));
     }
 
@@ -386,7 +390,7 @@ public:
     }
 
     void record_diagnostic(std::string_view message) override {
-        static_cast<void>(firmware::target::wifi_diagnostic_log().append(message));
+        static_cast<void>(firmware::target::wifi_diagnostic_log().trace(message));
     }
 
     firmware::application::StationApiResult save_credentials(

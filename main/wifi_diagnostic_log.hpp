@@ -12,6 +12,9 @@ public:
     // Appends one bounded diagnostic line and retains the newest entries.
     bool append(std::string_view message) const;
 
+    // Emits one diagnostic line to COM and retains it persistently.
+    bool trace(std::string_view message) const;
+
     // Returns all retained diagnostic lines in chronological order.
     std::string read() const;
 

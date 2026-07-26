@@ -1,12 +1,16 @@
 // Implements the bounded Wi-Fi diagnostic log on top of NVS string storage.
 #include "wifi_diagnostic_log.hpp"
 
+#include "esp_log.h"
+
 #include "nvs_key_value_adapter.hpp"
 
 #include <algorithm>
 
 namespace firmware::target {
 namespace {
+
+constexpr char trace_tag[] = "WIFI_TRACE";
 
 constexpr std::string_view diagnostic_namespace = "wifi_diag";
 constexpr std::string_view diagnostic_key = "events";
@@ -21,6 +25,12 @@ std::string bounded_log(std::string value) {
 }
 
 }  // namespace
+
+bool WifiDiagnosticLog::trace(std::string_view message) const {
+    const std::string text(message);
+    ESP_LOGI(trace_tag, "%s", text.c_str());
+    return append(message);
+}
 
 bool WifiDiagnosticLog::append(std::string_view message) const {
     if (message.empty()) return true;

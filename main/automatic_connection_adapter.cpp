@@ -2,6 +2,7 @@
 #include "automatic_connection_adapter.hpp"
 
 #include "nvs_key_value_adapter.hpp"
+#include "wifi_diagnostic_log.hpp"
 
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
@@ -12,6 +13,9 @@
 
 namespace firmware::target {
 namespace {
+
+// Keeps automatic connection behavior aligned with the normal APSTA service.
+constexpr bool station_only_diagnostic_mode = false;
 
 constexpr char automatic_task_name[] = "wifi_auto_connect";
 constexpr std::uint32_t task_stack_size = 3072U;
@@ -28,20 +32,33 @@ firmware::application::StationApiResult api_result(esp_err_t result,
 
 void AutomaticConnectionAdapter::start(
     firmware::application::StationRuntime& runtime) {
+    static_cast<void>(wifi_diagnostic_log().trace("auto.start"));
     runtime_ = &runtime;
     static_cast<void>(firmware::application::AutomaticStationConnection::load_and_schedule(
         runtime, *this));
 }
 
 void AutomaticConnectionAdapter::on_station_disconnected() {
+    const unsigned retry = runtime_ == nullptr ? 0U
+                                               : runtime_->automatic_retry_number;
+    static_cast<void>(wifi_diagnostic_log().trace(
+        "auto.disconnect_event retry=" + std::to_string(retry)));
     if (runtime_ != nullptr) {
-        static_cast<void>(firmware::application::AutomaticStationConnection::handle_disconnect(
-            *runtime_, *this));
+        const bool reconnecting =
+            firmware::application::AutomaticStationConnection::handle_disconnect(
+                *runtime_, *this);
+        static_cast<void>(wifi_diagnostic_log().trace(
+            std::string("auto.disconnect_result reconnecting=") +
+            (reconnecting ? "true" : "false") + " retry=" +
+            std::to_string(runtime_->automatic_retry_number)));
     }
 }
 
 firmware::application::StoredString AutomaticConnectionAdapter::read_string(
     std::string_view name_space, std::string_view key) {
+    static_cast<void>(wifi_diagnostic_log().trace(
+        "auto.read namespace=" + std::string(name_space) + " key=" +
+        std::string(key)));
     const NvsStringRead result = NvsKeyValueAdapter{}.read_string(name_space, key);
     if (result.state == NvsReadState::found) {
         return {firmware::application::StoredStringState::found, result.value, {}};
@@ -61,16 +78,25 @@ firmware::application::StationApiResult AutomaticConnectionAdapter::apply_statio
                                                sizeof(wifi_config.sta.password));
     std::memcpy(wifi_config.sta.ssid, configuration.ssid.data(), ssid_size);
     std::memcpy(wifi_config.sta.password, configuration.password.data(), password_size);
+    static_cast<void>(wifi_diagnostic_log().trace(
+        "auto.apply_config ssid_length=" + std::to_string(ssid_size) +
+        " password_length=" + std::to_string(password_size)));
     wifi_config.sta.scan_method = WIFI_FAST_SCAN;
     wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
-    if (esp_wifi_set_mode(WIFI_MODE_APSTA) != ESP_OK) {
+    if (esp_wifi_set_mode(station_only_diagnostic_mode ? WIFI_MODE_STA
+                                                        : WIFI_MODE_APSTA) != ESP_OK) {
         return {false, "set_mode"};
     }
-    return api_result(esp_wifi_set_config(WIFI_IF_STA, &wifi_config), "set_config");
+    const esp_err_t result = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    static_cast<void>(wifi_diagnostic_log().trace(
+        result == ESP_OK ? "auto.apply_config.ok" : "auto.apply_config.error"));
+    return api_result(result, "set_config");
 }
 
 bool AutomaticConnectionAdapter::schedule_automatic_connection(
     std::uint32_t delay_milliseconds_value) {
+    static_cast<void>(wifi_diagnostic_log().trace(
+        "auto.schedule delay_ms=" + std::to_string(delay_milliseconds_value)));
     scheduled_delay_milliseconds_ = delay_milliseconds_value;
     const BaseType_t result = xTaskCreate(&AutomaticConnectionAdapter::delayed_connect_task,
                                           automatic_task_name, task_stack_size, this,
@@ -83,10 +109,13 @@ bool AutomaticConnectionAdapter::schedule_automatic_connection(
 }
 
 firmware::application::StationApiResult AutomaticConnectionAdapter::request_connect() {
+    static_cast<void>(wifi_diagnostic_log().trace("auto.connect_request"));
     return api_result(esp_wifi_connect(), "connect");
 }
 
 void AutomaticConnectionAdapter::delay_milliseconds(std::uint32_t duration) {
+    static_cast<void>(wifi_diagnostic_log().trace(
+        "auto.delay ms=" + std::to_string(duration)));
     vTaskDelay(pdMS_TO_TICKS(duration));
 }
 
