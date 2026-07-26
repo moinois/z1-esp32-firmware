@@ -19,3 +19,11 @@ TEST_CASE(wlan_request_parses_connect_and_disconnect_precedence) {
                    "wlan ssid password -d").kind,
                firmware::application::WlanRequestKind::disconnect);
 }
+
+TEST_CASE(wlan_request_parses_save_credentials) {
+    const auto save = firmware::application::parse_wlan_request(
+        "wlan -s Away SailWithMe");
+    REQUIRE_EQ(save.kind, firmware::application::WlanRequestKind::save);
+    REQUIRE_EQ(save.ssid, "Away");
+    REQUIRE_EQ(save.password, "SailWithMe");
+}

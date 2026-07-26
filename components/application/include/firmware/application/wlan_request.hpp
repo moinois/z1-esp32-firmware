@@ -6,7 +6,7 @@
 
 namespace firmware::application {
 
-enum class WlanRequestKind { scan, connect, disconnect };
+enum class WlanRequestKind { scan, connect, disconnect, save };
 
 struct WlanRequest {
     WlanRequestKind kind = WlanRequestKind::scan;

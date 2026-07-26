@@ -6,3 +6,4 @@ managed_components/
 .vscode/settings.json
 .DS_Store
 __pycache__/
+backups/

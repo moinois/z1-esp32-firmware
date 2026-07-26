@@ -40,16 +40,22 @@ WlanRequest parse_wlan_request(std::string_view command) {
         return {};
     }
     bool disconnect = false;
+    bool save = false;
     std::vector<std::string> arguments;
     for (const std::string& token : tokens(command.substr(5U))) {
         if (token == "-d") {
             disconnect = true;
+        } else if (token == "-s") {
+            save = true;
         } else if (token != "-e") {
             arguments.push_back(token);
         }
     }
     if (disconnect) {
         return {WlanRequestKind::disconnect, {}, {}};
+    }
+    if (save && arguments.size() >= 2U) {
+        return {WlanRequestKind::save, arguments[0], arguments[1]};
     }
     if (arguments.size() >= 2U) {
         return {WlanRequestKind::connect, arguments[0], arguments[1]};

@@ -1159,12 +1159,29 @@ void usb_local_command_task(void*) {
             static_cast<void>(firmware::target::wifi_diagnostic_log().append(
                 request.kind == firmware::application::WlanRequestKind::connect
                     ? "wlan.request.connect"
+                    : request.kind == firmware::application::WlanRequestKind::save
+                          ? "wlan.request.save"
                     : request.kind == firmware::application::WlanRequestKind::disconnect
                           ? "wlan.request.disconnect"
                           : request.kind == firmware::application::WlanRequestKind::scan
                                 ? "wlan.request.scan"
                                 : "wlan.request.invalid"));
-            if (request.kind == firmware::application::WlanRequestKind::scan) {
+            if (request.kind == firmware::application::WlanRequestKind::save) {
+                const auto result = wlan_station_port.save_credentials(
+                    request.ssid, request.password);
+                if (result.success) {
+                    wlan_response_port.send({
+                        firmware::core::protocol::operation_success,
+                        {'o', 'k', '\r', '\n'}});
+                } else {
+                    std::string message = "Error: ";
+                    message += result.error_name;
+                    message.push_back('\n');
+                    wlan_response_port.send({
+                        firmware::core::protocol::operation_failure,
+                        {message.begin(), message.end()}});
+                }
+            } else if (request.kind == firmware::application::WlanRequestKind::scan) {
                 firmware::application::WlanScanCommand::execute(wlan_scan_port);
             } else if (request.kind ==
                        firmware::application::WlanRequestKind::disconnect) {
