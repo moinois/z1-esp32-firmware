@@ -22,6 +22,7 @@
 #include "firmware/application/configuration_get.hpp"
 #include "firmware/application/configuration_set.hpp"
 #include "firmware/application/configuration_files.hpp"
+#include "firmware/application/usb_task_timing.hpp"
 #include "firmware/application/wlan_command.hpp"
 #include "firmware/application/wlan_request.hpp"
 #include "nvs_key_value_adapter.hpp"
@@ -1022,7 +1023,8 @@ void usb_local_command_task(void*) {
     for (;;) {
         const auto command_frame = dequeue_usb_local_command();
         if (!command_frame.has_value()) {
-            vTaskDelay(pdMS_TO_TICKS(1U));
+            vTaskDelay(pdMS_TO_TICKS(
+                firmware::application::usb_task_poll_delay_milliseconds));
             continue;
         }
         const auto match = firmware::core::recognize_command(
@@ -1163,7 +1165,8 @@ void usb_transmit_task(void*) {
             tracked_frame = nullptr;
             progress.clear();
         }
-        vTaskDelay(pdMS_TO_TICKS(1U));
+        vTaskDelay(pdMS_TO_TICKS(
+            firmware::application::usb_task_poll_delay_milliseconds));
     }
 }
 
