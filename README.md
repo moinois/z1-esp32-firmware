@@ -387,7 +387,7 @@ implementation/
 ├── tests/                 Host-side specification tests
 ├── CMakeLists.txt         Host/ESP-IDF build entry point
 ├── CMakePresets.json      Reproducible host-test preset
-├── partitions.csv         Normative 8 MiB flash layout
+├── partitions.csv         Normative 16 MiB flash layout for ESP32-S3-N16R8
 └── sdkconfig.defaults     Normative target defaults
 ```
 
