@@ -61,8 +61,8 @@ def encode_frame(frame_type: int, payload: bytes) -> bytes:
 
 
 def build_wifi_command(ssid: str, password: str) -> bytes:
-    """Builds the local WLAN command that stores and connects credentials."""
-    command = b"wlan " + _escape_token(ssid) + b" " + _escape_token(password)
+    """Builds the local WLAN command that persists station credentials."""
+    command = b"wlan -s " + _escape_token(ssid) + b" " + _escape_token(password)
     return encode_frame(GENERAL_COMMAND, command)
 
 

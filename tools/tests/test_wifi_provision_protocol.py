@@ -23,13 +23,13 @@ class WifiProvisionProtocolTests(unittest.TestCase):
         self.assertEqual(frame[0], 0x86)
         self.assertEqual(frame[1], 0x68)
         self.assertEqual(frame[4], GENERAL_COMMAND)
-        self.assertEqual(frame[5:-4], b"wlan Away SailWithMe")
+        self.assertEqual(frame[5:-4], b"wlan -s Away SailWithMe")
 
     def test_command_escapes_whitespace_and_reserved_bytes(self) -> None:
         """Encodes credentials so firmware tokenization preserves their value."""
         frame = build_wifi_command("Home Network", "p? ss\\word")
 
-        self.assertEqual(frame[5:-4], b"wlan Home\x01Network p\x02\x01ss\\word")
+        self.assertEqual(frame[5:-4], b"wlan -s Home\x01Network p\x02\x01ss\\word")
 
     def test_encode_frame_rejects_oversized_payload(self) -> None:
         """Refuses payloads that cannot fit the firmware length field."""
