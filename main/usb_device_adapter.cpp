@@ -1418,11 +1418,20 @@ extern "C" void tud_umount_cb(void) {
     tcp_router_usb_disconnected();
 }
 
-extern "C" void tud_vendor_rx_cb(uint8_t index, const uint8_t*, uint16_t) {
+extern "C" void tud_vendor_rx_cb(uint8_t index, const uint8_t* buffer,
+                                  uint16_t size) {
     if (index != 0U) return;
-    std::array<std::uint8_t, 512> buffer{};
-    const std::uint32_t count = tud_vendor_read(buffer.data(), buffer.size());
-    consume_received_bytes(buffer.data(), count);
+    if (buffer != nullptr && size > 0U) {
+        consume_received_bytes(buffer, size);
+        return;
+    }
+    std::array<std::uint8_t, 512> buffered_bytes{};
+    while (tud_vendor_available()) {
+        const std::uint32_t count =
+            tud_vendor_read(buffered_bytes.data(), buffered_bytes.size());
+        if (count == 0U) break;
+        consume_received_bytes(buffered_bytes.data(), count);
+    }
 }
 
 extern "C" void tud_vendor_tx_cb(uint8_t, uint32_t) {}

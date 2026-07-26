@@ -47,8 +47,11 @@ def _find_endpoints(device: Any) -> Tuple[Any, Any]:
     """Returns the bulk OUT and IN endpoints of the vendor interface."""
     import usb.util  # type: ignore[import-not-found]
 
-    device.set_configuration()
-    configuration = device.get_active_configuration()
+    try:
+        configuration = device.get_active_configuration()
+    except usb.core.USBError:
+        device.set_configuration()
+        configuration = device.get_active_configuration()
     interface = usb.util.find_descriptor(configuration, bInterfaceNumber=0)
     if interface is None:
         raise RuntimeError("Makera Z1 USB interface 0 was not found")
