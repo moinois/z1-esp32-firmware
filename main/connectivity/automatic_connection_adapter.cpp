@@ -15,7 +15,9 @@ namespace firmware::target {
 namespace {
 
 constexpr char automatic_task_name[] = "wifi_auto_connect";
+constexpr char reconnect_task_name[] = "wifi_reconnect";
 constexpr std::uint32_t task_stack_size = 3072U;
+constexpr std::uint32_t reconnect_task_stack_size = 6144U;
 constexpr UBaseType_t task_priority = 4U;
 
 firmware::application::StationApiResult api_result(esp_err_t result,
@@ -40,14 +42,22 @@ void AutomaticConnectionAdapter::on_station_disconnected() {
                                                : runtime_->automatic_retry_number;
     static_cast<void>(wifi_diagnostic_log().trace(
         "auto.disconnect_event retry=" + std::to_string(retry)));
-    if (runtime_ != nullptr) {
-        const bool reconnecting =
-            firmware::application::AutomaticStationConnection::handle_disconnect(
-                *runtime_, *this);
+    if (runtime_ == nullptr) {
+        return;
+    }
+    bool expected = false;
+    if (!reconnect_task_active_.compare_exchange_strong(expected, true)) {
         static_cast<void>(wifi_diagnostic_log().trace(
-            std::string("auto.disconnect_result reconnecting=") +
-            (reconnecting ? "true" : "false") + " retry=" +
-            std::to_string(runtime_->automatic_retry_number)));
+            "auto.disconnect_event.coalesced"));
+        return;
+    }
+    const BaseType_t result = xTaskCreate(
+        &AutomaticConnectionAdapter::reconnect_task, reconnect_task_name,
+        reconnect_task_stack_size, this, task_priority, nullptr);
+    if (result != pdPASS) {
+        reconnect_task_active_.store(false);
+        static_cast<void>(wifi_diagnostic_log().trace(
+            "auto.reconnect_task.create_failed"));
     }
 }
 
@@ -122,6 +132,22 @@ void AutomaticConnectionAdapter::delayed_connect_task(void* context) {
         static_cast<void>(firmware::application::AutomaticStationConnection::begin_scheduled(
             *adapter->runtime_, *adapter));
     }
+    vTaskDelete(nullptr);
+}
+
+void AutomaticConnectionAdapter::reconnect_task(void* context) {
+    auto* adapter = static_cast<AutomaticConnectionAdapter*>(context);
+    bool reconnecting = false;
+    if (adapter->runtime_ != nullptr) {
+        reconnecting =
+            firmware::application::AutomaticStationConnection::handle_disconnect(
+                *adapter->runtime_, *adapter);
+        static_cast<void>(wifi_diagnostic_log().trace(
+            std::string("auto.disconnect_result reconnecting=") +
+            (reconnecting ? "true" : "false") + " retry=" +
+            std::to_string(adapter->runtime_->automatic_retry_number)));
+    }
+    adapter->reconnect_task_active_.store(false);
     vTaskDelete(nullptr);
 }
 

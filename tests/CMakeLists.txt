@@ -54,6 +54,7 @@ add_executable(
     storage/test_sd_card_lifecycle.cpp
     runtime/test_serial_number.cpp
     connectivity/test_automatic_connection.cpp
+    connectivity/test_wifi_statistics.cpp
     provisioning/test_ble_provisioning.cpp
     provisioning/test_blufi_fragment.cpp
     provisioning/test_blufi_gatt.cpp

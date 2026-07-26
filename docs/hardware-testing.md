@@ -26,6 +26,9 @@ python3 -m pytest tests/hardware -m usb
 python3 -m pytest tests/hardware -m "tcp or sd"
 Z1_ALLOW_MUTATION=1 python3 -m pytest tests/hardware -m mutating
 Z1_ALLOW_DESTRUCTIVE=1 python3 -m pytest tests/hardware -m destructive
+Z1_HIL_HOST=192.168.8.119 Z1_ALLOW_DESTRUCTIVE=1 \
+  Z1_HIL_OTA_IMAGE=build/mainboard_firmware.bin \
+  python3 -m pytest tests/hardware/test_ota.py
 ```
 
 | Variable | Meaning | Default |
@@ -35,6 +38,7 @@ Z1_ALLOW_DESTRUCTIVE=1 python3 -m pytest tests/hardware -m destructive
 | `Z1_HIL_SD` | Declares that a physical SD reader and card are installed | disabled |
 | `Z1_ALLOW_MUTATION` | Enables recoverable persistent changes when `1` | disabled |
 | `Z1_ALLOW_DESTRUCTIVE` | Enables destructive operations when `1` | disabled |
+| `Z1_HIL_OTA_IMAGE` | Valid raw ESP-IDF application image for destructive OTA HIL | unset |
 | `Z1_HIL_CONTROLLER` | Declares an attached controller fixture | disabled |
 | `Z1_HIL_CAN` | Declares an attached CAN fixture | disabled |
 | `Z1_HIL_BLE` | Declares an available BLE scanner | disabled |
@@ -99,6 +103,35 @@ the critical `app_main` startup sequence completes; failures that restart before
 that point therefore retain the previous image. The fault injection is available
 only when building with `Z1_OTA_ROLLBACK_TEST_FAILURE` set.
 
+Multipart reception for both `/update` and `/updateffs` treats a temporary
+five-second socket timeout as a recoverable transport gap. It permits at most
+six consecutive timeouts (about 30 seconds), resets the counter whenever data
+arrives, and logs timeout counts plus progress every 256 KiB. This bound avoids
+abandoning a valid upload during a brief Wi-Fi interruption without retaining
+an HTTP worker forever. `test_ota_survives_receive_timeout` sends 4 KiB, pauses
+for seven seconds, then completes a real OTA update; it is destructive and also
+requires an explicit valid image through `Z1_HIL_OTA_IMAGE`.
+
+Wi-Fi disconnect backoff is executed by a coalescing reconnect task. The ESP-IDF
+event loop therefore no longer sleeps for the policy's retry delays and remains
+available to process association, DHCP, and socket-related events.
+
+The first physical delayed-chunk run on 2026-07-26 observed the intended
+recovery: after the injected seven-second pause the target logged timeout 1/6
+and accepted subsequent bytes. The hotspot link then stopped delivering data
+for more than the complete retry window after 23 KiB, so the bounded receiver
+terminated the request. This proved recovery from the original single-timeout
+failure, but did not yet prove a completed delayed-chunk OTA.
+
+A subsequent run on the same date completed successfully in 122.30 seconds.
+The target recovered after the injected timeout, received all 1,762,088
+multipart bytes, validated the image, selected `ota_1`, returned the exact HTTP
+success response, restarted, booted at `0x220000`, and marked the image valid.
+The run also exposed an undersized Wi-Fi reconnect-task stack during intentional
+restart; increasing that task from 3072 to 6144 bytes removed the overflow in
+the final passing run. The HIL client now terminates response reception from
+HTTP `Content-Length` instead of waiting for the rebooting server to close TCP.
+
 Versions 2 through 5 above were temporary ESP-IDF application versions used to
 make partition transitions unambiguous in the COM log. They are neither the
 aggregate package-format version nor the product-facing `version` response. The
@@ -115,6 +148,14 @@ handlers were registered on the specified video port 82. The handlers were moved
 to the dedicated server, version 1 was installed by OTA, and both `/ws_video` and
 `/ws_preview` then returned HTTP 101 on port 82. The combined HTTP/TCP HIL suite
 passed 9 of 9 checks after the correction.
+
+Wi-Fi diagnostics are available through read-only
+`GET /api/wifi/diagnostics`. The response contains current connection state,
+RSSI in dBm, radio channel, authentication mode, station IPv4 address,
+boot-lifetime association/address/disconnection counters, the latest numeric
+ESP-IDF disconnect reason, and the bounded persistent Wi-Fi event log. It does
+not return saved credentials or BSSID. The HTTP HIL suite validates the schema
+and sensible radio ranges whenever the endpoint is detected.
 
 ## Current fixture coverage
 

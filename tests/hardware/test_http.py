@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import http.client
+import json
 import socket
 
 import pytest
@@ -54,6 +55,36 @@ def test_http_firmware_identity(tcp_host: str) -> None:
         b'{"version":"0.1.11","build_date":"2026.06.22",'
         b'"idf_ver":"v5.4.1"}'
     )
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.http
+@pytest.mark.requirement("NET-DIAG-001")
+def test_http_wifi_diagnostics(tcp_host: str) -> None:
+    status, content_type, body = _request(
+        tcp_host, "GET", "/api/wifi/diagnostics"
+    )
+    assert status == 200
+    assert content_type == "application/json"
+    diagnostics = json.loads(body)
+    assert set(diagnostics) == {
+        "connected", "rssi_dbm", "channel", "authentication",
+        "ipv4_address", "station_starts", "associations",
+        "disconnections", "addresses_acquired", "addresses_lost",
+        "last_disconnect_reason", "recent_events",
+    }
+    assert isinstance(diagnostics["connected"], bool)
+    assert isinstance(diagnostics["recent_events"], str)
+    for counter in (
+        "station_starts", "associations", "disconnections",
+        "addresses_acquired", "addresses_lost",
+    ):
+        assert isinstance(diagnostics[counter], int)
+        assert diagnostics[counter] >= 0
+    if diagnostics["connected"]:
+        assert -127 <= diagnostics["rssi_dbm"] <= 0
+        assert 1 <= diagnostics["channel"] <= 14
 
 
 @pytest.mark.hardware

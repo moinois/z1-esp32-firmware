@@ -136,6 +136,9 @@ extern "C" void app_main() {
         ESP_LOGE(tag, "Restarting because Wi-Fi initialization failed");
         esp_restart();
     }
+    // Observe the complete Wi-Fi lifecycle, including the initial STA start.
+    static firmware::target::WlanEventAdapter wlan_events;
+    wlan_events.start();
     // Install capture before storage startup so early diagnostics are retained.
     static firmware::target::DiagnosticCaptureAdapter diagnostic_capture;
     diagnostic_capture.start();
@@ -184,10 +187,8 @@ extern "C" void app_main() {
     static firmware::application::StationRuntime automatic_station_runtime;
     static firmware::target::AutomaticConnectionAdapter automatic_connection;
     automatic_connection.start(automatic_station_runtime);
-    static firmware::target::WlanEventAdapter wlan_events;
     wlan_events.set_automatic_connection(&automatic_connection);
     wlan_events.set_ble_provisioning(&blufi_provisioning);
-    wlan_events.start();
     tcp_control.start();
     firmware::target::start_tcp_discovery_task();
     static firmware::target::UsbDeviceAdapter usb_device;

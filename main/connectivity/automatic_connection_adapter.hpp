@@ -3,6 +3,8 @@
 
 #include "firmware/application/automatic_connection.hpp"
 
+#include <atomic>
+
 namespace firmware::target {
 
 // Owns the platform task used by the portable automatic reconnect policy.
@@ -25,8 +27,10 @@ public:
 
 private:
     static void delayed_connect_task(void* context);
+    static void reconnect_task(void* context);
     firmware::application::StationRuntime* runtime_ = nullptr;
     std::uint32_t scheduled_delay_milliseconds_ = 0U;
+    std::atomic_bool reconnect_task_active_{false};
 };
 
 }  // namespace firmware::target

@@ -28,6 +28,7 @@ set(CORE_SOURCES
     src/update/update_package.cpp
     src/web/web_static.cpp
     src/web/web_routes.cpp
+    src/connectivity/wifi_statistics.cpp
 )
 if(COMMAND idf_component_register)
     idf_component_register(SRCS ${CORE_SOURCES} INCLUDE_DIRS include)

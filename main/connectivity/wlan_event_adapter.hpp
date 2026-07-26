@@ -2,6 +2,7 @@
 #pragma once
 
 #include <string>
+#include <cstdint>
 
 namespace firmware::application {
 class BleProvisioning;
@@ -11,6 +12,18 @@ namespace firmware::target {
 
 // Returns the latest ESP-IDF station disconnect reason for diagnostics.
 std::string last_station_disconnect_detail();
+
+// Counts station lifecycle events since the current boot.
+struct WifiEventStatistics {
+    std::uint32_t station_starts = 0U;
+    std::uint32_t associations = 0U;
+    std::uint32_t disconnections = 0U;
+    std::uint32_t addresses_acquired = 0U;
+    std::uint32_t addresses_lost = 0U;
+    std::uint8_t last_disconnect_reason = 0U;
+};
+
+WifiEventStatistics wifi_event_statistics();
 
 class AutomaticConnectionAdapter;
 

@@ -273,6 +273,7 @@ The first core-to-periphery development slice contains:
 - connect-triggered discovery bursts occur only after subnet state is ready;
 - successful WLAN disconnect clears station-specific discovery state;
 - ESP-IDF Wi-Fi/IP event adapter synchronizes discovery state on station disconnect and IPv4 assignment;
+- read-only `GET /api/wifi/diagnostics` reports live RSSI, channel, authentication, IPv4 state, boot-lifetime lifecycle counters, the last disconnect reason, and the bounded persistent event log without exposing credentials or BSSID;
 - ESP-IDF connectivity-startup adapter performs station-only congestion scanning and AP/STA startup;
 - ESP-IDF automatic-connection adapter loads saved credentials, schedules initial association, and retries station disconnects;
 - ESP-IDF BLUFI lifecycle adapter initializes BLE/Bluedroid, the standard BLUFI profile, and advertising;
@@ -290,8 +291,8 @@ The first core-to-periphery development slice contains:
 - OTA phase publication persists the specified byte in NVS namespace `ota_state`, key `phase`;
 - Update boot processing reads the persisted OTA phase and clears completed phase 4 before retrying aggregate work;
 - HTTP target responses preserve the portable 400, 404, 405, 413, and 500 status mapping;
-- HTTP POST `/update` parses bounded multipart input in 1024-byte blocks and applies the first part through the ESP-IDF OTA adapter;
-- HTTP POST `/updateffs` parses the same multipart stream and writes the first part to the complete SPIFFS partition without unmounting it;
+- HTTP POST `/update` uses the shared multipart receiver in 1024-byte blocks, tolerates up to six consecutive five-second receive timeouts, reports progress, and applies the first part through the ESP-IDF OTA adapter;
+- HTTP POST `/updateffs` uses the same bounded-timeout multipart receiver and writes the first part to the complete SPIFFS partition without unmounting it;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;

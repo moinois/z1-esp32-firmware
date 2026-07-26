@@ -5,6 +5,8 @@
 #include "esp_http_server.h"
 #include "esp_partition.h"
 #include "esp_camera.h"
+#include "esp_netif.h"
+#include "esp_wifi.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
@@ -28,13 +30,20 @@
 #include "firmware/core/avi_preview.hpp"
 #include "firmware/core/multipart_extractor.hpp"
 #include "firmware/core/multipart_policy.hpp"
+#include "firmware/core/wifi_statistics.hpp"
 #include "firmware/application/direct_application_update.hpp"
 #include "firmware/application/direct_web_volume_update.hpp"
+#include "wlan_event_adapter.hpp"
+#include "wifi_diagnostic_log.hpp"
+
+#include <lwip/inet.h>
+#include <lwip/sockets.h>
 
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -439,6 +448,59 @@ esp_err_t firmware_info_handler(httpd_req_t* request) {
     return httpd_resp_send(request, payload.data(), payload.size());
 }
 
+std::string_view wifi_authentication_name(wifi_auth_mode_t mode) {
+    switch (mode) {
+        case WIFI_AUTH_OPEN: return "open";
+        case WIFI_AUTH_WEP: return "WEP";
+        case WIFI_AUTH_WPA_PSK: return "WPA-PSK";
+        case WIFI_AUTH_WPA2_PSK: return "WPA2-PSK";
+        case WIFI_AUTH_WPA_WPA2_PSK: return "WPA/WPA2-PSK";
+        case WIFI_AUTH_WPA2_ENTERPRISE: return "WPA2-Enterprise";
+        case WIFI_AUTH_WPA3_PSK: return "WPA3-PSK";
+        case WIFI_AUTH_WPA2_WPA3_PSK: return "WPA2/WPA3-PSK";
+        case WIFI_AUTH_WAPI_PSK: return "WAPI-PSK";
+        case WIFI_AUTH_OWE: return "OWE";
+        default: return "unknown";
+    }
+}
+
+// Returns a privacy-bounded live radio snapshot and boot-lifetime event counts.
+esp_err_t wifi_diagnostics_handler(httpd_req_t* request) {
+    firmware::core::WifiStatistics statistics;
+    wifi_ap_record_t access_point{};
+    if (esp_wifi_sta_get_ap_info(&access_point) == ESP_OK) {
+        statistics.connected = true;
+        statistics.rssi_dbm = access_point.rssi;
+        statistics.channel = access_point.primary;
+        statistics.authentication = wifi_authentication_name(access_point.authmode);
+    }
+
+    esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    esp_netif_ip_info_t ip_info{};
+    if (netif != nullptr && esp_netif_get_ip_info(netif, &ip_info) == ESP_OK &&
+        ip_info.ip.addr != 0U) {
+        char address[INET_ADDRSTRLEN]{};
+        if (inet_ntop(AF_INET, &ip_info.ip.addr, address, sizeof(address)) !=
+            nullptr) {
+            statistics.ipv4_address = address;
+        }
+    }
+
+    const WifiEventStatistics events = wifi_event_statistics();
+    statistics.station_starts = events.station_starts;
+    statistics.associations = events.associations;
+    statistics.disconnections = events.disconnections;
+    statistics.addresses_acquired = events.addresses_acquired;
+    statistics.addresses_lost = events.addresses_lost;
+    statistics.last_disconnect_reason = events.last_disconnect_reason;
+    statistics.recent_events = wifi_diagnostic_log().read();
+
+    const std::string payload =
+        firmware::core::format_wifi_statistics_json(statistics);
+    httpd_resp_set_type(request, "application/json");
+    return httpd_resp_send(request, payload.data(), payload.size());
+}
+
 // Applies a bounded camera-resolution JSON request through the portable policy.
 esp_err_t camera_resolution_handler(httpd_req_t* request) {
     constexpr std::size_t maximum_request_body = 63U;
@@ -458,110 +520,128 @@ esp_err_t camera_resolution_handler(httpd_req_t* request) {
     return httpd_resp_send(request, response.body.data(), response.body.size());
 }
 
-// Extracts the first multipart image and applies it through the direct OTA service.
-esp_err_t firmware_update_handler(httpd_req_t* request) {
-    constexpr std::size_t maximum_request_body = 2U * 1024U * 1024U;
-    const std::size_t header_length = httpd_req_get_hdr_value_len(request, "Content-Type");
-    if (header_length == 0U || header_length >= firmware::core::web_update::content_type_capacity) {
-        httpd_resp_set_status(request, "400 Bad Request");
-        return httpd_resp_send(request, "Invalid multipart Content-Type", HTTPD_RESP_USE_STRLEN);
+constexpr unsigned maximum_consecutive_receive_timeouts = 6U;
+constexpr std::size_t upload_progress_interval = 256U * 1024U;
+
+esp_err_t send_bad_request(httpd_req_t* request, const char* message) {
+    httpd_resp_set_status(request, "400 Bad Request");
+    return httpd_resp_send(request, message, HTTPD_RESP_USE_STRLEN);
+}
+
+// Receives and extracts one multipart part while tolerating bounded transport gaps.
+std::unique_ptr<firmware::core::MultipartPartExtractor> receive_multipart_part(
+    httpd_req_t* request, std::optional<std::size_t> maximum_request_body) {
+    const std::size_t header_length =
+        httpd_req_get_hdr_value_len(request, "Content-Type");
+    if (header_length == 0U ||
+        header_length >= firmware::core::web_update::content_type_capacity) {
+        static_cast<void>(send_bad_request(
+            request, "Invalid multipart Content-Type"));
+        return nullptr;
     }
     std::string content_type(header_length + 1U, '\0');
     if (httpd_req_get_hdr_value_str(request, "Content-Type", content_type.data(),
                                     content_type.size()) != ESP_OK) {
-        httpd_resp_set_status(request, "400 Bad Request");
-        return httpd_resp_send(request, "Invalid multipart Content-Type", HTTPD_RESP_USE_STRLEN);
+        static_cast<void>(send_bad_request(
+            request, "Invalid multipart Content-Type"));
+        return nullptr;
     }
     content_type.resize(header_length);
-    const auto boundary = firmware::core::parse_multipart_content_type(content_type);
-    if (!boundary.has_value() || request->content_len > maximum_request_body) {
-        httpd_resp_set_status(request, "400 Bad Request");
-        return httpd_resp_send(request, "Invalid multipart request", HTTPD_RESP_USE_STRLEN);
+    const auto boundary =
+        firmware::core::parse_multipart_content_type(content_type);
+    const auto request_size = static_cast<std::size_t>(request->content_len);
+    if (!boundary.has_value() ||
+        (maximum_request_body.has_value() &&
+         request_size > *maximum_request_body)) {
+        static_cast<void>(send_bad_request(request, "Invalid multipart request"));
+        return nullptr;
     }
-    firmware::core::MultipartPartExtractor extractor(*boundary);
+
+    auto extractor =
+        std::make_unique<firmware::core::MultipartPartExtractor>(*boundary);
     std::vector<std::uint8_t> block(1024U);
     std::size_t received = 0U;
-    while (received < static_cast<std::size_t>(request->content_len)) {
-        const std::size_t remaining = static_cast<std::size_t>(request->content_len) - received;
+    std::size_t next_progress = upload_progress_interval;
+    unsigned consecutive_timeouts = 0U;
+    ESP_LOGI(tag, "multipart receive started: %u bytes",
+             static_cast<unsigned>(request_size));
+    while (received < request_size) {
+        const std::size_t remaining = request_size - received;
         const int count = httpd_req_recv(
             request, reinterpret_cast<char*>(block.data()),
             std::min(block.size(), remaining));
-        if (count <= 0) {
-            httpd_resp_set_status(request, "400 Bad Request");
-            return httpd_resp_send(request, "Bad Request", HTTPD_RESP_USE_STRLEN);
+        if (count == HTTPD_SOCK_ERR_TIMEOUT) {
+            if (consecutive_timeouts < maximum_consecutive_receive_timeouts) {
+                ++consecutive_timeouts;
+                ESP_LOGW(tag,
+                         "multipart receive timeout %u/%u after %u/%u bytes",
+                         consecutive_timeouts,
+                         maximum_consecutive_receive_timeouts,
+                         static_cast<unsigned>(received),
+                         static_cast<unsigned>(request_size));
+                continue;
+            }
+            ESP_LOGE(tag,
+                     "multipart timeout budget exhausted after %u retries at %u/%u bytes",
+                     maximum_consecutive_receive_timeouts,
+                     static_cast<unsigned>(received),
+                     static_cast<unsigned>(request_size));
         }
+        if (count <= 0) {
+            ESP_LOGE(tag, "multipart receive failed: result=%d after %u/%u bytes",
+                     count, static_cast<unsigned>(received),
+                     static_cast<unsigned>(request_size));
+            static_cast<void>(send_bad_request(request, "Bad Request"));
+            return nullptr;
+        }
+        consecutive_timeouts = 0U;
         received += static_cast<std::size_t>(count);
-        const bool final_block = received == static_cast<std::size_t>(request->content_len);
-        if (!extractor.feed({block.data(), static_cast<std::size_t>(count)}, final_block)) {
-            httpd_resp_set_status(request, "400 Bad Request");
-            return httpd_resp_send(request, "Invalid multipart request", HTTPD_RESP_USE_STRLEN);
+        if (received >= next_progress || received == request_size) {
+            ESP_LOGI(tag, "multipart receive progress: %u/%u bytes",
+                     static_cast<unsigned>(received),
+                     static_cast<unsigned>(request_size));
+            next_progress = received + upload_progress_interval;
+        }
+        if (!extractor->feed(
+                {block.data(), static_cast<std::size_t>(count)},
+                received == request_size)) {
+            static_cast<void>(send_bad_request(request,
+                                               "Invalid multipart request"));
+            return nullptr;
         }
     }
-    if (extractor.status() != firmware::core::MultipartExtractStatus::complete) {
-        httpd_resp_set_status(request, "400 Bad Request");
-        return httpd_resp_send(request, "Invalid multipart request", HTTPD_RESP_USE_STRLEN);
+    if (extractor->status() !=
+        firmware::core::MultipartExtractStatus::complete) {
+        static_cast<void>(send_bad_request(request, "Invalid multipart request"));
+        return nullptr;
+    }
+    ESP_LOGI(tag, "multipart receive completed: %u bytes",
+             static_cast<unsigned>(received));
+    return extractor;
+}
+
+// Extracts the first multipart image and applies it through the direct OTA service.
+esp_err_t firmware_update_handler(httpd_req_t* request) {
+    constexpr std::size_t maximum_request_body = 2U * 1024U * 1024U;
+    auto extractor = receive_multipart_part(request, maximum_request_body);
+    if (extractor == nullptr) {
+        return ESP_OK;
     }
     DirectHttpOtaPort port(request);
     firmware::application::DirectApplicationUpdateService service;
-    static_cast<void>(service.apply(extractor.content(), port));
+    static_cast<void>(service.apply(extractor->content(), port));
     return ESP_OK;
 }
 
 // Extracts the first multipart part and applies it as a raw web-volume image.
 esp_err_t web_volume_update_handler(httpd_req_t* request) {
-    const std::size_t header_length =
-        httpd_req_get_hdr_value_len(request, "Content-Type");
-    if (header_length == 0U ||
-        header_length >= firmware::core::web_update::content_type_capacity) {
-        httpd_resp_set_status(request, "400 Bad Request");
-        return httpd_resp_send(request, "Invalid multipart Content-Type",
-                               HTTPD_RESP_USE_STRLEN);
-    }
-    std::string content_type(header_length + 1U, '\0');
-    if (httpd_req_get_hdr_value_str(request, "Content-Type", content_type.data(),
-                                    content_type.size()) != ESP_OK) {
-        httpd_resp_set_status(request, "400 Bad Request");
-        return httpd_resp_send(request, "Invalid multipart Content-Type",
-                               HTTPD_RESP_USE_STRLEN);
-    }
-    content_type.resize(header_length);
-    const auto boundary = firmware::core::parse_multipart_content_type(content_type);
-    if (!boundary.has_value()) {
-        httpd_resp_set_status(request, "400 Bad Request");
-        return httpd_resp_send(request, "Invalid multipart request",
-                               HTTPD_RESP_USE_STRLEN);
-    }
-    firmware::core::MultipartPartExtractor extractor(*boundary);
-    std::vector<std::uint8_t> block(1024U);
-    std::size_t received = 0U;
-    while (received < static_cast<std::size_t>(request->content_len)) {
-        const std::size_t remaining =
-            static_cast<std::size_t>(request->content_len) - received;
-        const int count = httpd_req_recv(
-            request, reinterpret_cast<char*>(block.data()),
-            std::min(block.size(), remaining));
-        if (count <= 0) {
-            httpd_resp_set_status(request, "400 Bad Request");
-            return httpd_resp_send(request, "Bad Request", HTTPD_RESP_USE_STRLEN);
-        }
-        received += static_cast<std::size_t>(count);
-        const bool final_block =
-            received == static_cast<std::size_t>(request->content_len);
-        if (!extractor.feed(
-                {block.data(), static_cast<std::size_t>(count)}, final_block)) {
-            httpd_resp_set_status(request, "400 Bad Request");
-            return httpd_resp_send(request, "Invalid multipart request",
-                                   HTTPD_RESP_USE_STRLEN);
-        }
-    }
-    if (extractor.status() != firmware::core::MultipartExtractStatus::complete) {
-        httpd_resp_set_status(request, "400 Bad Request");
-        return httpd_resp_send(request, "Invalid multipart request",
-                               HTTPD_RESP_USE_STRLEN);
+    auto extractor = receive_multipart_part(request, std::nullopt);
+    if (extractor == nullptr) {
+        return ESP_OK;
     }
     DirectHttpWebVolumePort port(request);
     firmware::application::DirectWebVolumeUpdateService service;
-    static_cast<void>(service.apply(extractor.content(), port));
+    static_cast<void>(service.apply(extractor->content(), port));
     return ESP_OK;
 }
 
@@ -775,6 +855,12 @@ void register_main_handlers(httpd_handle_t handle) {
         .handler = camera_resolution_handler,
         .user_ctx = nullptr,
     };
+    static const httpd_uri_t wifi_diagnostics_uri{
+        .uri = "/api/wifi/diagnostics",
+        .method = HTTP_GET,
+        .handler = wifi_diagnostics_handler,
+        .user_ctx = nullptr,
+    };
     static const httpd_uri_t static_file_uri{
         .uri = "/*",
         .method = HTTP_GET,
@@ -794,6 +880,7 @@ void register_main_handlers(httpd_handle_t handle) {
         .user_ctx = nullptr,
     };
     httpd_register_uri_handler(handle, &firmware_info_uri);
+    httpd_register_uri_handler(handle, &wifi_diagnostics_uri);
     httpd_register_uri_handler(handle, &camera_resolution_uri);
     httpd_register_uri_handler(handle, &static_file_uri);
     httpd_register_uri_handler(handle, &firmware_update_uri);

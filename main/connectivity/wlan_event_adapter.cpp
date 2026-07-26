@@ -23,6 +23,11 @@ namespace firmware::target {
 namespace {
 
 std::atomic<std::uint8_t> latest_disconnect_reason{0U};
+std::atomic<std::uint32_t> station_start_count{0U};
+std::atomic<std::uint32_t> association_count{0U};
+std::atomic<std::uint32_t> disconnection_count{0U};
+std::atomic<std::uint32_t> address_acquired_count{0U};
+std::atomic<std::uint32_t> address_lost_count{0U};
 
 // Records the DHCP client state without exposing ESP-NETIF details to policy.
 void log_dhcp_status() {
@@ -46,14 +51,17 @@ void log_dhcp_status() {
 void station_event_handler(void* context, esp_event_base_t base, int32_t id,
                            void* event_data) {
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
+        station_start_count.fetch_add(1U, std::memory_order_relaxed);
         static_cast<void>(wifi_diagnostic_log().trace("wifi.event.station_start"));
     }
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_CONNECTED) {
+        association_count.fetch_add(1U, std::memory_order_relaxed);
         static_cast<void>(wifi_diagnostic_log().trace(
             "wifi.event.station_connected"));
         log_dhcp_status();
     }
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
+        disconnection_count.fetch_add(1U, std::memory_order_relaxed);
         if (event_data != nullptr) {
             const auto* disconnected =
                 static_cast<const wifi_event_sta_disconnected_t*>(event_data);
@@ -81,11 +89,13 @@ void station_event_handler(void* context, esp_event_base_t base, int32_t id,
         return;
     }
     if (id == IP_EVENT_STA_LOST_IP) {
+        address_lost_count.fetch_add(1U, std::memory_order_relaxed);
         static_cast<void>(wifi_diagnostic_log().append("wifi.event.lost_ip"));
         log_dhcp_status();
         return;
     }
     if (id != IP_EVENT_STA_GOT_IP) return;
+    address_acquired_count.fetch_add(1U, std::memory_order_relaxed);
     esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     if (netif == nullptr) {
         static_cast<void>(wifi_diagnostic_log().append(
@@ -127,6 +137,17 @@ std::string last_station_disconnect_detail() {
     return "WiFi association failed; ESP-IDF disconnect reason=" +
            std::to_string(latest_disconnect_reason.load(
                std::memory_order_relaxed));
+}
+
+WifiEventStatistics wifi_event_statistics() {
+    return {
+        station_start_count.load(std::memory_order_relaxed),
+        association_count.load(std::memory_order_relaxed),
+        disconnection_count.load(std::memory_order_relaxed),
+        address_acquired_count.load(std::memory_order_relaxed),
+        address_lost_count.load(std::memory_order_relaxed),
+        latest_disconnect_reason.load(std::memory_order_relaxed),
+    };
 }
 
 void WlanEventAdapter::set_automatic_connection(
