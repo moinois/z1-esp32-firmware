@@ -24,10 +24,34 @@ namespace {
 
 std::atomic<std::uint8_t> latest_disconnect_reason{0U};
 
+// Records the DHCP client state without exposing ESP-NETIF details to policy.
+void log_dhcp_status() {
+    esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    if (netif == nullptr) {
+        static_cast<void>(wifi_diagnostic_log().append(
+            "dhcp.status=netif_missing"));
+        return;
+    }
+    esp_netif_dhcp_status_t status = ESP_NETIF_DHCP_INIT;
+    const esp_err_t result = esp_netif_dhcpc_get_status(netif, &status);
+    if (result != ESP_OK) {
+        static_cast<void>(wifi_diagnostic_log().append(
+            "dhcp.status.read_error=" + std::to_string(result)));
+        return;
+    }
+    static_cast<void>(wifi_diagnostic_log().append(
+        "dhcp.status=" + std::to_string(static_cast<int>(status))));
+}
+
 void station_event_handler(void* context, esp_event_base_t base, int32_t id,
                            void* event_data) {
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
         static_cast<void>(wifi_diagnostic_log().append("wifi.event.station_start"));
+    }
+    if (base == WIFI_EVENT && id == WIFI_EVENT_STA_CONNECTED) {
+        static_cast<void>(wifi_diagnostic_log().append(
+            "wifi.event.station_connected"));
+        log_dhcp_status();
     }
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
         if (event_data != nullptr) {
@@ -42,6 +66,7 @@ void station_event_handler(void* context, esp_event_base_t base, int32_t id,
             static_cast<void>(wifi_diagnostic_log().append(
                 "wifi.disconnected.reason=unknown"));
         }
+        log_dhcp_status();
         clear_tcp_discovery_station();
         auto* adapter = static_cast<WlanEventAdapter*>(context);
         if (adapter->automatic_connection() != nullptr) {
@@ -52,15 +77,25 @@ void station_event_handler(void* context, esp_event_base_t base, int32_t id,
         }
         return;
     }
-    if (base != IP_EVENT || id != IP_EVENT_STA_GOT_IP) {
+    if (base != IP_EVENT) {
         return;
     }
+    if (id == IP_EVENT_STA_LOST_IP) {
+        static_cast<void>(wifi_diagnostic_log().append("wifi.event.lost_ip"));
+        log_dhcp_status();
+        return;
+    }
+    if (id != IP_EVENT_STA_GOT_IP) return;
     esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     if (netif == nullptr) {
+        static_cast<void>(wifi_diagnostic_log().append(
+            "wifi.event.got_ip netif_missing"));
         return;
     }
     esp_netif_ip_info_t ip_info{};
     if (esp_netif_get_ip_info(netif, &ip_info) != ESP_OK) {
+        static_cast<void>(wifi_diagnostic_log().append(
+            "wifi.event.got_ip ip_read_error"));
         return;
     }
     auto* adapter = static_cast<WlanEventAdapter*>(context);
@@ -116,7 +151,7 @@ void WlanEventAdapter::start() {
     static_cast<void>(esp_event_handler_register(
         WIFI_EVENT, ESP_EVENT_ANY_ID, &station_event_handler, this));
     static_cast<void>(esp_event_handler_register(
-        IP_EVENT, IP_EVENT_STA_GOT_IP, &station_event_handler, this));
+        IP_EVENT, ESP_EVENT_ANY_ID, &station_event_handler, this));
 }
 
 }  // namespace firmware::target
