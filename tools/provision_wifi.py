@@ -15,6 +15,7 @@ try:
         TEXT_RESPONSE,
         build_wifi_command,
         decode_frames,
+        encode_frame,
     )
 except ModuleNotFoundError:
     from wifi_provision_protocol import (
@@ -23,10 +24,12 @@ except ModuleNotFoundError:
         TEXT_RESPONSE,
         build_wifi_command,
         decode_frames,
+        encode_frame,
     )
 
 USB_VENDOR_ID = 0x303A
 USB_PRODUCT_ID = 0x4002
+SINGLE_COMMAND = 0xA1
 DEFAULT_TIMEOUT_MS = 1000
 DEFAULT_TOTAL_TIMEOUT_SECONDS = 30.0
 
@@ -110,6 +113,26 @@ def provision_wifi(
                 )
             )
         except usb.core.USBTimeoutError:
+            continue
+        except usb.core.USBError as error:
+            # Wi-Fi mode changes can briefly reset the native USB endpoint.
+            # Reacquire the device instead of losing the pending response.
+            if getattr(error, "errno", None) not in (5, 19, 13):
+                raise
+            time.sleep(0.1)
+            device = usb.core.find(
+                idVendor=USB_VENDOR_ID, idProduct=USB_PRODUCT_ID
+            )
+            if device is not None:
+                try:
+                    output, input_endpoint = _find_endpoints(device)
+                    # A brief unmount clears firmware protocol activation;
+                    # send a harmless status request to reactivate TX.
+                    output.write(
+                        encode_frame(SINGLE_COMMAND, b"?"), timeout=timeout_ms
+                    )
+                except usb.core.USBError:
+                    pass
             continue
         received += chunk
         frames, received = decode_frames(received)

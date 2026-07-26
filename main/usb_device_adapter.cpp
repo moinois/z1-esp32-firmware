@@ -316,7 +316,13 @@ public:
         wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
         wifi_config.sta.threshold.authmode = static_cast<wifi_auth_mode_t>(
             configuration.minimum_authentication_mode);
-        const esp_err_t mode_result = esp_wifi_set_mode(WIFI_MODE_STA);
+        // Allow WPA2 access points that require protected management frames
+        // while keeping PMF optional for ordinary WPA2-PSK networks.
+        wifi_config.sta.pmf_cfg.capable = true;
+        wifi_config.sta.pmf_cfg.required = false;
+        // Keep the provisioning access point alive while the station joins;
+        // changing to station-only mode disrupts the native USB transport.
+        const esp_err_t mode_result = esp_wifi_set_mode(WIFI_MODE_APSTA);
         if (mode_result != ESP_OK) return api_result(mode_result, "set_mode");
         return api_result(esp_wifi_set_config(WIFI_IF_STA, &wifi_config),
                           "set_config");
