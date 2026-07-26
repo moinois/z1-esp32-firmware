@@ -112,6 +112,7 @@ void start_heartbeat() {
 }  // namespace
 
 extern "C" void app_main() {
+    ESP_LOGW(tag, "Reset reason=%d", static_cast<int>(esp_reset_reason()));
     if (!initialize_persistent_store()) {
         ESP_LOGE(tag, "Restarting because NVS initialization failed");
         esp_restart();
