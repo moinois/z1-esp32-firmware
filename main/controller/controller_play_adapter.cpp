@@ -18,41 +18,25 @@ namespace firmware::target {
 ControllerPlayAdapter::ControllerPlayAdapter(ControllerUartAdapter& uart)
     : uart_(uart) {}
 
-ControllerPlayAdapter::~ControllerPlayAdapter() {
-    close_file();
-}
+ControllerPlayAdapter::~ControllerPlayAdapter() = default;
 
 void ControllerPlayAdapter::close_file() {
-    if (file_ != nullptr) std::fclose(file_);
-    file_ = nullptr;
+    file_.close();
 }
 
 std::optional<std::uint64_t> ControllerPlayAdapter::open_file(
     std::string_view path) {
-    close_file();
-    file_ = std::fopen(std::string(path).c_str(), "rb");
-    if (file_ == nullptr || std::fseek(file_, 0L, SEEK_END) != 0) {
-        close_file();
-        return std::nullopt;
-    }
-    const long size = std::ftell(file_);
-    if (size < 0L || std::fseek(file_, 0L, SEEK_SET) != 0) {
-        close_file();
-        return std::nullopt;
-    }
-    return static_cast<std::uint64_t>(size);
+    if (!file_.open(path, "rb")) return std::nullopt;
+    return file_.size();
 }
 
 std::optional<std::string> ControllerPlayAdapter::cached_md5(
     std::string_view path) {
     const auto cache = firmware::core::map_file_cache_paths(path).md5_path;
     if (!cache.has_value()) return std::nullopt;
-    std::FILE* input = std::fopen(cache->c_str(), "rb");
-    if (input == nullptr) return std::nullopt;
-    std::uint8_t bytes[63]{};
-    const std::size_t count = std::fread(bytes, 1U, sizeof(bytes), input);
-    std::fclose(input);
-    return firmware::core::extract_cached_md5({bytes, count});
+    const auto bytes = read_posix_file(*cache, 63U);
+    if (!bytes.has_value()) return std::nullopt;
+    return firmware::core::extract_cached_md5(*bytes);
 }
 
 void ControllerPlayAdapter::broadcast(firmware::core::Frame frame) {
@@ -80,7 +64,7 @@ void ControllerPlayAdapter::release_play_ownership() {
 }
 
 bool ControllerPlayAdapter::rewind_file() {
-    return file_ != nullptr && std::fseek(file_, 0L, SEEK_SET) == 0;
+    return file_.rewind();
 }
 
 std::uint64_t ControllerPlayAdapter::now_milliseconds() const {
@@ -89,14 +73,11 @@ std::uint64_t ControllerPlayAdapter::now_milliseconds() const {
 
 std::optional<firmware::application::PlayLineChunk>
 ControllerPlayAdapter::read_chunk(std::size_t maximum_size) {
-    if (file_ == nullptr || maximum_size == 0U) return std::nullopt;
-    firmware::core::ByteVector bytes(maximum_size);
-    const std::size_t count = std::fread(bytes.data(), 1U, maximum_size, file_);
-    const bool failed = std::ferror(file_) != 0;
-    const bool end = std::feof(file_) != 0;
-    if (failed) return std::nullopt;
-    bytes.resize(count);
-    return firmware::application::PlayLineChunk{std::move(bytes), end};
+    if (maximum_size == 0U || file_.get() == nullptr) return std::nullopt;
+    auto bytes = file_.read(maximum_size);
+    if (!bytes.has_value()) return std::nullopt;
+    const bool end = std::feof(file_.get()) != 0;
+    return firmware::application::PlayLineChunk{std::move(*bytes), end};
 }
 
 }  // namespace firmware::target

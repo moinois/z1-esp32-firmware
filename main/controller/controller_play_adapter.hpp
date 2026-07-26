@@ -2,8 +2,7 @@
 #pragma once
 
 #include "firmware/application/play_controller.hpp"
-
-#include <cstdio>
+#include "posix_file.hpp"
 #include <string>
 
 namespace firmware::target {
@@ -31,7 +30,7 @@ public:
 
 private:
     ControllerUartAdapter& uart_;
-    std::FILE* file_ = nullptr;
+    PosixFile file_;
 };
 
 }  // namespace firmware::target

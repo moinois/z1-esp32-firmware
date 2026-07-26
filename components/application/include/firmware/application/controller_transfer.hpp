@@ -41,6 +41,10 @@ std::optional<TransferGeometry> parse_transfer_geometry(core::BytesView payload)
 // Decodes and retains the first four bytes of a transfer data request.
 std::optional<TransferDataRequest> parse_transfer_data_request(core::BytesView payload);
 
+// Encodes retained transfer geometry as six unsigned big-endian bytes.
+core::ByteVector encode_transfer_geometry(std::uint32_t frame_count,
+                                          std::uint16_t frame_data_size);
+
 // Creates a response using a transfer-family high nibble and response low nibble.
 core::Frame make_transfer_reply(std::uint8_t family, std::uint8_t low_nibble,
                                 core::ByteVector payload = {});

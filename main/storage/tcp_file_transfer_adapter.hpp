@@ -3,6 +3,7 @@
 
 #include "firmware/application/file_download.hpp"
 #include "firmware/application/file_upload.hpp"
+#include "posix_file.hpp"
 
 #include <cstdio>
 #include <cstdint>
@@ -36,8 +37,8 @@ public:
 
 private:
     firmware::application::TcpClientSession& session_;
-    std::FILE* primary_ = nullptr;
-    std::FILE* md5_ = nullptr;
+    PosixFile primary_;
+    PosixFile md5_;
 };
 
 // Implements download filesystem effects and origin-preserving responses.
@@ -60,7 +61,7 @@ public:
 
 private:
     firmware::application::TcpClientSession& session_;
-    std::FILE* file_ = nullptr;
+    PosixFile file_;
 };
 
 }  // namespace firmware::target

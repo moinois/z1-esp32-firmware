@@ -1,59 +1,24 @@
-// Implements serial-number persistence and framed UART response transport.
+// Routes shared NVS serial-number behavior as framed UART responses.
 #include "serial_number_adapter.hpp"
-#include "esp_log.h"
-
 #include "controller_uart_adapter.hpp"
-#include "nvs_key_value_adapter.hpp"
-#include "runtime_operation_capacity.hpp"
-
+#include "esp_log.h"
 #include "firmware/core/frame.hpp"
 
 namespace firmware::target {
 
 NvsSerialNumberAdapter::NvsSerialNumberAdapter(ControllerUartAdapter* uart)
-    : uart_(uart) {}
+    : NvsSerialNumberPort(static_cast<FrameSink&>(*this)), uart_(uart) {}
 
-bool NvsSerialNumberAdapter::admit_operation(std::uint32_t wait_milliseconds) {
-    return admit_runtime_operation(wait_milliseconds);
-}
-
-firmware::application::SerialNumberRead NvsSerialNumberAdapter::read_serial(
-    std::string_view name_space, std::string_view key) {
-    NvsKeyValueAdapter nvs;
-    const auto result = nvs.read_string(name_space, key);
-    if (result.state == NvsReadState::found) {
-        return {firmware::application::SerialNumberReadResult::success,
-                result.value};
+bool NvsSerialNumberAdapter::send_frame(firmware::core::Frame frame) {
+    if (uart_ == nullptr) return false;
+    const auto encoded = firmware::core::encode_frame(frame);
+    if (encoded.empty()) return false;
+    const int written = uart_->write(encoded);
+    if (written != static_cast<int>(encoded.size())) {
+        ESP_LOGE("uart_task", "UART send failed");
+        return false;
     }
-    if (result.state == NvsReadState::missing) {
-        return {firmware::application::SerialNumberReadResult::missing_key, {}};
-    }
-    return {firmware::application::SerialNumberReadResult::failure, {}};
-}
-
-bool NvsSerialNumberAdapter::write_serial(std::string_view name_space,
-                                          std::string_view key,
-                                          std::string_view value) {
-    NvsKeyValueAdapter nvs;
-    return nvs.write_string(name_space, key, value);
-}
-
-void NvsSerialNumberAdapter::complete_operation() {
-    complete_runtime_operation();
-}
-
-void NvsSerialNumberAdapter::send_response(std::uint8_t type,
-                                           std::string_view payload) {
-    if (uart_ == nullptr) return;
-    const firmware::core::Frame response{
-        type, firmware::core::ByteVector(payload.begin(), payload.end())};
-    const auto encoded = firmware::core::encode_frame(response);
-    if (!encoded.empty()) {
-        const int written = uart_->write(encoded);
-        if (written != static_cast<int>(encoded.size())) {
-            ESP_LOGE("uart_task", "UART send failed");
-        }
-    }
+    return true;
 }
 
 }  // namespace firmware::target

@@ -67,6 +67,18 @@ std::optional<TransferDataRequest> parse_transfer_data_request(core::BytesView p
     };
 }
 
+core::ByteVector encode_transfer_geometry(std::uint32_t frame_count,
+                                          std::uint16_t frame_data_size) {
+    return {
+        static_cast<std::uint8_t>(frame_count >> 24U),
+        static_cast<std::uint8_t>(frame_count >> 16U),
+        static_cast<std::uint8_t>(frame_count >> 8U),
+        static_cast<std::uint8_t>(frame_count),
+        static_cast<std::uint8_t>(frame_data_size >> 8U),
+        static_cast<std::uint8_t>(frame_data_size),
+    };
+}
+
 core::Frame make_transfer_reply(std::uint8_t family, std::uint8_t low_nibble,
                                 core::ByteVector payload) {
     return {

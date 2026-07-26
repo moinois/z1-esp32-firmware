@@ -1,9 +1,8 @@
 // Implements POSIX directory enumeration and mbedTLS MD5 queries.
 #include "tcp_filesystem_query_adapter.hpp"
+#include "posix_file.hpp"
 
 #include "firmware/application/tcp_client_session.hpp"
-
-#include "mbedtls/md5.h"
 
 #include <dirent.h>
 #include <cstdio>
@@ -73,34 +72,7 @@ firmware::application::FileHashPathState TcpFileHashAdapter::inspect_path(
 
 std::optional<std::string> TcpFileHashAdapter::calculate_md5(
     std::string_view path, std::size_t block_size) {
-    std::FILE* file = std::fopen(std::string(path).c_str(), "rb");
-    if (file == nullptr || block_size == 0U) {
-        if (file != nullptr) std::fclose(file);
-        return std::nullopt;
-    }
-    std::vector<std::uint8_t> buffer(block_size);
-    mbedtls_md5_context context;
-    mbedtls_md5_init(&context);
-    mbedtls_md5_starts(&context);
-    while (const std::size_t count = std::fread(buffer.data(), 1U, buffer.size(), file)) {
-        mbedtls_md5_update(&context, buffer.data(), count);
-    }
-    if (std::ferror(file) != 0) {
-        std::fclose(file);
-        mbedtls_md5_free(&context);
-        return std::nullopt;
-    }
-    std::uint8_t digest[16];
-    mbedtls_md5_finish(&context, digest);
-    mbedtls_md5_free(&context);
-    std::fclose(file);
-    static constexpr char hex[] = "0123456789abcdef";
-    std::string result(32U, '0');
-    for (std::size_t index = 0U; index < 16U; ++index) {
-        result[index * 2U] = hex[digest[index] >> 4U];
-        result[index * 2U + 1U] = hex[digest[index] & 0x0fU];
-    }
-    return result;
+    return calculate_posix_md5(path, block_size);
 }
 
 void TcpFileHashAdapter::send(firmware::core::Frame frame) {

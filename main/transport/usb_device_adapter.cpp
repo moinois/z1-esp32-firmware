@@ -28,6 +28,7 @@
 #include "nvs_key_value_adapter.hpp"
 #include "wifi_persistence_constants.hpp"
 #include "runtime_operation_capacity.hpp"
+#include "nvs_command_ports.hpp"
 #include "recording_request_state.hpp"
 #include "firmware/core/text.hpp"
 #include "firmware/core/frame.hpp"
@@ -49,6 +50,8 @@
 #include "configuration_file_store.hpp"
 #include "wlan_event_adapter.hpp"
 #include "wifi_diagnostic_log.hpp"
+#include "posix_file.hpp"
+#include "esp_wifi_scanner.hpp"
 
 #include <array>
 #include <algorithm>
@@ -65,7 +68,6 @@
 #include <cerrno>
 #include <climits>
 #include "esp_heap_caps.h"
-#include "mbedtls/md5.h"
 #include <esp_timer.h>
 #include "esp_wifi.h"
 #include "esp_netif.h"
@@ -89,6 +91,16 @@ constexpr std::array<std::uint8_t, 32> configuration_descriptor{
     0x00U, 0x07U, 0x05U, 0x81U, 0x02U, 0x40U, 0x00U, 0x00U};
 const char* string_descriptors[] = {"Espressif", "MakeraZ1 (USB)", "123456"};
 firmware::application::UsbProtocolState protocol_state;
+
+class UsbFrameSink final : public FrameSink {
+public:
+    bool send_frame(firmware::core::Frame frame) override {
+        const auto encoded = firmware::core::encode_frame(frame);
+        return !encoded.empty() && protocol_state.transmit_queue().enqueue(encoded);
+    }
+};
+
+UsbFrameSink usb_frame_sink;
 firmware::core::StreamDecoder decoder(firmware::core::StreamPolicy::usb());
 RecordingRequestState recording_state;
 firmware::application::LiveConfiguration usb_live_configuration;
@@ -221,7 +233,7 @@ UsbConfigurationFilePort configuration_file_port;
 class UsbWlanScanPort final : public firmware::application::WlanCommandPort {
 public:
     void stop_scan() override {
-        static_cast<void>(esp_wifi_scan_stop());
+        EspWifiScanner{}.stop_scan();
     }
 
     void delay_milliseconds(std::uint32_t duration) override {
@@ -230,52 +242,11 @@ public:
 
     firmware::application::WifiScanOutcome scan(
         const firmware::application::WifiScanConfig& config) override {
-        wifi_scan_config_t scan_config{};
-        scan_config.scan_type = config.active ? WIFI_SCAN_TYPE_ACTIVE
-                                              : WIFI_SCAN_TYPE_PASSIVE;
-        scan_config.show_hidden = config.include_hidden;
-        scan_config.scan_time.active.min = config.active_dwell_milliseconds;
-        scan_config.scan_time.active.max = config.active_dwell_milliseconds;
-        scan_config.scan_time.passive = config.passive_dwell_milliseconds;
-        if (esp_wifi_scan_start(&scan_config, true) != ESP_OK) {
-            return {false, "scan_start", {}};
-        }
-        std::uint16_t count = 0U;
-        if (esp_wifi_scan_get_ap_num(&count) != ESP_OK) {
-            return {false, "scan_count", {}};
-        }
-        count = static_cast<std::uint16_t>(
-            count > config.maximum_observations ? config.maximum_observations
-                                                 : count);
-        std::vector<wifi_ap_record_t> records(count);
-        if (count > 0U &&
-            esp_wifi_scan_get_ap_records(&count, records.data()) != ESP_OK) {
-            return {false, "scan_records", {}};
-        }
-        std::vector<firmware::core::WifiObservation> observations;
-        observations.reserve(count);
-        for (std::uint16_t index = 0U; index < count; ++index) {
-            const wifi_ap_record_t& record = records[index];
-            std::size_t length = 0U;
-            while (length < sizeof(record.ssid) && record.ssid[length] != 0U) {
-                ++length;
-            }
-            observations.push_back({
-                firmware::core::ByteVector(record.ssid, record.ssid + length),
-                record.rssi,
-                static_cast<std::uint8_t>(record.authmode)});
-        }
-        return {true, {}, std::move(observations)};
+        return EspWifiScanner{}.scan(config);
     }
 
     std::string connected_ssid() const override {
-        wifi_ap_record_t record{};
-        if (esp_wifi_sta_get_ap_info(&record) != ESP_OK) return {};
-        std::size_t length = 0U;
-        while (length < sizeof(record.ssid) && record.ssid[length] != 0U) {
-            ++length;
-        }
-        return std::string(reinterpret_cast<const char*>(record.ssid), length);
+        return EspWifiScanner{}.connected_ssid();
     }
 
     void send(firmware::core::Frame frame) override {
@@ -491,12 +462,9 @@ public:
     std::optional<std::string> cached_md5(std::string_view path) override {
         const auto cache = firmware::core::map_file_cache_paths(path).md5_path;
         if (!cache.has_value()) return std::nullopt;
-        FILE* input = std::fopen(std::string(*cache).c_str(), "rb");
-        if (input == nullptr) return std::nullopt;
-        std::uint8_t bytes[63]{};
-        const std::size_t count = std::fread(bytes, 1U, sizeof(bytes), input);
-        std::fclose(input);
-        return firmware::core::extract_cached_md5({bytes, count});
+        const auto bytes = read_posix_file(*cache, 63U);
+        if (!bytes.has_value()) return std::nullopt;
+        return firmware::core::extract_cached_md5(*bytes);
     }
 
     void broadcast(firmware::core::Frame frame) override {
@@ -634,32 +602,7 @@ public:
     }
 
     std::optional<std::string> calculate_md5(std::string_view path) override {
-        FILE* input = std::fopen(std::string(path).c_str(), "rb");
-        if (input == nullptr) return std::nullopt;
-        mbedtls_md5_context context;
-        mbedtls_md5_init(&context);
-        mbedtls_md5_starts(&context);
-        std::uint8_t buffer[1024];
-        while (const std::size_t count =
-                   std::fread(buffer, 1U, sizeof(buffer), input)) {
-            mbedtls_md5_update(&context, buffer, count);
-        }
-        if (std::ferror(input) != 0) {
-            std::fclose(input);
-            mbedtls_md5_free(&context);
-            return std::nullopt;
-        }
-        std::uint8_t digest[16];
-        mbedtls_md5_finish(&context, digest);
-        mbedtls_md5_free(&context);
-        std::fclose(input);
-        static constexpr char hex[] = "0123456789abcdef";
-        std::string result(32U, '0');
-        for (std::size_t index = 0U; index < 16U; ++index) {
-            result[index * 2U] = hex[digest[index] >> 4U];
-            result[index * 2U + 1U] = hex[digest[index] & 0x0fU];
-        }
-        return result;
+        return calculate_posix_md5(path);
     }
 
     std::optional<firmware::core::ByteVector> read_cache(
@@ -794,122 +737,8 @@ void usb_m942_task(void* parameter) {
 }
 SemaphoreHandle_t usb_file_mutex = nullptr;
 
-class UsbSerialPort final : public firmware::application::SerialNumberPort {
-public:
-    bool admit_operation(std::uint32_t wait_milliseconds) override {
-        return admit_runtime_operation(wait_milliseconds);
-    }
-
-    firmware::application::SerialNumberRead read_serial(
-        std::string_view name_space, std::string_view key) override {
-        NvsKeyValueAdapter nvs;
-        const auto result = nvs.read_string(name_space, key);
-        if (result.state == NvsReadState::found) {
-            return {firmware::application::SerialNumberReadResult::success,
-                    result.value};
-        }
-        if (result.state == NvsReadState::missing) {
-            return {firmware::application::SerialNumberReadResult::missing_key,
-                    {}};
-        }
-        return {firmware::application::SerialNumberReadResult::failure, {}};
-    }
-
-    bool write_serial(std::string_view name_space, std::string_view key,
-                      std::string_view value) override {
-        NvsKeyValueAdapter nvs;
-        return nvs.write_string(name_space, key, value);
-    }
-
-    void complete_operation() override {
-        complete_runtime_operation();
-    }
-
-    void send_response(std::uint8_t type, std::string_view payload) override {
-        const firmware::core::Frame response{
-            type, firmware::core::ByteVector(payload.begin(), payload.end())};
-        const auto encoded = firmware::core::encode_frame(response);
-        if (!encoded.empty()) {
-            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-        }
-    }
-};
-
-UsbSerialPort serial_port;
-
-class UsbRuntimePort final : public firmware::application::RuntimeCommandPort {
-public:
-    bool admit_operation(std::uint32_t wait_milliseconds) override {
-        return admit_runtime_operation(wait_milliseconds);
-    }
-
-    bool open_namespace(std::string_view name_space) override {
-        name_space_ = std::string(name_space);
-        return true;
-    }
-
-    firmware::application::RuntimeSignedRead read_first_boot(
-        std::string_view key) override {
-        NvsKeyValueAdapter nvs;
-        const auto value = nvs.read_u64_state(name_space_, key);
-        if (value.state == NvsReadState::found) {
-            return {firmware::application::RuntimeValueResult::success,
-                    static_cast<std::int64_t>(value.value)};
-        }
-        if (value.state == NvsReadState::missing) {
-            return {firmware::application::RuntimeValueResult::missing, 0};
-        }
-        return {firmware::application::RuntimeValueResult::failure, 0};
-    }
-
-    std::optional<std::uint64_t> read_counter(std::string_view key) override {
-        NvsKeyValueAdapter nvs;
-        return nvs.read_u64(name_space_, key);
-    }
-
-    std::optional<std::string> format_utc_minute(
-        std::int64_t seconds) override {
-        const time_t value = static_cast<time_t>(seconds);
-        std::tm utc{};
-        if (gmtime_r(&value, &utc) == nullptr) return std::nullopt;
-        char buffer[32];
-        if (std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M UTC", &utc) == 0U) {
-            return std::nullopt;
-        }
-        return std::string(buffer);
-    }
-
-    firmware::application::RuntimeEraseResult erase_first_boot(
-        std::string_view name_space, std::string_view key) override {
-        NvsKeyValueAdapter nvs;
-        const auto result = nvs.erase_key(name_space, key);
-        if (result == NvsReadState::found) {
-            return firmware::application::RuntimeEraseResult::success;
-        }
-        if (result == NvsReadState::missing) {
-            return firmware::application::RuntimeEraseResult::missing;
-        }
-        return firmware::application::RuntimeEraseResult::failure;
-    }
-
-    void complete_operation() override {
-        complete_runtime_operation();
-    }
-
-    void send_response(std::uint8_t type, std::string_view payload) override {
-        const firmware::core::Frame response{
-            type, firmware::core::ByteVector(payload.begin(), payload.end())};
-        const auto encoded = firmware::core::encode_frame(response);
-        if (!encoded.empty()) {
-            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-        }
-    }
-
-private:
-    std::string name_space_;
-};
-
-UsbRuntimePort runtime_port;
+NvsSerialNumberPort serial_port(usb_frame_sink);
+NvsRuntimeCommandPort runtime_port(usb_frame_sink);
 
 void remove_usb_tree(const std::string& path) {
     struct stat status{};
@@ -1023,34 +852,7 @@ public:
 
     std::optional<std::string> calculate_md5(std::string_view path,
                                              std::size_t block_size) override {
-        std::FILE* file = std::fopen(std::string(path).c_str(), "rb");
-        if (file == nullptr || block_size == 0U) {
-            if (file != nullptr) std::fclose(file);
-            return std::nullopt;
-        }
-        std::vector<std::uint8_t> buffer(block_size);
-        mbedtls_md5_context context;
-        mbedtls_md5_init(&context);
-        mbedtls_md5_starts(&context);
-        while (const std::size_t count = std::fread(buffer.data(), 1U, buffer.size(), file)) {
-            mbedtls_md5_update(&context, buffer.data(), count);
-        }
-        if (std::ferror(file) != 0) {
-            std::fclose(file);
-            mbedtls_md5_free(&context);
-            return std::nullopt;
-        }
-        std::uint8_t digest[16];
-        mbedtls_md5_finish(&context, digest);
-        mbedtls_md5_free(&context);
-        std::fclose(file);
-        static constexpr char hex[] = "0123456789abcdef";
-        std::string result(32U, '0');
-        for (std::size_t index = 0U; index < 16U; ++index) {
-            result[index * 2U] = hex[digest[index] >> 4U];
-            result[index * 2U + 1U] = hex[digest[index] & 0x0fU];
-        }
-        return result;
+        return calculate_posix_md5(path, block_size);
     }
 
     void send(firmware::core::Frame frame) override {

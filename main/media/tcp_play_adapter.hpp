@@ -2,8 +2,7 @@
 #pragma once
 
 #include "firmware/application/play_session.hpp"
-
-#include <cstdio>
+#include "posix_file.hpp"
 
 namespace firmware::application {
 class TcpClientSession;
@@ -27,7 +26,7 @@ public:
 
 private:
     firmware::application::TcpClientSession& session_;
-    std::FILE* file_ = nullptr;
+    PosixFile file_;
 };
 
 }  // namespace firmware::target

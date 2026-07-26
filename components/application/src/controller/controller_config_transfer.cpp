@@ -16,18 +16,6 @@ constexpr std::size_t minimum_remaining_space = 80U;
 constexpr std::size_t maximum_unmodified_record_size = 64U;
 constexpr std::size_t truncated_record_size = maximum_unmodified_record_size - 2U;
 
-// Encodes retained configuration geometry as six big-endian bytes.
-core::ByteVector encode_geometry(std::uint32_t frame_count) {
-    return {
-        static_cast<std::uint8_t>(frame_count >> 24U),
-        static_cast<std::uint8_t>(frame_count >> 16U),
-        static_cast<std::uint8_t>(frame_count >> 8U),
-        static_cast<std::uint8_t>(frame_count),
-        static_cast<std::uint8_t>(response_data_size >> 8U),
-        static_cast<std::uint8_t>(response_data_size),
-    };
-}
-
 // Reports whether a chunk is selectable as controller configuration content.
 bool eligible_record(const core::ByteVector& chunk, bool final_chunk) {
     if (chunk.size() <= 2U || chunk.front() == '#' || chunk.front() == '*') {
@@ -101,7 +89,8 @@ void ControllerConfigTransfer::handle_geometry(core::BytesView payload,
     frame_data_size_ = response_data_size;
     if (!port.send(make_transfer_reply(core::protocol::configuration_family,
                                        core::protocol::transfer_geometry,
-                                       encode_geometry(frame_count_)))) {
+                                       encode_transfer_geometry(frame_count_,
+                                                                response_data_size)))) {
         report_error(port);
     }
 }

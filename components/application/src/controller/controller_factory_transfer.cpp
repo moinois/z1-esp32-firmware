@@ -19,18 +19,6 @@ bool eligible_record(const core::ByteVector& chunk) {
     return chunk.size() > 2U && chunk.front() != '#';
 }
 
-// Encodes accepted factory geometry as six big-endian bytes.
-core::ByteVector encode_geometry(std::uint32_t frame_count, std::uint16_t data_size) {
-    return {
-        static_cast<std::uint8_t>(frame_count >> 24U),
-        static_cast<std::uint8_t>(frame_count >> 16U),
-        static_cast<std::uint8_t>(frame_count >> 8U),
-        static_cast<std::uint8_t>(frame_count),
-        static_cast<std::uint8_t>(data_size >> 8U),
-        static_cast<std::uint8_t>(data_size),
-    };
-}
-
 }  // namespace
 
 void ControllerFactoryTransfer::handle(const core::Frame& frame, ControllerFactoryPort& port) {
@@ -91,7 +79,8 @@ void ControllerFactoryTransfer::handle_geometry(core::BytesView payload,
     frame_data_size_ = proposed->frame_data_size;
     if (!port.send(make_transfer_reply(core::protocol::factory_family,
                                        core::protocol::transfer_geometry,
-                                       encode_geometry(frame_count_, frame_data_size_)))) {
+                                       encode_transfer_geometry(frame_count_,
+                                                                frame_data_size_)))) {
         report_error(port);
     }
 }

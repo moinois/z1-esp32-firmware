@@ -11,41 +11,25 @@ namespace firmware::target {
 TcpPlayPreparationAdapter::TcpPlayPreparationAdapter(
     firmware::application::TcpClientSession& session) : session_(session) {}
 
-TcpPlayPreparationAdapter::~TcpPlayPreparationAdapter() {
-    close_file();
-}
+TcpPlayPreparationAdapter::~TcpPlayPreparationAdapter() = default;
 
 void TcpPlayPreparationAdapter::close_file() {
-    if (file_ != nullptr) std::fclose(file_);
-    file_ = nullptr;
+    file_.close();
 }
 
 std::optional<std::uint64_t> TcpPlayPreparationAdapter::open_file(
     std::string_view path) {
-    close_file();
-    file_ = std::fopen(std::string(path).c_str(), "rb");
-    if (file_ == nullptr || std::fseek(file_, 0L, SEEK_END) != 0) {
-        close_file();
-        return std::nullopt;
-    }
-    const long size = std::ftell(file_);
-    if (size < 0L || std::fseek(file_, 0L, SEEK_SET) != 0) {
-        close_file();
-        return std::nullopt;
-    }
-    return static_cast<std::uint64_t>(size);
+    if (!file_.open(path, "rb")) return std::nullopt;
+    return file_.size();
 }
 
 std::optional<std::string> TcpPlayPreparationAdapter::cached_md5(
     std::string_view path) {
     const auto cache = firmware::core::map_file_cache_paths(path).md5_path;
     if (!cache.has_value()) return std::nullopt;
-    std::FILE* input = std::fopen(cache->c_str(), "rb");
-    if (input == nullptr) return std::nullopt;
-    std::uint8_t bytes[63]{};
-    const std::size_t count = std::fread(bytes, 1U, sizeof(bytes), input);
-    std::fclose(input);
-    return firmware::core::extract_cached_md5({bytes, count});
+    const auto bytes = read_posix_file(*cache, 63U);
+    if (!bytes.has_value()) return std::nullopt;
+    return firmware::core::extract_cached_md5(*bytes);
 }
 
 void TcpPlayPreparationAdapter::broadcast(firmware::core::Frame frame) {

@@ -15,18 +15,6 @@ constexpr std::string_view firmware_path = "/sd/lpc1768.bin";
 constexpr std::uint64_t wait_timeout_milliseconds = 5000U;
 constexpr std::uint16_t maximum_frame_data_size = 512U;
 
-// Encodes accepted transfer geometry as six unsigned big-endian bytes.
-core::ByteVector encode_geometry(std::uint32_t frame_count, std::uint16_t data_size) {
-    return {
-        static_cast<std::uint8_t>(frame_count >> 24U),
-        static_cast<std::uint8_t>(frame_count >> 16U),
-        static_cast<std::uint8_t>(frame_count >> 8U),
-        static_cast<std::uint8_t>(frame_count),
-        static_cast<std::uint8_t>(data_size >> 8U),
-        static_cast<std::uint8_t>(data_size),
-    };
-}
-
 }  // namespace
 
 void ControllerFirmwareTransfer::handle(const core::Frame& frame,
@@ -97,7 +85,8 @@ void ControllerFirmwareTransfer::handle_geometry(core::BytesView payload,
     }
     if (!port.send(make_transfer_reply(core::protocol::firmware_family,
                                        core::protocol::transfer_geometry,
-                                       encode_geometry(frame_count_, frame_data_size_)))) {
+                                       encode_transfer_geometry(frame_count_,
+                                                                frame_data_size_)))) {
         report_error(port);
     }
 }
