@@ -453,6 +453,24 @@ The application image is produced at:
 build/mainboard_firmware.bin
 ```
 
+## Flashing an ESP32-S3-N16R8 development board
+
+The target defaults and partition table are configured for the 16 MB flash and
+8 MB octal PSRAM on an ESP32-S3-N16R8. Activate ESP-IDF and flash the board on
+the serial device reported by macOS:
+
+```sh
+source /Users/moinois/esp/esp-idf/export.sh
+idf.py -p /dev/cu.usbmodem1234561 flash monitor
+```
+
+If automatic reset does not enter the ROM downloader, hold `BOOT`, press and
+release `RESET`/`EN`, release `BOOT`, and repeat the command. The serial device
+name may change after reconnecting; inspect `/dev/cu.usb*` when needed. The
+firmware pin map is for the specified mainboard hardware, so a generic
+development board can validate boot, USB, and logging but not the camera, SD,
+CAN, or controller peripherals without the corresponding wiring.
+
 To inspect size allocation:
 
 ```sh
