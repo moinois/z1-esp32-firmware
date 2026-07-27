@@ -1,0 +1,79 @@
+"""Read-only runtime, Wi-Fi, and cross-transport target validation."""
+
+from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor
+import json
+import urllib.request
+
+import pytest
+
+from tests.hardware.hil_protocol import GENERAL_COMMAND, TcpProtocolClient
+
+
+def _payloads(frames) -> bytes:
+    return b"\n".join(frame.payload for frame in frames)
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.usb
+@pytest.mark.requirement("RUN-010")
+@pytest.mark.requirement("RUN-040")
+def test_usb_runtime_and_serial_reads(usb_client) -> None:
+    assert b"sys-time-data" in _payloads(
+        usb_client.exchange(GENERAL_COMMAND, b"sys-time", 4.0)
+    )
+    assert usb_client.exchange(GENERAL_COMMAND, b"sn-get", 4.0)
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.usb
+@pytest.mark.wifi
+@pytest.mark.requirement("NET-030")
+def test_usb_wifi_scan_returns_bounded_response(usb_client) -> None:
+    frames = usb_client.exchange(GENERAL_COMMAND, b"wlan", 15.0)
+    assert frames
+    assert sum(len(frame.payload) for frame in frames) <= 1024
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.usb
+@pytest.mark.tcp
+@pytest.mark.requirement("OWN-001")
+def test_usb_and_tcp_read_requests_can_coexist(usb_client, tcp_host: str) -> None:
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        usb_result = executor.submit(
+            usb_client.exchange, GENERAL_COMMAND, b"ftype /", 4.0
+        )
+        tcp_result = executor.submit(
+            TcpProtocolClient(tcp_host).exchange,
+            GENERAL_COMMAND,
+            b"ftype /",
+            4.0,
+        )
+        assert usb_result.result()
+        assert tcp_result.result()
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.http
+@pytest.mark.wifi
+@pytest.mark.requirement("NET-DIAG-001")
+def test_wifi_diagnostic_counters_are_monotonic(tcp_host: str) -> None:
+    def read() -> dict:
+        with urllib.request.urlopen(
+            f"http://{tcp_host}/api/wifi/diagnostics", timeout=5.0
+        ) as response:
+            return json.load(response)
+
+    first = read()
+    second = read()
+    for key in (
+        "station_starts", "associations", "disconnections",
+        "addresses_acquired", "addresses_lost",
+    ):
+        assert second[key] >= first[key]

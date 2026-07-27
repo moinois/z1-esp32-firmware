@@ -4,10 +4,52 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import http.client
 import socket
 import time
 
 import pytest
+
+
+def _multipart_upload(host: str, endpoint: str, image: bytes,
+                      filename: str) -> tuple[int, bytes]:
+    """Uploads one complete binary part through the selected update endpoint."""
+    boundary = "z1-hil-complete-upload"
+    body = (
+        f"--{boundary}\r\n"
+        'Content-Disposition: form-data; name="firmware"; '
+        f'filename="{filename}"\r\n'
+        "Content-Type: application/octet-stream\r\n\r\n"
+    ).encode("ascii") + image + f"\r\n--{boundary}--\r\n".encode("ascii")
+    connection = http.client.HTTPConnection(host, 80, timeout=180.0)
+    try:
+        connection.request(
+            "POST", endpoint, body,
+            {"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        )
+        response = connection.getresponse()
+        return response.status, response.read()
+    finally:
+        connection.close()
+
+
+@pytest.mark.hardware
+@pytest.mark.destructive
+@pytest.mark.http
+@pytest.mark.requirement("WEBUP-020")
+@pytest.mark.requirement("WEBUP-022")
+def test_web_volume_image_can_be_installed(tcp_host: str) -> None:
+    image_name = os.getenv("Z1_HIL_SPIFFS_IMAGE")
+    if not image_name:
+        pytest.skip("set Z1_HIL_SPIFFS_IMAGE to a valid SPIFFS image")
+    image_path = Path(image_name)
+    if not image_path.is_file():
+        pytest.skip(f"SPIFFS image fixture does not exist: {image_path}")
+    status, body = _multipart_upload(
+        tcp_host, "/updateffs", image_path.read_bytes(), image_path.name
+    )
+    assert status == 200
+    assert body == b"UI upgrade finished. The system will reboot in 2 seconds..."
 
 
 @pytest.mark.hardware

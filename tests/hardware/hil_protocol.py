@@ -91,6 +91,27 @@ class TcpProtocolClient:
         return received
 
 
+def receive_tcp_frames(connection: socket.socket,
+                       timeout_seconds: float = 3.0) -> List[ReceivedFrame]:
+    """Receives all currently available framed responses from one open socket."""
+    remainder = b""
+    received: List[ReceivedFrame] = []
+    deadline = time.monotonic() + timeout_seconds
+    connection.settimeout(0.25)
+    while time.monotonic() < deadline:
+        try:
+            chunk = connection.recv(8192)
+        except socket.timeout:
+            if received:
+                break
+            continue
+        if not chunk:
+            break
+        frames, remainder = decode_frames(remainder + chunk)
+        received.extend(ReceivedFrame(kind, body) for kind, body in frames)
+    return received
+
+
 def find_native_usb_device() -> Tuple[Any | None, str | None]:
     """Finds the native USB interface or returns a precise skip reason."""
 

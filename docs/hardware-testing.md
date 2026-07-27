@@ -39,6 +39,10 @@ Z1_HIL_HOST=192.168.8.119 Z1_ALLOW_DESTRUCTIVE=1 \
 | `Z1_ALLOW_MUTATION` | Enables recoverable persistent changes when `1` | disabled |
 | `Z1_ALLOW_DESTRUCTIVE` | Enables destructive operations when `1` | disabled |
 | `Z1_HIL_OTA_IMAGE` | Valid raw ESP-IDF application image for destructive OTA HIL | unset |
+| `Z1_HIL_SPIFFS_IMAGE` | Valid SPIFFS image for destructive `/updateffs` HIL | unset |
+| `Z1_HIL_WIFI_SSID` | Recovery-safe network used by mutating Wi-Fi HIL | unset |
+| `Z1_HIL_WIFI_PASSWORD` | Password paired with `Z1_HIL_WIFI_SSID` | unset |
+| `Z1_HIL_USB_RESET` | Permits recoverable native USB reset and re-enumeration | disabled |
 | `Z1_HIL_CONTROLLER` | Declares an attached controller fixture | disabled |
 | `Z1_HIL_CAN` | Declares an attached CAN fixture | disabled |
 | `Z1_HIL_BLE` | Declares an available BLE scanner | disabled |
@@ -47,6 +51,22 @@ Camera availability is detected automatically through a valid
 `POST /api/camera/resolution` request. The exact controlled sensor-unavailable
 response marks camera-dependent HIL as skipped; no environment declaration is
 required.
+
+The read-only suite also exercises repeated native USB requests, recovery after
+unframed USB noise, bytewise fragmented TCP input, the four-client TCP limit,
+four-client concurrency, simultaneous USB/TCP commands, WLAN scanning, runtime
+and serial-number reads, monotonic Wi-Fi diagnostics, concurrent HTTP requests,
+and recovery after an interrupted multipart request. Persistent Wi-Fi changes,
+USB reset, application OTA, and SPIFFS replacement remain separately gated.
+
+With a diagnostic COM adapter, the mutating diagnostic test pulses reset using
+DTR/RTS, captures 20 seconds at 115200 baud, requires both the ESP32 boot banner
+and application startup output, rejects panic/watchdog/stack/assert/abort
+signatures, and saves the raw evidence as `build/hil-diagnostic-boot.log`.
+The first physical run on 2026-07-27 captured 13,021 bytes and passed: ESP-ROM,
+the application `MAIN` startup, the expected unsupported-camera diagnostic,
+Wi-Fi association/address acquisition, and OTA validation were present, with
+none of the forbidden fatal signatures.
 
 Native USB is detected by VID `0x303a` and PID `0x4002`. TCP detection opens a
 connection to port 2222. The current public directory command cannot
@@ -166,11 +186,26 @@ and sensible radio ranges whenever the endpoint is detected.
 
 ## Current fixture coverage
 
-The executable suite covers native USB descriptors and read-only round trips,
-TCP listener/read-only round trips, HTTP/WebSocket behavior, Wi-Fi diagnostics,
-an explicitly gated recoverable filesystem operation, and destructive delayed-
-chunk OTA. SD tests require an explicitly declared reader/card because protocol
+The executable suite covers native USB descriptors, framing recovery and
+repeated round trips, TCP listener/capacity/concurrency/framing, cross-transport
+operation, HTTP/WebSocket concurrency and interruption recovery, Wi-Fi scan and
+diagnostics, runtime reads, an explicitly gated recoverable filesystem
+operation, native USB reset, Wi-Fi persistence, destructive delayed-chunk OTA,
+and SPIFFS replacement. SD tests require an explicitly declared reader/card because protocol
 completion alone cannot prove a mount. Controller, CAN, BLE, RF-control, and
 recording still need dedicated fixture drivers. Capability-gate tests document
 missing controller, CAN, BLE, and camera fixtures as skips; the camera gate
 probes the firmware automatically.
+
+On 2026-07-27 the expanded suite was run through native USB and station Wi-Fi
+at `192.168.8.119`. The safe run produced 19 PASS, 12 capability/safety SKIP,
+and three TCP stress failures. USB repetition/noise recovery, HTTP concurrency
+and interrupted-request recovery, WLAN scan, runtime reads, simultaneous
+USB/TCP access, Wi-Fi diagnostics, and all earlier HTTP/USB checks passed. A
+separately gated native USB reset also passed re-enumeration and command
+recovery. TCP capacity stress exposed resets before four stable clients could
+be retained; subsequent fragmented and ordinary TCP requests became
+intermittently reset while USB and HTTP remained responsive. This is retained
+as failing evidence requiring target connection-slot/resource diagnosis, not
+reported as a HIL pass. The machine-readable result is written to
+`build/hil-current.json`.
