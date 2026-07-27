@@ -46,7 +46,7 @@ than missing portable logic.
 | Configuration web interface | Static-file transport and a limited set of HTTP APIs exist, but no HTML, CSS, or JavaScript application is present | Define the complete configurable surface and authentication policy; implement, package, upload, and test the browser UI and any missing configuration APIs |
 | USB | Target integration implemented; descriptors and basic framed commands have HIL PASS | Disconnect, overflow, timeout, mutation, storage, and contention tests |
 | SD/config/logging | Portable behavior host-tested and target adapters built | Pending physical reader/card fixture; no mount or write conformance claimed |
-| Camera/media | Camera, recording, live, preview, and retention adapters target-built | Attached sensor is unsupported; camera plus SD fixtures are required for streaming/recording/playback |
+| Camera/media | Camera, recording, live, preview, and retention adapters target-built; HIL automatically skips when firmware camera detection reports no sensor | Camera plus SD fixtures are required for streaming/recording/playback |
 | Controller/UART | UART loop and principal command/transfer/play adapters target-built | Full remaining command-family routing plus physical controller fixture |
 | CANopen | Node, dictionary, expedited SDO, PDO, M942, and TWAI adapter implemented | Heartbeat/error/diagnostic composition gap plus physical CAN fixture |
 | BLE/BLUFI | Provisioning lifecycle/security and portable wire policies implemented | Pending ESP-IDF GATT wire/attribute composition and physical BLE session |

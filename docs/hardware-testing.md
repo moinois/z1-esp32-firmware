@@ -43,6 +43,11 @@ Z1_HIL_HOST=192.168.8.119 Z1_ALLOW_DESTRUCTIVE=1 \
 | `Z1_HIL_CAN` | Declares an attached CAN fixture | disabled |
 | `Z1_HIL_BLE` | Declares an available BLE scanner | disabled |
 
+Camera availability is detected automatically through a valid
+`POST /api/camera/resolution` request. The exact controlled sensor-unavailable
+response marks camera-dependent HIL as skipped; no environment declaration is
+required.
+
 Native USB is detected by VID `0x303a` and PID `0x4002`. TCP detection opens a
 connection to port 2222. The current public directory command cannot
 distinguish an empty mounted SD card from a missing mount because both end with
@@ -165,6 +170,7 @@ The executable suite covers native USB descriptors and read-only round trips,
 TCP listener/read-only round trips, HTTP/WebSocket behavior, Wi-Fi diagnostics,
 an explicitly gated recoverable filesystem operation, and destructive delayed-
 chunk OTA. SD tests require an explicitly declared reader/card because protocol
-completion alone cannot prove a mount. Controller, CAN, BLE, camera, RF-control,
-and recording still need dedicated fixture drivers. Capability-gate tests
-document missing controller, CAN, and BLE fixtures as skips.
+completion alone cannot prove a mount. Controller, CAN, BLE, RF-control, and
+recording still need dedicated fixture drivers. Capability-gate tests document
+missing controller, CAN, BLE, and camera fixtures as skips; the camera gate
+probes the firmware automatically.

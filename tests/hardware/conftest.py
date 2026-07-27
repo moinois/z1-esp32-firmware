@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import http.client
 import os
 from pathlib import Path
 from typing import Any, Dict, Iterator, List
@@ -111,3 +112,29 @@ def tcp_host() -> str:
 @pytest.fixture(scope="session")
 def tcp_client(tcp_host: str) -> TcpProtocolClient:
     return TcpProtocolClient(tcp_host)
+
+
+@pytest.fixture(scope="session")
+def camera_fixture(tcp_host: str) -> None:
+    """Detects an initialized camera through its public runtime API."""
+    connection = http.client.HTTPConnection(tcp_host, 80, timeout=5.0)
+    try:
+        connection.request(
+            "POST",
+            "/api/camera/resolution",
+            body=b'{"resolution":10}',
+            headers={"Content-Type": "application/json"},
+        )
+        response = connection.getresponse()
+        body = response.read()
+    except OSError as error:
+        pytest.skip(f"camera capability endpoint unavailable: {error}")
+    finally:
+        connection.close()
+    if response.status == 200:
+        return
+    if response.status == 500 and body == b"Failed to set framesize":
+        pytest.skip("camera module not detected by the firmware")
+    pytest.fail(
+        f"unexpected camera capability response: HTTP {response.status} {body!r}"
+    )

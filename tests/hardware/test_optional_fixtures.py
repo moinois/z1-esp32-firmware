@@ -37,3 +37,13 @@ def test_ble_fixture_declares_scanner() -> None:
     if os.getenv("Z1_HIL_BLE") != "1":
         pytest.skip("BLE scanner not declared with Z1_HIL_BLE=1")
     pytest.skip("BLE fixture driver is not implemented yet")
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.http
+@pytest.mark.camera
+@pytest.mark.requirement("HW-040")
+def test_camera_fixture_detects_sensor(camera_fixture) -> None:
+    """Records camera availability without failing camera-less mainboards."""
+    assert camera_fixture is None
