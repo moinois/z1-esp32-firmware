@@ -11,8 +11,6 @@ namespace firmware::application {
 namespace {
 
 const std::string factory_path = core::physical_sd_path("/factory.ini");
-constexpr std::size_t input_chunk_size = 255U;
-constexpr std::uint16_t maximum_frame_data_size = 512U;
 constexpr std::size_t maximum_record_size = 132U;
 
 // Reports whether a raw factory chunk contributes to geometry and selection.
@@ -60,11 +58,12 @@ void ControllerFactoryTransfer::handle_geometry(core::BytesView payload,
                                                 ControllerFactoryPort& port) {
     const auto proposed = parse_transfer_geometry(payload);
     if (!proposed.has_value() || proposed->frame_data_size == 0U ||
-        proposed->frame_data_size > maximum_frame_data_size) {
+        proposed->frame_data_size > controller_transfer_frame_data_size) {
         report_error(port);
         return;
     }
-    const auto chunks = port.read_chunks(factory_path, input_chunk_size);
+    const auto chunks =
+        port.read_chunks(factory_path, controller_transfer_chunk_size);
     if (!chunks.has_value()) {
         report_error(port);
         return;
@@ -96,7 +95,8 @@ void ControllerFactoryTransfer::handle_data(core::BytesView payload,
     if (request->index == 0U || frame_data_size_ == 0U) {
         return;
     }
-    const auto chunks = port.read_chunks(factory_path, input_chunk_size);
+    const auto chunks =
+        port.read_chunks(factory_path, controller_transfer_chunk_size);
     if (!chunks.has_value()) {
         report_error(port);
         return;

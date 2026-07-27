@@ -2,6 +2,7 @@
 #include "firmware/application/play_session.hpp"
 
 #include "firmware/core/crc.hpp"
+#include "firmware/core/file_transfer_limits.hpp"
 #include "firmware/core/protocol_constants.hpp"
 #include "firmware/core/sd_user_path.hpp"
 #include "firmware/core/text.hpp"
@@ -14,9 +15,7 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::size_t maximum_path_size = 255U;
 constexpr std::uint64_t error_interval_milliseconds = 1000U;
-constexpr std::size_t md5_text_size = 32U;
 constexpr std::size_t play_prefix_size = 5U;
 constexpr std::string_view open_error = "Error:open file failed[P0]";
 
@@ -41,7 +40,7 @@ std::string resolve_play_path(core::BytesView payload) {
 
 // Reports whether a cached checksum contains exactly 32 hexadecimal characters.
 bool valid_md5(std::string_view value) {
-    return value.size() == md5_text_size &&
+    return value.size() == core::file_transfer_limits::md5_text_size &&
            std::all_of(value.begin(), value.end(), [](unsigned char character) {
                return std::isxdigit(character) != 0;
            });
@@ -56,7 +55,7 @@ bool PlaySession::prepare(core::BytesView payload, std::uint64_t now_millisecond
     ++generation_;
 
     const std::string resolved = resolve_play_path(payload);
-    if (resolved.size() > maximum_path_size) {
+    if (resolved.size() > core::file_transfer_limits::maximum_path_size) {
         report_error(open_error, now_milliseconds, port);
         return false;
     }

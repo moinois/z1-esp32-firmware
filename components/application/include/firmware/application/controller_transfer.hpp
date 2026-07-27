@@ -11,6 +11,9 @@
 
 namespace firmware::application {
 
+inline constexpr std::size_t controller_transfer_chunk_size = 255U;
+inline constexpr std::uint16_t controller_transfer_frame_data_size = 512U;
+
 enum class TransferOperation {
     start,
     geometry,

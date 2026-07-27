@@ -10,9 +10,6 @@ namespace firmware::application {
 namespace {
 
 constexpr std::size_t maximum_request_body_bytes = 63U;
-constexpr std::uint8_t default_frame_size = 10U;
-constexpr std::uint8_t minimum_frame_size = 1U;
-constexpr std::uint8_t maximum_frame_size = 15U;
 constexpr std::string_view no_data_body = "No Data";
 constexpr std::string_view invalid_json_body = "Invalid JSON";
 constexpr std::string_view invalid_resolution_body =
@@ -28,9 +25,9 @@ core::HttpResponsePolicy error_response(std::uint16_t status,
 
 // Converts a valid integer-like JSON number to the CAM-001 frame-size range.
 std::uint8_t normalize_frame_size(double value) {
-    if (value < static_cast<double>(minimum_frame_size) ||
-        value > static_cast<double>(maximum_frame_size)) {
-        return default_frame_size;
+    if (value < static_cast<double>(minimum_camera_frame_size) ||
+        value > static_cast<double>(maximum_camera_frame_size)) {
+        return default_camera_frame_size;
     }
     return static_cast<std::uint8_t>(value);
 }

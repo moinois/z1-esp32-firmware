@@ -17,12 +17,9 @@ constexpr std::string_view frame_interval_key =
     camera_frame_interval_key;
 constexpr std::string_view frames_per_file_key =
     camera_frames_per_file_key;
-constexpr std::uint8_t minimum_frame_size = 1U;
-constexpr std::uint8_t maximum_frame_size = 15U;
-constexpr std::uint8_t invalid_normalized_frame_size = 10U;
 constexpr std::uint64_t minimum_frame_interval_milliseconds = 1000U;
 
-constexpr std::array<FrameDimensions, maximum_frame_size> frame_dimensions{{
+constexpr std::array<FrameDimensions, maximum_camera_frame_size> frame_dimensions{{
     {160U, 120U},
     {128U, 128U},
     {176U, 144U},
@@ -65,8 +62,8 @@ std::optional<std::int64_t> signed_decimal(std::string_view text) {
 
 // Normalizes a syntactically valid frame-size value to the accepted range.
 std::uint8_t normalized_frame_size(std::int64_t value) {
-    if (value < minimum_frame_size || value > maximum_frame_size) {
-        return invalid_normalized_frame_size;
+    if (value < minimum_camera_frame_size || value > maximum_camera_frame_size) {
+        return default_camera_frame_size;
     }
     return static_cast<std::uint8_t>(value);
 }
@@ -109,10 +106,11 @@ const CameraSettings& CameraSettingsLoader::load_once(
 }
 
 FrameDimensions camera_dimensions(std::uint8_t frame_size) {
-    if (frame_size < minimum_frame_size || frame_size > maximum_frame_size) {
+    if (frame_size < minimum_camera_frame_size ||
+        frame_size > maximum_camera_frame_size) {
         return fallback_camera_dimensions;
     }
-    return frame_dimensions[frame_size - minimum_frame_size];
+    return frame_dimensions[frame_size - minimum_camera_frame_size];
 }
 
 }  // namespace firmware::application

@@ -1,6 +1,7 @@
 // Implements bounded update deletion retries and exact recovery delays.
 #include "firmware/application/update_deletion.hpp"
 #include "firmware/core/sd_user_path.hpp"
+#include "firmware/core/protocol_constants.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -15,7 +16,6 @@ constexpr std::uint32_t writable_file_mode = 0666U;
 constexpr std::uint32_t busy_delay_milliseconds = 500U;
 constexpr std::uint32_t permission_delay_milliseconds = 100U;
 constexpr std::uint32_t retry_gap_milliseconds = 200U;
-constexpr std::uint8_t update_broadcast_type = 0x90U;
 constexpr std::string_view delete_error_prefix = "Error: failed to delete [";
 constexpr std::string_view delete_error_suffix =
     "], please delete manually.\r\n";
@@ -74,7 +74,7 @@ void UpdateDeletionService::broadcast_failure(std::string_view path) {
     message.append(delete_error_prefix);
     message.append(displayed_path);
     message.append(delete_error_suffix);
-    port_.broadcast(update_broadcast_type, message);
+    port_.broadcast(core::protocol::console_message, message);
 }
 
 }  // namespace firmware::application

@@ -1,5 +1,6 @@
 // Implements preview JSON validation, command matching, and numeric normalization.
 #include "firmware/application/preview_request.hpp"
+#include "firmware/core/file_transfer_limits.hpp"
 
 #include "firmware/core/json_input.hpp"
 
@@ -9,7 +10,6 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::size_t maximum_path_bytes = 255U;
 constexpr std::size_t maximum_session_bytes = 39U;
 
 // Maps the case-sensitive wire command to its normalized enum.
@@ -81,7 +81,7 @@ std::optional<PreviewRequest> parse_preview_request(core::BytesView input) {
     request.sequence = static_cast<std::uint32_t>(unsigned_selector(
         core::find_json_number(*document, "seq"), 0U));
     request.path = bounded_text(core::find_json_string(*document, "path"),
-                                maximum_path_bytes);
+                                core::file_transfer_limits::maximum_path_size);
     request.session_id = bounded_text(
         core::find_json_string(*document, "session_id"), maximum_session_bytes);
     request.from_milliseconds = unsigned_selector(

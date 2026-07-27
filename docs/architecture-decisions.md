@@ -274,6 +274,13 @@ their core implementation. Service capacities and timing remain private to the
 application service. Hardware and RTOS settings remain in target configuration
 or target adapters.
 
+When multiple modules implement one contract, its values live in a focused
+domain header rather than being repeated or added to a global catch-all. This
+applies to update-package layout and phases, host file-transfer limits,
+controller-transfer geometry, runtime persistence keys, configuration source
+names, and camera frame-size bounds. Equal numeric values from independent
+requirements remain independent constants.
+
 Dependencies continue to point inward; constants must not introduce a reverse
 dependency between core, application, and target partitions.
 

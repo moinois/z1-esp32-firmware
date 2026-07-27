@@ -1,6 +1,7 @@
 // Implements aggregate cleanup, read-failure classification, and validation.
 #include "firmware/application/update_validation.hpp"
 #include "firmware/core/sd_user_path.hpp"
+#include "firmware/core/protocol_constants.hpp"
 
 #include <array>
 #include <cstddef>
@@ -15,8 +16,6 @@ namespace {
 const std::string aggregate_path = core::physical_sd_path("/firmware.bin");
 const std::string partial_aggregate_path =
     core::physical_sd_path("/firmware.bin.part");
-constexpr std::size_t aggregate_header_size = 32U;
-constexpr std::uint8_t controller_command_type = 0xA2U;
 constexpr std::array<std::uint8_t, 6U> reset_command{
     'r', 'e', 's', 'e', 't', 0U};
 
@@ -32,7 +31,7 @@ std::optional<ValidatedUpdatePackage> UpdateValidationService::validate(
     UpdateLoadResult loaded = port_.load_aggregate(aggregate_path);
     if (loaded.failure == UpdateLoadFailure::absent) {
         port_.send_controller_packet(
-            controller_command_type,
+            core::protocol::general_command,
             core::BytesView(reset_command.data(), reset_command.size()));
         return std::nullopt;
     }
@@ -58,7 +57,7 @@ std::optional<ValidatedUpdatePackage> UpdateValidationService::validate(
     }
     if (parsed.header->mainboard_size != 0U) {
         const core::BytesView image(
-            loaded.bytes.data() + aggregate_header_size,
+            loaded.bytes.data() + core::update_package_header_size,
             parsed.header->mainboard_size);
         if (!port_.valid_mainboard_image(image)) {
             reject_format(now_milliseconds);

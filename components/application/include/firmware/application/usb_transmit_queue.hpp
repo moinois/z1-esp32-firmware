@@ -2,6 +2,7 @@
 #pragma once
 
 #include "firmware/core/bytes.hpp"
+#include "firmware/core/protocol_constants.hpp"
 
 #include <cstddef>
 #include <deque>
@@ -13,7 +14,8 @@ namespace firmware::application {
 class UsbTransmitQueue {
 public:
     static constexpr std::size_t maximum_items = 30U;
-    static constexpr std::size_t maximum_frame_size = 544U;
+    static constexpr std::size_t maximum_frame_size =
+        core::protocol::controller_maximum_item_size;
 
     // Queues one non-empty frame when capacity and size limits permit it.
     bool enqueue(core::BytesView frame);

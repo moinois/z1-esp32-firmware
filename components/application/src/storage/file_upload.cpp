@@ -2,6 +2,7 @@
 #include "firmware/application/file_upload.hpp"
 
 #include "firmware/core/protocol_constants.hpp"
+#include "firmware/core/file_transfer_limits.hpp"
 #include "firmware/core/sd_user_path.hpp"
 
 #include <algorithm>
@@ -11,11 +12,8 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::size_t maximum_data_size = 8192U;
-constexpr std::size_t md5_text_size = 32U;
 constexpr std::size_t sequence_size = core::protocol::big_endian_u32_size;
 constexpr std::uint64_t timed_retry_interval_milliseconds = 5010U;
-constexpr std::uint64_t inactivity_timeout_milliseconds = 9000U;
 constexpr std::uint8_t packets_per_retry_cycle = 51U;
 constexpr std::uint8_t maximum_retry_cycles = 51U;
 constexpr std::uint32_t parent_directory_mode = 0777U;
@@ -131,14 +129,16 @@ void FileUpload::handle(const core::Frame& frame,
 
     const bool md5_valid = expected_ == ExpectedPacket::md5 &&
                            frame.type == core::protocol::file_md5 &&
-                           frame.payload.size() >= md5_text_size;
+                           frame.payload.size() >=
+                               core::file_transfer_limits::md5_text_size;
     const bool geometry_valid = expected_ == ExpectedPacket::geometry &&
                                 frame.type == core::protocol::file_geometry &&
                                 frame.payload.size() >= sequence_size;
     const bool data_valid = expected_ == ExpectedPacket::data &&
                             frame.type == core::protocol::file_data &&
                             frame.payload.size() >= sequence_size &&
-                            frame.payload.size() <= maximum_data_size + sequence_size &&
+                            frame.payload.size() <=
+                                core::file_transfer_limits::data_block_size + sequence_size &&
                             decode_u32(frame.payload) == requested_sequence_;
     if (md5_valid) {
         accept_md5(frame.payload, port);
@@ -155,7 +155,8 @@ void FileUpload::poll(std::uint64_t now_milliseconds, FileUploadPort& port) {
     if (!active_) {
         return;
     }
-    if (now_milliseconds - last_activity_milliseconds_ > inactivity_timeout_milliseconds) {
+    if (now_milliseconds - last_activity_milliseconds_ >
+        core::file_transfer_limits::inactivity_timeout_milliseconds) {
         abort(timeout_message, port);
         return;
     }
@@ -173,7 +174,8 @@ bool FileUpload::active() const {
 }
 
 void FileUpload::accept_md5(core::BytesView payload, FileUploadPort& port) {
-    static_cast<void>(port.write_md5({payload.data(), md5_text_size}));
+    static_cast<void>(port.write_md5(
+        {payload.data(), core::file_transfer_limits::md5_text_size}));
     port.send(owner_, {core::protocol::file_geometry, {}});
     expected_ = ExpectedPacket::geometry;
     reset_retry_counters();

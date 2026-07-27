@@ -4,7 +4,6 @@
 namespace firmware::core {
 namespace {
 
-constexpr std::size_t update_header_size = 32U;
 constexpr std::size_t aggregate_crc_field_offset = 28U;
 constexpr std::size_t version_offset = 4U;
 constexpr std::size_t header_length_offset = 5U;
@@ -36,7 +35,7 @@ std::uint32_t read_le32(const ByteVector& bytes, std::size_t offset) {
 }  // namespace
 
 std::uint32_t aggregate_file_crc(const ByteVector& package) {
-    if (package.size() < update_header_size) {
+    if (package.size() < update_package_header_size) {
         return 0U;
     }
 
@@ -51,14 +50,14 @@ std::uint32_t aggregate_file_crc(const ByteVector& package) {
     for (std::size_t index = 0U; index < aggregate_crc_field_offset; ++index) {
         add_byte(package[index]);
     }
-    for (std::size_t index = update_header_size; index < package.size(); ++index) {
+    for (std::size_t index = update_package_header_size; index < package.size(); ++index) {
         add_byte(package[index]);
     }
     return crc ^ crc32_final_xor;
 }
 
 UpdateParseResult parse_update_package(const ByteVector& package) {
-    if (package.size() < update_header_size) {
+    if (package.size() < update_package_header_size) {
         return {{}, UpdateError::short_file};
     }
     if (read_le32(package, 0U) != package_magic) {
@@ -69,7 +68,7 @@ UpdateParseResult parse_update_package(const ByteVector& package) {
         package_version > maximum_package_version) {
         return {{}, UpdateError::version};
     }
-    if (package[header_length_offset] != update_header_size) {
+    if (package[header_length_offset] != update_package_header_size) {
         return {{}, UpdateError::header_length};
     }
 
@@ -88,11 +87,11 @@ UpdateParseResult parse_update_package(const ByteVector& package) {
     if (aggregate_file_crc(package) != read_le32(package, file_crc_offset)) {
         return {{}, UpdateError::file_crc};
     }
-    if (static_cast<std::uint64_t>(update_header_size) + mainboard_size + controller_size >
+    if (static_cast<std::uint64_t>(update_package_header_size) + mainboard_size + controller_size >
         package.size()) {
         return {{}, UpdateError::size};
     }
-    if (mainboard_size != 0U && package[update_header_size] != esp_image_magic) {
+    if (mainboard_size != 0U && package[update_package_header_size] != esp_image_magic) {
         return {{}, UpdateError::image};
     }
 

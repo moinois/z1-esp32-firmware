@@ -1,5 +1,7 @@
 // Implements persisted runtime reporting and first_boot-only clearing.
 #include "firmware/application/runtime_commands.hpp"
+#include "firmware/application/runtime_persistence.hpp"
+#include "firmware/core/protocol_constants.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -9,14 +11,9 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::string_view runtime_namespace = "runtime";
-constexpr std::string_view first_boot_key = "first_boot";
-constexpr std::string_view power_on_key = "pon_s";
-constexpr std::string_view machine_key = "mach_s";
 constexpr std::string_view system_time_command = "sys-time";
 constexpr std::string_view clear_first_time_command = "clearftm";
 constexpr std::uint32_t operation_wait_milliseconds = 200U;
-constexpr std::uint8_t runtime_response_type = 0x83U;
 
 // Reports whether one byte is accepted trailing ASCII whitespace.
 bool ascii_whitespace(char character) {
@@ -38,7 +35,7 @@ void RuntimeCommandService::handle_system_time(std::string_view command) {
         respond("sys-time: busy\n");
         return;
     }
-    if (!port_.open_namespace(runtime_namespace)) {
+    if (!port_.open_namespace(runtime_persistence::name_space)) {
         respond("sys-time-data get failed\n");
         respond("sys-time-data = null,0,0\n");
         port_.complete_operation();
@@ -46,15 +43,15 @@ void RuntimeCommandService::handle_system_time(std::string_view command) {
     }
 
     const RuntimeSignedRead first_boot =
-        port_.read_first_boot(first_boot_key);
+        port_.read_first_boot(runtime_persistence::first_boot_key);
     std::string timestamp = "null";
     if (first_boot.result == RuntimeValueResult::success) {
         timestamp = port_.format_utc_minute(first_boot.value).value_or("invalid");
     }
     const std::uint64_t power_on =
-        port_.read_counter(power_on_key).value_or(0U);
+        port_.read_counter(runtime_persistence::power_on_seconds_key).value_or(0U);
     const std::uint64_t machine =
-        port_.read_counter(machine_key).value_or(0U);
+        port_.read_counter(runtime_persistence::machine_seconds_key).value_or(0U);
     respond(std::string("sys-time-data = ") + timestamp + "," +
             std::to_string(power_on) + "," + std::to_string(machine) + "\n");
     port_.complete_operation();
@@ -71,7 +68,8 @@ void RuntimeCommandService::handle_clear_first_boot(
         return;
     }
     const RuntimeEraseResult result =
-        port_.erase_first_boot(runtime_namespace, first_boot_key);
+        port_.erase_first_boot(runtime_persistence::name_space,
+                               runtime_persistence::first_boot_key);
     if (result == RuntimeEraseResult::success ||
         result == RuntimeEraseResult::missing) {
         respond("clearftm ok\n");
@@ -92,7 +90,7 @@ bool RuntimeCommandService::valid_shape(
 }
 
 void RuntimeCommandService::respond(std::string_view payload) {
-    port_.send_response(runtime_response_type, payload);
+    port_.send_response(core::protocol::text_response, payload);
 }
 
 }  // namespace firmware::application

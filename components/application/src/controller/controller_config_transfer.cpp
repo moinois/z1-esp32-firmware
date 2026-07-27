@@ -10,8 +10,6 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::size_t input_chunk_size = 255U;
-constexpr std::uint16_t response_data_size = 512U;
 constexpr std::size_t minimum_remaining_space = 80U;
 constexpr std::size_t maximum_unmodified_record_size = 64U;
 constexpr std::size_t truncated_record_size = maximum_unmodified_record_size - 2U;
@@ -76,7 +74,8 @@ void ControllerConfigTransfer::handle_geometry(core::BytesView payload,
         report_error(port);
         return;
     }
-    const auto chunks = port.read_configuration_chunks(input_chunk_size);
+    const auto chunks =
+        port.read_configuration_chunks(controller_transfer_chunk_size);
     if (!chunks.has_value()) {
         report_error(port);
         return;
@@ -86,11 +85,11 @@ void ControllerConfigTransfer::handle_geometry(core::BytesView payload,
         chunks->begin(), chunks->end(), [](const core::ByteVector& chunk) {
             return chunk.size() > 2U;
         }));
-    frame_data_size_ = response_data_size;
+    frame_data_size_ = controller_transfer_frame_data_size;
     if (!port.send(make_transfer_reply(core::protocol::configuration_family,
                                        core::protocol::transfer_geometry,
                                        encode_transfer_geometry(frame_count_,
-                                                                response_data_size)))) {
+                                        controller_transfer_frame_data_size)))) {
         report_error(port);
     }
 }
@@ -105,7 +104,8 @@ void ControllerConfigTransfer::handle_data(core::BytesView payload,
     if (frame_data_size_ == 0U) {
         return;
     }
-    const auto chunks = port.read_configuration_chunks(input_chunk_size);
+    const auto chunks =
+        port.read_configuration_chunks(controller_transfer_chunk_size);
     if (!chunks.has_value()) {
         report_error(port);
         return;
@@ -122,14 +122,15 @@ void ControllerConfigTransfer::handle_data(core::BytesView payload,
     core::ByteVector data;
     for (std::size_t index = skip; index < records.size(); ++index) {
         data.insert(data.end(), records[index].begin(), records[index].end());
-        if (response_data_size - data.size() < minimum_remaining_space) {
+        if (controller_transfer_frame_data_size - data.size() <
+            minimum_remaining_space) {
             break;
         }
     }
     if (data.empty()) {
         return;
     }
-    if (data.size() < response_data_size) {
+    if (data.size() < controller_transfer_frame_data_size) {
         data.push_back('\n');
     }
 

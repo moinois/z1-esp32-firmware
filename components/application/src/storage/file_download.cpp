@@ -2,6 +2,7 @@
 #include "firmware/application/file_download.hpp"
 
 #include "firmware/core/protocol_constants.hpp"
+#include "firmware/core/file_transfer_limits.hpp"
 #include "firmware/core/sd_user_path.hpp"
 
 #include <algorithm>
@@ -10,13 +11,11 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::size_t block_size = 8192U;
+constexpr std::size_t block_size = core::file_transfer_limits::data_block_size;
 constexpr std::size_t response_workspace_size =
     block_size + core::protocol::big_endian_u32_size;
-constexpr std::size_t md5_text_size = 32U;
 constexpr std::size_t maximum_cache_read_size = 63U;
 constexpr std::size_t maximum_error_path_size = 240U;
-constexpr std::uint64_t inactivity_timeout_milliseconds = 9000U;
 constexpr std::uint8_t maximum_unexpected_packets = 51U;
 constexpr std::string_view default_md5 = "82df799dde08f3d86839e24cb97e74d4";
 constexpr std::string_view timeout_error = "Error: Machine received cmd timeout!";
@@ -63,7 +62,8 @@ bool FileDownload::start(const HostIdentity& owner, std::string path,
 
     if (is_config_file(resolved_path_)) {
         const auto calculated = port.calculate_md5(resolved_path_);
-        if (!calculated.has_value() || calculated->size() != md5_text_size) {
+        if (!calculated.has_value() ||
+            calculated->size() != core::file_transfer_limits::md5_text_size) {
             send_path_error("Error: failed to get MD5 for [", port);
             return false;
         }
@@ -148,7 +148,7 @@ void FileDownload::handle(const core::Frame& frame,
 
 void FileDownload::poll(std::uint64_t now_milliseconds, FileDownloadPort& port) {
     if (active_ && now_milliseconds - last_activity_milliseconds_ >
-                       inactivity_timeout_milliseconds) {
+                       core::file_transfer_limits::inactivity_timeout_milliseconds) {
         abort(timeout_error, port);
     }
 }

@@ -30,6 +30,9 @@ struct FrameDimensions {
 };
 
 inline constexpr FrameDimensions fallback_camera_dimensions{1600U, 1200U};
+inline constexpr std::uint8_t minimum_camera_frame_size = 1U;
+inline constexpr std::uint8_t maximum_camera_frame_size = 15U;
+inline constexpr std::uint8_t default_camera_frame_size = 10U;
 
 // Holds all normalized camera and recording configuration values.
 struct CameraSettings {

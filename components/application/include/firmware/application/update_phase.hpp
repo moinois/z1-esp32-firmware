@@ -9,6 +9,12 @@
 
 namespace firmware::application {
 
+inline constexpr std::uint8_t update_idle_phase = 0U;
+inline constexpr std::uint8_t update_mainboard_phase = 1U;
+inline constexpr std::uint8_t update_controller_phase = 2U;
+inline constexpr std::uint8_t update_failure_phase = 3U;
+inline constexpr std::uint8_t update_success_phase = 4U;
+
 // Holds the phase and percentage exposed through aggregate machine status.
 struct UpdateStatus {
     std::uint8_t phase;

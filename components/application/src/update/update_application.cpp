@@ -1,6 +1,8 @@
 // Implements controller staging and mainboard OTA application state ordering.
 #include "firmware/application/update_application.hpp"
+#include "firmware/application/update_phase.hpp"
 #include "firmware/core/sd_user_path.hpp"
+#include "firmware/core/update_package.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -12,10 +14,6 @@ namespace {
 const std::string aggregate_path = core::physical_sd_path("/firmware.bin");
 const std::string controller_image_path =
     core::physical_sd_path("/lpc1768.bin");
-constexpr std::size_t aggregate_header_size = 32U;
-constexpr std::uint8_t mainboard_phase = 1U;
-constexpr std::uint8_t controller_phase = 2U;
-constexpr std::uint8_t failure_phase = 3U;
 
 }  // namespace
 
@@ -31,7 +29,7 @@ bool UpdateApplicationService::apply(
         return true;
     }
 
-    port_.publish_phase(mainboard_phase);
+    port_.publish_phase(update_mainboard_phase);
     if (!port_.select_inactive_partition()) {
         return fail_mainboard(false);
     }
@@ -40,7 +38,7 @@ bool UpdateApplicationService::apply(
     }
 
     const core::BytesView mainboard_image(
-        package.bytes.data() + aggregate_header_size,
+        package.bytes.data() + core::update_package_header_size,
         package.header.mainboard_size);
     if (!port_.write_mainboard(mainboard_image)) {
         return fail_mainboard(true);
@@ -53,7 +51,7 @@ bool UpdateApplicationService::apply(
     }
 
     stage_controller(package);
-    port_.persist_phase_direct(controller_phase);
+    port_.persist_phase_direct(update_controller_phase);
     port_.remove_aggregate(aggregate_path);
     port_.restart_mainboard();
     return true;
@@ -65,7 +63,7 @@ void UpdateApplicationService::stage_controller(
         return;
     }
     const std::size_t controller_offset =
-        aggregate_header_size + package.header.mainboard_size;
+        core::update_package_header_size + package.header.mainboard_size;
     const core::BytesView controller_image(
         package.bytes.data() + controller_offset,
         package.header.controller_size);
@@ -76,7 +74,7 @@ bool UpdateApplicationService::fail_mainboard(bool write_active) {
     if (write_active) {
         port_.abort_mainboard_write();
     }
-    port_.publish_phase(failure_phase);
+    port_.publish_phase(update_failure_phase);
     return false;
 }
 

@@ -14,7 +14,6 @@ namespace {
 
 const std::string firmware_path = core::physical_sd_path("/lpc1768.bin");
 constexpr std::uint64_t wait_timeout_milliseconds = 5000U;
-constexpr std::uint16_t maximum_frame_data_size = 512U;
 
 }  // namespace
 
@@ -66,7 +65,8 @@ void ControllerFirmwareTransfer::handle_geometry(core::BytesView payload,
     const auto proposed = parse_transfer_geometry(payload);
     const auto file_size = port.file_size(firmware_path);
     if (!proposed.has_value() || proposed->frame_data_size == 0U ||
-        proposed->frame_data_size > maximum_frame_data_size || !file_size.has_value()) {
+        proposed->frame_data_size > controller_transfer_frame_data_size ||
+        !file_size.has_value()) {
         report_error(port);
         return;
     }

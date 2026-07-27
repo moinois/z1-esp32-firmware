@@ -2,6 +2,7 @@
 #include "firmware/application/file_hash_command.hpp"
 
 #include "firmware/core/filesystem_syntax.hpp"
+#include "firmware/core/file_transfer_limits.hpp"
 #include "firmware/core/protocol_constants.hpp"
 #include "firmware/core/sd_user_path.hpp"
 
@@ -14,7 +15,6 @@ namespace firmware::application {
 namespace {
 
 constexpr std::size_t hash_read_block_size = 4096U;
-constexpr std::size_t md5_text_size = 32U;
 constexpr std::string_view missing_argument_message =
     "Error: md5sum requires a file path\r\n";
 
@@ -26,7 +26,7 @@ void send_console(std::string message, FileHashPort& port) {
 
 // Validates exactly one MD5 value and converts its hexadecimal text to lowercase.
 std::optional<std::string> normalize_md5(std::string value) {
-    if (value.size() != md5_text_size) {
+    if (value.size() != core::file_transfer_limits::md5_text_size) {
         return std::nullopt;
     }
     const bool hexadecimal = std::all_of(

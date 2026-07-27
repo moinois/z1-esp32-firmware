@@ -5,6 +5,9 @@
 #include <cstdint>
 #include <optional>
 namespace firmware::core {
+
+inline constexpr std::size_t update_package_header_size = 32U;
+
 struct UpdateHeader {
     std::uint8_t version = 0;
     std::uint8_t flags = 0;

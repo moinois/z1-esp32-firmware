@@ -1,12 +1,13 @@
 // Implements the fixed-capacity, whole-frame TCP transmit queue.
 #include "firmware/application/tcp_transmit_queue.hpp"
+#include "firmware/core/protocol_constants.hpp"
 
 namespace firmware::application {
 
 bool TcpTransmitQueue::enqueue(core::BytesView frame) {
     constexpr std::size_t maximum_items = 32U;
-    constexpr std::size_t maximum_frame_size = 8300U;
-    if (frame.size() == 0U || frame.size() > maximum_frame_size
+    if (frame.size() == 0U ||
+        frame.size() > core::protocol::host_maximum_frame_size
         || frames_.size() >= maximum_items) {
         return false;
     }

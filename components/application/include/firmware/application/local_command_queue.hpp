@@ -2,6 +2,7 @@
 #pragma once
 
 #include "firmware/core/frame.hpp"
+#include "firmware/core/protocol_constants.hpp"
 
 #include <cstddef>
 #include <deque>
@@ -13,7 +14,8 @@ namespace firmware::application {
 class LocalCommandQueue {
 public:
     // Local command frames include the common nine-byte framing envelope.
-    static constexpr std::size_t maximum_frame_size = 544U;
+    static constexpr std::size_t maximum_frame_size =
+        core::protocol::controller_maximum_item_size;
     static constexpr std::size_t maximum_pending_commands = 32U;
 
     // Queues one non-empty frame when both capacity limits permit it.

@@ -2,6 +2,7 @@
 #include "firmware/core/file_transfer_paths.hpp"
 
 #include "firmware/core/sd_user_path.hpp"
+#include "firmware/core/file_transfer_limits.hpp"
 #include "firmware/core/text.hpp"
 
 #include <algorithm>
@@ -12,9 +13,7 @@ namespace firmware::core {
 namespace {
 
 constexpr std::size_t maximum_start_size = 128U;
-constexpr std::size_t maximum_path_size = 255U;
 constexpr std::size_t maximum_md5_input_size = 63U;
-constexpr std::size_t md5_text_size = 32U;
 
 // Reports whether a path edge character is trimmed by the transfer protocol.
 bool trimmed_character(char value) {
@@ -63,7 +62,7 @@ std::optional<FileTransferStart> parse_file_transfer_start(BytesView payload) {
         return std::nullopt;
     }
     std::string resolved = resolve_sd_user_path(trimmed);
-    if (resolved.size() > maximum_path_size) {
+    if (resolved.size() > file_transfer_limits::maximum_path_size) {
         return std::nullopt;
     }
     return FileTransferStart{direction, std::move(resolved)};
@@ -92,14 +91,14 @@ std::optional<std::string> extract_cached_md5(BytesView content) {
     std::string result;
     const std::size_t inspected = std::min(content.size(), maximum_md5_input_size);
     for (std::size_t index = 0U;
-         index < inspected && result.size() < md5_text_size;
+         index < inspected && result.size() < file_transfer_limits::md5_text_size;
          ++index) {
         const unsigned char character = content[index];
         if (std::isxdigit(character) != 0) {
             result.push_back(static_cast<char>(std::tolower(character)));
         }
     }
-    if (result.size() != md5_text_size) {
+    if (result.size() != file_transfer_limits::md5_text_size) {
         return std::nullopt;
     }
     return result;
