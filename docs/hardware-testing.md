@@ -66,12 +66,13 @@ Only a reviewed `PASS` may be recorded as physical evidence in
 verification gap unchanged.
 
 The reviewed 2026-07-26 runs against the freshly flashed build passed TCP
-listener acceptance, framed read-only TCP and USB `ftype` round trips, native
-USB descriptor/endpoint checks, and SD root listing through USB. TCP first exposed
+listener acceptance, framed read-only TCP and USB `ftype` round trips, and native
+USB descriptor/endpoint checks. An SD root-list command completed but did not
+prove that storage was mounted and is not conformance evidence. TCP first exposed
 a real `tcp_client` stack overflow; the client-task stack was increased from
 4096 to 8192 bytes, the firmware was rebuilt and reflashed, and the same checks
-then passed. USB and SD were verified after moving the cable from COM to native
-USB. The attached camera failed its boot probe with
+then passed. USB was verified after moving the cable from COM to native USB.
+The attached camera failed its boot probe with
 `ESP_ERR_NOT_SUPPORTED` and is not conformant yet.
 
 The mutation-enabled USB run on the same date exposed incorrect command-
@@ -105,7 +106,7 @@ only when building with `Z1_OTA_ROLLBACK_TEST_FAILURE` set.
 
 Multipart reception for both `/update` and `/updateffs` treats a temporary
 five-second socket timeout as a recoverable transport gap. It permits at most
-six consecutive timeouts (about 30 seconds), resets the counter whenever data
+six retries after timeouts (about 30 seconds of retry allowance), resets the counter whenever data
 arrives, and logs timeout counts plus progress every 256 KiB. This bound avoids
 abandoning a valid upload during a brief Wi-Fi interruption without retaining
 an HTTP worker forever. `test_ota_survives_receive_timeout` sends 4 KiB, pauses
@@ -116,14 +117,14 @@ Wi-Fi disconnect backoff is executed by a coalescing reconnect task. The ESP-IDF
 event loop therefore no longer sleeps for the policy's retry delays and remains
 available to process association, DHCP, and socket-related events.
 
-The first physical delayed-chunk run on 2026-07-26 observed the intended
+The first physical delayed-chunk attempt on 2026-07-26 observed the intended
 recovery: after the injected seven-second pause the target logged timeout 1/6
 and accepted subsequent bytes. The hotspot link then stopped delivering data
 for more than the complete retry window after 23 KiB, so the bounded receiver
 terminated the request. This proved recovery from the original single-timeout
 failure, but did not yet prove a completed delayed-chunk OTA.
 
-A subsequent run on the same date completed successfully in 122.30 seconds.
+A subsequent run on 2026-07-27 completed successfully in 122.30 seconds.
 The target recovered after the injected timeout, received all 1,762,088
 multipart bytes, validated the image, selected `ota_1`, returned the exact HTTP
 success response, restarted, booted at `0x220000`, and marked the image valid.
@@ -147,7 +148,8 @@ handlers were incorrectly registered after the wildcard route on port 80 and no
 handlers were registered on the specified video port 82. The handlers were moved
 to the dedicated server, version 1 was installed by OTA, and both `/ws_video` and
 `/ws_preview` then returned HTTP 101 on port 82. The combined HTTP/TCP HIL suite
-passed 9 of 9 checks after the correction.
+passed all nine checks that existed at that time. The HTTP suite now also
+contains the Wi-Fi diagnostics schema check described below.
 
 Wi-Fi diagnostics are available through read-only
 `GET /api/wifi/diagnostics`. The response contains current connection state,
@@ -159,9 +161,10 @@ and sensible radio ranges whenever the endpoint is detected.
 
 ## Current fixture coverage
 
-The initial executable suite covers native USB descriptors and read-only round
-trips, TCP listener/read-only round trips, SD directory access, an explicitly
-gated recoverable filesystem operation, and diagnostic-port discovery.
-Controller, CAN, BLE, camera, RF association, recording, and OTA need dedicated
-fixture drivers before they can produce physical evidence. Capability-gate
-tests document missing controller, CAN, and BLE fixtures as skips.
+The executable suite covers native USB descriptors and read-only round trips,
+TCP listener/read-only round trips, HTTP/WebSocket behavior, Wi-Fi diagnostics,
+an explicitly gated recoverable filesystem operation, and destructive delayed-
+chunk OTA. SD tests require an explicitly declared reader/card because protocol
+completion alone cannot prove a mount. Controller, CAN, BLE, camera, RF-control,
+and recording still need dedicated fixture drivers. Capability-gate tests
+document missing controller, CAN, and BLE fixtures as skips.

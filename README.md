@@ -42,7 +42,7 @@ The first core-to-periphery development slice contains:
 - SD-card startup mounting, sampled debounce, transition-specific retry,
   logging order, and whole-MiB capacity policy behind an SD port;
 - reusable SD configuration-line parsing and literal-space-before-escape token
-  parsing for configuration and future WLAN commands;
+  parsing shared by configuration and WLAN commands;
 - active/default configuration restore and save with truncating bytewise copy,
   partial-file retention, close-error handling, and exact responses;
 - lazy live configuration loading with bounded chunks, 100-entry capacity,
@@ -256,7 +256,8 @@ The first core-to-periphery development slice contains:
 - mutex-protected TCP-to-controller forwarding through the existing UART output scheduler;
 - target TCP receive processing routed through the shared callback dispatcher;
 - target TCP clients drain queued frames with whole-frame retry semantics;
-- transport-neutral local-command family classification for future TCP response ports;
+- transport-neutral local-command family classification shared by TCP, USB,
+  and controller response adapters;
 - origin-aware TCP dispatch context for per-client response queueing;
 - TCP-local M951/M952 recording control with per-client `0xa2 ok\n` responses;
 - TCP-local serial-number get/set using NVS persistence and origin-aware replies;
@@ -542,13 +543,14 @@ implemented, host-tested where portable, and target-built. Remaining work is
 primarily physical verification and fixture-specific integration: raw
 byte-exact GATT coverage beyond the standard BLUFI callback bridge, controller
 and CAN rigs, RF/coexistence measurements, camera/recording endurance, SD/FAT
-failure injection, OTA recovery on real flash, resource-exhaustion stress, and
-long-running timing validation.
+failure injection, resource-exhaustion stress, and long-running timing
+validation. Direct OTA alternation, rollback, previous-partition reuse, and
+recovery after an injected receive timeout have physical HIL evidence.
 
-The optional HIL framework provides USB, TCP, SD/filesystem, and diagnostic
-checks when corresponding hardware is present. Controller, CAN, BLE, camera,
-recording, and destructive OTA tests remain skipped until their fixture drivers
-and recovery procedures are supplied.
+The optional HIL framework provides USB, TCP, HTTP/WebSocket, Wi-Fi diagnostic,
+SD/filesystem, and explicitly gated destructive OTA checks. Controller, CAN,
+BLE, camera, and recording tests remain skipped until their fixture drivers and
+recovery procedures are supplied.
 
 ## Conformance policy
 
