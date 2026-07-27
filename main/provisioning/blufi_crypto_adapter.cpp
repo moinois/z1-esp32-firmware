@@ -1,6 +1,7 @@
 // Implements BLUFI DH, MD5, and AES-CFB128 operations with ESP-IDF mbedTLS.
 #include "blufi_crypto_adapter.hpp"
 
+#include "esp_blufi_api.h"
 #include "esp_random.h"
 #include "mbedtls/md5.h"
 
@@ -108,8 +109,9 @@ void BlufiCryptoAdapter::send_negotiation_response(
     negotiation_response_.assign(response.begin(), response.end());
 }
 
-void BlufiCryptoAdapter::report_error(std::uint8_t) {
-    // ESP-IDF emits the protocol error through its own BLUFI callback path.
+void BlufiCryptoAdapter::report_error(std::uint8_t error) {
+    static_cast<void>(esp_blufi_send_error_info(
+        static_cast<esp_blufi_error_state_t>(error)));
 }
 
 std::optional<firmware::core::ByteVector>

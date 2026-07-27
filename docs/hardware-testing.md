@@ -46,6 +46,8 @@ Z1_HIL_HOST=192.168.8.119 Z1_ALLOW_DESTRUCTIVE=1 \
 | `Z1_HIL_CONTROLLER` | Declares an attached controller fixture | disabled |
 | `Z1_HIL_CAN` | Declares an attached CAN fixture | disabled |
 | `Z1_HIL_BLE` | Declares an available BLE scanner | disabled |
+| `Z1_HIL_WIFI_SSID` | Test-network SSID used by mutating BLUFI provisioning | unset |
+| `Z1_HIL_WIFI_PASSWORD` | Test-network password; an empty value is valid | unset |
 
 Camera availability is detected automatically through a valid
 `POST /api/camera/resolution` request. The exact controlled sensor-unavailable
@@ -69,6 +71,17 @@ The expanded read-only fixture also verifies advertising recovery after a
 disconnect, three complete connection/read/disconnection cycles, notification
 subscription, a response-bearing invalid-envelope write, and continued GATT
 health after that rejected protocol input.
+The wire-level fixture additionally checks exact version and status responses,
+Wi-Fi-list record encoding, ignored unknown controls, deterministic negotiation
+errors, Diffie-Hellman negotiation, salted MD5 key derivation, AES-CFB128,
+CRC-16, and encrypted fragmented Wi-Fi-list delivery. These checks are
+read-only because they do not stage credentials or request station changes.
+
+The separately gated provisioning test requires `Z1_ALLOW_MUTATION=1`,
+`Z1_HIL_WIFI_SSID`, `Z1_HIL_WIFI_PASSWORD`, and `Z1_HIL_HOST`. It negotiates a
+fresh secure BLUFI session, sends encrypted SSID and password frames, requests
+association, and waits up to 30 seconds for Wi-Fi diagnostics at the declared
+host. Use only credentials that keep the board reachable from the test host.
 
 The read-only suite also exercises repeated native USB requests, recovery after
 unframed USB noise, bytewise fragmented TCP input, the four-client TCP limit,

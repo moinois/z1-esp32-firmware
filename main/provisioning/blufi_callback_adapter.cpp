@@ -33,7 +33,7 @@ const esp_blufi_callbacks_t& BlufiCallbackAdapter::callbacks() const {
 
 void BlufiCallbackAdapter::event_callback(esp_blufi_cb_event_t event,
                                           esp_blufi_cb_param_t* parameter) {
-    if (active_instance_ == nullptr || parameter == nullptr) {
+    if (active_instance_ == nullptr) {
         return;
     }
     auto& provisioning = active_instance_->provisioning_;
@@ -59,11 +59,17 @@ void BlufiCallbackAdapter::event_callback(esp_blufi_cb_event_t event,
             provisioning.request_wifi_list();
             return;
         case ESP_BLUFI_EVENT_SET_WIFI_OPMODE:
+            if (parameter == nullptr) {
+                return;
+            }
             provisioning.set_operation_mode(
                 static_cast<std::uint8_t>(parameter->wifi_mode.op_mode));
             return;
         case ESP_BLUFI_EVENT_RECV_STA_BSSID:
             {
+                if (parameter == nullptr) {
+                    return;
+                }
                 std::array<std::uint8_t, 6U> bssid{};
                 std::copy(std::begin(parameter->sta_bssid.bssid),
                           std::end(parameter->sta_bssid.bssid), bssid.begin());
@@ -71,20 +77,32 @@ void BlufiCallbackAdapter::event_callback(esp_blufi_cb_event_t event,
             }
             return;
         case ESP_BLUFI_EVENT_RECV_STA_SSID:
+            if (parameter == nullptr) {
+                return;
+            }
             provisioning.receive_ssid(firmware::core::BytesView(
                 parameter->sta_ssid.ssid,
                 static_cast<std::size_t>(parameter->sta_ssid.ssid_len)));
             return;
         case ESP_BLUFI_EVENT_RECV_STA_PASSWD:
+            if (parameter == nullptr) {
+                return;
+            }
             provisioning.receive_password(firmware::core::BytesView(
                 parameter->sta_passwd.passwd,
                 static_cast<std::size_t>(parameter->sta_passwd.passwd_len)));
             return;
         case ESP_BLUFI_EVENT_REPORT_ERROR:
+            if (parameter == nullptr) {
+                return;
+            }
             provisioning.receive_error(
                 static_cast<std::uint8_t>(parameter->report_error.state));
             return;
         case ESP_BLUFI_EVENT_RECV_CUSTOM_DATA:
+            if (parameter == nullptr) {
+                return;
+            }
             provisioning.receive_custom_data(firmware::core::BytesView(
                 parameter->custom_data.data,
                 parameter->custom_data.data_len));

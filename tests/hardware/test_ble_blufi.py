@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import http.client
+import json
 import os
+import time
 from typing import Any
 
 import pytest
@@ -12,6 +16,9 @@ BLUFI_NAME = "BLUFI_DEVICE"
 BLUFI_SERVICE = "0000ffff-0000-1000-8000-00805f9b34fb"
 BLUFI_WRITE = "0000ff01-0000-1000-8000-00805f9b34fb"
 BLUFI_NOTIFY = "0000ff02-0000-1000-8000-00805f9b34fb"
+BLUFI_SALT = bytes.fromhex(
+    "5a315f424c5546495f53414c545f32303235aab1a30688453667908721701182"
+)
 
 
 def _require_ble_fixture() -> None:
@@ -45,6 +52,180 @@ async def _require_blufi():
 async def _assert_gatt_healthy(client: Any) -> None:
     assert client.is_connected
     assert bytes(await client.read_gatt_char(BLUFI_NOTIFY)) == b"\x00"
+
+
+async def _request_frames(
+    client: Any, request: bytes, timeout: float = 5.0
+) -> list[bytes]:
+    response: asyncio.Future[list[bytes]] = asyncio.get_running_loop().create_future()
+    frames: list[bytes] = []
+
+    def receive(_characteristic: Any, value: bytearray) -> None:
+        frame = bytes(value)
+        frames.append(frame)
+        if len(frame) >= 2 and not frame[1] & 0x10 and not response.done():
+            response.set_result(frames.copy())
+
+    await client.start_notify(BLUFI_NOTIFY, receive)
+    try:
+        await client.write_gatt_char(BLUFI_WRITE, request, response=True)
+        return await asyncio.wait_for(response, timeout=timeout)
+    finally:
+        await client.stop_notify(BLUFI_NOTIFY)
+
+
+async def _request_frame(client: Any, request: bytes, timeout: float = 5.0) -> bytes:
+    frames = await _request_frames(client, request, timeout)
+    assert len(frames) == 1, f"expected one BLUFI response frame, received {len(frames)}"
+    return frames[0]
+
+
+def _assert_plain_frame(frame: bytes, subtype: int, sequence: int = 0) -> bytes:
+    assert len(frame) >= 4
+    assert frame[0] == ((subtype << 2) | 0x01)
+    assert frame[1] == 0x04
+    assert frame[2] == sequence
+    assert frame[3] == len(frame) - 4
+    return frame[4:]
+
+
+def _reassemble_plain_frames(frames: list[bytes], subtype: int) -> bytes:
+    assert frames
+    payload = bytearray()
+    for index, frame in enumerate(frames):
+        assert len(frame) >= 4
+        assert frame[0] == ((subtype << 2) | 0x01)
+        assert frame[1] & 0x04
+        assert frame[1] & ~0x14 == 0
+        assert frame[2] == index
+        assert frame[3] == len(frame) - 4
+        fragment = frame[4:]
+        if frame[1] & 0x10:
+            assert len(fragment) >= 2
+            fragment = fragment[2:]
+        elif index != len(frames) - 1:
+            pytest.fail("final BLUFI fragment arrived before the last frame")
+        payload.extend(fragment)
+    return bytes(payload)
+
+
+def _crc16(data: bytes) -> int:
+    crc = 0xFFFF
+    for value in data:
+        crc ^= value << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else crc << 1
+    return crc ^ 0xFFFF
+
+
+def _dh_parameter(value: bytes) -> bytes:
+    return len(value).to_bytes(2, "big") + value
+
+
+def _decrypt_protected_frame(
+    frame: bytes, subtype: int, key: bytes, sequence: int
+) -> bytes:
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+    assert len(frame) >= 6
+    assert frame[0] == ((subtype << 2) | 0x01)
+    assert frame[1] in (0x07, 0x17)
+    assert frame[2] == sequence
+    data_length = frame[3]
+    assert len(frame) == 4 + data_length + 2
+    iv = bytes([sequence]) + bytes(15)
+    decryptor = Cipher(algorithms.AES(key), modes.CFB(iv)).decryptor()
+    plaintext = decryptor.update(frame[4 : 4 + data_length]) + decryptor.finalize()
+    received_crc = int.from_bytes(frame[-2:], "little")
+    assert received_crc == _crc16(bytes([sequence, data_length]) + plaintext)
+    return plaintext
+
+
+def _protected_input_frame(
+    frame_type: int, subtype: int, sequence: int, payload: bytes, key: bytes
+) -> bytes:
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+    iv = bytes([sequence]) + bytes(15)
+    encryptor = Cipher(algorithms.AES(key), modes.CFB(iv)).encryptor()
+    encrypted = encryptor.update(payload) + encryptor.finalize()
+    checksum = _crc16(bytes([sequence, len(payload)]) + payload).to_bytes(2, "little")
+    return bytes(
+        [((subtype << 2) | frame_type), 0x03, sequence, len(payload)]
+    ) + encrypted + checksum
+
+
+async def _negotiate_security(client: Any) -> bytes:
+    prime = int("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16)
+    prime_bytes = prime.to_bytes(32, "big")
+    private = int.from_bytes(os.urandom(32), "big") % (prime - 3) + 2
+    public_bytes = pow(2, private, prime).to_bytes(32, "big")
+    parameters = (
+        _dh_parameter(prime_bytes)
+        + _dh_parameter(b"\x02")
+        + _dh_parameter(public_bytes)
+    )
+    assert len(parameters) <= 128
+
+    length_payload = b"\x00" + len(parameters).to_bytes(2, "big")
+    await client.write_gatt_char(
+        BLUFI_WRITE,
+        bytes([0x01, 0x00, 0x00, len(length_payload)]) + length_payload,
+        response=True,
+    )
+    await asyncio.sleep(0.1)
+    parameter_payload = b"\x01" + parameters
+    negotiation = await _request_frame(
+        client,
+        bytes([0x01, 0x00, 0x01, len(parameter_payload)]) + parameter_payload,
+    )
+    server_public_bytes = _assert_plain_frame(negotiation, 0x00)
+    assert 0 < len(server_public_bytes) <= 128
+    server_public = int.from_bytes(server_public_bytes, "big")
+    assert 1 < server_public < prime
+
+    shared_value = pow(server_public, private, prime)
+    shared = shared_value.to_bytes(
+        max(1, (shared_value.bit_length() + 7) // 8), "big"
+    )
+    transformed = bytes(
+        value ^ BLUFI_SALT[index % len(BLUFI_SALT)]
+        for index, value in enumerate(shared)
+    )
+    key = hashlib.md5(transformed).digest()
+    await client.write_gatt_char(
+        BLUFI_WRITE, b"\x04\x00\x02\x01\x03", response=True
+    )
+    return key
+
+
+def _wifi_diagnostics(host: str) -> dict[str, Any]:
+    connection = http.client.HTTPConnection(host, 80, timeout=3.0)
+    try:
+        connection.request("GET", "/api/wifi/diagnostics")
+        response = connection.getresponse()
+        body = response.read()
+        assert response.status == 200
+        return json.loads(body)
+    finally:
+        connection.close()
+
+
+def _assert_wifi_records(payload: bytes) -> None:
+    offset = 0
+    records = 0
+    while offset < len(payload):
+        record_length = payload[offset]
+        assert record_length >= 1
+        record_end = offset + 1 + record_length
+        assert record_end <= len(payload)
+        rssi = int.from_bytes(payload[offset + 1 : offset + 2], signed=True)
+        ssid = payload[offset + 2 : record_end]
+        assert -127 <= rssi <= 0
+        assert len(ssid) <= 32
+        records += 1
+        offset = record_end
+    assert records > 0
 
 
 @pytest.mark.hardware
@@ -160,3 +341,214 @@ def test_blufi_notification_subscription_and_invalid_write_keep_gatt_healthy() -
         assert isinstance(notifications, list)
 
     asyncio.run(validate())
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.ble
+@pytest.mark.requirement("BWF-040")
+def test_blufi_version_request_has_exact_wire_response() -> None:
+    _require_ble_fixture()
+
+    async def validate() -> None:
+        from bleak import BleakClient
+
+        device, _ = await _require_blufi()
+        async with BleakClient(device, timeout=10.0) as client:
+            response = await _request_frame(client, b"\x1c\x00\x00\x00")
+            assert _assert_plain_frame(response, 0x10) == b"\x01\x03"
+
+    asyncio.run(validate())
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.ble
+@pytest.mark.requirement("BLE-013")
+@pytest.mark.requirement("BWF-043")
+def test_blufi_status_request_returns_structured_wifi_report() -> None:
+    _require_ble_fixture()
+
+    async def validate() -> None:
+        from bleak import BleakClient
+
+        device, _ = await _require_blufi()
+        async with BleakClient(device, timeout=10.0) as client:
+            response = await _request_frame(client, b"\x14\x00\x00\x00")
+            payload = _assert_plain_frame(response, 0x0F)
+            assert len(payload) >= 3
+            assert payload[0] in (1, 2, 3)
+            assert payload[1] in (0, 1, 2)
+            assert payload[2] == 0
+
+    asyncio.run(validate())
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.ble
+@pytest.mark.wifi
+@pytest.mark.requirement("BLE-015")
+@pytest.mark.requirement("BWF-044")
+def test_blufi_wifi_list_request_returns_well_formed_records() -> None:
+    _require_ble_fixture()
+
+    async def validate() -> None:
+        from bleak import BleakClient
+
+        device, _ = await _require_blufi()
+        async with BleakClient(device, timeout=10.0) as client:
+            frames = await _request_frames(
+                client, b"\x24\x00\x00\x00", timeout=15.0
+            )
+            payload = _reassemble_plain_frames(frames, 0x11)
+            _assert_wifi_records(payload)
+
+    asyncio.run(validate())
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.ble
+@pytest.mark.requirement("BLE-017")
+def test_blufi_unknown_control_subtype_has_no_response_and_session_recovers() -> None:
+    _require_ble_fixture()
+
+    async def validate() -> None:
+        from bleak import BleakClient
+
+        device, _ = await _require_blufi()
+        async with BleakClient(device, timeout=10.0) as client:
+            with pytest.raises(asyncio.TimeoutError):
+                await _request_frame(client, b"\xfc\x00\x00\x00", timeout=1.0)
+            response = await _request_frame(client, b"\x1c\x00\x01\x00")
+            assert _assert_plain_frame(response, 0x10) == b"\x01\x03"
+
+    asyncio.run(validate())
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.ble
+@pytest.mark.requirement("BLESEC-001")
+@pytest.mark.requirement("BLESEC-006")
+@pytest.mark.requirement("BWF-042")
+def test_blufi_invalid_security_negotiation_reports_exact_errors() -> None:
+    _require_ble_fixture()
+
+    async def validate() -> None:
+        from bleak import BleakClient
+
+        device, _ = await _require_blufi()
+        async with BleakClient(device, timeout=10.0) as client:
+            too_short = await _request_frame(client, b"\x01\x00\x00\x01\x00")
+            assert _assert_plain_frame(too_short, 0x12) == b"\x09"
+
+            zero_length = await _request_frame(
+                client, b"\x01\x00\x01\x03\x00\x00\x00"
+            )
+            assert _assert_plain_frame(zero_length, 0x12, sequence=1) == b"\x05"
+
+    asyncio.run(validate())
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.ble
+@pytest.mark.requirement("BLESEC-001")
+@pytest.mark.requirement("BLESEC-002")
+@pytest.mark.requirement("BLESEC-003")
+@pytest.mark.requirement("BLESEC-004")
+@pytest.mark.requirement("BLESEC-005")
+@pytest.mark.requirement("BWF-020")
+@pytest.mark.requirement("BWF-021")
+@pytest.mark.requirement("BWF-022")
+@pytest.mark.requirement("BWF-023")
+@pytest.mark.requirement("BWF-030")
+@pytest.mark.requirement("BWF-031")
+def test_blufi_negotiates_key_and_returns_protected_status() -> None:
+    _require_ble_fixture()
+
+    async def validate() -> None:
+        from bleak import BleakClient
+
+        device, _ = await _require_blufi()
+        async with BleakClient(device, timeout=10.0) as client:
+            key = await _negotiate_security(client)
+            protected = await _request_frame(client, b"\x14\x00\x03\x00")
+            payload = _decrypt_protected_frame(protected, 0x0F, key, sequence=1)
+            assert len(payload) >= 3
+            assert payload[0] in (1, 2, 3)
+            assert payload[1] in (0, 1, 2)
+            assert payload[2] == 0
+
+            protected_list = await _request_frames(
+                client, b"\x24\x00\x04\x00", timeout=15.0
+            )
+            list_payload = bytearray()
+            for index, frame in enumerate(protected_list):
+                fragment = _decrypt_protected_frame(
+                    frame, 0x11, key, sequence=2 + index
+                )
+                if frame[1] & 0x10:
+                    assert len(fragment) >= 2
+                    fragment = fragment[2:]
+                list_payload.extend(fragment)
+            _assert_wifi_records(bytes(list_payload))
+
+    asyncio.run(validate())
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.ble
+@pytest.mark.wifi
+@pytest.mark.requirement("BLE-010")
+@pytest.mark.requirement("BLE-011")
+def test_blufi_provisions_declared_wifi_credentials() -> None:
+    _require_ble_fixture()
+    ssid = os.getenv("Z1_HIL_WIFI_SSID")
+    password = os.getenv("Z1_HIL_WIFI_PASSWORD")
+    host = os.getenv("Z1_HIL_HOST")
+    if not ssid or password is None or not host:
+        pytest.skip(
+            "set Z1_HIL_WIFI_SSID, Z1_HIL_WIFI_PASSWORD, and Z1_HIL_HOST "
+            "for mutating BLUFI provisioning"
+        )
+    ssid_bytes = ssid.encode()
+    password_bytes = password.encode()
+    assert len(ssid_bytes) <= 31
+    assert len(password_bytes) <= 63
+
+    async def provision() -> None:
+        from bleak import BleakClient
+
+        device, _ = await _require_blufi()
+        async with BleakClient(device, timeout=10.0) as client:
+            key = await _negotiate_security(client)
+            await client.write_gatt_char(
+                BLUFI_WRITE,
+                _protected_input_frame(1, 0x02, 3, ssid_bytes, key),
+                response=True,
+            )
+            await client.write_gatt_char(
+                BLUFI_WRITE,
+                _protected_input_frame(1, 0x03, 4, password_bytes, key),
+                response=True,
+            )
+            await client.write_gatt_char(
+                BLUFI_WRITE, b"\x0c\x00\x05\x00", response=True
+            )
+
+    asyncio.run(provision())
+    deadline = time.monotonic() + 30.0
+    last_error: Exception | None = None
+    while time.monotonic() < deadline:
+        try:
+            diagnostics = _wifi_diagnostics(host)
+            assert diagnostics.get("connected") is True
+            return
+        except (OSError, AssertionError, json.JSONDecodeError) as error:
+            last_error = error
+            time.sleep(1.0)
+    pytest.fail(f"provisioned station did not become reachable: {last_error}")
