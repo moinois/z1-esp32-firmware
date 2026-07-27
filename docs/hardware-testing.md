@@ -52,6 +52,20 @@ Camera availability is detected automatically through a valid
 response marks camera-dependent HIL as skipped; no environment declaration is
 required.
 
+BLE HIL uses the host adapter through Bleak. With `Z1_HIL_BLE=1`, absence of
+the required `BLUFI_DEVICE` advertisement is a failure rather than a fixture
+skip. The read-only baseline validates service UUID `0xffff`, characteristics
+`0xff01` and `0xff02`, their write/notify properties, and the fixed outgoing
+read value. Encrypted provisioning remains gated until this baseline passes.
+On macOS, the terminal/Codex Python process must also be allowed under System
+Settings, Privacy & Security, Bluetooth. A CoreBluetooth unavailable or
+unauthorized result is a fixture skip rather than product evidence.
+The initial declared-adapter run on 2026-07-27 exposed an invalid service-UUID
+argument in the target advertising configuration. After correcting the ESP-IDF
+128-bit input representation for advertised UUID `0xffff`, a freshly flashed
+build logged `Advertising started as BLUFI_DEVICE`; both advertisement/service
+discovery and the standard GATT schema/fixed-read checks passed physically.
+
 The read-only suite also exercises repeated native USB requests, recovery after
 unframed USB noise, bytewise fragmented TCP input, the four-client TCP limit,
 four-client concurrency, simultaneous USB/TCP commands, WLAN scanning, runtime

@@ -31,16 +31,6 @@ def test_can_fixture_declares_connection() -> None:
 
 @pytest.mark.hardware
 @pytest.mark.readonly
-@pytest.mark.ble
-@pytest.mark.requirement("BLE-001")
-def test_ble_fixture_declares_scanner() -> None:
-    if os.getenv("Z1_HIL_BLE") != "1":
-        pytest.skip("BLE scanner not declared with Z1_HIL_BLE=1")
-    pytest.skip("BLE fixture driver is not implemented yet")
-
-
-@pytest.mark.hardware
-@pytest.mark.readonly
 @pytest.mark.http
 @pytest.mark.camera
 @pytest.mark.requirement("HW-040")

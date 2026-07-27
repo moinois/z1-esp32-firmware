@@ -32,10 +32,10 @@ Status vocabulary used below:
 - `Pending fixture`: implementation and automated logic exist, but the required
   physical equipment is unavailable.
 
-Current known production-integration gaps are concentrated in the BLUFI wire/GATT
-layer, the explicitly noted controller command-family gaps, and the configuration
-web interface. Most other open items are physical or stress verification rather
-than missing portable logic.
+Current known production-integration gaps are concentrated in the encrypted
+BLUFI provisioning flows, the explicitly noted controller command-family gaps,
+and the configuration web interface. Most other open items are physical or
+stress verification rather than missing portable logic.
 
 ## Current backlog summary
 
@@ -49,7 +49,7 @@ than missing portable logic.
 | Camera/media | Camera, recording, live, preview, and retention adapters target-built; HIL automatically skips when firmware camera detection reports no sensor | Camera plus SD fixtures are required for streaming/recording/playback |
 | Controller/UART | UART loop and principal command/transfer/play adapters target-built | Full remaining command-family routing plus physical controller fixture |
 | CANopen | Node, dictionary, expedited SDO, PDO, M942, and TWAI adapter implemented | Heartbeat/error/diagnostic composition gap plus physical CAN fixture |
-| BLE/BLUFI | Provisioning lifecycle/security and portable wire policies implemented | Pending ESP-IDF GATT wire/attribute composition and physical BLE session |
+| BLE/BLUFI | Provisioning lifecycle/security and portable wire policies implemented; executable Bleak HIL covers required advertising identity and standard GATT schema | HIL PASS 2026-07-27 for `BLUFI_DEVICE`, advertised service `0xffff`, standard `0xff01`/`0xff02` GATT schema, and fixed outgoing read; encrypted provisioning flows remain |
 | Persistence/runtime | NVS, clock, counters, observers, and transport command adapters target-built | Physical NVS fault/reboot/timing verification |
 
 | Area | Implementation | Automated verification | Target integration and physical evidence |
@@ -113,7 +113,7 @@ than missing portable logic.
 | [NET-040](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#net-040)--[NET-043](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#net-043) host WLAN parsing and scan command | Core parser and application implementation with replaceable Wi-Fi port | Yes | TCP/USB command routing and ESP-IDF Wi-Fi adapters target-built; physical RF verification pending |
 | [NET-044](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#net-044)--[NET-046](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#net-046) host WLAN connect/disconnect responses | Application implementation with replaceable response and discovery port | Yes | TCP/USB command routing, discovery, and ESP-IDF Wi-Fi adapters target-built; physical RF verification pending |
 | [DISC-001](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#disc-001)--[DISC-008](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#disc-008) UDP discovery | Core formatting/address policy and application implementation with replaceable socket/clock port | Yes for payloads, ordering, timing, recreation, ignored failures, and runtime machine-name selection | ESP-IDF UDP socket, periodic task, station event, command-burst integration, and boot-derived machine-name wiring target-built; physical network verification pending |
-| [BLE-001](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#ble-001)--[BLE-006](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#ble-006) provisioning identity and lifecycle | Application policy plus ESP-IDF `BlufiLifecycleAdapter` | Target build verified for BLE-only initialization, `BLUFI_DEVICE` identity, public 160 ms all-channel advertising, preferred connection interval, reconnect advertising restoration, BLUFI profile startup, and nonfatal startup path | GATT/advertising-air-interface and physical BLE verification pending |
+| [BLE-001](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#ble-001)--[BLE-006](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#ble-006) provisioning identity and lifecycle | Application policy plus ESP-IDF `BlufiLifecycleAdapter` | Target build verified for BLE-only initialization, `BLUFI_DEVICE` identity, public 160 ms all-channel advertising, preferred connection interval, reconnect advertising restoration, BLUFI profile startup, and nonfatal startup path | HIL PASS 2026-07-27 for physical advertisement identity/service and standard BLUFI GATT discovery; disconnect/re-advertising timing remains pending |
 | [BLE-010](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#ble-010)--[BLE-016](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#ble-016) provisioning commands | Application implementation plus ESP-IDF `BlufiProvisioningAdapter`/`BlufiCallbackAdapter` | Target build verified for station actions, scan conversion, status/list/error reports, advertising, custom-data logging, and supported event forwarding | Full encrypted GATT session and physical BLE verification pending |
 | [BLESEC-001](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#blesec-001)--[BLESEC-006](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#blesec-006) BLUFI security | Application policy plus ESP-IDF `BlufiCryptoAdapter` and callback bridge | Target build verified for bounded DH, MD5, AES-CFB128, negotiation response, encryption/decryption, and CRC callback wiring | Physical BLE verification pending |
 | [BWF-010](https://github.com/f355/esp32_cnc_spec/blob/main/11-blufi-wire-protocol.md#bwf-010)--[BWF-023](https://github.com/f355/esp32_cnc_spec/blob/main/11-blufi-wire-protocol.md#bwf-023), [BWF-033](https://github.com/f355/esp32_cnc_spec/blob/main/11-blufi-wire-protocol.md#bwf-033) frame envelope, security, and acknowledgement | Application implementation with replaceable cipher and notification port | Yes for exact envelope, sequences, security flags, checksum order, encryption scope, failures, acknowledgement timing, and composed dispatch | ESP-IDF GATT adapter pending |
