@@ -76,7 +76,7 @@ TEST_CASE(play_002_exact_play_space_treats_the_complete_payload_as_the_path) {
 
     REQUIRE(session.prepare(bytes("play "), 0U, port));
 
-    REQUIRE_EQ(port.opened_path, std::string("/play "));
+    REQUIRE_EQ(port.opened_path, std::string("/sd/play "));
 }
 
 TEST_CASE(play_002_nonstandard_play_prefix_is_also_the_complete_path) {
@@ -85,7 +85,7 @@ TEST_CASE(play_002_nonstandard_play_prefix_is_also_the_complete_path) {
 
     REQUIRE(session.prepare(bytes("playfile.gcode"), 0U, port));
 
-    REQUIRE_EQ(port.opened_path, std::string("/playfile.gcode"));
+    REQUIRE_EQ(port.opened_path, std::string("/sd/playfile.gcode"));
 }
 
 TEST_CASE(play_003_path_identifier_is_common_crc_and_size_is_limited_to_u32) {
@@ -150,7 +150,7 @@ TEST_CASE(play_006_replacement_prepare_does_not_clear_the_running_flag) {
     REQUIRE(session.prepare(bytes("play /second"), 1U, port));
 
     REQUIRE(session.running());
-    REQUIRE_EQ(text(session.status_reply().payload), std::string("/second|"));
+    REQUIRE_EQ(text(session.status_reply().payload), std::string("/sd/second|"));
 }
 
 TEST_CASE(play_006_failed_replacement_hides_status_but_retains_running_observer_state) {
@@ -173,5 +173,5 @@ TEST_CASE(play_007_embedded_nul_terminates_the_command_path) {
 
     REQUIRE(session.prepare(command, 0U, port));
 
-    REQUIRE_EQ(port.opened_path, std::string("/ok"));
+    REQUIRE_EQ(port.opened_path, std::string("/sd/ok"));
 }

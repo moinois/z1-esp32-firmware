@@ -1,5 +1,6 @@
 // Implements POSIX filesystem operations and TCP-origin response routing.
 #include "tcp_filesystem_adapter.hpp"
+#include "sd_access_diagnostics.hpp"
 
 #include "firmware/application/tcp_client_session.hpp"
 
@@ -44,8 +45,11 @@ TcpFilesystemAdapter::TcpFilesystemAdapter(
 bool TcpFilesystemAdapter::create_directory(std::string_view path,
                                             std::uint32_t mode) {
     const std::string value(path);
-    return mkdir(value.c_str(), static_cast<mode_t>(mode)) == 0
-        || errno == EEXIST;
+    if (mkdir(value.c_str(), static_cast<mode_t>(mode)) == 0 || errno == EEXIST) {
+        return true;
+    }
+    log_sd_access_failure("create directory", path, errno);
+    return false;
 }
 
 void TcpFilesystemAdapter::remove_recursively(std::string_view path) {
@@ -63,7 +67,9 @@ bool TcpFilesystemAdapter::rename_path(std::string_view source,
                                        std::string_view destination) {
     const std::string old_path(source);
     const std::string new_path(destination);
-    return rename(old_path.c_str(), new_path.c_str()) == 0;
+    if (rename(old_path.c_str(), new_path.c_str()) == 0) return true;
+    log_sd_access_failure("rename", source, errno);
+    return false;
 }
 
 void TcpFilesystemAdapter::send(firmware::core::Frame frame) {

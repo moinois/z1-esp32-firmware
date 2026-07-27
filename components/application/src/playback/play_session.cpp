@@ -3,6 +3,7 @@
 
 #include "firmware/core/crc.hpp"
 #include "firmware/core/protocol_constants.hpp"
+#include "firmware/core/sd_user_path.hpp"
 #include "firmware/core/text.hpp"
 
 #include <algorithm>
@@ -35,7 +36,7 @@ std::string resolve_play_path(core::BytesView payload) {
         return value != ' ';
     });
     selected.erase(selected.begin(), first);
-    return core::normalize_path(std::move(selected));
+    return core::resolve_sd_user_path(selected);
 }
 
 // Reports whether a cached checksum contains exactly 32 hexadecimal characters.

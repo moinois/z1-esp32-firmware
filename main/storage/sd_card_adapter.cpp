@@ -1,5 +1,6 @@
 // Implements SDMMC slot-1 mounting with the specified GPIO and card-detect policy.
 #include "sd_card_adapter.hpp"
+#include "sd_access_diagnostics.hpp"
 
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -36,6 +37,7 @@ public:
 
     bool mount(const firmware::application::SdMountConfig& config) override {
         if (card_ != nullptr) {
+            set_sd_storage_mounted(true);
             return true;
         }
         sdmmc_host_t host = SDMMC_HOST_DEFAULT();
@@ -55,8 +57,11 @@ public:
             .disk_status_check_enable = false,
             .use_one_fat = false,
         };
-        return esp_vfs_fat_sdmmc_mount(config.mount_path.data(), &host, &slot,
-                                       &mount_config, &card_) == ESP_OK;
+        const bool mounted =
+            esp_vfs_fat_sdmmc_mount(config.mount_path.data(), &host, &slot,
+                                    &mount_config, &card_) == ESP_OK;
+        set_sd_storage_mounted(mounted);
+        return mounted;
     }
 
     void start_logging() override {
@@ -74,11 +79,13 @@ public:
 
     bool unmount() override {
         if (card_ == nullptr) {
+            set_sd_storage_mounted(false);
             return true;
         }
         const bool unmounted = esp_vfs_fat_sdcard_unmount("/sd", card_) == ESP_OK;
         if (unmounted) {
             card_ = nullptr;
+            set_sd_storage_mounted(false);
         }
         return unmounted;
     }

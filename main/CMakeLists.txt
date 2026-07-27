@@ -13,6 +13,7 @@ idf_component_register(
         "media/web_volume_adapter.cpp"
         "media/storage_retention_adapter.cpp"
         "storage/sd_card_adapter.cpp"
+        "storage/sd_access_diagnostics.cpp"
         "storage/posix_file.cpp"
         "diagnostics/diagnostic_capture_adapter.cpp"
         "runtime/nvs_key_value_adapter.cpp"

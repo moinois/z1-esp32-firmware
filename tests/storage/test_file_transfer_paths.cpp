@@ -51,13 +51,21 @@ TEST_CASE(hft_003_empty_or_more_than_255_byte_resolved_paths_are_rejected) {
     REQUIRE(!firmware::core::parse_file_transfer_start(bytes(payload)).has_value());
 }
 
-TEST_CASE(hft_010_first_literal_gcodes_substring_selects_both_cache_paths) {
-    const auto mapping = firmware::core::map_file_cache_paths("/other/prefixgcodes/jobs/a.gcode");
+TEST_CASE(hft_010_exact_gcodes_component_selects_both_cache_paths) {
+    const auto mapping =
+        firmware::core::map_file_cache_paths("/sd/gcodes/jobs/a.gcode");
 
     REQUIRE(mapping.md5_path.has_value());
     REQUIRE(mapping.compressed_path.has_value());
     REQUIRE_EQ(*mapping.md5_path, std::string("/sd/gcodes/.md5/jobs/a.gcode"));
     REQUIRE_EQ(*mapping.compressed_path, std::string("/sd/gcodes/.lz/jobs/a.gcode"));
+
+    const auto embedded =
+        firmware::core::map_file_cache_paths("/sd/prefixgcodes/jobs/a.gcode");
+    REQUIRE(embedded.md5_path.has_value());
+    REQUIRE_EQ(*embedded.md5_path,
+               std::string("/sd/.md5/prefixgcodes/jobs/a.gcode"));
+    REQUIRE(!embedded.compressed_path.has_value());
 }
 
 TEST_CASE(hft_011_sd_paths_without_gcodes_have_only_a_root_md5_mapping) {

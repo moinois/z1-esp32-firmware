@@ -1,6 +1,7 @@
 // Implements host file-transfer start parsing and cache path derivation.
 #include "firmware/core/file_transfer_paths.hpp"
 
+#include "firmware/core/sd_user_path.hpp"
 #include "firmware/core/text.hpp"
 
 #include <algorithm>
@@ -61,7 +62,7 @@ std::optional<FileTransferStart> parse_file_transfer_start(BytesView payload) {
     if (trimmed.empty()) {
         return std::nullopt;
     }
-    std::string resolved = normalize_path(trimmed);
+    std::string resolved = resolve_sd_user_path(trimmed);
     if (resolved.size() > maximum_path_size) {
         return std::nullopt;
     }
@@ -69,7 +70,7 @@ std::optional<FileTransferStart> parse_file_transfer_start(BytesView payload) {
 }
 
 FileCachePaths map_file_cache_paths(std::string_view resolved_path) {
-    constexpr std::string_view marker = "gcodes/";
+    constexpr std::string_view marker = "/gcodes/";
     const std::size_t marker_position = resolved_path.find(marker);
     if (marker_position != std::string_view::npos) {
         const std::string relative(resolved_path.substr(marker_position + marker.size()));

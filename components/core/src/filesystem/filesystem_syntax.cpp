@@ -1,6 +1,7 @@
 // Implements common path cleanup and bounded directory-list option parsing.
 #include "firmware/core/filesystem_syntax.hpp"
 
+#include "firmware/core/sd_user_path.hpp"
 #include "firmware/core/text.hpp"
 
 #include <string_view>
@@ -53,7 +54,7 @@ std::optional<std::string> parse_filesystem_path(BytesView argument) {
     if (path.empty()) {
         return std::nullopt;
     }
-    return normalize_path(std::move(path));
+    return resolve_sd_user_path(path);
 }
 
 std::optional<DirectoryListArguments> parse_directory_list_arguments(
@@ -79,11 +80,7 @@ std::optional<DirectoryListArguments> parse_directory_list_arguments(
     }
 
     std::string path = clean_path_text(std::string(text.substr(cursor)));
-    if (path.empty()) {
-        path = ".";
-    } else {
-        path = normalize_path(std::move(path));
-    }
+    path = resolve_sd_user_path(path.empty() ? "." : path);
 
     return DirectoryListArguments{
         std::move(path),
@@ -109,7 +106,7 @@ std::optional<std::string> parse_remove_path(BytesView argument) {
     if (path.empty()) {
         return std::nullopt;
     }
-    return normalize_path(std::move(path));
+    return resolve_sd_user_path(path);
 }
 
 std::optional<MovePaths> parse_move_paths(BytesView argument) {
@@ -134,8 +131,8 @@ std::optional<MovePaths> parse_move_paths(BytesView argument) {
         return std::nullopt;
     }
     return MovePaths{
-        normalize_path(std::move(source)),
-        normalize_path(std::move(destination)),
+        resolve_sd_user_path(source),
+        resolve_sd_user_path(destination),
     };
 }
 

@@ -50,6 +50,7 @@
 #include "configuration_file_store.hpp"
 #include "wlan_event_adapter.hpp"
 #include "wifi_diagnostic_log.hpp"
+#include "sd_access_diagnostics.hpp"
 #include "posix_file.hpp"
 #include "esp_wifi_scanner.hpp"
 
@@ -167,8 +168,12 @@ public:
 
     bool file_exists(std::string_view path) override {
         struct stat information{};
-        return stat(std::string(path).c_str(), &information) == 0 &&
-               S_ISREG(information.st_mode);
+        const int result = stat(std::string(path).c_str(), &information);
+        if (result == 0 && S_ISREG(information.st_mode)) return true;
+        const int error_number = result == 0 ? EINVAL : errno;
+        firmware::target::log_sd_access_failure("inspect download file", path,
+                                                error_number);
+        return false;
     }
 
     bool open_source(std::string_view path) override {
@@ -447,7 +452,12 @@ public:
     std::optional<std::uint64_t> open_file(std::string_view path) override {
         close_file();
         file_ = std::fopen(std::string(path).c_str(), "rb");
-        if (file_ == nullptr || std::fseek(file_, 0L, SEEK_END) != 0) {
+        if (file_ == nullptr) {
+            firmware::target::log_sd_access_failure("open play file", path, errno);
+            return std::nullopt;
+        }
+        if (std::fseek(file_, 0L, SEEK_END) != 0) {
+            firmware::target::log_sd_access_failure("seek play file", path, errno);
             close_file();
             return std::nullopt;
         }
@@ -510,21 +520,29 @@ public:
 
     bool open_primary(std::string_view path) override {
         close_files();
+        primary_path_ = path;
         primary_ = std::fopen(std::string(path).c_str(), "wb");
+        if (primary_ == nullptr) {
+            firmware::target::log_sd_access_failure("open upload file", path, errno);
+        }
         return primary_ != nullptr;
     }
 
     bool open_md5(std::string_view path) override {
+        md5_path_ = path;
         md5_ = std::fopen(std::string(path).c_str(), "wb");
+        if (md5_ == nullptr) {
+            firmware::target::log_sd_access_failure("open MD5 file", path, errno);
+        }
         return md5_ != nullptr;
     }
 
     bool write_primary(firmware::core::BytesView data) override {
-        return write_all(primary_, data);
+        return write_all(primary_, primary_path_, data);
     }
 
     bool write_md5(firmware::core::BytesView data) override {
-        return write_all(md5_, data);
+        return write_all(md5_, md5_path_, data);
     }
 
     void close_files() override {
@@ -532,6 +550,8 @@ public:
         if (md5_ != nullptr) std::fclose(md5_);
         primary_ = nullptr;
         md5_ = nullptr;
+        primary_path_.clear();
+        md5_path_.clear();
     }
 
     void flush_and_close() override {
@@ -552,8 +572,10 @@ public:
 
     bool rename_file(std::string_view source,
                      std::string_view destination) override {
-        return rename(std::string(source).c_str(),
-                      std::string(destination).c_str()) == 0;
+        if (rename(std::string(source).c_str(),
+                   std::string(destination).c_str()) == 0) return true;
+        firmware::target::log_sd_access_failure("rename upload file", source, errno);
+        return false;
     }
 
     void send(const firmware::application::HostIdentity&,
@@ -567,14 +589,19 @@ public:
     void release_ownership() override {}
 
 private:
-    static bool write_all(FILE* file, firmware::core::BytesView data) {
+    static bool write_all(FILE* file, std::string_view path,
+                          firmware::core::BytesView data) {
         if (file == nullptr) return false;
         std::size_t written = 0U;
         while (written < data.size()) {
             const std::size_t count =
                 std::fwrite(data.data() + written, 1U, data.size() - written,
                             file);
-            if (count == 0U) return false;
+            if (count == 0U) {
+                firmware::target::log_sd_access_failure("write upload file", path,
+                                                        errno);
+                return false;
+            }
             written += count;
         }
         return true;
@@ -582,6 +609,8 @@ private:
 
     FILE* primary_ = nullptr;
     FILE* md5_ = nullptr;
+    std::string primary_path_;
+    std::string md5_path_;
 };
 
 UsbFileUploadPort usb_upload_port;
@@ -608,7 +637,10 @@ public:
     std::optional<firmware::core::ByteVector> read_cache(
         std::string_view path, std::size_t maximum_size) override {
         FILE* input = std::fopen(std::string(path).c_str(), "rb");
-        if (input == nullptr) return std::nullopt;
+        if (input == nullptr) {
+            firmware::target::log_sd_access_failure("open cache file", path, errno);
+            return std::nullopt;
+        }
         firmware::core::ByteVector data(maximum_size);
         const std::size_t count = std::fread(data.data(), 1U, maximum_size, input);
         data.resize(count);
@@ -624,8 +656,14 @@ public:
 
     std::optional<std::uint64_t> open_file(std::string_view path) override {
         close_file();
+        path_ = path;
         file_ = std::fopen(std::string(path).c_str(), "rb");
-        if (file_ == nullptr || std::fseek(file_, 0L, SEEK_END) != 0) {
+        if (file_ == nullptr) {
+            firmware::target::log_sd_access_failure("open download file", path, errno);
+            return std::nullopt;
+        }
+        if (std::fseek(file_, 0L, SEEK_END) != 0) {
+            firmware::target::log_sd_access_failure("seek download file", path, errno);
             close_file();
             return std::nullopt;
         }
@@ -645,7 +683,11 @@ public:
         }
         firmware::core::ByteVector data(maximum_size);
         const std::size_t count = std::fread(data.data(), 1U, maximum_size, file_);
-        if (std::ferror(file_) != 0) return std::nullopt;
+        if (std::ferror(file_) != 0) {
+            firmware::target::log_sd_access_failure("read download file", path_,
+                                                    errno);
+            return std::nullopt;
+        }
         data.resize(count);
         return data;
     }
@@ -660,6 +702,7 @@ public:
     void close_file() override {
         if (file_ != nullptr) std::fclose(file_);
         file_ = nullptr;
+        path_.clear();
     }
 
     void send(const firmware::application::HostIdentity&,
@@ -674,6 +717,7 @@ public:
 
 private:
     FILE* file_ = nullptr;
+    std::string path_;
 };
 
 UsbFileDownloadPort usb_download_port;
@@ -764,8 +808,10 @@ class UsbFilesystemPort final
 public:
     bool create_directory(std::string_view path, std::uint32_t mode) override {
         const std::string value(path);
-        return mkdir(value.c_str(), static_cast<mode_t>(mode)) == 0 ||
-               errno == EEXIST;
+        if (mkdir(value.c_str(), static_cast<mode_t>(mode)) == 0 ||
+            errno == EEXIST) return true;
+        firmware::target::log_sd_access_failure("create directory", path, errno);
+        return false;
     }
 
     void remove_recursively(std::string_view path) override {
@@ -782,7 +828,9 @@ public:
                      std::string_view destination) override {
         const std::string old_path(source);
         const std::string new_path(destination);
-        return rename(old_path.c_str(), new_path.c_str()) == 0;
+        if (rename(old_path.c_str(), new_path.c_str()) == 0) return true;
+        firmware::target::log_sd_access_failure("rename", source, errno);
+        return false;
     }
 
     void send(firmware::core::Frame frame) override {
@@ -812,7 +860,13 @@ public:
     list_directory(std::string_view path) override {
         const std::string root(path);
         DIR* directory = opendir(root.c_str());
-        if (directory == nullptr) return std::nullopt;
+        if (directory == nullptr) {
+            const int error_number = errno;
+            ESP_LOGE("APP_FILE", "Can't open dir: %s", root.c_str());
+            firmware::target::log_sd_access_failure(
+                "open directory", root, error_number);
+            return std::nullopt;
+        }
         std::vector<firmware::application::DirectoryEntry> entries;
         while (const dirent* item = readdir(directory)) {
             const std::string name(item->d_name);
@@ -843,6 +897,7 @@ public:
         std::string_view path) override {
         struct stat information{};
         if (stat(std::string(path).c_str(), &information) != 0) {
+            firmware::target::log_sd_access_failure("inspect path", path, errno);
             return firmware::application::FileHashPathState::missing;
         }
         return S_ISREG(information.st_mode)

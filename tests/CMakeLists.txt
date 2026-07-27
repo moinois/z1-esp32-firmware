@@ -52,6 +52,8 @@ add_executable(
     runtime/test_runtime_commands.cpp
     runtime/test_runtime_status.cpp
     storage/test_sd_card_lifecycle.cpp
+    storage/test_sd_user_path.cpp
+    storage/test_sd_access_diagnostic.cpp
     runtime/test_serial_number.cpp
     connectivity/test_automatic_connection.cpp
     connectivity/test_wifi_statistics.cpp

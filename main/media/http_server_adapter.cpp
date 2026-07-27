@@ -27,6 +27,7 @@
 #include "firmware/application/preview_playback.hpp"
 #include "firmware/application/preview_frame_step.hpp"
 #include "firmware/core/preview_path_policy.hpp"
+#include "firmware/core/sd_user_path.hpp"
 #include "firmware/core/avi_preview.hpp"
 #include "firmware/core/multipart_extractor.hpp"
 #include "firmware/core/multipart_policy.hpp"
@@ -789,12 +790,14 @@ esp_err_t preview_websocket_handler(httpd_req_t* request) {
         return ESP_OK;
     }
     const auto& preview_request = *request_value;
-    if (!firmware::core::preview_path_allowed(preview_request.path)) {
+    const std::string preview_path =
+        firmware::core::resolve_sd_user_path(preview_request.path);
+    if (!firmware::core::preview_path_allowed(preview_path)) {
         const auto response = firmware::application::format_preview_response(
             preview_request.command, preview_request.sequence, -1);
         return send_preview_text(request, response);
     }
-    const auto file = read_preview_file(preview_request.path);
+    const auto file = read_preview_file(preview_path);
     if (!file.has_value()) {
         const auto response = firmware::application::format_preview_response(
             preview_request.command, preview_request.sequence, -1);
@@ -802,7 +805,7 @@ esp_err_t preview_websocket_handler(httpd_req_t* request) {
     }
     const auto avi = firmware::core::AviPreview::parse(*file);
     const auto decision = firmware::application::decide_preview_open(
-        preview_request.path, avi.has_value() ? &*avi : nullptr, true, true,
+        preview_path, avi.has_value() ? &*avi : nullptr, true, true,
         static_cast<std::uint32_t>(httpd_req_to_sockfd(request)),
         preview_request.sequence);
     if (decision.error != firmware::application::PreviewOpenError::none) {

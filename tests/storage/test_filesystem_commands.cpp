@@ -169,7 +169,7 @@ TEST_CASE(file_025_move_failure_sends_only_the_exact_failure) {
     REQUIRE_EQ(port.sent.size(), 1U);
     REQUIRE_EQ(port.sent[0].type, 0x85U);
     REQUIRE_EQ(text(port.sent[0].payload),
-               std::string("Could not rename /old to /new\r\n"));
+               std::string("Could not rename /sd/old to /sd/new\r\n"));
 }
 
 TEST_CASE(file_026_ftype_always_reports_nc) {

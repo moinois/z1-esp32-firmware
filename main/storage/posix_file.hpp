@@ -31,6 +31,7 @@ public:
 
 private:
     std::FILE* file_ = nullptr;
+    std::string path_;
 };
 
 bool posix_regular_file(std::string_view path);

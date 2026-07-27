@@ -15,6 +15,8 @@ set(CORE_SOURCES
     src/network/discovery_policy.cpp
     src/filesystem/file_transfer_paths.cpp
     src/filesystem/filesystem_syntax.cpp
+    src/filesystem/sd_user_path.cpp
+    src/filesystem/sd_access_diagnostic.cpp
     src/protocol/frame.cpp
     src/web/http_policy.cpp
     src/configuration/json_input.cpp

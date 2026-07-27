@@ -27,6 +27,7 @@ Allowed statuses are `Proposed`, `Accepted`, `Superseded`, and `Rejected`.
 | [ADR-009](#adr-009) | Assign constants to the innermost owning module | Accepted | 2026-07-20 |
 | [ADR-010](#adr-010) | Share target mechanisms below transport adapters | Accepted | 2026-07-26 |
 | [ADR-011](#adr-011) | Keep physical verification optional, explicit, and safety-gated | Accepted | 2026-07-26 |
+| [ADR-012](#adr-012) | Sandbox user-controlled filesystem paths beneath the SD volume | Accepted | 2026-07-27 |
 
 ---
 
@@ -371,3 +372,40 @@ host-only HIL dependencies and are never part of the firmware build graph.
 - Physical conformance claims remain auditable at requirement level.
 - Fixture drivers and destructive recovery procedures must be added before the
   corresponding skipped capability gates can become executable evidence.
+
+---
+
+<a id="adr-012"></a>
+## ADR-012: Sandbox user-controlled filesystem paths beneath the SD volume
+
+- **Status:** Accepted
+- **Date:** 2026-07-27
+
+### Context
+
+ESP-IDF exposes a global VFS root containing mounts such as `/sd` and
+`/spiffs`. Passing host paths directly to POSIX would allow a command such as
+`ls /` to observe that implementation namespace and could direct uploads away
+from removable storage.
+
+### Decision
+
+All USB-, TCP-, controller-, and browser-supplied filesystem paths use `/` as
+the logical SD root and pass through one portable resolver before target I/O.
+The physical result is exactly `/sd` or a descendant. A leading `/sd` remains a
+compatibility alias. An exact `gcodes` path component selects the canonical
+`/sd/gcodes` primary and cache trees; text merely containing `gcodes` does not.
+Internal fixed firmware paths may continue to name `/sd` directly.
+
+The target publishes successful mount and unmount state atomically. Failed SD
+operations log that state before classifying POSIX errno, allowing an absent
+card to be distinguished from a missing path without changing command response
+contracts such as `FILE-015`.
+
+### Consequences
+
+- User input cannot select `/spiffs` or another VFS mount.
+- Path normalization and cache mapping are transport-independent and host-tested.
+- Existing clients that send `/sd/...` remain compatible.
+- `ls` retains its specified completion-only wire response on open failure;
+  the detailed cause is diagnostic evidence instead.

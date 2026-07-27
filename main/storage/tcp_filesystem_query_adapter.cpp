@@ -1,9 +1,13 @@
 // Implements POSIX directory enumeration and mbedTLS MD5 queries.
 #include "tcp_filesystem_query_adapter.hpp"
 #include "posix_file.hpp"
+#include "sd_access_diagnostics.hpp"
 
 #include "firmware/application/tcp_client_session.hpp"
 
+#include "esp_log.h"
+
+#include <cerrno>
 #include <dirent.h>
 #include <cstdio>
 #include <sys/stat.h>
@@ -33,7 +37,12 @@ std::optional<std::vector<firmware::application::DirectoryEntry>>
 TcpDirectoryListAdapter::list_directory(std::string_view path) {
     const std::string root(path);
     DIR* directory = opendir(root.c_str());
-    if (directory == nullptr) return std::nullopt;
+    if (directory == nullptr) {
+        const int error_number = errno;
+        ESP_LOGE("APP_FILE", "Can't open dir: %s", root.c_str());
+        log_sd_access_failure("open directory", root, error_number);
+        return std::nullopt;
+    }
     std::vector<firmware::application::DirectoryEntry> entries;
     while (const dirent* item = readdir(directory)) {
         const std::string name(item->d_name);
@@ -63,6 +72,7 @@ firmware::application::FileHashPathState TcpFileHashAdapter::inspect_path(
     std::string_view path) {
     struct stat information{};
     if (stat(std::string(path).c_str(), &information) != 0) {
+        log_sd_access_failure("inspect path", path, errno);
         return firmware::application::FileHashPathState::missing;
     }
     return S_ISREG(information.st_mode)

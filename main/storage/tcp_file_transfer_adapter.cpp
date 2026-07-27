@@ -1,5 +1,6 @@
 // Implements upload/download file effects through POSIX VFS and mbedTLS MD5.
 #include "tcp_file_transfer_adapter.hpp"
+#include "sd_access_diagnostics.hpp"
 
 #include "esp_heap_caps.h"
 #include "firmware/application/tcp_client_session.hpp"
@@ -24,7 +25,9 @@ void TcpFileUploadAdapter::prepare_cache_paths(
 
 bool TcpFileUploadAdapter::create_parent_directories(std::string_view path,
                                                      std::uint32_t mode) {
-    return create_posix_parent_directories(path, mode);
+    if (create_posix_parent_directories(path, mode)) return true;
+    log_sd_access_failure("create parent directory", path, errno);
+    return false;
 }
 
 bool TcpFileUploadAdapter::open_primary(std::string_view path) {
@@ -55,12 +58,17 @@ void TcpFileUploadAdapter::flush_and_close() {
 }
 
 bool TcpFileUploadAdapter::remove_file(std::string_view path) {
-    return unlink(std::string(path).c_str()) == 0;
+    if (unlink(std::string(path).c_str()) == 0) return true;
+    log_sd_access_failure("remove upload file", path, errno);
+    return false;
 }
 
 bool TcpFileUploadAdapter::rename_file(std::string_view source,
                                        std::string_view destination) {
-    return rename(std::string(source).c_str(), std::string(destination).c_str()) == 0;
+    if (rename(std::string(source).c_str(),
+               std::string(destination).c_str()) == 0) return true;
+    log_sd_access_failure("rename upload file", source, errno);
+    return false;
 }
 
 void TcpFileUploadAdapter::send(const firmware::application::HostIdentity&,
@@ -94,7 +102,12 @@ std::optional<firmware::core::ByteVector> TcpFileDownloadAdapter::read_cache(
 }
 
 bool TcpFileDownloadAdapter::file_exists(std::string_view path) {
-    return posix_regular_file(path);
+    struct stat information{};
+    const int result = stat(std::string(path).c_str(), &information);
+    if (result == 0 && S_ISREG(information.st_mode)) return true;
+    const int error_number = result == 0 ? EINVAL : errno;
+    log_sd_access_failure("inspect download file", path, error_number);
+    return false;
 }
 
 std::optional<std::uint64_t> TcpFileDownloadAdapter::open_file(

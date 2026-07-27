@@ -1,5 +1,6 @@
 // Implements shared POSIX VFS file ownership, bounded I/O, and hashing.
 #include "posix_file.hpp"
+#include "sd_access_diagnostics.hpp"
 
 #include "mbedtls/md5.h"
 
@@ -10,31 +11,50 @@
 #include <vector>
 
 namespace firmware::target {
+namespace {
+
+// Reports whether a physical path belongs to the removable SD volume.
+bool sd_path(std::string_view path) {
+    return path == "/sd" ||
+           (path.size() > 4U && path.substr(0U, 4U) == "/sd/");
+}
+
+}  // namespace
 
 PosixFile::~PosixFile() { close(); }
 
 bool PosixFile::open(std::string_view path, const char* mode) {
     close();
+    path_ = path;
     file_ = std::fopen(std::string(path).c_str(), mode);
+    if (file_ == nullptr && sd_path(path)) {
+        log_sd_access_failure("open file", path, errno);
+    }
     return file_ != nullptr;
 }
 
 void PosixFile::close() {
     if (file_ != nullptr) std::fclose(file_);
     file_ = nullptr;
+    path_.clear();
 }
 
 bool PosixFile::flush_and_sync() {
-    return file_ != nullptr && std::fflush(file_) == 0 &&
-           fsync(fileno(file_)) == 0;
+    if (file_ != nullptr && std::fflush(file_) == 0 &&
+        fsync(fileno(file_)) == 0) return true;
+    if (!path_.empty()) log_sd_access_failure("flush file", path_, errno);
+    return false;
 }
 
 bool PosixFile::rewind() {
-    return file_ != nullptr && std::fseek(file_, 0L, SEEK_SET) == 0;
+    if (file_ != nullptr && std::fseek(file_, 0L, SEEK_SET) == 0) return true;
+    if (!path_.empty()) log_sd_access_failure("rewind file", path_, errno);
+    return false;
 }
 
 std::optional<std::uint64_t> PosixFile::size() {
     if (file_ == nullptr || std::fseek(file_, 0L, SEEK_END) != 0) {
+        if (!path_.empty()) log_sd_access_failure("size file", path_, errno);
         return std::nullopt;
     }
     const long value = std::ftell(file_);
@@ -47,7 +67,10 @@ std::optional<firmware::core::ByteVector> PosixFile::read(
     if (file_ == nullptr) return std::nullopt;
     firmware::core::ByteVector data(maximum_size);
     const std::size_t count = std::fread(data.data(), 1U, maximum_size, file_);
-    if (std::ferror(file_) != 0) return std::nullopt;
+    if (std::ferror(file_) != 0) {
+        log_sd_access_failure("read file", path_, errno);
+        return std::nullopt;
+    }
     data.resize(count);
     return data;
 }
@@ -56,6 +79,7 @@ std::optional<firmware::core::ByteVector> PosixFile::read_at(
     std::uint64_t offset, std::size_t maximum_size) {
     if (file_ == nullptr || offset > static_cast<std::uint64_t>(LONG_MAX) ||
         std::fseek(file_, static_cast<long>(offset), SEEK_SET) != 0) {
+        if (!path_.empty()) log_sd_access_failure("seek file", path_, errno);
         return std::nullopt;
     }
     return read(maximum_size);
@@ -67,7 +91,10 @@ bool PosixFile::write_all(firmware::core::BytesView data) {
     while (written < data.size()) {
         const std::size_t count =
             std::fwrite(data.data() + written, 1U, data.size() - written, file_);
-        if (count == 0U) return false;
+        if (count == 0U) {
+            log_sd_access_failure("write file", path_, errno);
+            return false;
+        }
         written += count;
     }
     return true;
