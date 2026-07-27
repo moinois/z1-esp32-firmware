@@ -27,8 +27,9 @@ Status vocabulary used below:
   physical equipment is unavailable.
 
 Current known production-integration gaps are concentrated in the BLUFI wire/GATT
-layer and the explicitly noted controller command-family gaps. Most other open
-items are physical or stress verification rather than missing portable logic.
+layer, the explicitly noted controller command-family gaps, and the configuration
+web interface. Most other open items are physical or stress verification rather
+than missing portable logic.
 
 ## Current backlog summary
 
@@ -36,6 +37,7 @@ items are physical or stress verification rather than missing portable logic.
 |---|---|---|
 | Direct OTA | Implemented, host-tested, target-built, and physically exercised across both partitions, rollback, and delayed transport | Package/controller end-to-end fixtures |
 | HTTP, TCP, Wi-Fi | Core paths and target adapters implemented; basic HTTP, WebSocket handshake, TCP, and Wi-Fi diagnostics have HIL PASS | `/updateffs` flash verification, TCP concurrency/fault stress, UDP discovery observation, WLAN mutation/RF tests, and populated SPIFFS |
+| Configuration web interface | Static-file transport and a limited set of HTTP APIs exist, but no HTML, CSS, or JavaScript application is present | Define the complete configurable surface and authentication policy; implement, package, upload, and test the browser UI and any missing configuration APIs |
 | USB | Target integration implemented; descriptors and basic framed commands have HIL PASS | Disconnect, overflow, timeout, mutation, storage, and contention tests |
 | SD/config/logging | Portable behavior host-tested and target adapters built | Pending physical reader/card fixture; no mount or write conformance claimed |
 | Camera/media | Camera, recording, live, preview, and retention adapters target-built | Attached sensor is unsupported; camera plus SD fixtures are required for streaming/recording/playback |
@@ -167,6 +169,7 @@ items are physical or stress verification rather than missing portable logic.
 | WEB-002 web-volume startup | Application mount/format policy plus ESP-IDF SPIFFS adapter | Yes for nonfatal mount failure, one format, one retry, and target SPIFFS registration; host suite and target build verified | Physical flash/filesystem verification pending |
 | WEB-001 HTTP listener startup | ESP-IDF listener adapter over immutable main/video configuration | Target build verified for ports, control ports, socket limits, backlog, waits, wildcard matching, keepalive/LRU policy, and independent startup failure logging | Main and video listeners, URI handlers, HTTP requests, and WebSocket upgrades HIL PASS 2026-07-26 |
 | WEB-011, WEB-013 main HTTP handlers | ESP-IDF VFS/HTTP adapter over static-file and identity policies | Target build verified for wildcard static handler, SPIFFS-backed reads, chunked response calls, 404 path, MIME selection, and exact firmware-info payload | HTTP HIL PASS 2026-07-26 for exact firmware JSON and missing-file 404; populated SPIFFS response pending |
+| PROJ-WEBUI-001 configuration web interface | Pending implementation; the repository currently contains no HTML, CSS, or JavaScript application assets | No automated browser or UI tests exist. Existing static-file, firmware-info, camera-resolution, update, and WebSocket endpoints provide only part of the required backend | Product scope, configurable fields, authentication policy, missing APIs, SPIFFS image packaging, browser behavior, and physical end-to-end verification remain to be defined and implemented |
 | WEBUP-010--WEBUP-014 direct application update | Application OTA orchestration with replaceable camera, partition, OTA, response, and restart ports; bootloader rollback enabled and application validity deferred until critical startup completes | Yes for camera-first order, partition/erase/begin/write/finish/boot failures, aborts, empty-image rejection, exact text, two-second delay, restart, multipart HTTP composition, ESP-IDF OTA adapter, pending-verification handling, and explicit healthy-image confirmation; clean target build verified | HIL PASS 2026-07-26 for two successful alternating updates (v2 `ota_0` to v3 `ota_1`, then v3 to v4 `ota_0`) and a fault-injected v5 update: v5 booted once from `ota_1` at `0x220000`, restarted before validity confirmation, and bootloader rollback restored healthy v4 from `ota_0` at `0x20000`; post-rollback TCP regression passed. Delayed-transport OTA HIL PASS 2026-07-27 |
 | WEBUP-020--WEBUP-023 direct web-volume update | Application raw partition orchestration with replaceable partition/response/restart port | Yes for partition lookup, full erase before offset-zero write, capacity rejection, empty content, exact errors/success, two-second delay, restart, multipart HTTP composition, and ESP-IDF SPIFFS partition adapter; clean target build verified | Physical HTTP/flash verification pending |
 | LIVE-001, LIVE-005--LIVE-006, LIVE-008 live control ownership | Application policy composed with ESP-IDF WebSocket input, preemption response, and generation-bound continuous camera stream | Yes for exact start/stop matching, owner-only stop, cross-socket preemption, same-socket restart suppression, disconnect cleanup, text-frame filtering, exact preemption response, and JPEG frame send; target build verified | WebSocket handshake HIL PASS 2026-07-26 for `/ws_video` and `/ws_preview` on dedicated port 82 after correcting handler registration; physical camera streaming remains unavailable |

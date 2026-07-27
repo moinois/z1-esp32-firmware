@@ -538,6 +538,12 @@ the board's strapping-pin levels have been verified.
 
 ## Current limitations and next steps
 
+- The HTTP server and SPIFFS static-file support are implemented, but the
+  browser-based configuration interface itself is not. No HTML, CSS, or
+  JavaScript application assets are currently included; its product scope,
+  authentication policy, missing APIs, packaging, and browser tests remain
+  explicit backlog items under `PROJ-WEBUI-001`.
+
 Most deterministic behavior and target compositions listed above are
 implemented, host-tested where portable, and target-built. Remaining work is
 primarily physical verification and fixture-specific integration: raw
