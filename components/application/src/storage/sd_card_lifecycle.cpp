@@ -1,11 +1,12 @@
 // Implements nonfatal mount lifecycle, three-sample debounce, and capacity policy.
 #include "firmware/application/sd_card_lifecycle.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 namespace firmware::application {
 namespace {
 
-constexpr SdMountConfig mount_config{
-    "/sd",
+const SdMountConfig mount_config{
+    core::sd_mount_path,
     false,
     16U,
     16U * 1024U,

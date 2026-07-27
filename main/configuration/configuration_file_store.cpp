@@ -2,6 +2,7 @@
 #include "configuration_file_store.hpp"
 
 #include "firmware/application/configuration_tags.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <cstdio>
 #include <utility>
@@ -9,8 +10,8 @@
 namespace firmware::target {
 namespace {
 
-constexpr char active_path[] = "/sd/config.txt";
-constexpr char temporary_path[] = "/sd/config.tmp";
+const std::string active_path = firmware::core::physical_sd_path("/config.txt");
+const std::string temporary_path = firmware::core::physical_sd_path("/config.tmp");
 constexpr std::size_t buffer_size = 256U;
 
 std::string_view effective_tag(std::string_view tag) {
@@ -43,7 +44,7 @@ bool write_file(std::string_view path, std::string_view content) {
 }  // namespace
 
 bool ConfigurationFileStore::exists() const {
-    std::FILE* file = std::fopen(active_path, "rb");
+    std::FILE* file = std::fopen(active_path.c_str(), "rb");
     if (file == nullptr) return false;
     std::fclose(file);
     return true;
@@ -84,8 +85,8 @@ bool ConfigurationFileStore::set(std::string_view tag, std::string_view key,
     configuration.set(key, value);
     document.uppercase_keys();
     if (!write_file(temporary_path, document.serialize())) return false;
-    if (std::rename(temporary_path, active_path) != 0) {
-        std::remove(temporary_path);
+    if (std::rename(temporary_path.c_str(), active_path.c_str()) != 0) {
+        std::remove(temporary_path.c_str());
         return false;
     }
     return true;

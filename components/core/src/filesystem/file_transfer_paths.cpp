@@ -75,14 +75,14 @@ FileCachePaths map_file_cache_paths(std::string_view resolved_path) {
     if (marker_position != std::string_view::npos) {
         const std::string relative(resolved_path.substr(marker_position + marker.size()));
         return {
-            std::string("/sd/gcodes/.md5/") + relative,
-            std::string("/sd/gcodes/.lz/") + relative,
+            physical_sd_path("/gcodes/.md5/") + relative,
+            physical_sd_path("/gcodes/.lz/") + relative,
         };
     }
 
-    constexpr std::string_view sd_prefix = "/sd/";
-    if (resolved_path.compare(0U, sd_prefix.size(), sd_prefix) == 0) {
-        return {std::string("/sd/.md5/") + std::string(resolved_path.substr(sd_prefix.size())),
+    if (resolved_path.compare(0U, sd_mount_prefix.size(), sd_mount_prefix) == 0) {
+        return {physical_sd_path("/.md5/") +
+                    std::string(resolved_path.substr(sd_mount_prefix.size())),
                 std::nullopt};
     }
     return {};

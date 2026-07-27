@@ -2,6 +2,7 @@
 #include "firmware/application/file_download.hpp"
 
 #include "firmware/core/protocol_constants.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <algorithm>
 #include <utility>
@@ -55,12 +56,13 @@ std::uint32_t decode_u32(core::BytesView bytes) {
 bool FileDownload::start(const HostIdentity& owner, std::string path,
                          std::uint64_t now_milliseconds, FileDownloadPort& port) {
     owner_ = owner;
-    path_ = std::move(path);
-    const core::FileCachePaths cache_paths = core::map_file_cache_paths(path_);
+    resolved_path_ = std::move(path);
+    path_ = core::logical_sd_path(resolved_path_);
+    const core::FileCachePaths cache_paths = core::map_file_cache_paths(resolved_path_);
     port.prepare_cache_paths(cache_paths);
 
-    if (is_config_file(path_)) {
-        const auto calculated = port.calculate_md5(path_);
+    if (is_config_file(resolved_path_)) {
+        const auto calculated = port.calculate_md5(resolved_path_);
         if (!calculated.has_value() || calculated->size() != md5_text_size) {
             send_path_error("Error: failed to get MD5 for [", port);
             return false;
@@ -79,7 +81,7 @@ bool FileDownload::start(const HostIdentity& owner, std::string path,
         }
     }
 
-    std::string selected_path = path_;
+    std::string selected_path = resolved_path_;
     if (cache_paths.compressed_path.has_value() &&
         port.file_exists(*cache_paths.compressed_path)) {
         selected_path = *cache_paths.compressed_path;

@@ -3,6 +3,7 @@
 #include "configuration_file_store.hpp"
 
 #include "firmware/application/tcp_client_session.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <cstdio>
 #include <string>
@@ -11,11 +12,15 @@
 namespace firmware::target {
 
 std::string_view TcpConfigurationFileAdapter::active_configuration_path() const {
-    return "/sd/config.txt";
+    static const std::string path =
+        firmware::core::physical_sd_path("/config.txt");
+    return path;
 }
 
 std::string_view TcpConfigurationFileAdapter::default_configuration_path() const {
-    return "/sd/config.default";
+    static const std::string path =
+        firmware::core::physical_sd_path("/config.default");
+    return path;
 }
 
 TcpConfigurationFileAdapter::TcpConfigurationFileAdapter(

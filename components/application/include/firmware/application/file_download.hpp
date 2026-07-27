@@ -87,6 +87,7 @@ private:
     void send_path_error(std::string_view prefix, FileDownloadPort& port);
 
     HostIdentity owner_;
+    std::string resolved_path_;
     std::string path_;
     std::string md5_;
     std::uint64_t file_size_ = 0U;

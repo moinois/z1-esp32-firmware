@@ -4,6 +4,7 @@
 #include "firmware/core/file_transfer_paths.hpp"
 #include "firmware/core/filesystem_syntax.hpp"
 #include "firmware/core/protocol_constants.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <optional>
 #include <string>
@@ -62,16 +63,17 @@ void FilesystemCommands::make_directory(core::BytesView argument,
     if (!path.has_value()) {
         return;
     }
+    const std::string displayed = core::logical_sd_path(*path);
     if (!port.create_directory(*path, directory_mode)) {
         port.send(text_frame(core::protocol::operation_failure,
-                             "could not create directory " + *path + "\r\n"));
+                             "could not create directory " + displayed + "\r\n"));
         return;
     }
 
     port.send(text_frame(core::protocol::operation_success,
                          std::string(success_message)));
     port.send(text_frame(core::protocol::console_message,
-                         "created directory " + *path + "\r\n"));
+                         "created directory " + displayed + "\r\n"));
     create_cache_directories(*path, port);
 }
 
@@ -81,10 +83,11 @@ void FilesystemCommands::remove(core::BytesView argument,
     if (!path.has_value()) {
         return;
     }
+    const std::string displayed = core::logical_sd_path(*path);
     port.remove_recursively(*path);
     if (port.path_exists(*path)) {
         port.send(text_frame(core::protocol::operation_failure,
-                             "Could not delete " + *path + " \r\n"));
+                             "Could not delete " + displayed + " \r\n"));
         return;
     }
 
@@ -99,10 +102,13 @@ void FilesystemCommands::move(core::BytesView argument,
     if (!paths.has_value()) {
         return;
     }
+    const std::string displayed_source = core::logical_sd_path(paths->source);
+    const std::string displayed_destination =
+        core::logical_sd_path(paths->destination);
     if (!port.rename_path(paths->source, paths->destination)) {
         port.send(text_frame(core::protocol::operation_failure,
-                             "Could not rename " + paths->source + " to " +
-                                 paths->destination + "\r\n"));
+                             "Could not rename " + displayed_source + " to " +
+                                 displayed_destination + "\r\n"));
         return;
     }
 
@@ -117,8 +123,8 @@ void FilesystemCommands::move(core::BytesView argument,
     port.send(text_frame(core::protocol::operation_success,
                          std::string(success_message)));
     port.send(text_frame(core::protocol::console_message,
-                         "renamed " + paths->source + " to " +
-                             paths->destination + "\r\n"));
+                         "renamed " + displayed_source + " to " +
+                             displayed_destination + "\r\n"));
 }
 
 void FilesystemCommands::file_type(FilesystemCommandPort& port) {

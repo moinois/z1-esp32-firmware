@@ -3,6 +3,7 @@
 
 #include "firmware/core/filesystem_syntax.hpp"
 #include "firmware/core/protocol_constants.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -50,15 +51,16 @@ void FileHashCommand::execute(core::BytesView argument, FileHashPort& port) {
         send_console(std::string(missing_argument_message), port);
         return;
     }
+    const std::string displayed = core::logical_sd_path(*path);
 
     switch (port.inspect_path(*path)) {
         case FileHashPathState::resolution_failure:
             return;
         case FileHashPathState::missing:
-            send_console("Error: file not found [" + *path + "]\r\n", port);
+            send_console("Error: file not found [" + displayed + "]\r\n", port);
             return;
         case FileHashPathState::not_regular:
-            send_console("Error: not a file [" + *path + "]\r\n", port);
+            send_console("Error: not a file [" + displayed + "]\r\n", port);
             return;
         case FileHashPathState::regular_file:
             break;
@@ -69,10 +71,10 @@ void FileHashCommand::execute(core::BytesView argument, FileHashPort& port) {
                                 ? normalize_md5(*calculated)
                                 : std::optional<std::string>{};
     if (!normalized.has_value()) {
-        send_console("Error: md5sum failed [" + *path + "]\r\n", port);
+        send_console("Error: md5sum failed [" + displayed + "]\r\n", port);
         return;
     }
-    send_console(*normalized + *path + "\r\n", port);
+    send_console(*normalized + displayed + "\r\n", port);
 }
 
 }  // namespace firmware::application

@@ -1,5 +1,6 @@
 // Implements controller staging and mainboard OTA application state ordering.
 #include "firmware/application/update_application.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -8,8 +9,9 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::string_view aggregate_path = "/sd/firmware.bin";
-constexpr std::string_view controller_image_path = "/sd/lpc1768.bin";
+const std::string aggregate_path = core::physical_sd_path("/firmware.bin");
+const std::string controller_image_path =
+    core::physical_sd_path("/lpc1768.bin");
 constexpr std::size_t aggregate_header_size = 32U;
 constexpr std::uint8_t mainboard_phase = 1U;
 constexpr std::uint8_t controller_phase = 2U;

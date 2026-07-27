@@ -9,13 +9,13 @@ namespace firmware::application {
 namespace {
 
 constexpr std::string_view missing_default_message =
-    "Default file not found: /sd/config.default\r\n";
+    "Default file not found: /config.default\r\n";
 constexpr std::string_view missing_active_message =
-    "Config file not found: /sd/config.txt\r\n";
+    "Config file not found: /config.txt\r\n";
 constexpr std::string_view restore_failure_message =
-    "Config file not found or created fail: /sd/config.txt\r\n";
+    "Config file not found or created fail: /config.txt\r\n";
 constexpr std::string_view save_failure_message =
-    "Default file not found or created fail: /sd/config.default\r\n";
+    "Default file not found or created fail: /config.default\r\n";
 constexpr std::string_view restore_success_message =
     "Settings restored complete.\r\n";
 constexpr std::string_view save_success_message =

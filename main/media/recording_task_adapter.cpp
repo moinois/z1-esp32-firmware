@@ -12,6 +12,7 @@
 #include "firmware/application/camera_settings.hpp"
 #include "firmware/application/recording_policy.hpp"
 #include "firmware/core/avi_writer.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <ctime>
 #include <cstdint>
@@ -21,7 +22,8 @@
 namespace firmware::target {
 namespace {
 
-constexpr char recording_source_path[] = "/sd/videos/session.avi";
+const std::string recording_source_path =
+    firmware::core::physical_sd_path("/videos/session.avi");
 
 // Finalizes and durably writes one active in-memory AVI segment.
 void close_segment(std::optional<firmware::core::AviWriter>& writer,

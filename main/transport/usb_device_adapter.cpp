@@ -44,6 +44,7 @@
 #include "firmware/application/router.hpp"
 #include "play_runtime_state.hpp"
 #include "firmware/core/file_transfer_paths.hpp"
+#include "firmware/core/sd_user_path.hpp"
 #include "firmware/application/file_upload.hpp"
 #include "firmware/application/file_download.hpp"
 #include "firmware/application/m942_exercise.hpp"
@@ -159,7 +160,9 @@ public:
         return firmware::target::active_configuration_path();
     }
     std::string_view default_configuration_path() const override {
-        return "/sd/config.default";
+        static const std::string path =
+            firmware::core::physical_sd_path("/config.default");
+        return path;
     }
     ~UsbConfigurationFilePort() override {
         close_source();

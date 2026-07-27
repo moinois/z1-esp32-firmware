@@ -1,5 +1,6 @@
 // Implements recording path validation, UTC naming, and interval accounting.
 #include "firmware/application/recording_policy.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <ctime>
 #include <iomanip>
@@ -20,7 +21,7 @@ std::optional<std::string> recording_segment_path(
     const std::time_t seconds = static_cast<std::time_t>(utc_seconds);
     if (gmtime_r(&seconds, &utc) == nullptr) return std::nullopt;
     std::ostringstream output;
-    output << "/sd/videos/" << filename.substr(0U, dot) << '-'
+    output << core::physical_sd_path("/videos/") << filename.substr(0U, dot) << '-'
            << std::setfill('0') << std::setw(4) << utc.tm_year + 1900
            << std::setw(2) << utc.tm_mon + 1 << std::setw(2) << utc.tm_mday
            << '_' << std::setw(2) << utc.tm_hour << std::setw(2) << utc.tm_min

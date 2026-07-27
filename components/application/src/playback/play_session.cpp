@@ -70,10 +70,10 @@ bool PlaySession::prepare(core::BytesView payload, std::uint64_t now_millisecond
         return false;
     }
 
-    path_ = resolved;
+    path_ = core::logical_sd_path(resolved);
     file_size_ = static_cast<std::uint32_t>(*opened_size);
     path_identifier_ = core::crc16_ccitt(std::string_view(path_));
-    const auto cached = port.cached_md5(path_);
+    const auto cached = port.cached_md5(resolved);
     if (cached.has_value() && valid_md5(*cached)) {
         md5_ = *cached;
     }

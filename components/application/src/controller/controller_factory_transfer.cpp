@@ -3,13 +3,14 @@
 
 #include "firmware/application/controller_transfer.hpp"
 #include "firmware/core/protocol_constants.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <utility>
 
 namespace firmware::application {
 namespace {
 
-constexpr std::string_view factory_path = "/sd/factory.ini";
+const std::string factory_path = core::physical_sd_path("/factory.ini");
 constexpr std::size_t input_chunk_size = 255U;
 constexpr std::uint16_t maximum_frame_data_size = 512U;
 constexpr std::size_t maximum_record_size = 132U;

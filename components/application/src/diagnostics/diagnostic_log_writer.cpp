@@ -1,16 +1,17 @@
 // Implements log session markers, tracked writes, rotation, and bounded shutdown.
 #include "firmware/application/diagnostic_log_writer.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <string>
 
 namespace firmware::application {
 namespace {
 
-constexpr std::string_view log_path = "/sd/.logs/GeneralInfo.log";
-constexpr std::string_view first_rotated_path =
-    "/sd/.logs/GeneralInfo.log.1";
-constexpr std::string_view second_rotated_path =
-    "/sd/.logs/GeneralInfo.log.2";
+const std::string log_path = core::physical_sd_path("/.logs/GeneralInfo.log");
+const std::string first_rotated_path =
+    core::physical_sd_path("/.logs/GeneralInfo.log.1");
+const std::string second_rotated_path =
+    core::physical_sd_path("/.logs/GeneralInfo.log.2");
 constexpr std::size_t file_buffer_size = 4096U;
 constexpr std::uint64_t rotation_size_limit = 0x300000U;
 constexpr std::uint64_t periodic_flush_threshold_milliseconds = 1990U;

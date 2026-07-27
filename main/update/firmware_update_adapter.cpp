@@ -16,6 +16,7 @@
 #include "firmware/application/update_controller.hpp"
 #include "firmware/application/update_deletion.hpp"
 #include "firmware/application/update_validation.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <cstdio>
 #include <cstring>
@@ -37,7 +38,9 @@ class UpdateControllerTargetPort final
 public:
     bool staged_controller_exists() const override {
         struct stat information{};
-        return stat("/sd/lpc1768.bin", &information) == 0 &&
+        const std::string path =
+            firmware::core::physical_sd_path("/lpc1768.bin");
+        return stat(path.c_str(), &information) == 0 &&
                S_ISREG(information.st_mode);
     }
     bool firmware_transfer_active() const override {

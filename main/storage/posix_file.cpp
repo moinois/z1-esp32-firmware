@@ -1,6 +1,7 @@
 // Implements shared POSIX VFS file ownership, bounded I/O, and hashing.
 #include "posix_file.hpp"
 #include "sd_access_diagnostics.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include "mbedtls/md5.h"
 
@@ -15,8 +16,10 @@ namespace {
 
 // Reports whether a physical path belongs to the removable SD volume.
 bool sd_path(std::string_view path) {
-    return path == "/sd" ||
-           (path.size() > 4U && path.substr(0U, 4U) == "/sd/");
+    return path == firmware::core::sd_mount_path ||
+           (path.size() >= firmware::core::sd_mount_prefix.size() &&
+            path.substr(0U, firmware::core::sd_mount_prefix.size()) ==
+                firmware::core::sd_mount_prefix);
 }
 
 }  // namespace

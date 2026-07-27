@@ -1,5 +1,6 @@
 // Implements controller update reset scheduling and transfer outcome effects.
 #include "firmware/application/update_controller.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <cstdint>
 #include <string_view>
@@ -8,7 +9,8 @@ namespace firmware::application {
 namespace {
 
 constexpr std::uint64_t controller_check_interval_milliseconds = 5000U;
-constexpr std::string_view staged_controller_path = "/sd/lpc1768.bin";
+const std::string staged_controller_path =
+    core::physical_sd_path("/lpc1768.bin");
 
 }  // namespace
 

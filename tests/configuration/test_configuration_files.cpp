@@ -114,7 +114,7 @@ TEST_CASE(cfg_004_restore_reports_missing_default_without_opening_destination) {
     REQUIRE_EQ(port.existence_path, std::string("/sd/config.default"));
     REQUIRE(port.destination_path.empty());
     REQUIRE_EQ(text(port.sent[0].payload),
-               std::string("Default file not found: /sd/config.default\r\n"));
+               std::string("Default file not found: /config.default\r\n"));
 }
 
 TEST_CASE(cfg_005_save_default_reports_missing_active_configuration) {
@@ -125,7 +125,7 @@ TEST_CASE(cfg_005_save_default_reports_missing_active_configuration) {
 
     REQUIRE_EQ(port.existence_path, std::string("/sd/config.txt"));
     REQUIRE_EQ(text(port.sent[0].payload),
-               std::string("Config file not found: /sd/config.txt\r\n"));
+               std::string("Config file not found: /config.txt\r\n"));
 }
 
 TEST_CASE(cfg_004_to_006_restore_truncates_and_copies_every_byte_before_success) {
@@ -161,7 +161,7 @@ TEST_CASE(cfg_006_read_write_and_close_failures_leave_partial_destination) {
     ConfigurationFiles::restore(read_failure);
     REQUIRE_EQ(read_failure.destination, std::vector<std::uint8_t>({'a'}));
     REQUIRE_EQ(text(read_failure.sent[0].payload),
-               std::string("Config file not found or created fail: /sd/config.txt\r\n"));
+               std::string("Config file not found or created fail: /config.txt\r\n"));
 
     FakeConfigurationFilePort write_failure;
     write_failure.write_fails_at = 2U;
@@ -169,7 +169,7 @@ TEST_CASE(cfg_006_read_write_and_close_failures_leave_partial_destination) {
     REQUIRE_EQ(write_failure.destination,
                std::vector<std::uint8_t>({'a', 'b'}));
     REQUIRE_EQ(text(write_failure.sent[0].payload),
-               std::string("Default file not found or created fail: /sd/config.default\r\n"));
+               std::string("Default file not found or created fail: /config.default\r\n"));
 
     FakeConfigurationFilePort close_failure;
     close_failure.destination_close_succeeds = false;
@@ -177,5 +177,5 @@ TEST_CASE(cfg_006_read_write_and_close_failures_leave_partial_destination) {
     REQUIRE_EQ(close_failure.destination,
                std::vector<std::uint8_t>({'a', 'b', 'c'}));
     REQUIRE_EQ(text(close_failure.sent[0].payload),
-               std::string("Config file not found or created fail: /sd/config.txt\r\n"));
+               std::string("Config file not found or created fail: /config.txt\r\n"));
 }

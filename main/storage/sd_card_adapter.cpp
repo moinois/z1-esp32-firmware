@@ -13,6 +13,7 @@
 
 #include "firmware/application/sd_card_lifecycle.hpp"
 #include "firmware/application/diagnostic_log_writer.hpp"
+#include "firmware/core/sd_user_path.hpp"
 #include "diagnostic_capture_adapter.hpp"
 
 #include <optional>
@@ -25,8 +26,8 @@ namespace {
 
 constexpr gpio_num_t card_detect_gpio = GPIO_NUM_2;
 constexpr char tag[] = "SD";
-constexpr firmware::application::SdMountConfig mount_policy{
-    "/sd", false, 16U, 16U * 1024U};
+const firmware::application::SdMountConfig mount_policy{
+    firmware::core::sd_mount_path, false, 16U, 16U * 1024U};
 
 class EspSdPort final : public firmware::application::SdCardPort,
                         public firmware::application::DiagnosticLogPort {
@@ -82,7 +83,8 @@ public:
             set_sd_storage_mounted(false);
             return true;
         }
-        const bool unmounted = esp_vfs_fat_sdcard_unmount("/sd", card_) == ESP_OK;
+        const bool unmounted = esp_vfs_fat_sdcard_unmount(
+                                   firmware::core::sd_mount_path.data(), card_) == ESP_OK;
         if (unmounted) {
             card_ = nullptr;
             set_sd_storage_mounted(false);
@@ -143,7 +145,8 @@ private:
     std::optional<std::uint64_t> volume_bytes(bool total) {
         std::uint64_t total_bytes = 0U;
         std::uint64_t free_bytes = 0U;
-        if (esp_vfs_fat_info("/sd", &total_bytes, &free_bytes) != ESP_OK) {
+        if (esp_vfs_fat_info(firmware::core::sd_mount_path.data(), &total_bytes,
+                             &free_bytes) != ESP_OK) {
             return std::nullopt;
         }
         return total ? total_bytes : free_bytes;

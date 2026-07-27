@@ -94,7 +94,7 @@ TEST_CASE(play_003_path_identifier_is_common_crc_and_size_is_limited_to_u32) {
     REQUIRE(session.prepare(bytes("play /sd/job.gcode"), 0U, port));
 
     REQUIRE_EQ(session.path_identifier(),
-               firmware::core::crc16_ccitt(bytes("/sd/job.gcode")));
+               firmware::core::crc16_ccitt(bytes("/job.gcode")));
     REQUIRE_EQ(session.file_size(), 123U);
 
     port.open_size = 0x100000000ULL;
@@ -134,11 +134,11 @@ TEST_CASE(play_005_status_is_empty_until_running_and_uses_only_valid_cached_md5)
     REQUIRE_EQ(text(session.status_reply().payload), std::string("|"));
     session.mark_running();
     REQUIRE_EQ(text(session.status_reply().payload),
-               std::string("/sd/job.gcode|0123456789abcdef0123456789abcdef"));
+               std::string("/job.gcode|0123456789abcdef0123456789abcdef"));
 
     port.md5 = "short";
     REQUIRE(session.prepare(bytes("play /sd/next.gcode"), 1U, port));
-    REQUIRE_EQ(text(session.status_reply().payload), std::string("/sd/next.gcode|"));
+    REQUIRE_EQ(text(session.status_reply().payload), std::string("/next.gcode|"));
 }
 
 TEST_CASE(play_006_replacement_prepare_does_not_clear_the_running_flag) {
@@ -150,7 +150,7 @@ TEST_CASE(play_006_replacement_prepare_does_not_clear_the_running_flag) {
     REQUIRE(session.prepare(bytes("play /second"), 1U, port));
 
     REQUIRE(session.running());
-    REQUIRE_EQ(text(session.status_reply().payload), std::string("/sd/second|"));
+    REQUIRE_EQ(text(session.status_reply().payload), std::string("/second|"));
 }
 
 TEST_CASE(play_006_failed_replacement_hides_status_but_retains_running_observer_state) {

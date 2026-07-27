@@ -7,6 +7,17 @@
 
 using firmware::core::resolve_sd_user_path;
 
+TEST_CASE(sd_paths_share_one_mount_point_and_hide_it_from_user_output) {
+    using firmware::core::logical_sd_path;
+    using firmware::core::physical_sd_path;
+
+    REQUIRE_EQ(physical_sd_path("/"), std::string("/sd"));
+    REQUIRE_EQ(physical_sd_path("config.txt"), std::string("/sd/config.txt"));
+    REQUIRE_EQ(logical_sd_path("/sd"), std::string("/"));
+    REQUIRE_EQ(logical_sd_path("/sd/config.txt"), std::string("/config.txt"));
+    REQUIRE_EQ(logical_sd_path("/other/file"), std::string("/other/file"));
+}
+
 TEST_CASE(sd_user_path_maps_logical_root_and_relative_paths_beneath_sd) {
     REQUIRE_EQ(resolve_sd_user_path("/"), std::string("/sd"));
     REQUIRE_EQ(resolve_sd_user_path("."), std::string("/sd"));

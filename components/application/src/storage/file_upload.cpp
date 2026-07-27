@@ -2,6 +2,7 @@
 #include "firmware/application/file_upload.hpp"
 
 #include "firmware/core/protocol_constants.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -18,8 +19,6 @@ constexpr std::uint64_t inactivity_timeout_milliseconds = 9000U;
 constexpr std::uint8_t packets_per_retry_cycle = 51U;
 constexpr std::uint8_t maximum_retry_cycles = 51U;
 constexpr std::uint32_t parent_directory_mode = 0777U;
-constexpr std::string_view firmware_path = "/sd/firmware.bin";
-constexpr std::string_view firmware_partial_path = "/sd/firmware.bin.part";
 constexpr std::string_view timeout_message = "Info: Machine receive file time out!";
 constexpr std::string_view excessive_retry_message =
     "Info: Machine receive file too many retry error!";
@@ -65,8 +64,9 @@ core::ByteVector path_message(std::string_view prefix, std::string_view path,
 bool FileUpload::start(const HostIdentity& owner, std::string path,
                        std::uint64_t now_milliseconds, FileUploadPort& port) {
     owner_ = owner;
-    logical_path_ = std::move(path);
-    const core::FileCachePaths cache_paths = core::map_file_cache_paths(logical_path_);
+    resolved_path_ = std::move(path);
+    logical_path_ = core::logical_sd_path(resolved_path_);
+    const core::FileCachePaths cache_paths = core::map_file_cache_paths(resolved_path_);
     port.prepare_cache_paths(cache_paths);
     if (!cache_paths.md5_path.has_value()) {
         port.send(owner_, {core::protocol::file_cancel,
@@ -84,8 +84,11 @@ bool FileUpload::start(const HostIdentity& owner, std::string path,
         return false;
     }
 
-    firmware_upload_ = ascii_case_equal(logical_path_, firmware_path);
-    target_path_ = firmware_upload_ ? std::string(firmware_partial_path) : logical_path_;
+    const std::string firmware_path = core::physical_sd_path("/firmware.bin");
+    const std::string firmware_partial_path =
+        core::physical_sd_path("/firmware.bin.part");
+    firmware_upload_ = ascii_case_equal(resolved_path_, firmware_path);
+    target_path_ = firmware_upload_ ? firmware_partial_path : resolved_path_;
     if (firmware_upload_) {
         static_cast<void>(port.remove_file(firmware_partial_path));
     }
@@ -205,12 +208,16 @@ void FileUpload::complete(FileUploadPort& port) {
     port.send(owner_, {core::protocol::file_complete, {'o', 'k', '\r', '\n'}});
     port.flush_and_close();
     if (firmware_upload_) {
+        const std::string firmware_path =
+            core::physical_sd_path("/firmware.bin");
+        const std::string firmware_partial_path =
+            core::physical_sd_path("/firmware.bin.part");
         static_cast<void>(port.remove_file(firmware_path));
         if (!port.rename_file(firmware_partial_path, firmware_path)) {
             static_cast<void>(port.remove_file(firmware_partial_path));
-            constexpr std::string_view error =
-                "Error: failed to finalize firmware upload [/sd/firmware.bin].";
-            port.send(owner_, {core::protocol::file_cancel, {error.begin(), error.end()}});
+            const core::ByteVector error = path_message(
+                "Error: failed to finalize firmware upload [", logical_path_, "].");
+            port.send(owner_, {core::protocol::file_cancel, error});
             active_ = false;
             port.release_ownership();
             return;

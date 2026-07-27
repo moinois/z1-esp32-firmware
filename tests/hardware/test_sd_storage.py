@@ -43,7 +43,7 @@ def test_temporary_directory_create_and_remove(usb_client, sd_fixture) -> None:
         assert created
         payload = b"\n".join(frame.payload for frame in created).lower()
         assert b"created directory" in payload, payload.decode(errors="replace")
-        assert b"created directory /sd/" in payload, payload.decode(errors="replace")
+        assert b"created directory /" in payload, payload.decode(errors="replace")
     finally:
         removed = usb_client.exchange(
             GENERAL_COMMAND, f"rm -R {path}".encode("ascii"), timeout_seconds=5.0

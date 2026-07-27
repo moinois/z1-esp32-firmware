@@ -93,6 +93,7 @@ private:
     void reset_retry_counters();
 
     HostIdentity owner_;
+    std::string resolved_path_;
     std::string logical_path_;
     std::string target_path_;
     std::string md5_path_;

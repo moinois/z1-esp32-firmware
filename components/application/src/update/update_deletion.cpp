@@ -1,5 +1,6 @@
 // Implements bounded update deletion retries and exact recovery delays.
 #include "firmware/application/update_deletion.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -66,11 +67,12 @@ bool UpdateDeletionService::recover_permissions(
 }
 
 void UpdateDeletionService::broadcast_failure(std::string_view path) {
+    const std::string displayed_path = core::logical_sd_path(path);
     std::string message;
-    message.reserve(delete_error_prefix.size() + path.size() +
+    message.reserve(delete_error_prefix.size() + displayed_path.size() +
                     delete_error_suffix.size());
     message.append(delete_error_prefix);
-    message.append(path);
+    message.append(displayed_path);
     message.append(delete_error_suffix);
     port_.broadcast(update_broadcast_type, message);
 }

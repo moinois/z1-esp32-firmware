@@ -395,7 +395,10 @@ the logical SD root and pass through one portable resolver before target I/O.
 The physical result is exactly `/sd` or a descendant. A leading `/sd` remains a
 compatibility alias. An exact `gcodes` path component selects the canonical
 `/sd/gcodes` primary and cache trees; text merely containing `gcodes` does not.
-Internal fixed firmware paths may continue to name `/sd` directly.
+The physical mount point is defined once by the core SD-path policy; fixed
+firmware paths are composed from that definition instead of embedding `/sd`.
+User-visible command responses and play or transfer status convert physical
+paths back to their logical `/...` form so implementation details do not leak.
 
 The target publishes successful mount and unmount state atomically. Failed SD
 operations log that state before classifying POSIX errno, allowing an absent
@@ -407,5 +410,7 @@ contracts such as `FILE-015`.
 - User input cannot select `/spiffs` or another VFS mount.
 - Path normalization and cache mapping are transport-independent and host-tested.
 - Existing clients that send `/sd/...` remain compatible.
+- Users consistently see `/config.txt`, `/gcodes/...`, and `/` regardless of
+  the physical VFS mount point.
 - `ls` retains its specified completion-only wire response on open failure;
   the detailed cause is diagnostic evidence instead.

@@ -3,6 +3,7 @@
 
 #include "firmware/application/controller_transfer.hpp"
 #include "firmware/core/protocol_constants.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -11,7 +12,7 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::string_view firmware_path = "/sd/lpc1768.bin";
+const std::string firmware_path = core::physical_sd_path("/lpc1768.bin");
 constexpr std::uint64_t wait_timeout_milliseconds = 5000U;
 constexpr std::uint16_t maximum_frame_data_size = 512U;
 

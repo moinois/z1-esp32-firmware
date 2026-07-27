@@ -85,19 +85,19 @@ TEST_CASE(file_028_missing_nonregular_and_hash_failures_have_exact_messages) {
     missing.path_state = FileHashPathState::missing;
     FileHashCommand::execute(bytes(" file.bin"), missing);
     REQUIRE_EQ(text(missing.sent[0].payload),
-               std::string("Error: file not found [/sd/file.bin]\r\n"));
+               std::string("Error: file not found [/file.bin]\r\n"));
 
     FakeFileHashPort nonregular;
     nonregular.path_state = FileHashPathState::not_regular;
     FileHashCommand::execute(bytes(" folder"), nonregular);
     REQUIRE_EQ(text(nonregular.sent[0].payload),
-               std::string("Error: not a file [/sd/folder]\r\n"));
+               std::string("Error: not a file [/folder]\r\n"));
 
     FakeFileHashPort failed;
     failed.hash = std::nullopt;
     FileHashCommand::execute(bytes(" file.bin"), failed);
     REQUIRE_EQ(text(failed.sent[0].payload),
-               std::string("Error: md5sum failed [/sd/file.bin]\r\n"));
+               std::string("Error: md5sum failed [/file.bin]\r\n"));
 }
 
 TEST_CASE(file_029_success_hashes_in_4096_byte_blocks_and_emits_lowercase_without_separator) {
@@ -112,5 +112,5 @@ TEST_CASE(file_029_success_hashes_in_4096_byte_blocks_and_emits_lowercase_withou
     REQUIRE_EQ(port.sent.size(), 1U);
     REQUIRE_EQ(port.sent[0].type, 0x90U);
     REQUIRE_EQ(text(port.sent[0].payload),
-               std::string("abcdef0123456789abcdef0123456789/sd/my file.bin\r\n"));
+               std::string("abcdef0123456789abcdef0123456789/my file.bin\r\n"));
 }

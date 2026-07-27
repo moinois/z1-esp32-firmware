@@ -164,7 +164,7 @@ TEST_CASE(hftd_003_open_and_md5_failures_send_exact_errors_and_release) {
     REQUIRE(!open_failure.start(owner, "/sd/missing", 0U, open_port));
     REQUIRE_EQ(open_port.sent.back().type, 0xB5U);
     REQUIRE_EQ(text(open_port.sent.back().payload),
-               std::string("Error: failed to open file [/sd/missing]!"));
+               std::string("Error: failed to open file [/missing]!"));
     REQUIRE_EQ(open_port.release_count, 1U);
 
     FileDownload md5_failure;
@@ -172,7 +172,7 @@ TEST_CASE(hftd_003_open_and_md5_failures_send_exact_errors_and_release) {
     md5_port.calculated_md5 = std::nullopt;
     REQUIRE(!md5_failure.start(owner, "/sd/config.txt", 0U, md5_port));
     REQUIRE_EQ(text(md5_port.sent.back().payload),
-               std::string("Error: failed to get MD5 for [/sd/config.txt]!"));
+               std::string("Error: failed to get MD5 for [/config.txt]!"));
 }
 
 TEST_CASE(hftd_004_successful_open_immediately_sends_md5_to_original_identity) {
@@ -255,7 +255,7 @@ TEST_CASE(hftd_009_completion_sends_ack_releases_and_reports_success) {
 
     REQUIRE_EQ(port.sent.size(), 2U);
     REQUIRE_EQ(port.sent[0], Frame({0xB4U, {'o', 'k', '\r', '\n'}}));
-    REQUIRE_EQ(text(port.sent[1].payload), std::string("Info: download success: /sd/job."));
+    REQUIRE_EQ(text(port.sent[1].payload), std::string("Info: download success: /job."));
     REQUIRE_EQ(port.close_count, 1U);
     REQUIRE_EQ(port.release_count, 1U);
 }

@@ -7,6 +7,7 @@
 #include "freertos/task.h"
 
 #include "firmware/application/storage_retention_service.hpp"
+#include "firmware/core/sd_user_path.hpp"
 #include "runtime_counter_task.hpp"
 
 #include <dirent.h>
@@ -22,8 +23,8 @@ namespace firmware::target {
 namespace {
 
 constexpr char tag[] = "RETENTION";
-constexpr char videos_directory[] = "/sd/videos";
-constexpr char sd_mount_path[] = "/sd";
+const std::string videos_directory =
+    firmware::core::physical_sd_path("/videos");
 constexpr std::uint32_t retention_interval_milliseconds = 60000U;
 
 class PosixRetentionPort final : public firmware::application::StorageRetentionPort {
@@ -31,7 +32,8 @@ public:
     std::optional<firmware::application::StorageUsage> read_usage() override {
         std::uint64_t total_bytes = 0U;
         std::uint64_t free_bytes = 0U;
-        if (esp_vfs_fat_info(sd_mount_path, &total_bytes, &free_bytes) != ESP_OK) {
+        if (esp_vfs_fat_info(firmware::core::sd_mount_path.data(), &total_bytes,
+                             &free_bytes) != ESP_OK) {
             return std::nullopt;
         }
         return firmware::application::StorageUsage{total_bytes, free_bytes};
@@ -39,12 +41,12 @@ public:
 
     std::optional<std::vector<firmware::application::RetentionCandidate>>
     list_video_directory() override {
-        DIR* directory = opendir(videos_directory);
+        DIR* directory = opendir(videos_directory.c_str());
         if (directory == nullptr) return std::nullopt;
         std::vector<firmware::application::RetentionCandidate> entries;
         while (dirent* item = readdir(directory)) {
             if (item->d_name[0] == '.') continue;
-            const std::string path = std::string(videos_directory) + "/" + item->d_name;
+            const std::string path = videos_directory + "/" + item->d_name;
             struct stat information {};
             if (stat(path.c_str(), &information) != 0) continue;
             entries.push_back({path, static_cast<std::uint64_t>(information.st_mtime),

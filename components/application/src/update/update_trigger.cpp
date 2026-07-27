@@ -1,12 +1,14 @@
 // Implements exact update command recognition and one-request coalescing.
 #include "firmware/application/update_trigger.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <string_view>
 
 namespace firmware::application {
 namespace {
 
-constexpr std::string_view partial_aggregate_path = "/sd/firmware.bin.part";
+const std::string partial_aggregate_path =
+    core::physical_sd_path("/firmware.bin.part");
 constexpr std::string_view upgrade_prefix = "upgrade";
 constexpr std::string_view reset_prefix = "reset";
 

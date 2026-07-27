@@ -1,5 +1,6 @@
 // Implements aggregate cleanup, read-failure classification, and validation.
 #include "firmware/application/update_validation.hpp"
+#include "firmware/core/sd_user_path.hpp"
 
 #include <array>
 #include <cstddef>
@@ -11,8 +12,9 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::string_view aggregate_path = "/sd/firmware.bin";
-constexpr std::string_view partial_aggregate_path = "/sd/firmware.bin.part";
+const std::string aggregate_path = core::physical_sd_path("/firmware.bin");
+const std::string partial_aggregate_path =
+    core::physical_sd_path("/firmware.bin.part");
 constexpr std::size_t aggregate_header_size = 32U;
 constexpr std::uint8_t controller_command_type = 0xA2U;
 constexpr std::array<std::uint8_t, 6U> reset_command{
