@@ -16,20 +16,21 @@ Allowed statuses are `Proposed`, `Accepted`, `Superseded`, and `Rejected`.
 
 | ID | Decision | Status | Date |
 |---|---|---|---|
-| ADR-001 | Keep specification and implementation in separate repositories | Accepted | 2026-07-20 |
-| ADR-002 | Use ports and adapters around a portable C++ core | Accepted | 2026-07-20 |
-| ADR-003 | Develop deterministic behavior test-first on the host | Accepted | 2026-07-20 |
-| ADR-004 | Use explicit bounded state and value results | Accepted | 2026-07-20 |
-| ADR-005 | Build target code without C++ exceptions or RTTI | Accepted | 2026-07-20 |
-| ADR-006 | Pin the target implementation profile to ESP-IDF 5.4.1 | Accepted | 2026-07-20 |
-| ADR-007 | Separate logical file ownership from physical play ownership | Accepted | 2026-07-20 |
-| ADR-008 | Keep generated build state outside version control | Accepted | 2026-07-20 |
-| ADR-009 | Assign constants to the innermost owning module | Accepted | 2026-07-20 |
-| ADR-010 | Share target mechanisms below transport adapters | Accepted | 2026-07-26 |
-| ADR-011 | Keep physical verification optional, explicit, and safety-gated | Accepted | 2026-07-26 |
+| [ADR-001](#adr-001) | Keep specification and implementation in separate repositories | Accepted | 2026-07-20 |
+| [ADR-002](#adr-002) | Use ports and adapters around a portable C++ core | Accepted | 2026-07-20 |
+| [ADR-003](#adr-003) | Develop deterministic behavior test-first on the host | Accepted | 2026-07-20 |
+| [ADR-004](#adr-004) | Use explicit bounded state and value results | Accepted | 2026-07-20 |
+| [ADR-005](#adr-005) | Build target code without C++ exceptions or RTTI | Accepted | 2026-07-20 |
+| [ADR-006](#adr-006) | Pin the target implementation profile to ESP-IDF 5.4.1 | Accepted | 2026-07-20 |
+| [ADR-007](#adr-007) | Separate logical file ownership from physical play ownership | Accepted | 2026-07-20 |
+| [ADR-008](#adr-008) | Keep generated build state outside version control | Accepted | 2026-07-20 |
+| [ADR-009](#adr-009) | Assign constants to the innermost owning module | Accepted | 2026-07-20 |
+| [ADR-010](#adr-010) | Share target mechanisms below transport adapters | Accepted | 2026-07-26 |
+| [ADR-011](#adr-011) | Keep physical verification optional, explicit, and safety-gated | Accepted | 2026-07-26 |
 
 ---
 
+<a id="adr-001"></a>
 ## ADR-001: Keep specification and implementation in separate repositories
 
 - **Status:** Accepted
@@ -55,6 +56,7 @@ the specification.
 
 ---
 
+<a id="adr-002"></a>
 ## ADR-002: Use ports and adapters around a portable C++ core
 
 - **Status:** Accepted
@@ -88,6 +90,7 @@ adapters may depend on both.
 
 ---
 
+<a id="adr-003"></a>
 ## ADR-003: Develop deterministic behavior test-first on the host
 
 - **Status:** Accepted
@@ -121,6 +124,7 @@ firmware.
 
 ---
 
+<a id="adr-004"></a>
 ## ADR-004: Use explicit bounded state and value results
 
 - **Status:** Accepted
@@ -146,6 +150,7 @@ unbounded background accumulation.
 
 ---
 
+<a id="adr-005"></a>
 ## ADR-005: Build target code without C++ exceptions or RTTI
 
 - **Status:** Accepted
@@ -169,6 +174,7 @@ results, optional values, unambiguous empty results, or adapter error codes.
 
 ---
 
+<a id="adr-006"></a>
 ## ADR-006: Pin the target implementation profile to ESP-IDF 5.4.1
 
 - **Status:** Accepted
@@ -193,6 +199,7 @@ build, and hardware regression testing.
 
 ---
 
+<a id="adr-007"></a>
 ## ADR-007: Separate logical file ownership from physical play ownership
 
 - **Status:** Accepted
@@ -218,6 +225,7 @@ both owners independent.
 
 ---
 
+<a id="adr-008"></a>
 ## ADR-008: Keep generated build state outside version control
 
 - **Status:** Accepted
@@ -242,6 +250,7 @@ Write host test output to the temporary path in `CMakePresets.json`.
 
 ---
 
+<a id="adr-009"></a>
 ## ADR-009: Assign constants to the innermost owning module
 
 - **Status:** Accepted
@@ -278,6 +287,7 @@ dependency between core, application, and target partitions.
 
 ---
 
+<a id="adr-010"></a>
 ## ADR-010: Share target mechanisms below transport adapters
 
 - **Status:** Accepted
@@ -322,6 +332,7 @@ error contract differs.
 
 ---
 
+<a id="adr-011"></a>
 ## ADR-011: Keep physical verification optional, explicit, and safety-gated
 
 - **Status:** Accepted

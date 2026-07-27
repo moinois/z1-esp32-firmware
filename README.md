@@ -167,7 +167,8 @@ The first core-to-periphery development slice contains:
   and exact parser-error responses;
 - bounded JSON-prefix parsing with embedded-NUL termination and first,
   case-insensitive member lookup;
-- camera-resolution endpoint validation, 63-byte request limits, CAM-001
+- camera-resolution endpoint validation, 63-byte request limits,
+  [CAM-001](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#cam-001)
   normalization, and exact sensor success/failure responses;
 - ESP-IDF `esp32-camera` integration for the configured DVP/SCCB camera, sensor
   orientation, startup allocation, and `/api/camera/resolution` routing;

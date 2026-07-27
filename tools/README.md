@@ -66,7 +66,8 @@ python3 tools/package_firmware.py --mainboard path/to/mainboard.bin \
 ```
 
 Add a controller image to create a combined package. Its bytes are placed after
-the mainboard image as required by UPD-013:
+the mainboard image as required by
+[UPD-013](https://github.com/f355/esp32_cnc_spec/blob/main/09-firmware-update.md#upd-013):
 
 ```text
 python3 tools/package_firmware.py \
