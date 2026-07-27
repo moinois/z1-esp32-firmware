@@ -65,6 +65,10 @@ argument in the target advertising configuration. After correcting the ESP-IDF
 128-bit input representation for advertised UUID `0xffff`, a freshly flashed
 build logged `Advertising started as BLUFI_DEVICE`; both advertisement/service
 discovery and the standard GATT schema/fixed-read checks passed physically.
+The expanded read-only fixture also verifies advertising recovery after a
+disconnect, three complete connection/read/disconnection cycles, notification
+subscription, a response-bearing invalid-envelope write, and continued GATT
+health after that rejected protocol input.
 
 The read-only suite also exercises repeated native USB requests, recovery after
 unframed USB noise, bytewise fragmented TCP input, the four-client TCP limit,
