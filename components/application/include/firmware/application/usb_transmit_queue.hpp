@@ -15,7 +15,7 @@ class UsbTransmitQueue {
 public:
     static constexpr std::size_t maximum_items = 30U;
     static constexpr std::size_t maximum_frame_size =
-        core::protocol::controller_maximum_item_size;
+        core::protocol::host_maximum_frame_size;
 
     // Queues one non-empty frame when capacity and size limits permit it.
     bool enqueue(core::BytesView frame);

@@ -70,10 +70,11 @@ TEST_CASE(serial_log_existing_sentinel_appends_and_flushes_each_record) {
 
     writer.write_record(ByteVector{'a', 'b'}, port);
 
-    REQUIRE(writer.active());
+    REQUIRE(!writer.active());
     REQUIRE_EQ(writer.tracked_size(), 9U);
     REQUIRE_EQ(port.writes, std::vector<ByteVector>({{'a', 'b'}}));
     REQUIRE_EQ(port.flush_count, 1U);
+    REQUIRE_EQ(port.close_count, 1U);
 }
 
 TEST_CASE(serial_log_never_starts_a_record_beyond_384_kib) {
@@ -82,13 +83,14 @@ TEST_CASE(serial_log_never_starts_a_record_beyond_384_kib) {
     port.open_result = serial_diagnostic_log_maximum_size - 1U;
 
     writer.write_record(ByteVector{'x'}, port);
+    port.open_result = serial_diagnostic_log_maximum_size;
     writer.write_record(ByteVector{'y'}, port);
 
     REQUIRE(!writer.active());
     REQUIRE_EQ(writer.tracked_size(), serial_diagnostic_log_maximum_size);
     REQUIRE_EQ(writer.dropped_record_count(), 1U);
     REQUIRE_EQ(port.writes, std::vector<ByteVector>({{'x'}}));
-    REQUIRE_EQ(port.close_count, 1U);
+    REQUIRE_EQ(port.close_count, 2U);
 }
 
 TEST_CASE(serial_log_empty_replacement_reactivates_after_size_saturation) {
@@ -101,9 +103,10 @@ TEST_CASE(serial_log_empty_replacement_reactivates_after_size_saturation) {
     port.open_result = 0U;
     writer.write_record(ByteVector{'n', 'e', 'w'}, port);
 
-    REQUIRE(writer.active());
+    REQUIRE(!writer.active());
     REQUIRE_EQ(writer.tracked_size(), 3U);
     REQUIRE_EQ(port.writes, std::vector<ByteVector>({{'n', 'e', 'w'}}));
+    REQUIRE_EQ(port.close_count, 2U);
 }
 
 TEST_CASE(serial_log_short_write_disables_mirror_without_affecting_callers) {

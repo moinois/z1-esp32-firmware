@@ -105,14 +105,11 @@ def sd_fixture() -> None:
 
 
 @pytest.fixture(scope="session")
-def sd_client(tcp_host: str) -> Any:
+def sd_client(request: pytest.FixtureRequest, tcp_host: str) -> Any:
     """Uses native USB when present, otherwise an explicitly reachable TCP target."""
     device, _ = find_native_usb_device()
     if device is not None:
-        try:
-            return UsbProtocolClient(device)
-        except Exception:
-            pass
+        return request.getfixturevalue("usb_client")
     if os.getenv("Z1_HIL_HOST"):
         return TcpProtocolClient(tcp_host)
     pytest.skip("SD HIL requires native USB or an explicit Z1_HIL_HOST")

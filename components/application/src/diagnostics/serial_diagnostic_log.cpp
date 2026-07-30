@@ -40,6 +40,10 @@ void SerialDiagnosticLogWriter::write_record(core::BytesView record,
         return;
     }
     port.flush();
+    // FatFS can reject a second reader while the append stream remains open.
+    // Close after every durable record so file-transfer downloads and cleanup
+    // can access the opt-in sentinel between diagnostic writes.
+    disable(port);
 }
 
 void SerialDiagnosticLogWriter::disable(SerialDiagnosticLogPort& port) {

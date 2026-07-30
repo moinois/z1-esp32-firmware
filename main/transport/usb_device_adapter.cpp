@@ -7,6 +7,7 @@
 
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
 #include "freertos/task.h"
 
 #include "firmware/application/usb_descriptors.hpp"
@@ -65,6 +66,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <dirent.h>
+#include <deque>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cerrno>
@@ -82,6 +84,23 @@ namespace firmware::target {
 namespace {
 
 constexpr char tag[] = "usb";
+constexpr std::size_t usb_vendor_read_buffer_size = 512U;
+constexpr std::uint8_t primary_vendor_interface_index = 0U;
+constexpr std::int64_t microseconds_per_millisecond = 1000LL;
+constexpr std::uint32_t cache_directory_mode = 0777U;
+constexpr std::size_t maximum_cached_md5_text_size = 63U;
+constexpr char binary_read_mode[] = "rb";
+constexpr char binary_truncate_write_mode[] = "wb";
+constexpr std::string_view current_directory_entry = ".";
+constexpr std::string_view parent_directory_entry = "..";
+constexpr char directory_separator = '/';
+constexpr std::uint32_t logged_wifi_delay_threshold_milliseconds = 1000U;
+constexpr std::uint32_t local_command_settle_milliseconds = 10U;
+constexpr std::uint32_t file_transfer_poll_milliseconds = 50U;
+constexpr UBaseType_t usb_worker_priority = 4U;
+constexpr std::uint32_t usb_transmit_task_stack_size = 4096U;
+constexpr std::uint32_t usb_m942_task_stack_size = 6144U;
+constexpr std::uint32_t usb_blocking_worker_stack_size = 8192U;
 constexpr std::array<std::uint8_t, 18> device_descriptor{
     0x12U, 0x01U, 0x00U, 0x02U, 0x00U, 0x00U, 0x00U, 0x40U,
     0x3aU, 0x30U, 0x02U, 0x40U, 0x00U, 0x01U, 0x01U, 0x02U,
@@ -92,8 +111,13 @@ constexpr std::array<std::uint8_t, 32> configuration_descriptor{
     0x00U, 0x00U, 0x07U, 0x05U, 0x01U, 0x02U, 0x40U, 0x00U,
     0x00U, 0x07U, 0x05U, 0x81U, 0x02U, 0x40U, 0x00U, 0x00U};
 const char* string_descriptors[] = {"Espressif", "MakeraZ1 (USB)", "123456"};
+// Derive the TinyUSB count from the table so additions cannot leave a stale
+// independent descriptor-count literal behind.
+constexpr std::size_t string_descriptor_count =
+    sizeof(string_descriptors) / sizeof(string_descriptors[0]);
 firmware::application::UsbProtocolState protocol_state;
 
+/// Routes application response frames into the native USB transmit queue.
 class UsbFrameSink final : public FrameSink {
 public:
     bool send_frame(firmware::core::Frame frame) override {
@@ -107,7 +131,7 @@ firmware::core::StreamDecoder decoder(firmware::core::StreamPolicy::usb());
 RecordingRequestState recording_state;
 firmware::application::LiveConfiguration usb_live_configuration;
 
-// Provides POSIX-backed configuration I/O while routing replies to USB.
+/// Provides POSIX-backed configuration I/O while routing replies to USB.
 class UsbConfigurationPort final
     : public firmware::application::ConfigurationGetPort,
       public firmware::application::ConfigurationSetPort {
@@ -152,7 +176,7 @@ public:
 
 UsbConfigurationPort configuration_port;
 
-// Provides bytewise POSIX copy operations for config restore/default commands.
+/// Provides bytewise POSIX copy operations for config restore/default commands.
 class UsbConfigurationFilePort final
     : public firmware::application::ConfigurationFilePort {
 public:
@@ -181,13 +205,14 @@ public:
 
     bool open_source(std::string_view path) override {
         close_source();
-        source_ = std::fopen(std::string(path).c_str(), "rb");
+        source_ = std::fopen(std::string(path).c_str(), binary_read_mode);
         return source_ != nullptr;
     }
 
     bool open_truncated_destination(std::string_view path) override {
         close_destination();
-        destination_ = std::fopen(std::string(path).c_str(), "wb");
+        destination_ =
+            std::fopen(std::string(path).c_str(), binary_truncate_write_mode);
         return destination_ != nullptr;
     }
 
@@ -237,7 +262,7 @@ private:
 
 UsbConfigurationFilePort configuration_file_port;
 
-// Performs blocking ESP-IDF scans and queues WLAN responses on USB.
+/// Performs blocking ESP-IDF scans and queues WLAN responses on USB.
 class UsbWlanScanPort final : public firmware::application::WlanCommandPort {
 public:
     void stop_scan() override {
@@ -267,7 +292,12 @@ public:
 
 UsbWlanScanPort wlan_scan_port;
 
-// Converts an ESP-IDF result into the transport-neutral station result.
+/// Converts an ESP-IDF result into the transport-neutral station result.
+///
+/// @param result ESP-IDF result returned by the station operation.
+/// @param operation Stable operation name included in a failure result.
+/// @return A successful result for `ESP_OK`, otherwise a failed result carrying
+///         the supplied operation name.
 firmware::application::StationApiResult api_result(esp_err_t result,
                                                     const char* operation) {
     return result == ESP_OK
@@ -275,7 +305,7 @@ firmware::application::StationApiResult api_result(esp_err_t result,
                : firmware::application::StationApiResult{false, operation};
 }
 
-// Implements manual station operations using ESP-IDF and shared NVS storage.
+/// Implements manual station operations using ESP-IDF and shared NVS storage.
 class UsbWlanStationPort final
     : public firmware::application::StationConnectionPort {
 public:
@@ -327,7 +357,7 @@ public:
     }
 
     void delay_milliseconds(std::uint32_t duration) override {
-        if (duration >= 1000U) {
+        if (duration >= logged_wifi_delay_threshold_milliseconds) {
             static_cast<void>(firmware::target::wifi_diagnostic_log().trace(
                 "manual.delay ms=" + std::to_string(duration)));
         }
@@ -414,6 +444,7 @@ private:
 };
 
 // Routes WLAN connection responses to the USB transmit queue.
+/// Sends WLAN connection and discovery responses through native USB.
 class UsbWlanResponsePort final
     : public firmware::application::WlanConnectionResponsePort {
 public:
@@ -440,6 +471,7 @@ UsbWlanResponsePort wlan_response_port;
 firmware::application::StationRuntime usb_station_runtime;
 
 // Provides POSIX file preparation and origin-aware responses for USB play.
+/// Prepares a requested G-code file and broadcasts playback responses.
 class UsbPlayPreparationPort final
     : public firmware::application::PlayPreparationPort {
 public:
@@ -454,7 +486,7 @@ public:
 
     std::optional<std::uint64_t> open_file(std::string_view path) override {
         close_file();
-        file_ = std::fopen(std::string(path).c_str(), "rb");
+        file_ = std::fopen(std::string(path).c_str(), binary_read_mode);
         if (file_ == nullptr) {
             firmware::target::log_sd_access_failure("open play file", path, errno);
             return std::nullopt;
@@ -475,7 +507,8 @@ public:
     std::optional<std::string> cached_md5(std::string_view path) override {
         const auto cache = firmware::core::map_file_cache_paths(path).md5_path;
         if (!cache.has_value()) return std::nullopt;
-        const auto bytes = read_posix_file(*cache, 63U);
+        const auto bytes =
+            read_posix_file(*cache, maximum_cached_md5_text_size);
         if (!bytes.has_value()) return std::nullopt;
         return firmware::core::extract_cached_md5(*bytes);
     }
@@ -495,14 +528,18 @@ private:
 UsbPlayPreparationPort usb_play_port;
 
 // Implements upload filesystem effects and USB-origin response delivery.
+/// Provides the USB upload state machine with POSIX-backed file operations.
 class UsbFileUploadPort final : public firmware::application::FileUploadPort {
 public:
     ~UsbFileUploadPort() override { close_files(); }
 
     void prepare_cache_paths(const firmware::core::FileCachePaths& paths) override {
-        if (paths.md5_path.has_value()) create_parent_directories(*paths.md5_path, 0777U);
+        if (paths.md5_path.has_value()) {
+            create_parent_directories(*paths.md5_path, cache_directory_mode);
+        }
         if (paths.compressed_path.has_value()) {
-            create_parent_directories(*paths.compressed_path, 0777U);
+            create_parent_directories(*paths.compressed_path,
+                                      cache_directory_mode);
         }
     }
 
@@ -524,7 +561,8 @@ public:
     bool open_primary(std::string_view path) override {
         close_files();
         primary_path_ = path;
-        primary_ = std::fopen(std::string(path).c_str(), "wb");
+        primary_ =
+            std::fopen(std::string(path).c_str(), binary_truncate_write_mode);
         if (primary_ == nullptr) {
             firmware::target::log_sd_access_failure("open upload file", path, errno);
         }
@@ -533,7 +571,8 @@ public:
 
     bool open_md5(std::string_view path) override {
         md5_path_ = path;
-        md5_ = std::fopen(std::string(path).c_str(), "wb");
+        md5_ =
+            std::fopen(std::string(path).c_str(), binary_truncate_write_mode);
         if (md5_ == nullptr) {
             firmware::target::log_sd_access_failure("open MD5 file", path, errno);
         }
@@ -622,15 +661,16 @@ const firmware::application::HostIdentity usb_host_identity{
     firmware::application::HostTransport::usb, 0U, 0U};
 
 // Implements bounded POSIX reads and MD5 lookup for USB downloads.
+/// Provides the USB download state machine with POSIX-backed file operations.
 class UsbFileDownloadPort final : public firmware::application::FileDownloadPort {
 public:
     ~UsbFileDownloadPort() override { close_file(); }
 
     void prepare_cache_paths(const firmware::core::FileCachePaths& paths) override {
         if (paths.md5_path.has_value()) usb_upload_port.create_parent_directories(
-            *paths.md5_path, 0777U);
+            *paths.md5_path, cache_directory_mode);
         if (paths.compressed_path.has_value()) usb_upload_port.create_parent_directories(
-            *paths.compressed_path, 0777U);
+            *paths.compressed_path, cache_directory_mode);
     }
 
     std::optional<std::string> calculate_md5(std::string_view path) override {
@@ -639,7 +679,7 @@ public:
 
     std::optional<firmware::core::ByteVector> read_cache(
         std::string_view path, std::size_t maximum_size) override {
-        FILE* input = std::fopen(std::string(path).c_str(), "rb");
+        FILE* input = std::fopen(std::string(path).c_str(), binary_read_mode);
         if (input == nullptr) {
             firmware::target::log_sd_access_failure("open cache file", path, errno);
             return std::nullopt;
@@ -658,41 +698,13 @@ public:
     }
 
     std::optional<std::uint64_t> open_file(std::string_view path) override {
-        close_file();
-        path_ = path;
-        file_ = std::fopen(std::string(path).c_str(), "rb");
-        if (file_ == nullptr) {
-            firmware::target::log_sd_access_failure("open download file", path, errno);
-            return std::nullopt;
-        }
-        if (std::fseek(file_, 0L, SEEK_END) != 0) {
-            firmware::target::log_sd_access_failure("seek download file", path, errno);
-            close_file();
-            return std::nullopt;
-        }
-        const long size = std::ftell(file_);
-        if (size < 0L || std::fseek(file_, 0L, SEEK_SET) != 0) {
-            close_file();
-            return std::nullopt;
-        }
-        return static_cast<std::uint64_t>(size);
+        if (!file_.open(path, binary_read_mode)) return std::nullopt;
+        return file_.size();
     }
 
     std::optional<firmware::core::ByteVector> read_file(
         std::uint64_t offset, std::size_t maximum_size) override {
-        if (file_ == nullptr || offset > static_cast<std::uint64_t>(LONG_MAX) ||
-            std::fseek(file_, static_cast<long>(offset), SEEK_SET) != 0) {
-            return std::nullopt;
-        }
-        firmware::core::ByteVector data(maximum_size);
-        const std::size_t count = std::fread(data.data(), 1U, maximum_size, file_);
-        if (std::ferror(file_) != 0) {
-            firmware::target::log_sd_access_failure("read download file", path_,
-                                                    errno);
-            return std::nullopt;
-        }
-        data.resize(count);
-        return data;
+        return file_.read_at(offset, maximum_size);
     }
 
     bool allocate_response_workspace(std::size_t size) override {
@@ -703,9 +715,7 @@ public:
     }
 
     void close_file() override {
-        if (file_ != nullptr) std::fclose(file_);
-        file_ = nullptr;
-        path_.clear();
+        file_.close();
     }
 
     void send(const firmware::application::HostIdentity&,
@@ -719,14 +729,14 @@ public:
     void release_ownership() override { close_file(); }
 
 private:
-    FILE* file_ = nullptr;
-    std::string path_;
+    firmware::target::PosixFile file_;
 };
 
 UsbFileDownloadPort usb_download_port;
 firmware::application::FileDownload usb_download;
 
 // Adapts M942 CAN exercise responses and remote SDO access to USB.
+/// Bridges an M942 exercise request between native USB and the controller.
 class UsbM942Port final : public firmware::application::M942ExercisePort {
 public:
     void forward_to_controller(const firmware::core::Frame& frame) override {
@@ -743,7 +753,8 @@ public:
     }
 
     std::uint64_t monotonic_milliseconds() const override {
-        return static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
+        return static_cast<std::uint64_t>(
+            esp_timer_get_time() / microseconds_per_millisecond);
     }
 
     void delay_milliseconds(std::uint32_t duration) override {
@@ -774,6 +785,9 @@ public:
 UsbM942Port usb_m942_port;
 
 // Owns one asynchronous USB M942 execution until its service terminates.
+/// Runs one asynchronous M942 exercise and then deletes the current task.
+///
+/// @param parameter Owned heap-allocated M942 request data.
 void usb_m942_task(void* parameter) {
     auto* service = static_cast<firmware::application::M942ExerciseService*>(
         parameter);
@@ -783,10 +797,15 @@ void usb_m942_task(void* parameter) {
     vTaskDelete(nullptr);
 }
 SemaphoreHandle_t usb_file_mutex = nullptr;
+constexpr std::size_t maximum_pending_usb_file_frames = 8U;
+std::deque<firmware::core::Frame> pending_usb_file_frames;
 
 NvsSerialNumberPort serial_port(usb_frame_sink);
 NvsRuntimeCommandPort runtime_port(usb_frame_sink);
 
+/// Removes a file or directory tree used by a USB filesystem command.
+///
+/// @param path Physical sandboxed path to remove recursively.
 void remove_usb_tree(const std::string& path) {
     struct stat status{};
     if (stat(path.c_str(), &status) != 0) return;
@@ -798,14 +817,18 @@ void remove_usb_tree(const std::string& path) {
     if (directory != nullptr) {
         while (const dirent* entry = readdir(directory)) {
             const std::string name(entry->d_name);
-            if (name == "." || name == "..") continue;
-            remove_usb_tree(path + "/" + name);
+            if (name == current_directory_entry ||
+                name == parent_directory_entry) {
+                continue;
+            }
+            remove_usb_tree(path + directory_separator + name);
         }
         closedir(directory);
     }
     static_cast<void>(rmdir(path.c_str()));
 }
 
+/// Implements directory creation, inspection, and removal for USB commands.
 class UsbFilesystemPort final
     : public firmware::application::FilesystemCommandPort {
 public:
@@ -846,6 +869,10 @@ public:
 
 UsbFilesystemPort filesystem_port;
 
+/// Converts a POSIX timestamp to the protocol's UTC file-time representation.
+///
+/// @param value POSIX timestamp to convert.
+/// @return Calendar fields in UTC, or zero-initialized fields on failure.
 firmware::application::UtcFileTime usb_file_time(time_t value) {
     struct tm result{};
     gmtime_r(&value, &result);
@@ -857,6 +884,7 @@ firmware::application::UtcFileTime usb_file_time(time_t value) {
             static_cast<std::uint8_t>(result.tm_sec)};
 }
 
+/// Lists sandboxed SD directories and sends their entries through native USB.
 class UsbDirectoryPort final : public firmware::application::DirectoryListPort {
 public:
     std::optional<std::vector<firmware::application::DirectoryEntry>>
@@ -873,9 +901,12 @@ public:
         std::vector<firmware::application::DirectoryEntry> entries;
         while (const dirent* item = readdir(directory)) {
             const std::string name(item->d_name);
-            if (name == "." || name == "..") continue;
+            if (name == current_directory_entry ||
+                name == parent_directory_entry) {
+                continue;
+            }
             struct stat information{};
-            const std::string full_path = root + "/" + name;
+            const std::string full_path = root + directory_separator + name;
             const bool metadata = stat(full_path.c_str(), &information) == 0;
             entries.push_back({name, metadata && S_ISDIR(information.st_mode),
                                metadata ? static_cast<std::uint64_t>(information.st_size) : 0U,
@@ -894,6 +925,7 @@ public:
     }
 };
 
+/// Calculates file hashes and sends hash responses through native USB.
 class UsbHashPort final : public firmware::application::FileHashPort {
 public:
     firmware::application::FileHashPathState inspect_path(
@@ -926,10 +958,16 @@ UsbHashPort hash_port;
 firmware::application::LocalCommandQueue usb_local_commands;
 SemaphoreHandle_t usb_local_command_mutex = nullptr;
 
-// Forwards USB bytes from TinyUSB into the transport-neutral frame decoder.
+/// Forwards USB bytes from TinyUSB into the transport-neutral frame decoder.
+///
+/// @param bytes Contiguous bytes read from the vendor endpoint.
+/// @param size Number of readable bytes at @p bytes.
 void consume_received_bytes(const std::uint8_t* bytes, std::size_t size);
 
-// Enqueues one USB-local frame while serializing callback/task access.
+/// Enqueues one USB-local frame while serializing callback/task access.
+///
+/// @param frame Complete decoded command frame to copy into the queue.
+/// @return `true` when the frame was queued; otherwise `false`.
 bool enqueue_usb_local_command(const firmware::core::Frame& frame) {
     if (usb_local_command_mutex == nullptr ||
         xSemaphoreTake(usb_local_command_mutex, portMAX_DELAY) != pdTRUE) {
@@ -940,7 +978,9 @@ bool enqueue_usb_local_command(const firmware::core::Frame& frame) {
     return queued;
 }
 
-// Removes one USB-local frame while serializing callback/task access.
+/// Removes one USB-local frame while serializing callback/task access.
+///
+/// @return The oldest pending frame, or `std::nullopt` when none is available.
 std::optional<firmware::core::Frame> dequeue_usb_local_command() {
     if (usb_local_command_mutex == nullptr ||
         xSemaphoreTake(usb_local_command_mutex, portMAX_DELAY) != pdTRUE) {
@@ -951,8 +991,14 @@ std::optional<firmware::core::Frame> dequeue_usb_local_command() {
     return frame;
 }
 
-// Handles short USB-local commands outside the TinyUSB receive callback.
-void usb_local_command_task(void*) {
+/// Processes non-file commands outside the TinyUSB receive callback.
+///
+/// Some commands perform blocking filesystem, NVS, or controller work. Running
+/// them in TinyUSB's callback previously starved USB servicing and could make
+/// the host time out, so the callback only enqueues them for this worker.
+///
+/// @param unused FreeRTOS task parameter; shared state is module-owned.
+void usb_local_command_task(void* /* unused */) {
     for (;;) {
         const auto command_frame = dequeue_usb_local_command();
         if (!command_frame.has_value()) {
@@ -1112,42 +1158,62 @@ void usb_local_command_task(void*) {
             static_cast<void>(protocol_state.transmit_queue().enqueue(
                 firmware::core::encode_frame(response)));
         }
-        vTaskDelay(pdMS_TO_TICKS(10U));
+        vTaskDelay(pdMS_TO_TICKS(local_command_settle_milliseconds));
     }
 }
 
-void usb_transmit_task(void*) {
+/// Drains queued response frames into the TinyUSB vendor endpoint.
+///
+/// @param unused FreeRTOS task parameter; shared state is module-owned.
+void usb_transmit_task(void* /* unused */) {
     firmware::application::UsbTransmitProgress progress;
     const firmware::core::ByteVector* tracked_frame = nullptr;
+    // TinyUSB normally exposes only one endpoint packet at a time. Waiting for
+    // enough space for an entire protocol frame deadlocked frames larger than
+    // that packet, so retain the offset and make progress in partial writes.
+    std::size_t transmitted = 0U;
     for (;;) {
         if (protocol_state.can_send()) {
             const auto* frame = protocol_state.transmit_queue().front();
             if (frame != tracked_frame) {
                 tracked_frame = frame;
+                transmitted = 0U;
                 progress.begin(static_cast<std::uint64_t>(
-                    esp_timer_get_time() / 1000LL));
+                    esp_timer_get_time() / microseconds_per_millisecond));
             }
-            if (frame != nullptr && tud_vendor_write_available() >= frame->size()) {
-                const std::uint32_t written =
-                    tud_vendor_write(frame->data(), frame->size());
-                if (written == frame->size()) {
+            const std::uint32_t available = tud_vendor_write_available();
+            if (frame != nullptr && transmitted < frame->size() && available > 0U) {
+                const std::size_t remaining = frame->size() - transmitted;
+                const std::size_t requested = std::min<std::size_t>(available, remaining);
+                const std::uint32_t written = tud_vendor_write(
+                    frame->data() + transmitted, requested);
+                if (written > 0U) {
+                    transmitted += written;
+                    // Flush every accepted fragment. Without this, a short
+                    // final fragment can remain buffered indefinitely because
+                    // no subsequent write arrives to trigger transmission.
+                    tud_vendor_flush();
+                    progress.record_progress(static_cast<std::uint64_t>(
+                        esp_timer_get_time() / microseconds_per_millisecond));
+                }
+                if (transmitted == frame->size()) {
                     tud_vendor_flush();
                     protocol_state.transmit_queue().pop_front();
                     progress.clear();
                     tracked_frame = nullptr;
-                } else if (written > 0U) {
-                    progress.record_progress(static_cast<std::uint64_t>(
-                        esp_timer_get_time() / 1000LL));
+                    transmitted = 0U;
                 }
             }
             if (frame != nullptr && progress.expired(static_cast<std::uint64_t>(
-                    esp_timer_get_time() / 1000LL))) {
+                    esp_timer_get_time() / microseconds_per_millisecond))) {
                 protocol_state.transmit_queue().pop_front();
                 progress.clear();
                 tracked_frame = nullptr;
+                transmitted = 0U;
             }
         } else {
             tracked_frame = nullptr;
+            transmitted = 0U;
             progress.clear();
         }
         vTaskDelay(pdMS_TO_TICKS(
@@ -1155,10 +1221,16 @@ void usb_transmit_task(void*) {
     }
 }
 
-// Polls the buffered TinyUSB vendor FIFO so incoming frames are consumed
-// consistently across the ESP-IDF TinyUSB buffer configurations.
-void usb_receive_task(void*) {
-    std::array<std::uint8_t, 512> buffered_bytes{};
+/// Polls the buffered TinyUSB vendor FIFO and dispatches received bytes.
+///
+/// This keeps receive behavior consistent across ESP-IDF TinyUSB buffer
+/// configurations. In buffered callback mode TinyUSB may invoke the callback
+/// without supplying the bytes directly, so this polling worker also drains
+/// data that would otherwise remain unread in the vendor FIFO.
+///
+/// @param unused FreeRTOS task parameter; shared state is module-owned.
+void usb_receive_task(void* /* unused */) {
+    std::array<std::uint8_t, usb_vendor_read_buffer_size> buffered_bytes{};
     for (;;) {
         while (tud_vendor_available()) {
             const std::uint32_t count =
@@ -1171,14 +1243,17 @@ void usb_receive_task(void*) {
     }
 }
 
-// Handles one USB-origin file transfer frame and releases ownership on completion.
+/// Handles one USB-origin file-transfer frame.
+///
+/// @param frame Complete decoded file-transfer frame from the USB host.
 void handle_usb_file_transfer(const firmware::core::Frame& frame) {
     if (usb_file_mutex == nullptr ||
         xSemaphoreTake(usb_file_mutex, portMAX_DELAY) != pdTRUE) {
         return;
     }
     const std::uint64_t now =
-        static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
+        static_cast<std::uint64_t>(
+            esp_timer_get_time() / microseconds_per_millisecond);
     if (frame.type == firmware::core::protocol::file_command) {
         const auto start = firmware::core::parse_file_transfer_start(frame.payload);
         if (!start.has_value()) {
@@ -1229,12 +1304,59 @@ void handle_usb_file_transfer(const firmware::core::Frame& frame) {
     xSemaphoreGive(usb_file_mutex);
 }
 
-// Polls USB upload/download inactivity and retry deadlines independently of RX callbacks.
-void usb_file_transfer_task(void*) {
+/// Queues one complete file frame for the dedicated file worker.
+///
+/// File handling used to run synchronously in the TinyUSB RX path. Transfers
+/// can perform blocking FAT and hashing operations, which prevented TinyUSB
+/// from servicing later packets and caused otherwise valid uploads to time
+/// out. The bounded queue moves that work out of the callback without allowing
+/// an unbounded host burst to consume memory.
+///
+/// @param frame Complete decoded file-transfer frame to enqueue.
+/// @return `true` when queue capacity was available; otherwise `false`.
+bool enqueue_usb_file_transfer(firmware::core::Frame frame) {
+    if (usb_file_mutex == nullptr ||
+        xSemaphoreTake(usb_file_mutex, portMAX_DELAY) != pdTRUE) {
+        return false;
+    }
+    const bool accepted =
+        pending_usb_file_frames.size() < maximum_pending_usb_file_frames;
+    if (accepted) {
+        pending_usb_file_frames.push_back(std::move(frame));
+    }
+    xSemaphoreGive(usb_file_mutex);
+    return accepted;
+}
+
+/// Removes the oldest frame waiting for the dedicated file worker.
+///
+/// @return The next frame, or `std::nullopt` when none is pending.
+std::optional<firmware::core::Frame> dequeue_usb_file_transfer() {
+    if (usb_file_mutex == nullptr ||
+        xSemaphoreTake(usb_file_mutex, portMAX_DELAY) != pdTRUE) {
+        return std::nullopt;
+    }
+    std::optional<firmware::core::Frame> frame;
+    if (!pending_usb_file_frames.empty()) {
+        frame = std::move(pending_usb_file_frames.front());
+        pending_usb_file_frames.pop_front();
+    }
+    xSemaphoreGive(usb_file_mutex);
+    return frame;
+}
+
+/// Processes queued file frames and polls retry and inactivity deadlines.
+///
+/// @param unused FreeRTOS task parameter; shared state is module-owned.
+void usb_file_transfer_task(void* /* unused */) {
     for (;;) {
+        if (auto frame = dequeue_usb_file_transfer(); frame.has_value()) {
+            handle_usb_file_transfer(*frame);
+        }
         if (xSemaphoreTake(usb_file_mutex, portMAX_DELAY) == pdTRUE) {
             const std::uint64_t now =
-                static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
+                static_cast<std::uint64_t>(
+                    esp_timer_get_time() / microseconds_per_millisecond);
             if (usb_upload.active()) usb_upload.poll(now, usb_upload_port);
             if (usb_download.active()) {
                 usb_download.poll(now, usb_download_port);
@@ -1245,7 +1367,7 @@ void usb_file_transfer_task(void*) {
             }
             xSemaphoreGive(usb_file_mutex);
         }
-        vTaskDelay(pdMS_TO_TICKS(50U));
+        vTaskDelay(pdMS_TO_TICKS(file_transfer_poll_milliseconds));
     }
 }
 
@@ -1260,7 +1382,7 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
         if (frame.type == firmware::core::protocol::file_command ||
             (frame.type >= firmware::core::protocol::file_md5 &&
              frame.type <= firmware::core::protocol::file_retry)) {
-            handle_usb_file_transfer(frame);
+            static_cast<void>(enqueue_usb_file_transfer(frame));
             continue;
         }
         if (frame.type == firmware::core::protocol::single_command &&
@@ -1297,7 +1419,7 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                     if (play_session.prepare(
                             frame.payload,
                             static_cast<std::uint64_t>(esp_timer_get_time() /
-                                                       1000LL),
+                                                       microseconds_per_millisecond),
                             usb_play_port)) {
                         const auto response = play_session.status_reply();
                         const auto encoded =
@@ -1323,8 +1445,9 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                     }
                     continue;
                 }
-                if (xTaskCreate(usb_m942_task, "usb_m942", 6144U, service,
-                                4U, nullptr) != pdPASS) {
+                if (xTaskCreate(usb_m942_task, "usb_m942",
+                                usb_m942_task_stack_size, service,
+                                usb_worker_priority, nullptr) != pdPASS) {
                     release_m942_worker();
                     delete service;
                 }
@@ -1409,24 +1532,35 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
 
 }  // namespace
 
+/// Marks native USB ready when TinyUSB reports that the device was mounted.
 extern "C" void tud_mount_cb(void) {
     protocol_state.enumerated();
 }
 
+/// Clears connection and decoder state when the USB host unmounts the device.
 extern "C" void tud_umount_cb(void) {
     decoder.reset();
     protocol_state.disconnected();
     tcp_router_usb_disconnected();
 }
 
+/// Accepts data reported by the TinyUSB vendor-interface receive callback.
+///
+/// @param index Vendor-interface index that produced the callback.
+/// @param buffer Optional bytes supplied directly by TinyUSB.
+/// @param size Number of readable bytes in @p buffer.
 extern "C" void tud_vendor_rx_cb(uint8_t index, const uint8_t* buffer,
                                   uint16_t size) {
-    if (index != 0U) return;
+    if (index != primary_vendor_interface_index) return;
+    // ESP-IDF TinyUSB has used both callback contracts: some configurations
+    // provide bytes here, while buffered configurations only signal that the
+    // FIFO is readable. Supporting both avoids silently dropping USB input
+    // when the TinyUSB buffer configuration changes.
     if (buffer != nullptr && size > 0U) {
         consume_received_bytes(buffer, size);
         return;
     }
-    std::array<std::uint8_t, 512> buffered_bytes{};
+    std::array<std::uint8_t, usb_vendor_read_buffer_size> buffered_bytes{};
     while (tud_vendor_available()) {
         const std::uint32_t count =
             tud_vendor_read(buffered_bytes.data(), buffered_bytes.size());
@@ -1435,14 +1569,22 @@ extern "C" void tud_vendor_rx_cb(uint8_t index, const uint8_t* buffer,
     }
 }
 
-extern "C" void tud_vendor_tx_cb(uint8_t, uint32_t) {}
+/// Handles a TinyUSB vendor-interface transmission notification.
+///
+/// Transmission progress is polled by `usb_transmit_task`, so no callback work
+/// is currently required.
+///
+/// @param index Vendor-interface index that completed transmission.
+/// @param sent_bytes Number of bytes TinyUSB reports as transmitted.
+extern "C" void tud_vendor_tx_cb(uint8_t /* index */,
+                                  uint32_t /* sent_bytes */) {}
 
 bool UsbDeviceAdapter::start() {
     const tinyusb_config_t configuration{
         .device_descriptor = reinterpret_cast<const tusb_desc_device_t*>(
             device_descriptor.data()),
         .string_descriptor = string_descriptors,
-        .string_descriptor_count = 3,
+        .string_descriptor_count = string_descriptor_count,
         .external_phy = false,
         .configuration_descriptor = configuration_descriptor.data(),
         .self_powered = false,
@@ -1463,10 +1605,47 @@ bool UsbDeviceAdapter::start() {
         ESP_LOGW(tag, "USB local-command mutex allocation failed");
         return false;
     }
-    xTaskCreate(usb_transmit_task, "usb_tx", 4096U, nullptr, 4U, nullptr);
-    xTaskCreate(usb_receive_task, "usb_rx", 4096U, nullptr, 4U, nullptr);
-    xTaskCreate(usb_file_transfer_task, "usb_file", 4096U, nullptr, 4U, nullptr);
-    xTaskCreate(usb_local_command_task, "usb_local", 4096U, nullptr, 4U, nullptr);
+    if (xTaskCreate(usb_transmit_task, "usb_tx", usb_transmit_task_stack_size,
+                    nullptr, usb_worker_priority, nullptr) != pdPASS) {
+        ESP_LOGE(tag, "USB TinyUSB transmit task allocation failed");
+        return false;
+    }
+    BaseType_t receive_task = xTaskCreateWithCaps(
+        usb_receive_task, "usb_rx", usb_blocking_worker_stack_size, nullptr,
+        usb_worker_priority, nullptr,
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (receive_task != pdPASS) {
+        receive_task = xTaskCreate(
+            usb_receive_task, "usb_rx", usb_blocking_worker_stack_size,
+            nullptr, usb_worker_priority, nullptr);
+    }
+    // File processing needs a larger stack for FAT and hashing. Prefer PSRAM so
+    // it does not exhaust internal DMA-capable memory.
+    BaseType_t file_task = xTaskCreateWithCaps(
+        usb_file_transfer_task, "usb_file", usb_blocking_worker_stack_size,
+        nullptr, usb_worker_priority, nullptr,
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (file_task != pdPASS) {
+        file_task = xTaskCreate(
+            usb_file_transfer_task, "usb_file", usb_blocking_worker_stack_size,
+            nullptr, usb_worker_priority, nullptr);
+    }
+    // Runtime commands call time and NVS libc paths that require an internal
+    // task stack. Keep the enlarged stack that filesystem commands need, but
+    // do not place this mixed command worker in PSRAM.
+    const BaseType_t local_task = xTaskCreate(
+        usb_local_command_task, "usb_local", usb_blocking_worker_stack_size,
+        nullptr, usb_worker_priority, nullptr);
+    if (receive_task != pdPASS || file_task != pdPASS || local_task != pdPASS) {
+        ESP_LOGE(tag,
+                 "USB worker task allocation failed receive=%ld file=%ld local=%ld "
+                 "internal_heap=%u",
+                 static_cast<long>(receive_task), static_cast<long>(file_task),
+                 static_cast<long>(local_task),
+                 static_cast<unsigned>(
+                     heap_caps_get_free_size(MALLOC_CAP_INTERNAL)));
+        return false;
+    }
     return true;
 }
 
