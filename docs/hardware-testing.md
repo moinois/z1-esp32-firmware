@@ -82,6 +82,10 @@ The separately gated provisioning test requires `Z1_ALLOW_MUTATION=1`,
 fresh secure BLUFI session, sends encrypted SSID and password frames, requests
 association, and waits up to 30 seconds for Wi-Fi diagnostics at the declared
 host. Use only credentials that keep the board reachable from the test host.
+The gated test passed physically on 2026-07-30 using the board's existing test
+network: encrypted credential delivery and the connect request completed, and
+the diagnostics endpoint returned connected at the expected IPv4 address.
+Credentials are intentionally absent from reports and documentation.
 
 Two robustness fixtures are also available. Declaring `Z1_HIL_HOST` adds eight
 concurrent Wi-Fi-diagnostics requests while an encrypted BLE status exchange is
