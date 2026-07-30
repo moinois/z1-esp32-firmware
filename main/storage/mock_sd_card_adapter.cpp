@@ -6,9 +6,13 @@
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
 #include "ff.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "sdkconfig.h"
 
 #include "firmware/core/sd_user_path.hpp"
+#include "diagnostic_capture_adapter.hpp"
+#include "serial_log_mirror_adapter.hpp"
 #include "sd_access_diagnostics.hpp"
 
 #include <algorithm>
@@ -30,6 +34,9 @@ namespace {
 constexpr char tag[] = "MOCK_SD";
 constexpr std::size_t sector_size = 512U;
 constexpr std::size_t format_work_buffer_size = 4096U;
+constexpr std::uint32_t diagnostic_poll_milliseconds = 50U;
+constexpr std::uint32_t diagnostic_task_stack_size = 4096U;
+constexpr UBaseType_t diagnostic_task_priority = 4U;
 
 struct RamDiskState {
     std::uint8_t* bytes = nullptr;
@@ -104,6 +111,7 @@ DRESULT ram_ioctl(BYTE drive, BYTE command, void* buffer) {
 
 // Releases every registration and allocation made by a partial or full mount.
 void release_disk() {
+    serial_log_mirror().storage_unmounted();
     if (disk.drive != FF_DRV_NOT_USED) {
         char drive_name[3] = {static_cast<char>('0' + disk.drive), ':', '\0'};
         static_cast<void>(f_mount(nullptr, drive_name, 0));
@@ -124,6 +132,16 @@ void release_disk() {
     disk.byte_count = 0U;
     disk.mounted = false;
     set_sd_storage_mounted(false);
+}
+
+// Drains the shared nonblocking diagnostic queue into the optional sentinel.
+void mock_diagnostic_task(void*) {
+    for (;;) {
+        while (const auto record = take_captured_diagnostic()) {
+            serial_log_mirror().write_record(*record);
+        }
+        vTaskDelay(pdMS_TO_TICKS(diagnostic_poll_milliseconds));
+    }
 }
 
 // Allocates, formats, registers, and mounts a fresh FAT volume at /sd.
@@ -205,6 +223,8 @@ bool MockSdCardAdapter::mount_for_boot() {
 
 void MockSdCardAdapter::start() {
     ESP_LOGW(tag, "SD adapter mode=MOCK; contents are lost on reset");
+    xTaskCreate(mock_diagnostic_task, "mock_sd_log", diagnostic_task_stack_size,
+                nullptr, diagnostic_task_priority, nullptr);
 }
 
 }  // namespace firmware::target

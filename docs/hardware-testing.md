@@ -157,6 +157,14 @@ and exact `gcodes` token mapping. These transfers require the board's native
 multi-frame exchange. Tests clean up their unique files and directories even
 after an assertion failure.
 
+Create an empty logical `/serial.log` to opt into a second diagnostic copy while
+UART remains active. The firmware never creates this sentinel automatically,
+flushes each accepted record, and stops before the file would exceed 384 KiB.
+It neither truncates old evidence nor changes the rotating normative log. The
+mock copy is useful for USB-only failures but disappears with the entire PSRAM
+volume after a full target reset. The SD suite creates, reads, and removes this
+sentinel in its diagnostic-mirror test.
+
 ## Requirement evidence
 
 Tests carry `requirement` markers. Write a machine-readable report with:

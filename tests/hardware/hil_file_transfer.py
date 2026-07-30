@@ -107,6 +107,7 @@ def download_file(
     path: str,
     *,
     timeout_seconds: float = 5.0,
+    verify_md5: bool = True,
 ) -> bytes:
     """Downloads every announced block and verifies its advertised MD5."""
 
@@ -139,7 +140,7 @@ def download_file(
     responses = client.exchange(FILE_COMPLETE, b"", timeout_seconds)
     _frame(responses, FILE_COMPLETE)
     calculated_md5 = hashlib.md5(content).hexdigest()
-    if calculated_md5 != advertised_md5:
+    if verify_md5 and calculated_md5 != advertised_md5:
         raise FileTransferError(
             f"download MD5 mismatch: target={advertised_md5} host={calculated_md5}"
         )

@@ -24,6 +24,7 @@ set(APPLICATION_SOURCES
     src/update/direct_application_update.cpp
     src/update/direct_web_volume_update.cpp
     src/diagnostics/diagnostic_log_writer.cpp
+    src/diagnostics/serial_diagnostic_log.cpp
     src/connectivity/discovery_service.cpp
     src/storage/file_transfer_admission.cpp
     src/storage/file_download.cpp

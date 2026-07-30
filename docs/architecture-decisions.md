@@ -449,9 +449,10 @@ implementation.
 
 The first implementation is a volatile, configurable PSRAM block device below
 FatFS. It mounts at the normal `/sd` path so target tests retain the production
-VFS, POSIX, path-sandbox, command, and transport layers. Mock builds use a
-separate generated build directory, retain a configured PSRAM reserve, and emit
-an explicit test-build diagnostic. They never count as physical SD conformance.
+VFS, POSIX, path-sandbox, command, and transport layers. One generic builder
+uses the standard `build/` tree and writes every live/mock choice explicitly,
+retains a configured PSRAM reserve, and emits an explicit test-build diagnostic.
+Mock results never count as physical SD conformance.
 
 ### Consequences
 
@@ -462,3 +463,38 @@ an explicit test-build diagnostic. They never count as physical SD conformance.
   physical HIL.
 - Later camera, controller, and CAN mocks extend the same factory and global
   selection policy without adding compile-time branches to application code.
+
+---
+
+<a id="adr-014"></a>
+## ADR-014: Enable a bounded diagnostic mirror through an SD sentinel
+
+- **Status:** Accepted
+- **Date:** 2026-07-30
+
+### Context
+
+Native USB HIL occupies the connection used for host protocol traffic, so UART
+diagnostics may be unavailable while reproducing a transport or storage fault.
+Always creating another log would consume removable-media capacity and alter
+the normative `GeneralInfo.log` behavior.
+
+### Decision
+
+UART remains the unconditional diagnostic destination. When storage is mounted
+and the user-visible `/serial.log` sentinel already exists, the asynchronous SD
+consumer also appends captured records to its internal `/sd/serial.log` path.
+The mirror never creates the sentinel and never reports its own file failures
+through the captured logger. Every accepted record is flushed immediately.
+
+The mirror stops before a complete record would exceed 384 KiB. It does not
+truncate existing evidence. Replacing the saturated file with a new empty
+sentinel permits activation on the next diagnostic record. The normative
+rotating log remains independent.
+
+### Consequences
+
+- USB-only HIL can retrieve diagnostics through the file-transfer protocol.
+- A 512 KiB mock volume retains about 128 KiB for FAT metadata and test files.
+- Mirror failures and saturation cannot suppress UART output.
+- The PSRAM-backed mock file remains volatile and cannot survive a full reset.

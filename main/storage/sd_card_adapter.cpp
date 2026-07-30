@@ -15,6 +15,7 @@
 #include "firmware/application/diagnostic_log_writer.hpp"
 #include "firmware/core/sd_user_path.hpp"
 #include "diagnostic_capture_adapter.hpp"
+#include "serial_log_mirror_adapter.hpp"
 
 #include <optional>
 #include <cstdio>
@@ -79,6 +80,7 @@ public:
     }
 
     bool unmount() override {
+        serial_log_mirror().storage_unmounted();
         if (card_ == nullptr) {
             set_sd_storage_mounted(false);
             return true;
@@ -99,6 +101,7 @@ public:
     void drain_captured_records() {
         while (const auto record = take_captured_diagnostic()) {
             writer_.write_record(*record, *this);
+            serial_log_mirror().write_record(*record);
         }
     }
 

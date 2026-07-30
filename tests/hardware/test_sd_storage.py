@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import time
 import uuid
 
 import pytest
@@ -161,7 +162,7 @@ def test_file_roundtrip_md5_rename_and_delete(usb_client, sd_fixture) -> None:
     try:
         upload_file(usb_client, source, content, block_size=700)
         md5_frames = usb_client.exchange(
-            GENERAL_COMMAND, f"md5 {source}".encode("ascii"), 5.0
+            GENERAL_COMMAND, f"md5sum {source}".encode("ascii"), 5.0
         )
         assert digest in _payload(md5_frames).lower()
         assert download_file(usb_client, source) == content
@@ -240,3 +241,26 @@ def test_gcodes_token_and_embedded_text_map_independently(usb_client, sd_fixture
     finally:
         _remove(usb_client, f"/gcodes/{mapped_name}")
         _remove(usb_client, f"/{embedded_name}")
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.sd
+@pytest.mark.usb
+@pytest.mark.requirement("LOG-001")
+@pytest.mark.requirement("LOG-006")
+def test_serial_log_sentinel_mirrors_diagnostics(usb_client, sd_fixture) -> None:
+    """Enables the opt-in mirror and retrieves one generated SD diagnostic."""
+
+    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
+    try:
+        upload_file(usb_client, "/serial.log", b"")
+        usb_client.exchange(
+            GENERAL_COMMAND, b"md5sum /MISSING.BIN", timeout_seconds=5.0
+        )
+        time.sleep(0.2)
+        log = download_file(usb_client, "/serial.log", verify_md5=False)
+        assert b"SD access failed" in log
+        assert b"MISSING.BIN" in log
+    finally:
+        _remove(usb_client, "/serial.log")

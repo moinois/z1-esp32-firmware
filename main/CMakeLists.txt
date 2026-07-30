@@ -18,6 +18,7 @@ idf_component_register(
         "storage/sd_access_diagnostics.cpp"
         "storage/posix_file.cpp"
         "diagnostics/diagnostic_capture_adapter.cpp"
+        "diagnostics/serial_log_mirror_adapter.cpp"
         "runtime/nvs_key_value_adapter.cpp"
         "runtime/nvs_command_ports.cpp"
         "runtime/nvs_runtime_counter_adapter.cpp"

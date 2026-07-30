@@ -30,6 +30,7 @@ add_executable(
     storage/test_directory_listing.cpp
     diagnostics/test_diagnostic_capture.cpp
     diagnostics/test_diagnostic_log_writer.cpp
+    diagnostics/test_serial_diagnostic_log.cpp
     connectivity/test_discovery.cpp
     protocol/test_frame.cpp
     configuration/test_live_configuration.cpp

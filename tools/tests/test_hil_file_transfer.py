@@ -90,6 +90,20 @@ class HilFileTransferTests(unittest.TestCase):
 
         self.assertEqual(client.requests[-1], (FILE_DATA, b"\0\0\0\1abc"))
 
+    def test_download_can_skip_md5_for_an_internally_appended_debug_log(self) -> None:
+        client = ScriptedClient(
+            [
+                [ReceivedFrame(FILE_MD5, b"0" * 32)],
+                [ReceivedFrame(FILE_GEOMETRY, b"\0\0\0\1\0\3")],
+                [ReceivedFrame(FILE_DATA, b"\0\0\0\1log")],
+                [ReceivedFrame(FILE_COMPLETE, b"ok\r\n")],
+            ]
+        )
+
+        self.assertEqual(
+            download_file(client, "/serial.log", verify_md5=False), b"log"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
