@@ -539,6 +539,21 @@ the board's strapping-pin levels have been verified.
 
 ## Current limitations and next steps
 
+### Bluetooth provisioning
+
+BLUFI is a Bluetooth Low Energy GATT provisioning service, not a Bluetooth
+Classic or operating-system pairing interface. Do not use the macOS or Windows
+pairing settings. A provisioning client scans for the advertised name, connects
+directly to service `0xffff`, enables notifications on characteristic `0xff02`,
+writes BLUFI frames to `0xff01`, and completes the BLUFI Diffie-Hellman security
+negotiation before sending Wi-Fi credentials. Link-level pairing is deliberately
+disabled.
+
+The normative advertised name is currently `BLUFI_DEVICE`. Field feedback
+indicates that some desktop-client builds may instead filter for
+`Makera_Z1_*`; changing this requires a specification decision and is not yet
+implemented.
+
 - The HTTP server and SPIFFS static-file support are implemented, but the
   browser-based configuration interface itself is not. No HTML, CSS, or
   JavaScript application assets are currently included; its product scope,
@@ -555,9 +570,10 @@ validation. Direct OTA alternation, rollback, previous-partition reuse, and
 recovery after an injected receive timeout have physical HIL evidence.
 
 The optional HIL framework provides USB, TCP, HTTP/WebSocket, Wi-Fi diagnostic,
-SD/filesystem, and explicitly gated destructive OTA checks. Controller, CAN,
-BLE, camera, and recording tests remain skipped until their fixture drivers and
-recovery procedures are supplied.
+BLE/BLUFI, SD/filesystem, and explicitly gated mutating or destructive checks.
+BLE advertising, GATT, encrypted provisioning, cross-transport load, and reset
+recovery have physical evidence. Controller, CAN, camera, SD-dependent, and
+recording tests remain skipped when their fixtures are unavailable.
 
 ## Conformance policy
 
@@ -565,3 +581,5 @@ Code presence is not treated as proof of conformance. A requirement is complete
 only after its deterministic behavior has a passing test and its hardware or
 timing behavior has an appropriate target or physical-device verification.
 Known coverage and gaps are recorded in `docs/requirements.md`.
+Anonymized interoperability observations and their resulting decisions are
+tracked in `docs/field-feedback.md`.

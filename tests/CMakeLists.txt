@@ -118,6 +118,7 @@ add_executable(
     usb/test_usb_transmit_progress.cpp
     usb/test_usb_task_timing.cpp
     connectivity/test_wlan_request.cpp
+    compatibility/test_studio_initialization_trace.cpp
 )
 target_link_libraries(core_tests PRIVATE firmware_application)
 target_include_directories(core_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
