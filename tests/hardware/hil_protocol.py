@@ -72,6 +72,12 @@ class UsbProtocolClient:
             received.extend(ReceivedFrame(kind, body) for kind, body in frames)
         return received
 
+    def close(self) -> None:
+        """Releases the libusb handle so a reset device can be reclaimed."""
+
+        usb_util = __import__("usb.util", fromlist=["dispose_resources"])
+        usb_util.dispose_resources(self.device)
+
 
 class TcpProtocolClient:
     """Sends one request through the target's framed TCP control service."""

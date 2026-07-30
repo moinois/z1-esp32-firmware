@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import socket
 import time
 import uuid
 
@@ -83,7 +84,7 @@ def _required_frame(frames, frame_type: int):
 @pytest.mark.wifi
 @pytest.mark.requirement("NET-010")
 @pytest.mark.requirement("NET-022")
-def test_wifi_credentials_can_be_applied_and_saved(usb_client) -> None:
+def test_wifi_credentials_can_be_applied_and_saved(usb_client, tcp_host: str) -> None:
     ssid = os.getenv("Z1_HIL_WIFI_SSID")
     password = os.getenv("Z1_HIL_WIFI_PASSWORD")
     if not ssid or password is None:
@@ -94,6 +95,18 @@ def test_wifi_credentials_can_be_applied_and_saved(usb_client) -> None:
     payload = b"\n".join(frame.payload for frame in frames).lower()
     assert b"failed" not in payload
 
+    # Applying even unchanged credentials can briefly reassociate the station.
+    # Do not let that deliberate transition leak into later network HIL cases.
+    deadline = time.monotonic() + 60.0
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection((tcp_host, 80), timeout=1.0):
+                break
+        except OSError:
+            time.sleep(0.25)
+    else:
+        pytest.fail("network services did not recover after applying credentials")
+
 
 @pytest.mark.hardware
 @pytest.mark.mutating
@@ -102,8 +115,11 @@ def test_wifi_credentials_can_be_applied_and_saved(usb_client) -> None:
 def test_native_usb_reset_reenumerates_and_recovers(usb_device) -> None:
     _require_usb_reset()
     usb_device.reset()
-    _, frames = _exchange_after_reenumeration(GENERAL_COMMAND, b"ftype /")
-    assert frames
+    client, frames = _exchange_after_reenumeration(GENERAL_COMMAND, b"ftype /")
+    try:
+        assert frames
+    finally:
+        client.close()
 
 
 @pytest.mark.hardware
@@ -120,10 +136,13 @@ def test_native_usb_disconnect_discards_partial_receive_frame(usb_device) -> Non
     client.send_encoded(frame[: len(frame) // 2])
     usb_device.reset()
 
-    _, recovered = _exchange_after_reenumeration(
+    recovered_client, recovered = _exchange_after_reenumeration(
         GENERAL_COMMAND, b"ftype /"
     )
-    assert any(b"ftype" in item.payload.lower() for item in recovered), recovered
+    try:
+        assert any(b"ftype" in item.payload.lower() for item in recovered), recovered
+    finally:
+        recovered_client.close()
 
 
 @pytest.mark.hardware
@@ -166,3 +185,4 @@ def test_native_usb_upload_continues_after_disconnect(usb_device, sd_fixture) ->
             client.exchange(GENERAL_COMMAND, f"rm {path}".encode("ascii"), 4.0)
         except Exception:
             pass
+        client.close()

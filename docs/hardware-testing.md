@@ -401,6 +401,17 @@ four-client capacity transitions passed. The in-app browser runtime reported
 no available browser backend, so visual/click automation remains pending even
 though the installed browser resources and their live APIs passed HIL.
 
+The complete mutating collection was also used as an endurance probe. It
+exposed a host-fixture defect: session-scoped PyUSB handles remained invalid
+after an intentional bus reset and caused unrelated later failures. USB and SD
+clients are now function-scoped, explicitly release libusb handles, and all
+three reset/re-enumeration cases pass consecutively. A subsequent eight-minute
+mixed run passed 30 cases and skipped five unavailable physical fixtures, but
+seven later HTTP/TCP cases timed out intermittently. The isolated HTTP, TCP,
+UDP, mock-controller, and UI groups have passed; this long mixed-run result is
+retained as an open RF/resource-endurance observation rather than being
+misreported as conformance evidence.
+
 The same session installed the SD-only mock build through OTA and passed all
 eight mutating storage checks over native USB, including multi-block file
 upload/download, MD5, rename/delete, path confinement, exact `gcodes` token

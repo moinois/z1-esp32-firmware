@@ -80,15 +80,24 @@ def pytest_sessionfinish(session: pytest.Session) -> None:
     )
 
 
-@pytest.fixture(scope="session")
-def usb_device() -> Any:
+@pytest.fixture
+def usb_device() -> Iterator[Any]:
+    """Provides a fresh handle because USB-reset tests invalidate old handles."""
+
     device, reason = find_native_usb_device()
     if device is None:
         pytest.skip(reason or "native USB device unavailable")
-    return device
+    try:
+        yield device
+    finally:
+        try:
+            usb_util = __import__("usb.util", fromlist=["dispose_resources"])
+            usb_util.dispose_resources(device)
+        except Exception:
+            pass
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def usb_client(usb_device: Any) -> UsbProtocolClient:
     try:
         return UsbProtocolClient(usb_device)
@@ -104,14 +113,13 @@ def sd_fixture() -> None:
         )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def sd_client(request: pytest.FixtureRequest, tcp_host: str) -> Any:
     """Uses native USB when present, otherwise an explicitly reachable TCP target."""
     device, _ = find_native_usb_device()
     if device is not None:
-        # Reuse the session-owned PyUSB interface. Opening a second handle to
-        # the same interface fails with "Access denied" on macOS and can leave
-        # later HIL tests unable to claim the device after fixture teardown.
+        # Reuse this test's PyUSB interface. Opening a second handle to the same
+        # interface fails with "Access denied" on macOS.
         return request.getfixturevalue("usb_client")
     if os.getenv("Z1_HIL_HOST"):
         return TcpProtocolClient(tcp_host)
