@@ -377,6 +377,18 @@ while the controller-image handoff and factory completion consumed their files
 as specified. This verifies target composition and transfer logic but not the
 electrical or timing properties of a physical UART/controller.
 
+Persistence was validated on 2026-07-31 with a destructive same-image OTA
+reboot. The fixture erased only `runtime/first_boot`, observed an immediate
+`null`, recreated it with a controller-originated time command, and captured
+the persisted counters and serial-number response. After OTA and automatic
+station recovery at the same address, first boot and machine time were
+unchanged, power-on time had not decreased, identity output was identical, and
+Wi-Fi diagnostics showed a completed association and acquired address. This
+run exposed and corrected an adapter bug where a missing string namespace was
+reported as an NVS failure rather than the required missing value; target
+readback now returns `sn = null`. Forced NVS driver errors still require an
+instrumented persistence adapter and are not claimed by this physical run.
+
 The same session installed the SD-only mock build through OTA and passed all
 eight mutating storage checks over native USB, including multi-block file
 upload/download, MD5, rename/delete, path confinement, exact `gcodes` token

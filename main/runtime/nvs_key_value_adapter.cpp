@@ -21,7 +21,12 @@ bool open_namespace(std::string_view name_space, nvs_open_mode_t mode,
 NvsStringRead NvsKeyValueAdapter::read_string(std::string_view name_space,
                                                std::string_view key) const {
     nvs_handle_t handle = 0;
-    if (!open_namespace(name_space, read_only, handle)) return {};
+    const esp_err_t open_result = nvs_open(
+        std::string(name_space).c_str(), read_only, &handle);
+    if (open_result == ESP_ERR_NVS_NOT_FOUND) {
+        return {NvsReadState::missing, {}};
+    }
+    if (open_result != ESP_OK) return {};
     std::size_t size = 0U;
     const esp_err_t size_result = nvs_get_str(handle, std::string(key).c_str(), nullptr, &size);
     if (size_result == ESP_ERR_NVS_NOT_FOUND) {

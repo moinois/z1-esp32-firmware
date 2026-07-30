@@ -22,6 +22,7 @@ constexpr std::string_view mock_diagnostic =
 constexpr std::size_t fragmented_read_size = 7U;
 constexpr std::uint16_t transfer_data_size = 512U;
 constexpr std::string_view transfer_command_prefix = "mock-transfer ";
+constexpr std::string_view time_command_prefix = "mock-time ";
 
 // Converts text constants to owned protocol payloads.
 firmware::core::ByteVector bytes(std::string_view text) {
@@ -96,6 +97,13 @@ void MockControllerChannelAdapter::handle_frame(
         } else if (requested == "factory") {
             start_transfer(TransferKind::factory);
         }
+    } else if (decoded.type == firmware::core::protocol::general_command &&
+               payload.starts_with(time_command_prefix)) {
+        const std::string requested_time =
+            std::string("time ") +
+            std::string(payload.substr(time_command_prefix.size()));
+        queue_response({firmware::core::protocol::general_command,
+                        bytes(requested_time)});
     } else if ((decoded.type & firmware::core::protocol::family_mask) ==
                transfer_family_) {
         handle_transfer_response(decoded);
