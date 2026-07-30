@@ -358,6 +358,15 @@ verification, and removed the fixture file. These cases provide target evidence
 for USB receive clearing and OWN-008 continuation without claiming direct
 physical injection of TinyUSB transmit-queue saturation or no-progress timing.
 
+The same 2026-07-31 mock-SD build also passed explicit upload cancellation with
+both the partial target and its MD5 sidecar absent afterwards, a TCP root query
+while USB retained an active upload, and a bounded full-volume run. The latter
+filled only the volatile 512 KiB PSRAM-backed FAT volume with maximum-size file
+blocks, observed the specified write-error retry, canceled the transfer, and
+then completed a new upload/download after the released allocation was reused.
+The destructive capacity case is hard-gated to `Z1_HIL_MOCK_SD=1` and therefore
+cannot fill a physical card accidentally.
+
 The same session installed the SD-only mock build through OTA and passed all
 eight mutating storage checks over native USB, including multi-block file
 upload/download, MD5, rename/delete, path confinement, exact `gcodes` token

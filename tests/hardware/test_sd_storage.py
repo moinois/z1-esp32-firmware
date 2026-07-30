@@ -22,6 +22,7 @@ from tests.hardware.hil_file_transfer import (
     FILE_DATA,
     FILE_GEOMETRY,
     FILE_MD5,
+    FILE_RETRY,
     FileTransferError,
     download_file,
     upload_file,
@@ -403,3 +404,161 @@ def test_serial_log_sentinel_mirrors_diagnostics(usb_client, sd_fixture) -> None
         assert b"MISSING.BIN" in log
     finally:
         _remove(usb_client, "/serial.log")
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.sd
+@pytest.mark.usb
+@pytest.mark.requirement("HFTU-010")
+@pytest.mark.requirement("FILE-027")
+def test_cancelled_upload_removes_partial_file_and_md5_sidecar(
+    usb_client, sd_fixture
+) -> None:
+    """Cancels after one block and requires all partially written artifacts gone."""
+
+    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
+    path = f"/C{uuid.uuid4().hex[:5].upper()}.BIN"
+    content = bytes((index * 17 + 5) & 0xFF for index in range(1024))
+    try:
+        usb_client.send_encoded(
+            encode_frame(FILE_COMMAND, f"upload {path}".encode("ascii"))
+            + encode_frame(
+                FILE_MD5, hashlib.md5(content).hexdigest().encode("ascii")
+            )
+        )
+        assert _required_frame(usb_client.receive(4.0), FILE_GEOMETRY)
+        assert _required_frame(
+            usb_client.exchange(FILE_GEOMETRY, (2).to_bytes(4, "big"), 4.0),
+            FILE_DATA,
+        )
+        assert _required_frame(
+            usb_client.exchange(
+                FILE_DATA, (1).to_bytes(4, "big") + content, 4.0
+            ),
+            FILE_DATA,
+        )
+
+        cancelled = usb_client.exchange(FILE_CANCEL, b"", 4.0)
+        cancel = next(
+            (frame for frame in cancelled if frame.frame_type == FILE_CANCEL),
+            None,
+        )
+        assert cancel is not None
+        assert b"upload canceled" in cancel.payload.lower()
+        with pytest.raises(FileTransferError, match="failed to open file"):
+            download_file(usb_client, path)
+        md5 = usb_client.exchange(
+            GENERAL_COMMAND, f"md5sum {path}".encode("ascii"), 5.0
+        )
+        assert b"file not found" in _payload(md5).lower()
+        sidecars = usb_client.exchange(GENERAL_COMMAND, b"ls /.md5", 5.0)
+        assert path[1:].encode("ascii") not in _payload(sidecars)
+    finally:
+        _remove(usb_client, path)
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.sd
+@pytest.mark.usb
+@pytest.mark.tcp
+@pytest.mark.requirement("OWN-003")
+@pytest.mark.requirement("TCP-004")
+def test_tcp_filesystem_query_during_usb_upload(
+    usb_client, tcp_host: str, sd_fixture
+) -> None:
+    """Keeps an upload pending while another transport lists the same volume."""
+
+    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
+    path = f"/X{uuid.uuid4().hex[:5].upper()}.BIN"
+    content = bytes((index * 23 + 1) & 0xFF for index in range(2048))
+    try:
+        usb_client.send_encoded(
+            encode_frame(FILE_COMMAND, f"upload {path}".encode("ascii"))
+            + encode_frame(
+                FILE_MD5, hashlib.md5(content).hexdigest().encode("ascii")
+            )
+        )
+        assert _required_frame(usb_client.receive(4.0), FILE_GEOMETRY)
+        assert _required_frame(
+            usb_client.exchange(FILE_GEOMETRY, (1).to_bytes(4, "big"), 4.0),
+            FILE_DATA,
+        )
+
+        listed = TcpProtocolClient(tcp_host).exchange(
+            GENERAL_COMMAND, b"ls /", timeout_seconds=5.0
+        )
+        assert listed
+        assert b"error" not in _payload(listed).lower()
+
+        completed = usb_client.exchange(
+            FILE_DATA, (1).to_bytes(4, "big") + content, 5.0
+        )
+        assert _required_frame(completed, FILE_COMPLETE)
+        assert download_file(usb_client, path) == content
+    finally:
+        _remove(usb_client, path)
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.sd
+@pytest.mark.usb
+@pytest.mark.requirement("HFTU-006")
+@pytest.mark.requirement("HFTU-010")
+def test_full_mock_volume_retries_and_recovers_after_cancel(
+    usb_client, sd_fixture
+) -> None:
+    """Fills only the volatile mock volume, then frees the partial upload."""
+
+    if os.getenv("Z1_HIL_MOCK_SD") != "1":
+        pytest.skip("full-volume injection is restricted to Z1_HIL_MOCK_SD=1")
+    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
+    path = f"/V{uuid.uuid4().hex[:5].upper()}.BIN"
+    block = bytes((index * 13 + 3) & 0xFF for index in range(8192))
+    announced_blocks = 128
+    try:
+        usb_client.send_encoded(
+            encode_frame(FILE_COMMAND, f"upload {path}".encode("ascii"))
+            + encode_frame(FILE_MD5, b"0" * 32)
+        )
+        assert _required_frame(usb_client.receive(4.0), FILE_GEOMETRY)
+        assert _required_frame(
+            usb_client.exchange(
+                FILE_GEOMETRY, announced_blocks.to_bytes(4, "big"), 4.0
+            ),
+            FILE_DATA,
+        )
+
+        write_failure = None
+        for sequence in range(1, announced_blocks + 1):
+            responses = usb_client.exchange(
+                FILE_DATA, sequence.to_bytes(4, "big") + block, 4.0
+            )
+            write_failure = next(
+                (
+                    frame
+                    for frame in responses
+                    if frame.frame_type == FILE_RETRY
+                    and b"write error" in frame.payload.lower()
+                ),
+                None,
+            )
+            if write_failure is not None:
+                break
+            requested = _required_frame(responses, FILE_DATA)
+            assert requested is not None
+            assert int.from_bytes(requested.payload, "big") == sequence + 1
+
+        assert write_failure is not None, "mock volume accepted more than 1 MiB"
+        cancelled = usb_client.exchange(FILE_CANCEL, b"", 4.0)
+        assert any(frame.frame_type == FILE_CANCEL for frame in cancelled), cancelled
+
+        # Successful reuse proves that cancellation released ownership and
+        # reclaimed the partial file's FAT allocation.
+        probe = b"volume-recovered-after-full"
+        upload_file(usb_client, path, probe)
+        assert download_file(usb_client, path) == probe
+    finally:
+        _remove(usb_client, path)
