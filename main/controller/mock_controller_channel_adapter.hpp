@@ -4,7 +4,9 @@
 #include "controller_channel_adapter.hpp"
 #include "firmware/core/frame.hpp"
 
+#include <cstdint>
 #include <deque>
+#include <string>
 
 namespace firmware::target {
 
@@ -21,12 +23,39 @@ public:
     int write(firmware::core::BytesView frame) override;
 
 private:
+    enum class TransferKind {
+        none,
+        firmware,
+        configuration,
+        factory,
+    };
+
     // Queues one response using the production frame encoder.
     void queue_response(firmware::core::Frame frame);
+
+    // Interprets one frame written by the mainboard and advances simulations.
+    void handle_frame(const firmware::core::Frame& frame);
+
+    // Begins one controller-originated transfer selected by a test command.
+    void start_transfer(TransferKind kind);
+
+    // Consumes one mainboard transfer response and queues the next request.
+    void handle_transfer_response(const firmware::core::Frame& frame);
+
+    // Queues a one-based data request for the active transfer.
+    void request_transfer_data();
+
+    // Completes the active transfer and publishes its diagnostic result.
+    void complete_transfer(bool succeeded);
 
     firmware::core::StreamDecoder decoder_{
         firmware::core::StreamPolicy::controller_uart()};
     std::deque<std::uint8_t> pending_input_;
+    std::string diagnostic_;
+    TransferKind transfer_kind_ = TransferKind::none;
+    std::uint8_t transfer_family_ = 0U;
+    std::uint32_t transfer_frame_count_ = 0U;
+    std::uint32_t transfer_index_ = 0U;
     bool initialized_ = false;
 };
 

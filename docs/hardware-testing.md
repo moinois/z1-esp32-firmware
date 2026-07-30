@@ -367,6 +367,16 @@ then completed a new upload/download after the released allocation was reused.
 The destructive capacity case is hard-gated to `Z1_HIL_MOCK_SD=1` and therefore
 cannot fill a physical card accidentally.
 
+A combined mock-SD/controller image was then built and installed through the
+seven-second delayed OTA test. The controller mock limits each read to seven
+bytes so target decoding is exercised across frame boundaries. HIL uploaded a
+1300-byte controller image plus configuration and factory fixtures, then drove
+the C-, D-, and E-family start, geometry, indexed-data, and terminal exchanges.
+All three published success diagnostics; configuration remained unchanged,
+while the controller-image handoff and factory completion consumed their files
+as specified. This verifies target composition and transfer logic but not the
+electrical or timing properties of a physical UART/controller.
+
 The same session installed the SD-only mock build through OTA and passed all
 eight mutating storage checks over native USB, including multi-block file
 upload/download, MD5, rename/delete, path confinement, exact `gcodes` token
@@ -393,5 +403,5 @@ emitted the five-field, no-line-ending payload on port 3333 with its station
 IPv4 address and TCP port 2222. A capacity test retained four TCP clients,
 observed `tcp-full=1`, closed all four, and observed the following periodic
 advertisement return to `tcp-full=0`. Both read-only checks passed on
-2026-07-30; AP-subnet delivery and the event/command-triggered three-packet
+2026-07-31; AP-subnet delivery and the event/command-triggered three-packet
 bursts remain portable-policy evidence rather than physical observations.

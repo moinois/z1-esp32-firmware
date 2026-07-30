@@ -8,6 +8,7 @@ import time
 
 import pytest
 
+from tests.hardware.hil_file_transfer import FileTransferError, download_file, upload_file
 from tests.hardware.hil_protocol import GENERAL_COMMAND, SINGLE_COMMAND, TcpProtocolClient
 
 
@@ -55,6 +56,67 @@ def test_mock_controller_populates_runtime_snapshots(tcp_host: str) -> None:
 
     version = wait_for_payload(GENERAL_COMMAND, b"version", 0x83)
     assert version == b"version = mock-controller-1.0.1.11\n"
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.controller
+@pytest.mark.sd
+@pytest.mark.requirement("LPC-010")
+@pytest.mark.requirement("LPCFW-001")
+@pytest.mark.requirement("LPCCFG-001")
+@pytest.mark.requirement("LPCFAC-001")
+def test_mock_controller_completes_all_transfer_families(
+    usb_client, tcp_host: str, sd_fixture
+) -> None:
+    """Runs controller-originated firmware, config, and factory handshakes."""
+
+    if os.getenv("Z1_HIL_MOCK_CONTROLLER") != "1":
+        pytest.skip("mock controller not declared with Z1_HIL_MOCK_CONTROLLER=1")
+    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
+    client = TcpProtocolClient(tcp_host)
+
+    def wait_for_result(expected: bytes) -> None:
+        deadline = time.monotonic() + 8.0
+        while time.monotonic() < deadline:
+            frames = client.exchange(GENERAL_COMMAND, b"diagnose", 1.0)
+            payload = b"\n".join(frame.payload for frame in frames)
+            if expected in payload:
+                return
+            time.sleep(0.1)
+        pytest.fail(f"mock controller transfer did not publish {expected!r}")
+
+    files = {
+        "/lpc1768.bin": bytes((index * 11 + 7) & 0xFF for index in range(1300)),
+        "/config.txt": b"machine.name=Mock Z1\naxis.count=4\n",
+        "/factory.ini": b"serial=MOCK-001\ncalibration=nominal\n",
+    }
+    try:
+        for path, content in files.items():
+            upload_file(usb_client, path, content)
+
+        for command, result in (
+            (b"mock-transfer firmware", b"XFER:FIRMWARE:OK"),
+            (b"mock-transfer configuration", b"XFER:CONFIGURATION:OK"),
+            (b"mock-transfer factory", b"XFER:FACTORY:OK"),
+        ):
+            # The test-only command is intentionally forwarded to the selected
+            # controller adapter and therefore has no direct host response.
+            client.exchange(GENERAL_COMMAND, command, 1.0)
+            wait_for_result(result)
+
+        assert download_file(usb_client, "/config.txt") == files["/config.txt"]
+        for consumed_path in ("/lpc1768.bin", "/factory.ini"):
+            with pytest.raises(FileTransferError, match="failed to open file"):
+                download_file(usb_client, consumed_path)
+    finally:
+        for path in files:
+            try:
+                usb_client.exchange(
+                    GENERAL_COMMAND, f"rm {path}".encode("ascii"), 4.0
+                )
+            except Exception:
+                pass
 
 
 @pytest.mark.hardware
