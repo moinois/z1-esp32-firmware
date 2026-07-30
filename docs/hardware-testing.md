@@ -91,6 +91,11 @@ and then requires `BLUFI_DEVICE` to resume advertising after boot. These cases
 were added while the target was disconnected and remain pending physical
 execution; test availability is not recorded as HIL PASS.
 
+Additional read-only negative-wire fixtures exercise sequence rejection with a
+correct retry in the same connection, acknowledgement-before-product-response
+ordering, and the exact checksum-error report. They likewise remain pending a
+declared BLE adapter run.
+
 The read-only suite also exercises repeated native USB requests, recovery after
 unframed USB noise, bytewise fragmented TCP input, the four-client TCP limit,
 four-client concurrency, simultaneous USB/TCP commands, WLAN scanning, runtime

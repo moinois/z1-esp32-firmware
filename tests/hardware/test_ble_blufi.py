@@ -74,6 +74,25 @@ async def _request_frames(
         await client.stop_notify(BLUFI_NOTIFY)
 
 
+async def _request_notification_count(
+    client: Any, request: bytes, count: int, timeout: float = 5.0
+) -> list[bytes]:
+    response: asyncio.Future[list[bytes]] = asyncio.get_running_loop().create_future()
+    frames: list[bytes] = []
+
+    def receive(_characteristic: Any, value: bytearray) -> None:
+        frames.append(bytes(value))
+        if len(frames) == count and not response.done():
+            response.set_result(frames.copy())
+
+    await client.start_notify(BLUFI_NOTIFY, receive)
+    try:
+        await client.write_gatt_char(BLUFI_WRITE, request, response=True)
+        return await asyncio.wait_for(response, timeout=timeout)
+    finally:
+        await client.stop_notify(BLUFI_NOTIFY)
+
+
 async def _request_frame(client: Any, request: bytes, timeout: float = 5.0) -> bytes:
     frames = await _request_frames(client, request, timeout)
     assert len(frames) == 1, f"expected one BLUFI response frame, received {len(frames)}"
@@ -425,6 +444,70 @@ def test_blufi_unknown_control_subtype_has_no_response_and_session_recovers() ->
                 await _request_frame(client, b"\xfc\x00\x00\x00", timeout=1.0)
             response = await _request_frame(client, b"\x1c\x00\x01\x00")
             assert _assert_plain_frame(response, 0x10) == b"\x01\x03"
+
+    asyncio.run(validate())
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.ble
+@pytest.mark.requirement("BWF-012")
+@pytest.mark.requirement("BWF-042")
+def test_blufi_sequence_error_does_not_block_correct_retry() -> None:
+    _require_ble_fixture()
+
+    async def validate() -> None:
+        from bleak import BleakClient
+
+        device, _ = await _require_blufi()
+        async with BleakClient(device, timeout=10.0) as client:
+            sequence_error = await _request_frame(client, b"\x1c\x00\x01\x00")
+            assert _assert_plain_frame(sequence_error, 0x12) == b"\x00"
+            version = await _request_frame(client, b"\x1c\x00\x00\x00")
+            assert _assert_plain_frame(version, 0x10, sequence=1) == b"\x01\x03"
+
+    asyncio.run(validate())
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.ble
+@pytest.mark.requirement("BWF-033")
+def test_blufi_acknowledges_before_processing_requested_frame() -> None:
+    _require_ble_fixture()
+
+    async def validate() -> None:
+        from bleak import BleakClient
+
+        device, _ = await _require_blufi()
+        async with BleakClient(device, timeout=10.0) as client:
+            responses = await _request_notification_count(
+                client, b"\x1c\x08\x00\x00", count=2
+            )
+            assert responses[0] == b"\x00\x04\x00\x01\x00"
+            assert _assert_plain_frame(responses[1], 0x10, sequence=1) == b"\x01\x03"
+
+    asyncio.run(validate())
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.ble
+@pytest.mark.requirement("BWF-020")
+@pytest.mark.requirement("BWF-021")
+@pytest.mark.requirement("BWF-042")
+def test_blufi_rejects_incorrect_checksum_with_exact_error() -> None:
+    _require_ble_fixture()
+
+    async def validate() -> None:
+        from bleak import BleakClient
+
+        device, _ = await _require_blufi()
+        async with BleakClient(device, timeout=10.0) as client:
+            checksum_error = await _request_frame(
+                client, b"\x1c\x02\x00\x00\x00\x00"
+            )
+            assert _assert_plain_frame(checksum_error, 0x12) == b"\x01"
 
     asyncio.run(validate())
 
