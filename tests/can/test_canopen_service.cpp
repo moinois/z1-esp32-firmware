@@ -122,3 +122,22 @@ TEST_CASE(can_006_service_keeps_error_register_and_nmt_state_consistent) {
     REQUIRE_EQ(service.node().state(), NmtState::pre_operational);
     REQUIRE_EQ(service.dictionary().read(0x1001U, 0U).data[0], 0x10U);
 }
+
+TEST_CASE(can_002_and_006_error_transition_publishes_pre_operational_heartbeat) {
+    FakeCanopenServicePort port;
+    CanopenService service(port);
+    service.process_cycle();
+    service.receive(sdo_write(0x1017U, 0U, 0x2bU, 100U));
+    service.process_cycle();
+    port.transmitted.clear();
+
+    service.set_error_register(0x10U);
+    service.process_cycle();
+
+    REQUIRE_EQ(service.node().state(), NmtState::pre_operational);
+    REQUIRE_EQ(service.dictionary().read(0x1001U, 0U).data[0], 0x10U);
+    REQUIRE_EQ(port.transmitted.size(), 1U);
+    REQUIRE_EQ(port.transmitted[0].identifier,
+               firmware::core::canopen::heartbeat_identifier);
+    REQUIRE_EQ(port.transmitted[0].data[0], 127U);
+}
