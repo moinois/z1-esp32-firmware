@@ -348,6 +348,16 @@ exact fifth-client rejection, four concurrent clients, and six consecutive
 capacity-release waves. The result is recorded in
 `build/hil-transport-current.json`.
 
+On 2026-07-31 native USB disconnect handling was fault-injected with PyUSB bus
+resets. A reset after half of an encoded command discarded the stale receive
+fragment and the re-enumerated endpoint returned a valid response to the next
+complete command. A separate mock-SD run reset the bus after the target had
+requested block one of a 4096-byte upload; the same USB owner reactivated the
+protocol, completed the pending block, downloaded identical content with MD5
+verification, and removed the fixture file. These cases provide target evidence
+for USB receive clearing and OWN-008 continuation without claiming direct
+physical injection of TinyUSB transmit-queue saturation or no-progress timing.
+
 The same session installed the SD-only mock build through OTA and passed all
 eight mutating storage checks over native USB, including multi-block file
 upload/download, MD5, rename/delete, path confinement, exact `gcodes` token
@@ -368,3 +378,11 @@ halfway through, reconnected into the same lowest free logical slot, required
 the target to repeat the outstanding sequence, completed the remaining blocks,
 and verified the stored MD5. Both passed together; the machine-readable report
 is `build/hil-file-transfer-recovery-final.json`.
+
+UDP discovery was then observed directly on the station network. The target
+emitted the five-field, no-line-ending payload on port 3333 with its station
+IPv4 address and TCP port 2222. A capacity test retained four TCP clients,
+observed `tcp-full=1`, closed all four, and observed the following periodic
+advertisement return to `tcp-full=0`. Both read-only checks passed on
+2026-07-30; AP-subnet delivery and the event/command-triggered three-packet
+bursts remain portable-policy evidence rather than physical observations.
