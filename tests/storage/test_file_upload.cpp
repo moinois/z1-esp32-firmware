@@ -309,6 +309,24 @@ TEST_CASE(hft_022_timed_retry_occurs_at_5010_ms_and_input_restarts_schedule) {
     REQUIRE_EQ(port.sent.back().type, 0xB6U);
 }
 
+TEST_CASE(own_008_reconnected_upload_repeats_the_unverified_sequence) {
+    FileUpload upload;
+    FakeUploadPort first_connection;
+    REQUIRE(upload.start(owner, "/sd/file.bin", 0U, first_connection));
+    accept_md5(upload, first_connection);
+    accept_geometry(upload, first_connection, 3U);
+    upload.handle({0xB3U, {0U, 0U, 0U, 1U, 'a'}}, 3U,
+                  first_connection);
+
+    FakeUploadPort reconnected;
+    upload.resume(4U, reconnected);
+
+    REQUIRE(upload.active());
+    REQUIRE_EQ(reconnected.sent.size(), 1U);
+    REQUIRE_EQ(reconnected.sent.front(),
+               Frame({0xB3U, {0U, 0U, 0U, 2U}}));
+}
+
 TEST_CASE(hft_021_upload_timeout_uses_exact_message_after_more_than_nine_seconds) {
     FileUpload upload;
     FakeUploadPort port;

@@ -286,6 +286,26 @@ TEST_CASE(hft_020_and_hft_021_any_frame_restarts_strict_nine_second_timeout) {
                std::string("Error: Machine received cmd timeout!"));
 }
 
+TEST_CASE(own_008_reconnected_download_repeats_the_last_verified_block) {
+    FileDownload download;
+    FakeDownloadPort first_connection;
+    first_connection.opened_size = 8U;
+    first_connection.read_content = bytes("contents");
+    REQUIRE(download.start(owner, "/sd/job", 0U, first_connection));
+    download.handle({0xB2U, {}}, 1U, first_connection);
+    download.handle({0xB3U, {0U, 0U, 0U, 1U}}, 2U, first_connection);
+
+    FakeDownloadPort reconnected;
+    reconnected.read_content = first_connection.read_content;
+    download.resume(3U, reconnected);
+
+    REQUIRE(download.active());
+    REQUIRE_EQ(reconnected.sent.size(), 1U);
+    REQUIRE_EQ(reconnected.sent.front().type, 0xB3U);
+    REQUIRE_EQ(reconnected.sent.front().payload,
+               Frame({0xB3U, {0U, 0U, 0U, 1U, 'c', 'o', 'n', 't', 'e', 'n', 't', 's'}}).payload);
+}
+
 TEST_CASE(hft_023_and_hft_025_fifty_one_consecutive_unexpected_packets_abort) {
     FileDownload download;
     FakeDownloadPort port;

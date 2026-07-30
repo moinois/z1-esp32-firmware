@@ -109,6 +109,9 @@ def sd_client(request: pytest.FixtureRequest, tcp_host: str) -> Any:
     """Uses native USB when present, otherwise an explicitly reachable TCP target."""
     device, _ = find_native_usb_device()
     if device is not None:
+        # Reuse the session-owned PyUSB interface. Opening a second handle to
+        # the same interface fails with "Access denied" on macOS and can leave
+        # later HIL tests unable to claim the device after fixture teardown.
         return request.getfixturevalue("usb_client")
     if os.getenv("Z1_HIL_HOST"):
         return TcpProtocolClient(tcp_host)

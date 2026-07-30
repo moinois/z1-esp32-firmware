@@ -340,3 +340,31 @@ intermittently reset while USB and HTTP remained responsive. This is retained
 as failing evidence requiring target connection-slot/resource diagnosis, not
 reported as a HIL pass. The machine-readable result is written to
 `build/hil-current.json`.
+
+On 2026-07-30 the TCP resource fix was retested on the same native USB and
+station-Wi-Fi fixture. All six transport-stress checks passed: repeated USB,
+USB noise recovery, byte-fragmented TCP input, four retained clients plus the
+exact fifth-client rejection, four concurrent clients, and six consecutive
+capacity-release waves. The result is recorded in
+`build/hil-transport-current.json`.
+
+The same session installed the SD-only mock build through OTA and passed all
+eight mutating storage checks over native USB, including multi-block file
+upload/download, MD5, rename/delete, path confinement, exact `gcodes` token
+mapping, and diagnostic-log sentinel access. This is target-composition evidence
+for the production FAT/VFS/USB paths, not physical SD-card conformance. During
+descriptor inspection the required strings were found shifted because the
+TinyUSB string table omitted index-zero LANGID. A new HIL assertion reproduced
+the failure; after adding the LANGID entry and reinstalling through OTA, exact
+manufacturer `Espressif`, product `MakeraZ1 (USB)`, and serial `123456` all
+passed. Reports are stored in `build/hil-sd-mock-usb.json` and
+`build/hil-usb-descriptors-current.json`.
+
+Temporary Wi-Fi interruption recovery was physically exercised on 2026-07-30
+against the mock-SD firmware at `192.168.8.119`. One test held an upload idle
+for six seconds and observed the required 5.010-second retry before completing.
+A second test transferred 128 KiB in 8192-byte blocks, deliberately closed TCP
+halfway through, reconnected into the same lowest free logical slot, required
+the target to repeat the outstanding sequence, completed the remaining blocks,
+and verified the stored MD5. Both passed together; the machine-readable report
+is `build/hil-file-transfer-recovery-final.json`.

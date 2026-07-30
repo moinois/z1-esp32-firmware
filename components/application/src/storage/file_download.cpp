@@ -157,6 +157,20 @@ bool FileDownload::active() const {
     return active_;
 }
 
+void FileDownload::resume(std::uint64_t now_milliseconds,
+                          FileDownloadPort& port) {
+    if (!active_) return;
+    if (now_milliseconds - last_activity_milliseconds_ >
+        core::file_transfer_limits::inactivity_timeout_milliseconds) {
+        abort(timeout_error, port);
+    } else {
+        // Downloads are sequence-addressed, so retransmitting the retained
+        // response is idempotent and lets a replacement TCP connection resume
+        // without reopening the file or losing the selected compressed path.
+        retry_last(port);
+    }
+}
+
 void FileDownload::send_md5(FileDownloadPort& port) {
     retained_response_ = {core::protocol::file_md5, {md5_.begin(), md5_.end()}};
     port.send(owner_, retained_response_);

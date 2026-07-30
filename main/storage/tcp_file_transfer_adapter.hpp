@@ -20,7 +20,8 @@ namespace firmware::target {
 // Implements upload filesystem effects and origin-preserving responses.
 class TcpFileUploadAdapter final : public firmware::application::FileUploadPort {
 public:
-    explicit TcpFileUploadAdapter(firmware::application::TcpClientSession& session);
+    TcpFileUploadAdapter() = default;
+    void bind(firmware::application::TcpClientSession* session);
     void prepare_cache_paths(const firmware::core::FileCachePaths& paths) override;
     bool create_parent_directories(std::string_view path, std::uint32_t mode) override;
     bool open_primary(std::string_view path) override;
@@ -36,7 +37,7 @@ public:
     void release_ownership() override;
 
 private:
-    firmware::application::TcpClientSession& session_;
+    firmware::application::TcpClientSession* session_ = nullptr;
     PosixFile primary_;
     PosixFile md5_;
 };
@@ -44,7 +45,8 @@ private:
 // Implements download filesystem effects and origin-preserving responses.
 class TcpFileDownloadAdapter final : public firmware::application::FileDownloadPort {
 public:
-    explicit TcpFileDownloadAdapter(firmware::application::TcpClientSession& session);
+    TcpFileDownloadAdapter() = default;
+    void bind(firmware::application::TcpClientSession* session);
     void prepare_cache_paths(const firmware::core::FileCachePaths& paths) override;
     std::optional<std::string> calculate_md5(std::string_view path) override;
     std::optional<firmware::core::ByteVector> read_cache(
@@ -60,7 +62,7 @@ public:
     void release_ownership() override;
 
 private:
-    firmware::application::TcpClientSession& session_;
+    firmware::application::TcpClientSession* session_ = nullptr;
     PosixFile file_;
 };
 

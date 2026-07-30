@@ -73,6 +73,9 @@ public:
     // Reports whether both upload streams remain owned by this operation.
     bool active() const;
 
+    // Repeats the outstanding request, or times out, after transport reconnect.
+    void resume(std::uint64_t now_milliseconds, FileUploadPort& port);
+
 private:
     enum class ExpectedPacket {
         md5,

@@ -173,6 +173,20 @@ bool FileUpload::active() const {
     return active_;
 }
 
+void FileUpload::resume(std::uint64_t now_milliseconds, FileUploadPort& port) {
+    if (!active_) return;
+    if (now_milliseconds - last_activity_milliseconds_ >
+        core::file_transfer_limits::inactivity_timeout_milliseconds) {
+        abort(timeout_message, port);
+    } else {
+        // A TCP socket may disappear while the logical slot and open files
+        // remain valid under OWN-008. Repeat, rather than advance, the current
+        // request so a reconnected host can safely resume at the last verified
+        // protocol boundary.
+        emit_current_request(port);
+    }
+}
+
 void FileUpload::accept_md5(core::BytesView payload, FileUploadPort& port) {
     static_cast<void>(port.write_md5(
         {payload.data(), core::file_transfer_limits::md5_text_size}));

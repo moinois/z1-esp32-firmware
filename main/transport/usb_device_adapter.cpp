@@ -110,7 +110,11 @@ constexpr std::array<std::uint8_t, 32> configuration_descriptor{
     0xfaU, 0x09U, 0x04U, 0x00U, 0x00U, 0x02U, 0xffU, 0x00U,
     0x00U, 0x00U, 0x07U, 0x05U, 0x01U, 0x02U, 0x40U, 0x00U,
     0x00U, 0x07U, 0x05U, 0x81U, 0x02U, 0x40U, 0x00U, 0x00U};
-const char* string_descriptors[] = {"Espressif", "MakeraZ1 (USB)", "123456"};
+// TinyUSB reserves table index zero for the supported USB language ID. Omitting
+// it shifts every referenced descriptor and leaves serial index three invalid.
+char usb_language_descriptor[] = {0x09, 0x04};
+const char* string_descriptors[] = {
+    usb_language_descriptor, "Espressif", "MakeraZ1 (USB)", "123456"};
 // Derive the TinyUSB count from the table so additions cannot leave a stale
 // independent descriptor-count literal behind.
 constexpr std::size_t string_descriptor_count =
@@ -1610,6 +1614,10 @@ bool UsbDeviceAdapter::start() {
         ESP_LOGE(tag, "USB TinyUSB transmit task allocation failed");
         return false;
     }
+    // Decoding a maximum-sized host frame needs more stack than the original
+    // packet-sized USB traffic did. Prefer PSRAM for this blocking worker to
+    // preserve internal DMA-capable memory, but retain an internal-memory
+    // fallback for boards without usable PSRAM.
     BaseType_t receive_task = xTaskCreateWithCaps(
         usb_receive_task, "usb_rx", usb_blocking_worker_stack_size, nullptr,
         usb_worker_priority, nullptr,
@@ -1620,7 +1628,8 @@ bool UsbDeviceAdapter::start() {
             nullptr, usb_worker_priority, nullptr);
     }
     // File processing needs a larger stack for FAT and hashing. Prefer PSRAM so
-    // it does not exhaust internal DMA-capable memory.
+    // it does not exhaust internal DMA-capable memory, with the same fallback
+    // needed by hardware variants where external allocation is unavailable.
     BaseType_t file_task = xTaskCreateWithCaps(
         usb_file_transfer_task, "usb_file", usb_blocking_worker_stack_size,
         nullptr, usb_worker_priority, nullptr,

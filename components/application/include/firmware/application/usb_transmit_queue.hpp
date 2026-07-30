@@ -14,6 +14,9 @@ namespace firmware::application {
 class UsbTransmitQueue {
 public:
     static constexpr std::size_t maximum_items = 30U;
+    // USB carries host file-data frames, including an 8192-byte payload. Do
+    // not reuse the smaller controller/UART limit here: doing so accepts the
+    // file request but silently rejects the resulting download response.
     static constexpr std::size_t maximum_frame_size =
         core::protocol::host_maximum_frame_size;
 

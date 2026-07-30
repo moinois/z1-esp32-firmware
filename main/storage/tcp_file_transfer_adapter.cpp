@@ -12,8 +12,10 @@
 #include <unistd.h>
 
 namespace firmware::target {
-TcpFileUploadAdapter::TcpFileUploadAdapter(
-    firmware::application::TcpClientSession& session) : session_(session) {}
+void TcpFileUploadAdapter::bind(
+    firmware::application::TcpClientSession* session) {
+    session_ = session;
+}
 
 void TcpFileUploadAdapter::prepare_cache_paths(
     const firmware::core::FileCachePaths& paths) {
@@ -73,13 +75,17 @@ bool TcpFileUploadAdapter::rename_file(std::string_view source,
 
 void TcpFileUploadAdapter::send(const firmware::application::HostIdentity&,
                                 firmware::core::Frame frame) {
-    static_cast<void>(session_.queue_frame(frame));
+    if (session_ != nullptr) {
+        static_cast<void>(session_->queue_frame(frame));
+    }
 }
 
 void TcpFileUploadAdapter::release_ownership() {}
 
-TcpFileDownloadAdapter::TcpFileDownloadAdapter(
-    firmware::application::TcpClientSession& session) : session_(session) {}
+void TcpFileDownloadAdapter::bind(
+    firmware::application::TcpClientSession* session) {
+    session_ = session;
+}
 
 void TcpFileDownloadAdapter::prepare_cache_paths(
     const firmware::core::FileCachePaths& paths) {
@@ -136,7 +142,9 @@ void TcpFileDownloadAdapter::close_file() {
 
 void TcpFileDownloadAdapter::send(const firmware::application::HostIdentity&,
                                   firmware::core::Frame frame) {
-    static_cast<void>(session_.queue_frame(frame));
+    if (session_ != nullptr) {
+        static_cast<void>(session_->queue_frame(frame));
+    }
 }
 
 void TcpFileDownloadAdapter::release_ownership() { close_file(); }

@@ -69,6 +69,9 @@ public:
     // Reports whether a selected file remains open for this operation.
     bool active() const;
 
+    // Repeats the last response, or times out, after transport reconnect.
+    void resume(std::uint64_t now_milliseconds, FileDownloadPort& port);
+
 private:
     enum class LastResponse {
         none,

@@ -17,6 +17,9 @@ from tools.provision_wifi import USB_PRODUCT_ID, USB_VENDOR_ID, _find_endpoints
 def test_native_usb_identity_and_bulk_endpoints(usb_device) -> None:
     assert usb_device.idVendor == USB_VENDOR_ID
     assert usb_device.idProduct == USB_PRODUCT_ID
+    assert usb_device.manufacturer == "Espressif"
+    assert usb_device.product == "MakeraZ1 (USB)"
+    assert usb_device.serial_number == "123456"
     output, input_endpoint = _find_endpoints(usb_device)
     assert output.wMaxPacketSize == 64
     assert input_endpoint.wMaxPacketSize == 64

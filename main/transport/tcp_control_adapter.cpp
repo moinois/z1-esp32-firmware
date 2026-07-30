@@ -51,11 +51,13 @@
 
 #include <arpa/inet.h>
 #include <algorithm>
+#include <array>
 #include <cerrno>
 #include <cstring>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <unistd.h>
 #include <atomic>
 #include <cstdint>
@@ -74,6 +76,11 @@ constexpr char log_tag[] = "TCP_CONTROL";
 constexpr int control_port = 2222;
 constexpr int listen_backlog = 4;
 constexpr int maximum_clients = 4;
+constexpr int keepalive_idle_seconds = 5;
+constexpr int keepalive_interval_seconds = 3;
+constexpr int keepalive_probe_count = 1;
+constexpr long receive_timeout_seconds = 10L;
+constexpr long send_timeout_seconds = 5L;
 // Local command dispatch composes filesystem, configuration, status, and WLAN
 // adapters on this task's stack. The previous 4096-byte allocation overflowed
 // on a physical `version` request after the complete target was composed.
@@ -81,6 +88,8 @@ constexpr std::uint32_t client_task_stack_bytes = 8192U;
 std::atomic_int active_clients{0};
 std::atomic_uint32_t next_generation{1U};
 firmware::application::Router tcp_router;
+std::mutex tcp_slot_mutex;
+std::array<bool, maximum_clients> occupied_tcp_slots{};
 RecordingRequestState tcp_recording_state;
 firmware::application::StationRuntime tcp_station_runtime;
 firmware::application::LiveConfiguration tcp_live_configuration;
@@ -367,19 +376,31 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
 // Owns one host transfer state machine and its replaceable target ports.
 class TcpFileTransferRuntime final {
 public:
-    TcpFileTransferRuntime(firmware::application::TcpClientSession& session,
-                            firmware::application::Router& router)
-        : session_(session), router_(router), upload_port_(session),
-          download_port_(session) {}
+    explicit TcpFileTransferRuntime(firmware::application::Router& router)
+        : router_(router) {}
+
+    // Rebinds the logical slot to its new physical connection and repeats the
+    // outstanding protocol boundary. The state machine and POSIX handles are
+    // deliberately slot-owned so a brief socket loss does not destroy them.
+    void bind(firmware::application::TcpClientSession& session,
+              std::uint64_t now) {
+        session_ = &session;
+        upload_port_.bind(session_);
+        download_port_.bind(session_);
+        if (upload_.active()) upload_.resume(now, upload_port_);
+        if (download_.active()) download_.resume(now, download_port_);
+        release_if_finished();
+    }
 
     // Starts or rejects a new upload/download command for this connection.
     void handle(const firmware::core::Frame& frame, std::uint64_t now) {
+        if (session_ == nullptr) return;
         if (frame.type == firmware::core::protocol::file_command) {
             const auto start = firmware::core::parse_file_transfer_start(frame.payload);
             if (!start.has_value()) return;
             if (upload_.active() || download_.active() ||
-                !router_.ownership().claim_file(session_.identity())) {
-                session_.queue_frame({firmware::core::protocol::file_cancel,
+                !router_.ownership().claim_file(session_->identity())) {
+                session_->queue_frame({firmware::core::protocol::file_cancel,
                                       firmware::core::ByteVector(
                                           firmware::application::file_owner_limit_message,
                                           firmware::application::file_owner_limit_message +
@@ -389,9 +410,9 @@ public:
             }
             bool started = false;
             if (start->direction == firmware::core::FileTransferDirection::upload) {
-                started = upload_.start(session_.identity(), start->path, now, upload_port_);
+                started = upload_.start(session_->identity(), start->path, now, upload_port_);
             } else {
-                started = download_.start(session_.identity(), start->path, now, download_port_);
+                started = download_.start(session_->identity(), start->path, now, download_port_);
             }
             if (!started) router_.ownership().release_file();
             return;
@@ -408,31 +429,41 @@ public:
         release_if_finished();
     }
 
-    // Releases ownership when the TCP connection is closed.
+    // Detaches only the physical connection. OWN-008 requires the logical
+    // transfer, its ownership, and its open files to survive slot reuse until
+    // normal completion, cancellation, protocol abort, or inactivity timeout.
     void disconnect() {
-        if (upload_.active()) upload_port_.close_files();
-        if (download_.active()) download_port_.close_file();
-        if (upload_.active() || download_.active() ||
-            router_.ownership().is_file_owner(session_.identity())) {
-            router_.ownership().release_file();
-        }
+        upload_port_.bind(nullptr);
+        download_port_.bind(nullptr);
+        session_ = nullptr;
     }
 
 private:
     void release_if_finished() {
         if (!upload_.active() && !download_.active() &&
-            router_.ownership().is_file_owner(session_.identity())) {
+            session_ != nullptr &&
+            router_.ownership().is_file_owner(session_->identity())) {
             router_.ownership().release_file();
         }
     }
 
-    firmware::application::TcpClientSession& session_;
+    firmware::application::TcpClientSession* session_ = nullptr;
     firmware::application::Router& router_;
     TcpFileUploadAdapter upload_port_;
     TcpFileDownloadAdapter download_port_;
     firmware::application::FileUpload upload_;
     firmware::application::FileDownload download_;
 };
+
+TcpFileTransferRuntime& transfer_runtime_for_slot(std::uint8_t slot) {
+    static std::array<std::unique_ptr<TcpFileTransferRuntime>, maximum_clients>
+        runtimes;
+    auto& runtime = runtimes[slot];
+    if (runtime == nullptr) {
+        runtime = std::make_unique<TcpFileTransferRuntime>(tcp_router);
+    }
+    return *runtime;
+}
 
 struct TcpClientContext {
     int socket;
@@ -505,14 +536,16 @@ void configure_socket(int socket) {
     const int enabled = 1;
     setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &enabled, sizeof(enabled));
     setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE, &enabled, sizeof(enabled));
-    const int idle_seconds = 5;
-    const int interval_seconds = 3;
-    const int probe_count = 1;
-    setsockopt(socket, IPPROTO_TCP, TCP_KEEPIDLE, &idle_seconds, sizeof(idle_seconds));
-    setsockopt(socket, IPPROTO_TCP, TCP_KEEPINTVL, &interval_seconds, sizeof(interval_seconds));
-    setsockopt(socket, IPPROTO_TCP, TCP_KEEPCNT, &probe_count, sizeof(probe_count));
-    timeval receive_timeout{10, 0};
-    timeval send_timeout{5, 0};
+    setsockopt(socket, IPPROTO_TCP, TCP_KEEPIDLE, &keepalive_idle_seconds,
+               sizeof(keepalive_idle_seconds));
+    setsockopt(socket, IPPROTO_TCP, TCP_KEEPINTVL, &keepalive_interval_seconds,
+               sizeof(keepalive_interval_seconds));
+    setsockopt(socket, IPPROTO_TCP, TCP_KEEPCNT, &keepalive_probe_count,
+               sizeof(keepalive_probe_count));
+    // Keep the normative 10-second socket option. The select-driven service
+    // pulse below advances application timers without weakening TCP-002.
+    timeval receive_timeout{receive_timeout_seconds, 0};
+    timeval send_timeout{send_timeout_seconds, 0};
     setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, &receive_timeout, sizeof(receive_timeout));
     setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout));
 }
@@ -528,7 +561,10 @@ void tcp_client_task(void* parameter) {
         std::lock_guard<std::mutex> lock(tcp_session_registry_mutex);
         tcp_sessions.push_back(&session);
     }
-    TcpFileTransferRuntime transfer_runtime(session, tcp_router);
+    TcpFileTransferRuntime& transfer_runtime =
+        transfer_runtime_for_slot(context->identity.slot);
+    transfer_runtime.bind(
+        session, static_cast<std::uint64_t>(esp_timer_get_time() / 1000));
     firmware::application::LocalCommandQueue local_commands;
     TaskHandle_t m942_worker = nullptr;
     firmware::application::TcpFrameDispatcher dispatcher(
@@ -547,9 +583,39 @@ void tcp_client_task(void* parameter) {
             {}});
     configure_socket(client);
     std::uint8_t input[2048];
-    for (;;) {
+    bool transport_healthy = drain_tcp_transmit_queue(client, session);
+    while (transport_healthy) {
+        fd_set readable;
+        FD_ZERO(&readable);
+        FD_SET(client, &readable);
+        timeval poll_interval{0, 50'000};
+        const int readiness = select(client + 1, &readable, nullptr, nullptr,
+                                     &poll_interval);
+        if (readiness < 0) {
+            if (errno == EINTR) continue;
+            break;
+        }
+        if (readiness == 0) {
+            // File-transfer retry and inactivity timers must advance while no
+            // bytes arrive. Blocking in the specified 10-second recv timeout
+            // previously made the 5.010-second upload retry impossible.
+            transfer_runtime.poll(
+                static_cast<std::uint64_t>(esp_timer_get_time() / 1000));
+            transport_healthy = drain_tcp_transmit_queue(client, session);
+            continue;
+        }
         const int count = recv(client, input, sizeof(input), 0);
         if (count <= 0) {
+            if (count < 0 &&
+                (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
+                // TCP-005 treats receive timeout as temporary. Polling here is
+                // what lets HFT-022 emit its 5.010-second retry while no Wi-Fi
+                // packets arrive, instead of destroying the transfer state.
+                transfer_runtime.poll(static_cast<std::uint64_t>(
+                    esp_timer_get_time() / 1000));
+                transport_healthy = drain_tcp_transmit_queue(client, session);
+                continue;
+            }
             if (count < 0) {
                 ESP_LOGD(log_tag,
                          "client recv ended fd=%d generation=%lu errno=%d active=%d",
@@ -596,6 +662,10 @@ void tcp_client_task(void* parameter) {
                                        &session), tcp_sessions.end());
     }
     close(client);
+    {
+        std::lock_guard<std::mutex> lock(tcp_slot_mutex);
+        occupied_tcp_slots[context->identity.slot] = false;
+    }
     const int previous = active_clients.fetch_sub(1, std::memory_order_acq_rel);
     ESP_LOGD(log_tag, "client stop fd=%d generation=%lu active=%d", client,
              static_cast<unsigned long>(context->identity.generation), previous - 1);
@@ -632,20 +702,30 @@ void tcp_accept_task(void*) {
             vTaskDelay(pdMS_TO_TICKS(1000U));
             continue;
         }
-        int expected = active_clients.load(std::memory_order_acquire);
-        while (expected < maximum_clients &&
-               !active_clients.compare_exchange_weak(
-                   expected, expected + 1, std::memory_order_acq_rel)) {}
-        if (expected >= maximum_clients) {
-            ESP_LOGW(log_tag, "client rejected fd=%d active=%d", client, expected);
+        std::optional<std::uint8_t> slot;
+        {
+            std::lock_guard<std::mutex> lock(tcp_slot_mutex);
+            for (std::uint8_t candidate = 0U; candidate < maximum_clients;
+                 ++candidate) {
+                if (!occupied_tcp_slots[candidate]) {
+                    occupied_tcp_slots[candidate] = true;
+                    slot = candidate;
+                    break;
+                }
+            }
+        }
+        if (!slot.has_value()) {
+            ESP_LOGW(log_tag, "client rejected fd=%d active=%d", client,
+                     active_clients.load(std::memory_order_acquire));
             send_rejection(client);
             close(client);
             continue;
         }
+        active_clients.fetch_add(1, std::memory_order_acq_rel);
         auto* context = new TcpClientContext{
             client,
             {firmware::application::HostTransport::tcp,
-             static_cast<std::uint8_t>(expected),
+             *slot,
              next_generation.fetch_add(1U, std::memory_order_relaxed)},
             true};
         TaskHandle_t task = nullptr;
@@ -666,6 +746,8 @@ void tcp_accept_task(void*) {
             delete context;
             close(client);
             active_clients.fetch_sub(1, std::memory_order_release);
+            std::lock_guard<std::mutex> lock(tcp_slot_mutex);
+            occupied_tcp_slots[*slot] = false;
         }
     }
 }

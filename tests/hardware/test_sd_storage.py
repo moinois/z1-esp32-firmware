@@ -4,17 +4,29 @@ from __future__ import annotations
 
 import hashlib
 import os
+import socket
 import time
 import uuid
 
 import pytest
 
-from tests.hardware.hil_protocol import GENERAL_COMMAND
+from tests.hardware.hil_protocol import (
+    GENERAL_COMMAND,
+    TcpProtocolClient,
+    receive_tcp_frames,
+)
 from tests.hardware.hil_file_transfer import (
+    FILE_COMMAND,
+    FILE_COMPLETE,
+    FILE_CANCEL,
+    FILE_DATA,
+    FILE_GEOMETRY,
+    FILE_MD5,
     FileTransferError,
     download_file,
     upload_file,
 )
+from tools.wifi_provision_protocol import encode_frame
 
 
 def _payload(frames) -> bytes:
@@ -32,6 +44,29 @@ def _remove(client, path: str) -> None:
         # Preserve the original assertion or transport failure if the target
         # disconnected before cleanup could run.
         pass
+
+
+def _tcp_transfer_exchange(
+    connection: socket.socket, frame_type: int, payload: bytes
+):
+    """Sends one transfer frame on an intentionally persistent TCP socket."""
+
+    connection.sendall(encode_frame(frame_type, payload))
+    # Wait beyond HFT-022's 5.010-second retry boundary. A slow or briefly
+    # unavailable Wi-Fi link must not be declared failed before the firmware
+    # has had a chance to request continuation.
+    return receive_tcp_frames(connection, 7.0)
+
+
+def _required_frame(frames, frame_type: int):
+    """Returns one required response and exposes target errors in assertions."""
+
+    errors = [frame.payload for frame in frames if frame.frame_type == FILE_CANCEL]
+    assert not errors, errors[0].decode("utf-8", errors="replace")
+    return next(
+        (frame for frame in frames if frame.frame_type == frame_type),
+        None,
+    )
 
 
 @pytest.mark.hardware
@@ -180,6 +215,110 @@ def test_file_roundtrip_md5_rename_and_delete(usb_client, sd_fixture) -> None:
 
     with pytest.raises(FileTransferError, match="failed to open file"):
         download_file(usb_client, destination)
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.sd
+@pytest.mark.tcp
+@pytest.mark.requirement("OWN-008")
+@pytest.mark.requirement("TCP-005")
+@pytest.mark.requirement("HFTU-005")
+def test_large_tcp_upload_resumes_after_connection_loss(
+    tcp_host: str, sd_fixture
+) -> None:
+    """Drops TCP mid-upload and requires the reused slot to request continuation."""
+
+    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
+    path = f"/N{uuid.uuid4().hex[:5].upper()}.BIN"
+    block_size = 4096
+    # Keep enough headroom for the mock's bounded diagnostic log while still
+    # exercising multiple maximum-sized protocol blocks.
+    content = bytes((index * 29 + 7) & 0xFF for index in range(64 * 1024))
+    blocks = [
+        content[index : index + block_size]
+        for index in range(0, len(content), block_size)
+    ]
+    connection: socket.socket | None = None
+    try:
+        connection = socket.create_connection((tcp_host, 2222), timeout=4.0)
+        # A successful upload start is intentionally silent; MD5 is the first
+        # host transfer packet, so submit both before awaiting geometry.
+        connection.sendall(
+            encode_frame(FILE_COMMAND, f"upload {path}".encode("ascii"))
+            + encode_frame(
+                FILE_MD5, hashlib.md5(content).hexdigest().encode("ascii")
+            )
+        )
+        assert _required_frame(
+            receive_tcp_frames(connection, 4.0),
+            FILE_GEOMETRY,
+        )
+        request = _required_frame(
+            _tcp_transfer_exchange(
+                connection, FILE_GEOMETRY, len(blocks).to_bytes(4, "big")
+            ),
+            FILE_DATA,
+        )
+        assert request is not None and int.from_bytes(request.payload, "big") == 1
+
+        interruption_sequence = len(blocks) // 2
+        for sequence in range(1, interruption_sequence + 1):
+            responses = _tcp_transfer_exchange(
+                connection,
+                FILE_DATA,
+                sequence.to_bytes(4, "big") + blocks[sequence - 1],
+            )
+            request = _required_frame(responses, FILE_DATA)
+            assert request is not None, [
+                (frame.frame_type, frame.payload) for frame in responses
+            ]
+
+        expected_sequence = interruption_sequence + 1
+        assert int.from_bytes(request.payload, "big") == expected_sequence
+        connection.shutdown(socket.SHUT_RDWR)
+        connection.close()
+        connection = None
+        time.sleep(0.5)
+
+        connection = socket.create_connection((tcp_host, 2222), timeout=4.0)
+        resumed = _required_frame(
+            receive_tcp_frames(connection, 4.0), FILE_DATA
+        )
+        assert resumed is not None
+        assert int.from_bytes(resumed.payload, "big") == expected_sequence
+
+        responses = []
+        for sequence in range(expected_sequence, len(blocks) + 1):
+            responses = _tcp_transfer_exchange(
+                connection,
+                FILE_DATA,
+                sequence.to_bytes(4, "big") + blocks[sequence - 1],
+            )
+            if sequence < len(blocks):
+                request = _required_frame(responses, FILE_DATA)
+                assert request is not None, [
+                    (frame.frame_type, frame.payload) for frame in responses
+                ]
+                assert int.from_bytes(request.payload, "big") == sequence + 1
+        assert _required_frame(responses, FILE_COMPLETE) is not None
+
+        connection.shutdown(socket.SHUT_RDWR)
+        connection.close()
+        connection = None
+        digest_frames = TcpProtocolClient(tcp_host).exchange(
+            GENERAL_COMMAND, f"md5sum {path}".encode("ascii"), 5.0
+        )
+        assert hashlib.md5(content).hexdigest().encode("ascii") in _payload(
+            digest_frames
+        ).lower()
+    finally:
+        if connection is not None:
+            try:
+                connection.close()
+            except OSError:
+                pass
+        _remove(TcpProtocolClient(tcp_host), path)
 
 
 @pytest.mark.hardware
