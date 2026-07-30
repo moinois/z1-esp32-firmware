@@ -76,6 +76,7 @@ idf_component_register(
         nvs_flash
         spiffs
         esp_http_server
+        json
         fatfs
         sdmmc
         esp_driver_sdmmc

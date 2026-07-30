@@ -36,6 +36,9 @@
 #include "firmware/application/direct_web_volume_update.hpp"
 #include "wlan_event_adapter.hpp"
 #include "wifi_diagnostic_log.hpp"
+#include "configuration_file_store.hpp"
+
+#include "cJSON.h"
 
 #include <lwip/inet.h>
 #include <lwip/sockets.h>
@@ -54,6 +57,9 @@ namespace firmware::target {
 namespace {
 
 constexpr char tag[] = "HTTP";
+constexpr std::size_t maximum_configuration_request_size = 1024U;
+constexpr std::size_t maximum_configuration_key_size = 128U;
+constexpr std::size_t maximum_configuration_value_size = 512U;
 firmware::application::LiveControlPolicy live_control_policy;
 
 #if CONFIG_HTTPD_WS_SUPPORT
@@ -413,12 +419,16 @@ public:
     void send_error(std::uint16_t status, std::string_view content_type,
                     std::string_view body) override {
         httpd_resp_set_status(request_, status_text(status));
-        httpd_resp_set_type(request_, std::string(content_type).c_str());
+        content_type_ = content_type;
+        httpd_resp_set_type(request_, content_type_.c_str());
         httpd_resp_send(request_, body.data(), body.size());
     }
 
     void begin_chunked(std::string_view content_type) override {
-        httpd_resp_set_type(request_, std::string(content_type).c_str());
+        // ESP-IDF retains the pointer until the response is sent, so the text
+        // must outlive this call rather than coming from a temporary string.
+        content_type_ = content_type;
+        httpd_resp_set_type(request_, content_type_.c_str());
     }
 
     void send_chunk(firmware::core::BytesView chunk) override {
@@ -432,6 +442,7 @@ public:
 
 private:
     httpd_req_t* request_;
+    std::string content_type_;
 };
 
 // Serves a wildcard static-file request using the tested application policy.
@@ -501,6 +512,91 @@ esp_err_t wifi_diagnostics_handler(httpd_req_t* request) {
         firmware::core::format_wifi_statistics_json(statistics);
     httpd_resp_set_type(request, "application/json");
     return httpd_resp_send(request, payload.data(), payload.size());
+}
+
+// Reports whether a configuration field is safe to serialize as one line.
+bool valid_configuration_field(std::string_view value, std::size_t maximum) {
+    return !value.empty() && value.size() <= maximum &&
+           value.find('\r') == std::string_view::npos &&
+           value.find('\n') == std::string_view::npos;
+}
+
+// Sends the current MAINBOARD namespace as a JSON array of key/value records.
+esp_err_t configuration_get_handler(httpd_req_t* request) {
+    ConfigurationFileStore store;
+    cJSON* root = cJSON_CreateObject();
+    cJSON* settings = cJSON_AddArrayToObject(root, "settings");
+    if (root == nullptr || settings == nullptr) {
+        cJSON_Delete(root);
+        httpd_resp_set_status(request, "500 Internal Server Error");
+        return httpd_resp_sendstr(request, "Configuration allocation failed");
+    }
+    for (const auto& entry : store.get_all("")) {
+        cJSON* item = cJSON_CreateObject();
+        if (item == nullptr ||
+            cJSON_AddStringToObject(item, "key", entry.key.c_str()) == nullptr ||
+            cJSON_AddStringToObject(item, "value", entry.value.c_str()) == nullptr) {
+            cJSON_Delete(item);
+            cJSON_Delete(root);
+            httpd_resp_set_status(request, "500 Internal Server Error");
+            return httpd_resp_sendstr(request, "Configuration allocation failed");
+        }
+        cJSON_AddItemToArray(settings, item);
+    }
+    char* rendered = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (rendered == nullptr) {
+        httpd_resp_set_status(request, "500 Internal Server Error");
+        return httpd_resp_sendstr(request, "Configuration allocation failed");
+    }
+    httpd_resp_set_type(request, "application/json");
+    const esp_err_t result = httpd_resp_sendstr(request, rendered);
+    cJSON_free(rendered);
+    return result;
+}
+
+// Updates one MAINBOARD setting from a bounded JSON key/value request.
+esp_err_t configuration_post_handler(httpd_req_t* request) {
+    if (request->content_len <= 0 ||
+        request->content_len >
+            static_cast<int>(maximum_configuration_request_size)) {
+        httpd_resp_set_status(request, "413 Payload Too Large");
+        return httpd_resp_sendstr(request, "Configuration request is too large");
+    }
+    std::vector<char> body(static_cast<std::size_t>(request->content_len));
+    std::size_t received = 0U;
+    while (received < body.size()) {
+        const int count = httpd_req_recv(
+            request, body.data() + received, body.size() - received);
+        if (count <= 0) {
+            httpd_resp_set_status(request, "400 Bad Request");
+            return httpd_resp_sendstr(request, "Incomplete configuration request");
+        }
+        received += static_cast<std::size_t>(count);
+    }
+    cJSON* root = cJSON_ParseWithLength(body.data(), body.size());
+    cJSON* key = root == nullptr ? nullptr : cJSON_GetObjectItemCaseSensitive(root, "key");
+    cJSON* value = root == nullptr ? nullptr : cJSON_GetObjectItemCaseSensitive(root, "value");
+    const bool valid = cJSON_IsString(key) && cJSON_IsString(value) &&
+                       key->valuestring != nullptr && value->valuestring != nullptr &&
+                       valid_configuration_field(key->valuestring,
+                                                 maximum_configuration_key_size) &&
+                       valid_configuration_field(value->valuestring,
+                                                 maximum_configuration_value_size);
+    if (!valid) {
+        cJSON_Delete(root);
+        httpd_resp_set_status(request, "400 Bad Request");
+        return httpd_resp_sendstr(request, "Invalid configuration key or value");
+    }
+    const std::string setting_key(key->valuestring);
+    const std::string setting_value(value->valuestring);
+    cJSON_Delete(root);
+    if (!ConfigurationFileStore{}.set("", setting_key, setting_value)) {
+        httpd_resp_set_status(request, "500 Internal Server Error");
+        return httpd_resp_sendstr(request, "Configuration update failed");
+    }
+    httpd_resp_set_type(request, "application/json");
+    return httpd_resp_sendstr(request, "{\"ok\":true}");
 }
 
 // Applies a bounded camera-resolution JSON request through the portable policy.
@@ -882,6 +978,18 @@ void register_main_handlers(httpd_handle_t handle) {
         .handler = wifi_diagnostics_handler,
         .user_ctx = nullptr,
     };
+    static const httpd_uri_t configuration_get_uri{
+        .uri = "/api/config",
+        .method = HTTP_GET,
+        .handler = configuration_get_handler,
+        .user_ctx = nullptr,
+    };
+    static const httpd_uri_t configuration_post_uri{
+        .uri = "/api/config",
+        .method = HTTP_POST,
+        .handler = configuration_post_handler,
+        .user_ctx = nullptr,
+    };
     static const httpd_uri_t static_file_uri{
         .uri = "/*",
         .method = HTTP_GET,
@@ -902,6 +1010,8 @@ void register_main_handlers(httpd_handle_t handle) {
     };
     httpd_register_uri_handler(handle, &firmware_info_uri);
     httpd_register_uri_handler(handle, &wifi_diagnostics_uri);
+    httpd_register_uri_handler(handle, &configuration_get_uri);
+    httpd_register_uri_handler(handle, &configuration_post_uri);
     httpd_register_uri_handler(handle, &camera_resolution_uri);
     httpd_register_uri_handler(handle, &static_file_uri);
     httpd_register_uri_handler(handle, &firmware_update_uri);

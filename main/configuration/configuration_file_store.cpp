@@ -85,6 +85,10 @@ bool ConfigurationFileStore::set(std::string_view tag, std::string_view key,
     configuration.set(key, value);
     document.uppercase_keys();
     if (!write_file(temporary_path, document.serialize())) return false;
+    // CFG-031 requires an unlink attempt before rename. FAT does not replace
+    // an existing destination atomically, so omitting this best-effort step
+    // makes every update of an existing config.txt fail on the target.
+    static_cast<void>(std::remove(active_path.c_str()));
     if (std::rename(temporary_path.c_str(), active_path.c_str()) != 0) {
         std::remove(temporary_path.c_str());
         return false;

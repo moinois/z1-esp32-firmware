@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Makera Z1 configuration</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">MAKERA Z1</p>
+      <h1>Mainboard configuration</h1>
+      <p id="device-status" class="status">Connecting…</p>
+    </header>
+    <section aria-labelledby="settings-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">CONFIG.TXT</p>
+          <h2 id="settings-title">Settings</h2>
+        </div>
+        <button id="add-setting" type="button" class="secondary">Add setting</button>
+      </div>
+      <form id="settings-form">
+        <div id="settings" aria-live="polite"></div>
+        <div class="actions">
+          <button id="save" type="submit">Save changes</button>
+          <span id="save-status" role="status"></span>
+        </div>
+      </form>
+    </section>
+    <section class="diagnostics" aria-labelledby="wifi-title">
+      <p class="eyebrow">NETWORK</p>
+      <h2 id="wifi-title">Wi-Fi diagnostics</h2>
+      <dl id="wifi"></dl>
+    </section>
+  </main>
+  <template id="setting-template">
+    <div class="setting-row">
+      <label>Key<input class="key" autocomplete="off" maxlength="128" required></label>
+      <label>Value<input class="value" autocomplete="off" maxlength="512" required></label>
+      <button class="remove" type="button" aria-label="Remove row">Remove</button>
+    </div>
+  </template>
+  <script src="/app.js" defer></script>
+</body>
+</html>

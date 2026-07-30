@@ -11,6 +11,7 @@ enum class HttpRoute {
     camera_resolution,
     firmware_info,
     wifi_diagnostics,
+    configuration,
     application_update,
     web_volume_update,
     static_file,

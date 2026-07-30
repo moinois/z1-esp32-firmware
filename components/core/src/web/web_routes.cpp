@@ -9,6 +9,7 @@ namespace {
 constexpr std::string_view camera_resolution_path = "/api/camera/resolution";
 constexpr std::string_view firmware_info_path = "/api/firmware/info";
 constexpr std::string_view wifi_diagnostics_path = "/api/wifi/diagnostics";
+constexpr std::string_view configuration_path = "/api/config";
 constexpr std::string_view application_update_path = "/update";
 constexpr std::string_view web_volume_update_path = "/updateffs";
 constexpr std::string_view video_websocket_path = "/ws_video";
@@ -20,6 +21,9 @@ HttpRoute select_main_http_route(std::string_view method,
                                  std::string_view complete_uri) {
     const std::string_view path = http_uri_path(complete_uri);
     if (method == "POST") {
+        if (path == configuration_path) {
+            return HttpRoute::configuration;
+        }
         if (path == camera_resolution_path) {
             return HttpRoute::camera_resolution;
         }
@@ -37,6 +41,9 @@ HttpRoute select_main_http_route(std::string_view method,
         }
         if (path == wifi_diagnostics_path) {
             return HttpRoute::wifi_diagnostics;
+        }
+        if (path == configuration_path) {
+            return HttpRoute::configuration;
         }
         return HttpRoute::static_file;
     }

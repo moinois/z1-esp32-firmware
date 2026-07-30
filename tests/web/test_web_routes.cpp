@@ -14,6 +14,10 @@ TEST_CASE(web_003_main_routes_match_case_sensitive_paths_and_methods) {
                HttpRoute::firmware_info);
     REQUIRE_EQ(select_main_http_route("GET", "/api/wifi/diagnostics?fresh=1"),
                HttpRoute::wifi_diagnostics);
+    REQUIRE_EQ(select_main_http_route("GET", "/api/config"),
+               HttpRoute::configuration);
+    REQUIRE_EQ(select_main_http_route("POST", "/api/config?source=ui"),
+               HttpRoute::configuration);
     REQUIRE_EQ(select_main_http_route("POST", "/update"), HttpRoute::application_update);
     REQUIRE_EQ(select_main_http_route("POST", "/updateffs"), HttpRoute::web_volume_update);
     REQUIRE_EQ(select_main_http_route("GET", "/api/camera/resolution"),

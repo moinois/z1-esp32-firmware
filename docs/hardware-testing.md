@@ -389,6 +389,18 @@ reported as an NVS failure rather than the required missing value; target
 readback now returns `sn = null`. Forced NVS driver errors still require an
 instrumented persistence adapter and are not claimed by this physical run.
 
+The generated 1 MiB `build/spiffs.bin` was installed through `/updateffs` on
+2026-07-31 and survived the required reboot. The target then served the UI
+index, CSS, and JavaScript with their exact MIME types, enumerated a fixture
+MAINBOARD setting through `GET /api/config`, persisted its update through
+`POST /api/config`, and rejected a newline-bearing value. This run found and
+corrected both a dangling `Content-Type` pointer in chunked static responses
+and the missing CFG-031 unlink before FAT rename. Eight repeated waves of HTTP,
+USB, and TCP requests ran together, and both periodic UDP discovery and exact
+four-client capacity transitions passed. The in-app browser runtime reported
+no available browser backend, so visual/click automation remains pending even
+though the installed browser resources and their live APIs passed HIL.
+
 The same session installed the SD-only mock build through OTA and passed all
 eight mutating storage checks over native USB, including multi-block file
 upload/download, MD5, rename/delete, path confinement, exact `gcodes` token

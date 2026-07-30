@@ -463,9 +463,10 @@ not a simulation of sensor pixels or timing.
 The controller implementation selects a shared byte-channel interface in the
 same factory. Its deterministic mock consumes and emits production-framed
 controller messages, allowing the real scheduler, decoder, snapshot store, and
-host routing to run unchanged. It models only the version, status, and
-diagnostic exchange; transfer protocols and physical UART characteristics are
-outside its stated evidence.
+host routing to run unchanged. It models version, status, diagnostics, and all
+three controller transfer families. Seven-byte read fragmentation exercises
+the production decoder, but electrical and physical UART timing remain outside
+its stated evidence.
 
 ### Consequences
 
@@ -511,3 +512,43 @@ rotating log remains independent.
 - A 512 KiB mock volume retains about 128 KiB for FAT metadata and test files.
 - Mirror failures and saturation cannot suppress UART output.
 - The PSRAM-backed mock file remains volatile and cannot survive a full reset.
+
+---
+
+<a id="adr-015"></a>
+## ADR-015: Serve a LAN configuration UI from a separately updatable volume
+
+- **Status:** Accepted
+- **Date:** 2026-07-31
+
+### Context
+
+The product requires browser-based configuration, while the normative web
+volume already supports independent SPIFFS replacement through `/updateffs`.
+Configuration entries are dynamic and namespaced in `/config.txt`; duplicating
+a fixed field list in JavaScript would drift as firmware settings evolve.
+
+### Decision
+
+Build `webui/` into the `spiffs` partition on every ESP-IDF build and retain
+`build/spiffs.bin` as a separately installable artifact. The UI retrieves the
+current MAINBOARD namespace through `GET /api/config` and updates one setting
+per `POST /api/config` JSON request. Keys and values are bounded and must not
+contain line endings. Target persistence continues through the existing
+`ConfigurationFileStore`, including CFG-031 unlink-before-rename behavior.
+
+The first LAN release adds no separate HTTP authentication. This matches the
+existing unauthenticated update, diagnostics, camera, TCP, USB, and BLUFI
+management model; access to the machine network is the trust boundary. Adding
+authentication later is a protocol and provisioning decision, not a UI-only
+change. The page exposes firmware identity and privacy-bounded Wi-Fi health but
+never returns stored Wi-Fi passwords.
+
+### Consequences
+
+- New configuration keys appear without rebuilding the UI.
+- Firmware and UI images can be updated independently.
+- Browser POSTs cannot inject extra configuration lines.
+- Anyone with network access to the device can change configuration; deployments
+  requiring a stronger boundary must isolate the machine network until an
+  authenticated protocol is specified.
