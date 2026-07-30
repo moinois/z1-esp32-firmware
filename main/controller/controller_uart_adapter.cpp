@@ -49,7 +49,7 @@ bool ControllerUartAdapter::initialize() {
                                default_interrupt_flags) == ESP_OK;
 }
 
-int ControllerUartAdapter::read(std::uint8_t* destination, std::size_t capacity) const {
+int ControllerUartAdapter::read(std::uint8_t* destination, std::size_t capacity) {
     const std::size_t read_size =
         std::min(capacity, application::controller_uart.maximum_read_size);
     return uart_read_bytes(uart_port,
@@ -58,7 +58,7 @@ int ControllerUartAdapter::read(std::uint8_t* destination, std::size_t capacity)
                            pdMS_TO_TICKS(application::controller_uart.read_wait_milliseconds));
 }
 
-int ControllerUartAdapter::write(core::BytesView frame) const {
+int ControllerUartAdapter::write(core::BytesView frame) {
     return uart_write_bytes(uart_port, frame.data(), frame.size());
 }
 

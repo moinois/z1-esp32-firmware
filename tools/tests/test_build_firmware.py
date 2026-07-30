@@ -86,6 +86,7 @@ class BuildFirmwareTests(unittest.TestCase):
             discover_mock_adapters(root / "main" / "Kconfig.projbuild"),
             {
                 "camera": "CONFIG_Z1_MOCK_CAMERA_HARDWARE",
+                "controller": "CONFIG_Z1_MOCK_CONTROLLER_HARDWARE",
                 "sd": "CONFIG_Z1_MOCK_SD_HARDWARE",
             },
         )

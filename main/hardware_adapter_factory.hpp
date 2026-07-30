@@ -5,6 +5,7 @@ namespace firmware::target {
 
 class SdStorageAdapter;
 class CameraHardwareAdapter;
+class ControllerChannelAdapter;
 
 class HardwareAdapterFactory {
 public:
@@ -13,6 +14,9 @@ public:
 
     // Returns the compile-time-selected camera adapter singleton.
     static CameraHardwareAdapter& camera();
+
+    // Returns the compile-time-selected controller byte channel singleton.
+    static ControllerChannelAdapter& controller_channel();
 };
 
 }  // namespace firmware::target

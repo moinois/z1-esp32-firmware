@@ -5,16 +5,16 @@
 
 namespace firmware::target {
 
-class ControllerUartAdapter;
+class ControllerChannelAdapter;
 
 class NvsSerialNumberAdapter final : public NvsSerialNumberPort,
                                      private FrameSink {
 public:
-    explicit NvsSerialNumberAdapter(ControllerUartAdapter* uart = nullptr);
+    explicit NvsSerialNumberAdapter(ControllerChannelAdapter* channel = nullptr);
 
 private:
     bool send_frame(firmware::core::Frame frame) override;
-    ControllerUartAdapter* uart_;
+    ControllerChannelAdapter* channel_;
 };
 
 }  // namespace firmware::target

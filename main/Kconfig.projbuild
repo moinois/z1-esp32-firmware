@@ -19,6 +19,12 @@ config Z1_MOCK_CAMERA_HARDWARE
     help
         Provide deterministic JPEG frames without probing a physical camera.
 
+config Z1_MOCK_CONTROLLER_HARDWARE
+    bool "Use a deterministic mock controller UART"
+    default n
+    help
+        Simulate framed controller status, diagnostic, and version traffic.
+
 config Z1_MOCK_SD_CAPACITY_KIB
     int "Mock SD capacity in KiB"
     depends on Z1_MOCK_ALL_HARDWARE || Z1_MOCK_SD_HARDWARE

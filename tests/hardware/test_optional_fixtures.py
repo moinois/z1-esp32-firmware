@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import os
 import socket
+import time
 
 import pytest
+
+from tests.hardware.hil_protocol import GENERAL_COMMAND, SINGLE_COMMAND, TcpProtocolClient
 
 
 @pytest.mark.hardware
@@ -18,6 +21,40 @@ def test_controller_fixture_declares_connection() -> None:
     if os.getenv("Z1_HIL_CONTROLLER") != "1":
         pytest.skip("external controller fixture not declared with Z1_HIL_CONTROLLER=1")
     pytest.skip("controller fixture driver is not implemented yet")
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.controller
+def test_mock_controller_populates_runtime_snapshots(tcp_host: str) -> None:
+    """Exercises controller routing without claiming physical UART conformance."""
+    if os.getenv("Z1_HIL_MOCK_CONTROLLER") != "1":
+        pytest.skip("mock controller not declared with Z1_HIL_MOCK_CONTROLLER=1")
+
+    client = TcpProtocolClient(tcp_host)
+
+    def wait_for_payload(frame_type: int, command: bytes, response_type: int) -> bytes:
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline:
+            frames = client.exchange(frame_type, command, timeout_seconds=1.0)
+            for frame in frames:
+                if frame.frame_type == response_type and frame.payload:
+                    return frame.payload
+            time.sleep(0.1)
+        pytest.fail(f"mock controller did not answer {command!r} with type 0x{response_type:02x}")
+
+    status = wait_for_payload(SINGLE_COMMAND, b"?", 0x81)
+    assert status.startswith(b"<Idle|")
+    assert b"MPos:0.0000,0.0000,0.0000" in status
+
+    diagnostic = wait_for_payload(GENERAL_COMMAND, b"diagnose", 0x82)
+    assert b"MOCK:1" in diagnostic
+    assert b"UART:OK" in diagnostic
+    assert b"CTRL:SIMULATED" in diagnostic
+    assert b"RSSI:" in diagnostic
+
+    version = wait_for_payload(GENERAL_COMMAND, b"version", 0x83)
+    assert version == b"version = mock-controller-1.0.1.11\n"
 
 
 @pytest.mark.hardware

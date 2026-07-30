@@ -4,7 +4,7 @@
 #include "esp_log.h"
 
 #include "runtime_counter_task.hpp"
-#include "controller_uart_adapter.hpp"
+#include "controller_channel_adapter.hpp"
 
 #include "firmware/core/frame.hpp"
 
@@ -13,8 +13,8 @@
 
 namespace firmware::target {
 
-EspWallClockAdapter::EspWallClockAdapter(ControllerUartAdapter* uart)
-    : uart_(uart) {}
+EspWallClockAdapter::EspWallClockAdapter(ControllerChannelAdapter* channel)
+    : channel_(channel) {}
 
 std::int64_t EspWallClockAdapter::unix_seconds() const {
     return static_cast<std::int64_t>(std::time(nullptr));
@@ -54,13 +54,13 @@ void EspWallClockAdapter::log_error(std::string_view tag,
 
 void EspWallClockAdapter::send_response(std::uint8_t type,
                                         std::string_view payload) {
-    if (uart_ == nullptr) return;
+    if (channel_ == nullptr) return;
     const firmware::core::Frame response{
         type,
         firmware::core::ByteVector(payload.begin(), payload.end())};
     const auto encoded = firmware::core::encode_frame(response);
     if (!encoded.empty()) {
-        const int written = uart_->write(encoded);
+        const int written = channel_->write(encoded);
         if (written != static_cast<int>(encoded.size())) {
             ESP_LOGE("uart_task", "UART send failed");
         }

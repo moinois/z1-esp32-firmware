@@ -460,6 +460,13 @@ returns a deterministic marker-only JPEG frame so target WebSocket and recording
 composition can run without probing camera pins. This is protocol-fixture data,
 not a simulation of sensor pixels or timing.
 
+The controller implementation selects a shared byte-channel interface in the
+same factory. Its deterministic mock consumes and emits production-framed
+controller messages, allowing the real scheduler, decoder, snapshot store, and
+host routing to run unchanged. It models only the version, status, and
+diagnostic exchange; transfer protocols and physical UART characteristics are
+outside its stated evidence.
+
 ### Consequences
 
 - Live/mock selection has one reviewable composition point.
@@ -467,7 +474,7 @@ not a simulation of sensor pixels or timing.
 - The simulated volume is deterministic and empty after every reset.
 - Electrical, driver, removal, timing, and real-media behavior still requires
   physical HIL.
-- Later controller and CAN mocks extend the same factory and global
+- A later CAN mock extends the same factory and global
   selection policy without adding compile-time branches to application code.
 
 ---

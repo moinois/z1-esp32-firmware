@@ -6,7 +6,7 @@
 #include "firmware/application/controller_firmware_transfer.hpp"
 
 namespace firmware::target {
-class ControllerUartAdapter;
+class ControllerChannelAdapter;
 
 // Provides common file reads and framed UART responses for all transfer families.
 class ControllerTransferAdapter final
@@ -15,7 +15,7 @@ class ControllerTransferAdapter final
       public firmware::application::ControllerFactoryPort {
 public:
     // Binds the adapter to the controller UART owned by the command task.
-    explicit ControllerTransferAdapter(ControllerUartAdapter& uart);
+    explicit ControllerTransferAdapter(ControllerChannelAdapter& channel);
 
     bool file_exists(std::string_view path) override;
     bool configuration_available() override;
@@ -33,7 +33,7 @@ public:
                  std::uint32_t index, std::uint32_t frame_count) override;
 
 private:
-    ControllerUartAdapter& uart_;
+    ControllerChannelAdapter& channel_;
 };
 
 }  // namespace firmware::target

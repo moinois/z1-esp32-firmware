@@ -6,14 +6,14 @@
 #include <string>
 
 namespace firmware::target {
-class ControllerUartAdapter;
+class ControllerChannelAdapter;
 
 // Bridges PlayControllerPort and PlayLineSource to one controller UART task.
 class ControllerPlayAdapter final
     : public firmware::application::PlayControllerPort {
 public:
     // Binds play responses and file reads to the controller UART.
-    explicit ControllerPlayAdapter(ControllerUartAdapter& uart);
+    explicit ControllerPlayAdapter(ControllerChannelAdapter& channel);
     ~ControllerPlayAdapter() override;
 
     void close_file() override;
@@ -29,7 +29,7 @@ public:
         std::size_t maximum_size) override;
 
 private:
-    ControllerUartAdapter& uart_;
+    ControllerChannelAdapter& channel_;
     PosixFile file_;
 };
 

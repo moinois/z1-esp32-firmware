@@ -1,7 +1,8 @@
 // Implements UART frame decoding and wall-clock command dispatch.
 #include "controller_command_loop.hpp"
 
-#include "controller_uart_adapter.hpp"
+#include "controller_channel_adapter.hpp"
+#include "hardware_adapter_factory.hpp"
 #include "controller_transfer_adapter.hpp"
 #include "controller_play_adapter.hpp"
 #include "play_runtime_state.hpp"
@@ -45,9 +46,9 @@ namespace {
 constexpr char controller_uart_tag[] = "uart_task";
 
 // Writes one complete frame and emits the specified diagnostic on failure.
-void write_controller_frame(ControllerUartAdapter& uart,
+void write_controller_frame(ControllerChannelAdapter& channel,
                             firmware::core::BytesView frame) {
-    const int written = uart.write(frame);
+    const int written = channel.write(frame);
     if (written != static_cast<int>(frame.size())) {
         ESP_LOGE(controller_uart_tag, "UART send failed");
     }
@@ -59,7 +60,7 @@ firmware::application::ControllerFirmwareTransfer* active_firmware = nullptr;
 firmware::application::ControllerConfigTransfer* active_configuration = nullptr;
 firmware::application::ControllerFactoryTransfer* active_factory = nullptr;
 
-void drain_forwarded_frames(ControllerUartAdapter& uart) {
+void drain_forwarded_frames(ControllerChannelAdapter& channel) {
     for (;;) {
         std::optional<firmware::core::ByteVector> item;
         if (xSemaphoreTake(controller_forwarder_mutex, portMAX_DELAY) == pdTRUE) {
@@ -70,24 +71,25 @@ void drain_forwarded_frames(ControllerUartAdapter& uart) {
         if (!item.has_value()) {
             return;
         }
-        write_controller_frame(uart, *item);
+        write_controller_frame(channel, *item);
     }
 }
 
 void controller_command_task(void*) {
-    ControllerUartAdapter uart;
-    if (!uart.initialize()) {
+    ControllerChannelAdapter& channel =
+        HardwareAdapterFactory::controller_channel();
+    if (!channel.initialize()) {
         vTaskDelete(nullptr);
         return;
     }
-    EspWallClockAdapter wall_clock(&uart);
+    EspWallClockAdapter wall_clock(&channel);
     WallClockCommandDispatcher dispatcher(wall_clock);
-    NvsSerialNumberAdapter serial_port(&uart);
+    NvsSerialNumberAdapter serial_port(&channel);
     firmware::application::SerialNumberService serial_service(serial_port);
-    ControllerRuntimeCommandAdapter runtime_port(uart);
+    ControllerRuntimeCommandAdapter runtime_port(channel);
     firmware::application::RuntimeCommandService runtime_service(runtime_port);
     RecordingRequestState recording_state;
-    ControllerTransferAdapter transfer_port(uart);
+    ControllerTransferAdapter transfer_port(channel);
     firmware::application::ControllerFirmwareTransfer firmware_transfer;
     firmware::application::ControllerConfigTransfer config_transfer;
     firmware::application::ControllerFactoryTransfer factory_transfer;
@@ -96,7 +98,7 @@ void controller_command_task(void*) {
     active_factory = &factory_transfer;
     auto& play_session = shared_play_session();
     firmware::application::PlayController play_controller(play_session);
-    ControllerPlayAdapter play_port(uart);
+    ControllerPlayAdapter play_port(channel);
     firmware::core::StreamDecoder decoder(
         firmware::core::StreamPolicy::controller_uart());
     firmware::application::LocalCommandQueue local_commands;
@@ -106,13 +108,13 @@ void controller_command_task(void*) {
         static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL));
     std::uint8_t input[256];
     for (;;) {
-        drain_forwarded_frames(uart);
+        drain_forwarded_frames(channel);
         const auto due_queries = query_scheduler.poll(
             static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL), true);
         for (const auto& query : due_queries) {
             const auto encoded = firmware::core::encode_frame(query);
             if (!encoded.empty()) {
-                write_controller_frame(uart, encoded);
+                write_controller_frame(channel, encoded);
             }
         }
         const auto now_milliseconds =
@@ -120,10 +122,10 @@ void controller_command_task(void*) {
         for (const auto& alarm : activity_monitor.poll(now_milliseconds)) {
             const auto encoded = firmware::core::encode_frame(alarm);
             if (!encoded.empty()) {
-                write_controller_frame(uart, encoded);
+                write_controller_frame(channel, encoded);
             }
         }
-        const int count = uart.read(input, sizeof(input));
+        const int count = channel.read(input, sizeof(input));
         if (count <= 0) continue;
         const auto frames = decoder.push(
             {input, static_cast<std::size_t>(count)});
@@ -198,7 +200,7 @@ void controller_command_task(void*) {
                 recording_state.set_requested(result.requested);
                 const auto encoded = firmware::core::encode_frame(result.response);
                 if (!encoded.empty()) {
-                    write_controller_frame(uart, encoded);
+                    write_controller_frame(channel, encoded);
                 }
             }
             vTaskDelay(pdMS_TO_TICKS(10U));

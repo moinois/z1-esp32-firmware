@@ -2,7 +2,7 @@
 #include "controller_play_adapter.hpp"
 #include "esp_log.h"
 
-#include "controller_uart_adapter.hpp"
+#include "controller_channel_adapter.hpp"
 #include "runtime_play_observer.hpp"
 #include "tcp_control_adapter.hpp"
 
@@ -15,8 +15,8 @@
 
 namespace firmware::target {
 
-ControllerPlayAdapter::ControllerPlayAdapter(ControllerUartAdapter& uart)
-    : uart_(uart) {}
+ControllerPlayAdapter::ControllerPlayAdapter(ControllerChannelAdapter& channel)
+    : channel_(channel) {}
 
 ControllerPlayAdapter::~ControllerPlayAdapter() = default;
 
@@ -46,7 +46,7 @@ void ControllerPlayAdapter::broadcast(firmware::core::Frame frame) {
 bool ControllerPlayAdapter::send(firmware::core::Frame frame) {
     const auto encoded = firmware::core::encode_frame(frame);
     if (encoded.empty()) return false;
-    const int written = uart_.write(encoded);
+    const int written = channel_.write(encoded);
     if (written != static_cast<int>(encoded.size())) {
         ESP_LOGE("uart_task", "UART send failed");
         return false;

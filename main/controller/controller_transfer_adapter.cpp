@@ -3,7 +3,7 @@
 #include "configuration_file_store.hpp"
 #include "esp_log.h"
 
-#include "controller_uart_adapter.hpp"
+#include "controller_channel_adapter.hpp"
 #include "runtime_status_adapter.hpp"
 #include "firmware_update_adapter.hpp"
 
@@ -18,8 +18,9 @@
 
 namespace firmware::target {
 
-ControllerTransferAdapter::ControllerTransferAdapter(ControllerUartAdapter& uart)
-    : uart_(uart) {}
+ControllerTransferAdapter::ControllerTransferAdapter(
+    ControllerChannelAdapter& channel)
+    : channel_(channel) {}
 
 bool ControllerTransferAdapter::configuration_available() {
     return ConfigurationFileStore{}.exists();
@@ -101,7 +102,7 @@ bool ControllerTransferAdapter::remove_file(std::string_view path) {
 bool ControllerTransferAdapter::send(firmware::core::Frame frame) {
     const auto encoded = firmware::core::encode_frame(frame);
     if (encoded.empty()) return false;
-    const int written = uart_.write(encoded);
+    const int written = channel_.write(encoded);
     if (written != static_cast<int>(encoded.size())) {
         ESP_LOGE("uart_task", "UART send failed");
         return false;

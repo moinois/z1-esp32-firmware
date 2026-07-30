@@ -7,6 +7,7 @@ struct HardwareAdapterSelection {
     bool mock_all_hardware;
     bool mock_sd_hardware;
     bool mock_camera_hardware;
+    bool mock_controller_hardware;
 
     // Selects the mock SD backend when either the global or specific switch is active.
     constexpr bool mock_sd() const {
@@ -16,6 +17,11 @@ struct HardwareAdapterSelection {
     // Selects the mock camera when either the global or specific switch is active.
     constexpr bool mock_camera() const {
         return mock_all_hardware || mock_camera_hardware;
+    }
+
+    // Selects the mock controller when either global or specific selection is active.
+    constexpr bool mock_controller() const {
+        return mock_all_hardware || mock_controller_hardware;
     }
 };
 
