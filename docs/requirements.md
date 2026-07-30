@@ -49,7 +49,7 @@ stress verification rather than missing portable logic.
 | Camera/media | Camera, recording, live, preview, and retention adapters target-built; HIL automatically skips when firmware camera detection reports no sensor | Camera plus SD fixtures are required for streaming/recording/playback |
 | Controller/UART | UART loop and principal command/transfer/play adapters target-built | Full remaining command-family routing plus physical controller fixture |
 | CANopen | Node, dictionary, expedited SDO, PDO, M942, and TWAI adapter implemented | Heartbeat/error/diagnostic composition gap plus physical CAN fixture |
-| BLE/BLUFI | Provisioning lifecycle/security and portable wire policies implemented; Bleak HIL covers lifecycle, GATT, wire responses, error paths, DH/AES/CRC security, and fragmentation | HIL PASS 2026-07-27 for 11 read-only physical BLE tests; credential association is implemented as a separately gated mutating test |
+| BLE/BLUFI | Provisioning lifecycle/security and portable wire policies implemented; Bleak HIL covers lifecycle, GATT, wire responses, error paths, DH/AES/CRC security, fragmentation, cross-transport load, and reset recovery | HIL PASS 2026-07-27 for 11 read-only physical BLE tests; credential association, concurrent HTTP/BLE, and reset recovery are implemented as gated tests pending execution |
 | Persistence/runtime | NVS, clock, counters, observers, and transport command adapters target-built | Physical NVS fault/reboot/timing verification |
 
 | Area | Implementation | Automated verification | Target integration and physical evidence |

@@ -83,6 +83,14 @@ fresh secure BLUFI session, sends encrypted SSID and password frames, requests
 association, and waits up to 30 seconds for Wi-Fi diagnostics at the declared
 host. Use only credentials that keep the board reachable from the test host.
 
+Two robustness fixtures are also available. Declaring `Z1_HIL_HOST` adds eight
+concurrent Wi-Fi-diagnostics requests while an encrypted BLE status exchange is
+in flight. Declaring `Z1_HIL_SERIAL` together with `Z1_ALLOW_MUTATION=1` resets
+the target during an active GATT connection, requires a disconnect callback,
+and then requires `BLUFI_DEVICE` to resume advertising after boot. These cases
+were added while the target was disconnected and remain pending physical
+execution; test availability is not recorded as HIL PASS.
+
 The read-only suite also exercises repeated native USB requests, recovery after
 unframed USB noise, bytewise fragmented TCP input, the four-client TCP limit,
 four-client concurrency, simultaneous USB/TCP commands, WLAN scanning, runtime

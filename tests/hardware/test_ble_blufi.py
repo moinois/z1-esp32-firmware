@@ -265,6 +265,8 @@ def test_blufi_exposes_standard_gatt_schema_and_fixed_read() -> None:
             assert outgoing is not None
             assert "write" in writable.properties
             assert "notify" in outgoing.properties
+            assert client.mtu_size >= 23
+            assert writable.max_write_without_response_size >= 20
             assert bytes(await client.read_gatt_char(outgoing)) == b"\x00"
 
     asyncio.run(validate())
@@ -552,3 +554,78 @@ def test_blufi_provisions_declared_wifi_credentials() -> None:
             last_error = error
             time.sleep(1.0)
     pytest.fail(f"provisioned station did not become reachable: {last_error}")
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.ble
+@pytest.mark.http
+def test_blufi_remains_responsive_during_http_diagnostics() -> None:
+    _require_ble_fixture()
+    host = os.getenv("Z1_HIL_HOST")
+    if not host:
+        pytest.skip("set Z1_HIL_HOST for concurrent BLE/HTTP validation")
+
+    async def validate() -> None:
+        from bleak import BleakClient
+
+        device, _ = await _require_blufi()
+        async with BleakClient(device, timeout=10.0) as client:
+            key = await _negotiate_security(client)
+            http_reads = asyncio.gather(
+                *(asyncio.to_thread(_wifi_diagnostics, host) for _ in range(8))
+            )
+            protected = await _request_frame(client, b"\x14\x00\x03\x00")
+            payload = _decrypt_protected_frame(protected, 0x0F, key, sequence=1)
+            diagnostics = await http_reads
+            assert len(payload) >= 3
+            assert all(isinstance(item, dict) for item in diagnostics)
+
+    asyncio.run(validate())
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.ble
+@pytest.mark.diagnostics
+@pytest.mark.requirement("BLE-003")
+def test_blufi_recovers_advertising_after_target_reset() -> None:
+    _require_ble_fixture()
+    serial_port = os.getenv("Z1_HIL_SERIAL")
+    if not serial_port:
+        pytest.skip("set Z1_HIL_SERIAL for BLE reset recovery validation")
+
+    async def validate() -> None:
+        import serial
+        from bleak import BleakClient
+
+        def pulse_reset() -> None:
+            with serial.Serial(
+                serial_port, 115200, timeout=0.25, dsrdtr=False, rtscts=False
+            ) as device:
+                device.dtr = False
+                device.rts = True
+                time.sleep(0.1)
+                device.rts = False
+
+        device, _ = await _require_blufi()
+        disconnected = asyncio.Event()
+        client = BleakClient(
+            device,
+            timeout=10.0,
+            disconnected_callback=lambda _client: disconnected.set(),
+        )
+        await client.connect()
+        try:
+            await _assert_gatt_healthy(client)
+            await asyncio.to_thread(pulse_reset)
+            await asyncio.wait_for(disconnected.wait(), timeout=10.0)
+        finally:
+            if client.is_connected:
+                await client.disconnect()
+        await asyncio.sleep(6.0)
+        assert await _find_blufi() is not None, (
+            f"{BLUFI_NAME} did not advertise after target reset"
+        )
+
+    asyncio.run(validate())
