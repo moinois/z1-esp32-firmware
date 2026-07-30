@@ -39,10 +39,22 @@ class UsbProtocolClient:
     def exchange(
         self, frame_type: int, payload: bytes, timeout_seconds: float = 3.0
     ) -> List[ReceivedFrame]:
-        self.output.write(encode_frame(frame_type, payload), timeout=self.timeout_ms)
-        return self._receive(timeout_seconds)
+        self.send(frame_type, payload)
+        return self.receive(timeout_seconds)
 
-    def _receive(self, timeout_seconds: float) -> List[ReceivedFrame]:
+    def send(self, frame_type: int, payload: bytes) -> None:
+        """Writes one encoded frame without waiting for a target response."""
+
+        self.output.write(encode_frame(frame_type, payload), timeout=self.timeout_ms)
+
+    def send_encoded(self, encoded_frames: bytes) -> None:
+        """Writes pre-encoded frames, allowing tests to fragment or batch traffic."""
+
+        self.output.write(encoded_frames, timeout=self.timeout_ms)
+
+    def receive(self, timeout_seconds: float = 3.0) -> List[ReceivedFrame]:
+        """Receives all complete response frames available before the deadline."""
+
         usb = _load_usb()
         deadline = time.monotonic() + timeout_seconds
         remainder = b""
