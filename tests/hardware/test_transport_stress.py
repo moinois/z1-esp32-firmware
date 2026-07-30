@@ -16,18 +16,18 @@ from tests.hardware.hil_protocol import (
 from tools.wifi_provision_protocol import encode_frame
 
 
-def _wait_for_tcp_slot_release(host: str, timeout_seconds: float = 8.0) -> None:
-    """Waits until one ordinary request proves that a client slot is reusable."""
-    deadline = time.monotonic() + timeout_seconds
-    while time.monotonic() < deadline:
-        try:
-            if TcpProtocolClient(host).exchange(GENERAL_COMMAND, b"ftype /", 1.0):
-                time.sleep(0.25)
-                return
-        except (ConnectionResetError, OSError):
-            pass
-        time.sleep(0.1)
-    pytest.fail("TCP client slots were not released")
+def _close_tcp_connection(connection: socket.socket) -> None:
+    """Actively closes both directions so the target observes disconnect promptly."""
+    try:
+        connection.shutdown(socket.SHUT_RDWR)
+    except OSError:
+        pass
+    connection.close()
+
+
+def _wait_for_tcp_cleanup() -> None:
+    """Waits beyond the target receive timeout without altering target state."""
+    time.sleep(10.5)
 
 
 @pytest.mark.hardware
@@ -59,10 +59,16 @@ def test_usb_recovers_after_unframed_noise(usb_client) -> None:
 def test_tcp_accepts_one_frame_split_across_writes(tcp_host: str) -> None:
     encoded = encode_frame(GENERAL_COMMAND, b"ftype /")
     with socket.create_connection((tcp_host, 2222), timeout=3.0) as connection:
-        for byte in encoded:
-            connection.sendall(bytes([byte]))
-            time.sleep(0.002)
-        assert receive_tcp_frames(connection, 3.0)
+        try:
+            for byte in encoded:
+                connection.sendall(bytes([byte]))
+                time.sleep(0.002)
+            assert receive_tcp_frames(connection, 3.0)
+        finally:
+            try:
+                connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
 
 
 @pytest.mark.hardware
@@ -71,32 +77,35 @@ def test_tcp_accepts_one_frame_split_across_writes(tcp_host: str) -> None:
 @pytest.mark.requirement("TCP-001")
 @pytest.mark.requirement("TCP-010")
 def test_tcp_fifth_connection_receives_capacity_response(tcp_host: str) -> None:
-    _wait_for_tcp_slot_release(tcp_host)
+    _wait_for_tcp_cleanup()
+    accepted_count = 0
     connections: list[socket.socket] = []
     rejected_frames = []
-    accepted_count = 0
     try:
         for _ in range(4):
             connection = socket.create_connection((tcp_host, 2222), timeout=3.0)
+            connections.append(connection)
             connection.sendall(encode_frame(GENERAL_COMMAND, b"ftype /"))
             try:
                 frames = receive_tcp_frames(connection, 3.0)
             except ConnectionResetError:
                 break
-            if not frames:
+            if not frames or any(frame.frame_type == 0x91 for frame in frames):
                 break
-            connections.append(connection)
             accepted_count += 1
         if accepted_count == 4:
             with socket.create_connection((tcp_host, 2222), timeout=3.0) as rejected:
-                rejected_frames = receive_tcp_frames(rejected, 3.0)
+                try:
+                    rejected_frames = receive_tcp_frames(rejected, 3.0)
+                finally:
+                    try:
+                        rejected.shutdown(socket.SHUT_RDWR)
+                    except OSError:
+                        pass
     finally:
         for connection in connections:
-            connection.close()
-        _wait_for_tcp_slot_release(tcp_host)
-    assert accepted_count == 4, (
-        f"target accepted only {accepted_count} simultaneous TCP clients"
-    )
+            _close_tcp_connection(connection)
+    assert accepted_count == 4
     assert any(frame.frame_type == 0x91 for frame in rejected_frames)
 
 
@@ -106,7 +115,7 @@ def test_tcp_fifth_connection_receives_capacity_response(tcp_host: str) -> None:
 @pytest.mark.requirement("TCP-003")
 @pytest.mark.requirement("TCP-006")
 def test_tcp_concurrent_clients_receive_independent_responses(tcp_host: str) -> None:
-    _wait_for_tcp_slot_release(tcp_host)
+    _wait_for_tcp_cleanup()
     def request() -> bool:
         try:
             return bool(TcpProtocolClient(tcp_host).exchange(
@@ -117,3 +126,29 @@ def test_tcp_concurrent_clients_receive_independent_responses(tcp_host: str) -> 
 
     with ThreadPoolExecutor(max_workers=4) as executor:
         assert all(executor.map(lambda _: request(), range(4)))
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.tcp
+@pytest.mark.requirement("TCP-003")
+@pytest.mark.requirement("TCP-006")
+def test_tcp_repeated_four_client_waves_release_capacity(tcp_host: str) -> None:
+    """Proves repeated maximum-capacity task creation and teardown without reset."""
+    _wait_for_tcp_cleanup()
+
+    def request() -> bool:
+        try:
+            frames = TcpProtocolClient(tcp_host).exchange(
+                GENERAL_COMMAND, b"ftype /", 4.0
+            )
+        except (ConnectionResetError, OSError):
+            return False
+        return bool(frames) and all(frame.frame_type != 0x91 for frame in frames)
+
+    for wave in range(6):
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            assert all(executor.map(lambda _: request(), range(4))), (
+                f"TCP capacity was not reusable in four-client wave {wave + 1}"
+            )
+        time.sleep(0.5)

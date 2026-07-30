@@ -2,7 +2,9 @@
 #include "tcp_control_adapter.hpp"
 
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
 #include "freertos/task.h"
 
 #include "firmware/core/frame.hpp"
@@ -68,6 +70,7 @@
 namespace firmware::target {
 namespace {
 
+constexpr char log_tag[] = "TCP_CONTROL";
 constexpr int control_port = 2222;
 constexpr int listen_backlog = 4;
 constexpr int maximum_clients = 4;
@@ -434,6 +437,7 @@ private:
 struct TcpClientContext {
     int socket;
     firmware::application::HostIdentity identity;
+    bool stack_uses_external_memory;
 };
 
 bool send_tcp_bytes(int client, firmware::core::BytesView bytes) {
@@ -516,6 +520,9 @@ void configure_socket(int socket) {
 void tcp_client_task(void* parameter) {
     auto* context = static_cast<TcpClientContext*>(parameter);
     const int client = context->socket;
+    ESP_LOGD(log_tag, "client start fd=%d generation=%lu active=%d", client,
+             static_cast<unsigned long>(context->identity.generation),
+             active_clients.load(std::memory_order_acquire));
     firmware::application::TcpClientSession session(context->identity);
     {
         std::lock_guard<std::mutex> lock(tcp_session_registry_mutex);
@@ -542,7 +549,22 @@ void tcp_client_task(void* parameter) {
     std::uint8_t input[2048];
     for (;;) {
         const int count = recv(client, input, sizeof(input), 0);
-        if (count <= 0) break;
+        if (count <= 0) {
+            if (count < 0) {
+                ESP_LOGD(log_tag,
+                         "client recv ended fd=%d generation=%lu errno=%d active=%d",
+                         client,
+                         static_cast<unsigned long>(context->identity.generation),
+                         errno, active_clients.load(std::memory_order_acquire));
+            } else {
+                ESP_LOGD(log_tag,
+                         "client peer closed fd=%d generation=%lu active=%d",
+                         client,
+                         static_cast<unsigned long>(context->identity.generation),
+                         active_clients.load(std::memory_order_acquire));
+            }
+            break;
+        }
         tcp_router.set_controller_transfer_active(
             controller_firmware_transfer_active() ||
             controller_configuration_transfer_active() ||
@@ -574,9 +596,16 @@ void tcp_client_task(void* parameter) {
                                        &session), tcp_sessions.end());
     }
     close(client);
-    active_clients.fetch_sub(1, std::memory_order_release);
+    const int previous = active_clients.fetch_sub(1, std::memory_order_acq_rel);
+    ESP_LOGD(log_tag, "client stop fd=%d generation=%lu active=%d", client,
+             static_cast<unsigned long>(context->identity.generation), previous - 1);
+    const bool stack_uses_external_memory = context->stack_uses_external_memory;
     delete context;
-    vTaskDelete(nullptr);
+    if (stack_uses_external_memory) {
+        vTaskDeleteWithCaps(nullptr);
+    } else {
+        vTaskDelete(nullptr);
+    }
 }
 
 void tcp_accept_task(void*) {
@@ -608,6 +637,7 @@ void tcp_accept_task(void*) {
                !active_clients.compare_exchange_weak(
                    expected, expected + 1, std::memory_order_acq_rel)) {}
         if (expected >= maximum_clients) {
+            ESP_LOGW(log_tag, "client rejected fd=%d active=%d", client, expected);
             send_rejection(client);
             close(client);
             continue;
@@ -616,10 +646,23 @@ void tcp_accept_task(void*) {
             client,
             {firmware::application::HostTransport::tcp,
              static_cast<std::uint8_t>(expected),
-             next_generation.fetch_add(1U, std::memory_order_relaxed)}};
+             next_generation.fetch_add(1U, std::memory_order_relaxed)},
+            true};
         TaskHandle_t task = nullptr;
-        if (xTaskCreate(tcp_client_task, "tcp_client", client_task_stack_bytes, context,
-                        4U, &task) != pdPASS) {
+        BaseType_t created = xTaskCreateWithCaps(
+            tcp_client_task, "tcp_client", client_task_stack_bytes, context,
+            4U, &task, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (created != pdPASS) {
+            context->stack_uses_external_memory = false;
+            created = xTaskCreate(tcp_client_task, "tcp_client",
+                                  client_task_stack_bytes, context, 4U, &task);
+        }
+        if (created != pdPASS) {
+            ESP_LOGE(log_tag,
+                     "client task create failed fd=%d active=%d internal_heap=%u",
+                     client, active_clients.load(std::memory_order_acquire),
+                     static_cast<unsigned>(
+                         heap_caps_get_free_size(MALLOC_CAP_INTERNAL)));
             delete context;
             close(client);
             active_clients.fetch_sub(1, std::memory_order_release);

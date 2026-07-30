@@ -106,10 +106,21 @@ and the fixed outgoing read.
 
 The read-only suite also exercises repeated native USB requests, recovery after
 unframed USB noise, bytewise fragmented TCP input, the four-client TCP limit,
-four-client concurrency, simultaneous USB/TCP commands, WLAN scanning, runtime
+four-client concurrency, six consecutive four-client capacity waves,
+simultaneous USB/TCP commands, WLAN scanning, runtime
 and serial-number reads, monotonic Wi-Fi diagnostics, concurrent HTTP requests,
 and recovery after an interrupted multipart request. Persistent Wi-Fi changes,
 USB reset, application OTA, and SPIFFS replacement remain separately gated.
+
+The combined mock HIL run on 2026-07-30 initially exposed an internal-memory
+limit after mixed HTTP, controller, SD, and TCP traffic. The fourth 8192-byte
+TCP client task could not be created with only about 19--22 KiB of internal heap
+free. TCP client stacks now use PSRAM through the ESP-IDF capability-aware task
+API, retain their task control blocks in internal RAM, and fall back to internal
+stack allocation when external allocation is unavailable. The complete
+60-test HIL run then passed all 26 executable cases without a reset before TCP
+stress; six additional four-client waves also passed and returned the active
+count to zero after every wave.
 
 With a diagnostic COM adapter, the mutating diagnostic test pulses reset using
 DTR/RTS, captures 20 seconds at 115200 baud, requires both the ESP32 boot banner

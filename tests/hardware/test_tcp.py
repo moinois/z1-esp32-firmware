@@ -16,8 +16,11 @@ from tests.hardware.hil_protocol import GENERAL_COMMAND
 @pytest.mark.requirement("TCP-002")
 def test_tcp_service_accepts_connection(tcp_host: str) -> None:
     try:
-        with socket.create_connection((tcp_host, 2222), timeout=2.0):
-            pass
+        with socket.create_connection((tcp_host, 2222), timeout=2.0) as connection:
+            try:
+                connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
     except OSError as error:
         pytest.skip(f"Makera Z1 TCP service not detected at {tcp_host}:2222: {error}")
 

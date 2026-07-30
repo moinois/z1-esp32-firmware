@@ -75,19 +75,25 @@ class TcpProtocolClient:
         received: List[ReceivedFrame] = []
         deadline = time.monotonic() + timeout_seconds
         with socket.create_connection((self.host, self.port), timeout=timeout_seconds) as connection:
-            connection.settimeout(0.25)
-            connection.sendall(encode_frame(frame_type, payload))
-            while time.monotonic() < deadline:
-                try:
-                    chunk = connection.recv(8192)
-                except socket.timeout:
-                    if received:
+            try:
+                connection.settimeout(0.25)
+                connection.sendall(encode_frame(frame_type, payload))
+                while time.monotonic() < deadline:
+                    try:
+                        chunk = connection.recv(8192)
+                    except socket.timeout:
+                        if received:
+                            break
+                        continue
+                    if not chunk:
                         break
-                    continue
-                if not chunk:
-                    break
-                frames, remainder = decode_frames(remainder + chunk)
-                received.extend(ReceivedFrame(kind, body) for kind, body in frames)
+                    frames, remainder = decode_frames(remainder + chunk)
+                    received.extend(ReceivedFrame(kind, body) for kind, body in frames)
+            finally:
+                try:
+                    connection.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
         return received
 
 
