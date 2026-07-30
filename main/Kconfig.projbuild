@@ -1,0 +1,28 @@
+menu "Makera Z1 test hardware"
+
+config Z1_MOCK_ALL_HARDWARE
+    bool "Use mock adapters for all supported hardware"
+    default n
+    help
+        Select every mock hardware adapter implemented by this firmware.
+        This is a test-build option and must remain disabled in production.
+
+config Z1_MOCK_SD_HARDWARE
+    bool "Use a PSRAM-backed mock SD card"
+    default n
+    help
+        Mount a volatile FAT filesystem at /sd instead of using SDMMC.
+
+config Z1_MOCK_SD_CAPACITY_KIB
+    int "Mock SD capacity in KiB"
+    depends on Z1_MOCK_ALL_HARDWARE || Z1_MOCK_SD_HARDWARE
+    range 256 4096
+    default 512
+
+config Z1_MOCK_SD_MIN_FREE_PSRAM_KIB
+    int "PSRAM reserve after mock SD allocation in KiB"
+    depends on Z1_MOCK_ALL_HARDWARE || Z1_MOCK_SD_HARDWARE
+    range 256 4096
+    default 512
+
+endmenu

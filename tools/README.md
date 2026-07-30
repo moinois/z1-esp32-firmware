@@ -40,6 +40,36 @@ If the device is not found, verify that the native `USB` cable is connected and
 that the firmware has enumerated as `MakeraZ1 (USB)`. The `COM` connector is
 reserved for UART diagnostics.
 
+## Build with selected hardware adapters
+
+`build_firmware.py` configures any combination of live and mock adapters in one
+reusable generated build directory. It discovers supported adapter names from
+`main/Kconfig.projbuild`, so adding a future mock switch does not require a new
+build profile.
+
+```text
+source /Users/moinois/esp/esp-idf/export.sh
+python3 tools/build_firmware.py --live
+python3 tools/build_firmware.py --mock sd
+python3 tools/build_firmware.py --mock-all
+```
+
+As more adapters are implemented, combinations such as `--mock sd,camera`
+require no new profile. Comma-separated names and repeated `--mock` switches
+are equivalent. Unknown names are rejected and the available names are printed.
+Each invocation writes the complete selection to `build/sdkconfig` and an
+auditable summary to `build/hardware-selection.json`, then builds the firmware.
+The same standard build tree is used for live and mock firmware. Flash the
+selected build with:
+
+```text
+python3 tools/build_firmware.py --mock sd --flash \
+  --port /dev/cu.usbmodem...
+```
+
+The normal `idf.py build` path remains governed by `sdkconfig.defaults`, where
+all mocks are disabled.
+
 ## Package mainboard firmware
 
 `package_firmware.py` wraps a bootable ESP32-S3 application image in the

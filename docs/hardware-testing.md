@@ -36,6 +36,7 @@ Z1_HIL_HOST=192.168.8.119 Z1_ALLOW_DESTRUCTIVE=1 \
 | `Z1_HIL_HOST` | Target IPv4 address for TCP/HTTP tests | `192.168.4.1` |
 | `Z1_HIL_SERIAL` | Diagnostic serial device | uniquely detected USB modem |
 | `Z1_HIL_SD` | Declares that a physical SD reader and card are installed | disabled |
+| `Z1_HIL_MOCK_SD` | Declares that the flashed firmware uses the mock SD profile | disabled |
 | `Z1_ALLOW_MUTATION` | Enables recoverable persistent changes when `1` | disabled |
 | `Z1_ALLOW_DESTRUCTIVE` | Enables destructive operations when `1` | disabled |
 | `Z1_HIL_OTA_IMAGE` | Valid raw ESP-IDF application image for destructive OTA HIL | unset |
@@ -118,10 +119,36 @@ Wi-Fi association/address acquisition, and OTA validation were present, with
 none of the forbidden fatal signatures.
 
 Native USB is detected by VID `0x303a` and PID `0x4002`. TCP detection opens a
-connection to port 2222. The current public directory command cannot
-distinguish an empty mounted SD card from a missing mount because both end with
-the same completion frame. SD tests therefore require `Z1_HIL_SD=1` in
-addition to USB detection; set it only when a reader and card are installed.
+connection to port 2222. SD behavior may be exercised through either transport.
+Physical storage requires `Z1_HIL_SD=1`; the explicit mock target profile uses
+`Z1_HIL_MOCK_SD=1`. Neither declaration is inferred from a successful empty
+directory response.
+
+### Mock SD target profile
+
+The SD mock validates the complete FAT, VFS, POSIX, path-sandbox, and
+public-command stack without a physical reader. It allocates a fresh 512 KiB
+block device in PSRAM on every boot and mounts it at `/sd`. It is deliberately
+volatile and emits a prominent `TEST BUILD` diagnostic. The generic builder
+discovers available mock switches from Kconfig and supports any combination in
+the standard reusable `build/` tree:
+
+```sh
+source /Users/moinois/esp/esp-idf/export.sh
+python3 tools/build_firmware.py --mock sd
+python3 tools/build_firmware.py --mock-all
+python3 tools/build_firmware.py --mock sd --flash -p /dev/cu.usbmodem...
+Z1_HIL_MOCK_SD=1 Z1_HIL_HOST=192.168.8.119 Z1_ALLOW_MUTATION=1 \
+  python3 -m pytest tests/hardware/test_sd_storage.py
+```
+
+`CONFIG_Z1_MOCK_ALL_HARDWARE` selects every implemented mock adapter;
+`CONFIG_Z1_MOCK_SD_HARDWARE` selects only SD. The SD capacity and mandatory
+post-allocation PSRAM reserve are independently configurable. Neither mock
+switch is enabled in `sdkconfig.defaults`. Every invocation explicitly enables
+or disables all discovered adapters and records the effective choice in
+`build/hardware-selection.json`, preventing stale selections when the build
+directory is reused. `--live` creates an explicit all-live selection.
 
 ## Requirement evidence
 

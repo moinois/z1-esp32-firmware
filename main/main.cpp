@@ -16,7 +16,8 @@
 #include "camera_adapter.hpp"
 #include "web_volume_adapter.hpp"
 #include "storage_retention_adapter.hpp"
-#include "sd_card_adapter.hpp"
+#include "hardware_adapter_factory.hpp"
+#include "sd_storage_adapter.hpp"
 #include "controller_command_loop.hpp"
 #include "tcp_control_adapter.hpp"
 #include "tcp_discovery_adapter.hpp"
@@ -142,9 +143,10 @@ extern "C" void app_main() {
     // Install capture before storage startup so early diagnostics are retained.
     static firmware::target::DiagnosticCaptureAdapter diagnostic_capture;
     diagnostic_capture.start();
-    static firmware::target::SdCardAdapter sd_card_adapter;
-    static_cast<void>(sd_card_adapter.mount_for_boot());
-    sd_card_adapter.start();
+    firmware::target::SdStorageAdapter& sd_storage =
+        firmware::target::HardwareAdapterFactory::sd_storage();
+    static_cast<void>(sd_storage.mount_for_boot());
+    sd_storage.start();
     static firmware::target::ConnectivityStartupAdapter connectivity_adapter;
     const std::string machine_name = configured_machine_name();
     firmware::target::configure_tcp_discovery_machine_name(machine_name);

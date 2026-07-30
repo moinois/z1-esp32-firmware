@@ -28,6 +28,7 @@ Allowed statuses are `Proposed`, `Accepted`, `Superseded`, and `Rejected`.
 | [ADR-010](#adr-010) | Share target mechanisms below transport adapters | Accepted | 2026-07-26 |
 | [ADR-011](#adr-011) | Keep physical verification optional, explicit, and safety-gated | Accepted | 2026-07-26 |
 | [ADR-012](#adr-012) | Sandbox user-controlled filesystem paths beneath the SD volume | Accepted | 2026-07-27 |
+| [ADR-013](#adr-013) | Select live and mock hardware through one target factory | Accepted | 2026-07-30 |
 
 ---
 
@@ -421,3 +422,43 @@ contracts such as `FILE-015`.
   the physical VFS mount point.
 - `ls` retains its specified completion-only wire response on open failure;
   the detailed cause is diagnostic evidence instead.
+
+---
+
+<a id="adr-013"></a>
+## ADR-013: Select live and mock hardware through one target factory
+
+- **Status:** Accepted
+- **Date:** 2026-07-30
+
+### Context
+
+Some requirement paths cannot be exercised without optional peripherals. Mock
+logic distributed across startup and adapters would make mixed live/mock builds
+hard to review and could allow a production path to select simulation by
+accident. Host fakes validate application policy but do not exercise the target
+VFS and ESP-IDF integration used by the firmware.
+
+### Decision
+
+Select hardware implementations exactly once in a target adapter factory.
+`CONFIG_Z1_MOCK_ALL_HARDWARE` enables every implemented mock, while a separate
+Kconfig switch enables each peripheral independently. Both global and specific
+switches default off. Application and core code remain unaware of the selected
+implementation.
+
+The first implementation is a volatile, configurable PSRAM block device below
+FatFS. It mounts at the normal `/sd` path so target tests retain the production
+VFS, POSIX, path-sandbox, command, and transport layers. Mock builds use a
+separate generated build directory, retain a configured PSRAM reserve, and emit
+an explicit test-build diagnostic. They never count as physical SD conformance.
+
+### Consequences
+
+- Live/mock selection has one reviewable composition point.
+- The same public HIL tests can exercise physical or simulated SD storage.
+- The simulated volume is deterministic and empty after every reset.
+- Electrical, driver, removal, timing, and real-media behavior still requires
+  physical HIL.
+- Later camera, controller, and CAN mocks extend the same factory and global
+  selection policy without adding compile-time branches to application code.

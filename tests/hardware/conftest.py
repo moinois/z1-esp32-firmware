@@ -98,10 +98,24 @@ def usb_client(usb_device: Any) -> UsbProtocolClient:
 
 @pytest.fixture(scope="session")
 def sd_fixture() -> None:
-    if os.getenv("Z1_HIL_SD") != "1":
+    if os.getenv("Z1_HIL_SD") != "1" and os.getenv("Z1_HIL_MOCK_SD") != "1":
         pytest.skip(
-            "physical SD reader/card fixture not declared with Z1_HIL_SD=1"
+            "SD storage not declared with Z1_HIL_SD=1 or Z1_HIL_MOCK_SD=1"
         )
+
+
+@pytest.fixture(scope="session")
+def sd_client(tcp_host: str) -> Any:
+    """Uses native USB when present, otherwise an explicitly reachable TCP target."""
+    device, _ = find_native_usb_device()
+    if device is not None:
+        try:
+            return UsbProtocolClient(device)
+        except Exception:
+            pass
+    if os.getenv("Z1_HIL_HOST"):
+        return TcpProtocolClient(tcp_host)
+    pytest.skip("SD HIL requires native USB or an explicit Z1_HIL_HOST")
 
 
 @pytest.fixture(scope="session")
