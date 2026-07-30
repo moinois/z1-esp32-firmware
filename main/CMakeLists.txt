@@ -9,6 +9,8 @@ idf_component_register(
         "configuration/configuration_file_store.cpp"
         "media/http_server_adapter.cpp"
         "media/camera_adapter.cpp"
+        "media/camera_settings_adapter.cpp"
+        "media/mock_camera_adapter.cpp"
         "media/recording_file_adapter.cpp"
         "media/recording_task_adapter.cpp"
         "media/web_volume_adapter.cpp"

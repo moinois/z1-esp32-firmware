@@ -454,6 +454,12 @@ uses the standard `build/` tree and writes every live/mock choice explicitly,
 retains a configured PSRAM reserve, and emits an explicit test-build diagnostic.
 Mock results never count as physical SD conformance.
 
+The camera implementation extends the same factory with a common lifecycle,
+resolution, capture, settings, and OTA-deinitialization surface. Its mock
+returns a deterministic marker-only JPEG frame so target WebSocket and recording
+composition can run without probing camera pins. This is protocol-fixture data,
+not a simulation of sensor pixels or timing.
+
 ### Consequences
 
 - Live/mock selection has one reviewable composition point.
@@ -461,7 +467,7 @@ Mock results never count as physical SD conformance.
 - The simulated volume is deterministic and empty after every reset.
 - Electrical, driver, removal, timing, and real-media behavior still requires
   physical HIL.
-- Later camera, controller, and CAN mocks extend the same factory and global
+- Later controller and CAN mocks extend the same factory and global
   selection policy without adding compile-time branches to application code.
 
 ---

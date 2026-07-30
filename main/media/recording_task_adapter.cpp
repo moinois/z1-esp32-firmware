@@ -1,7 +1,8 @@
 // Implements recording segment lifecycle over camera, AVI, and FAT adapters.
 #include "recording_task_adapter.hpp"
 
-#include "camera_adapter.hpp"
+#include "hardware_adapter_factory.hpp"
+#include "camera_hardware_adapter.hpp"
 #include "recording_file_adapter.hpp"
 #include "recording_request_state.hpp"
 #include "runtime_play_observer.hpp"
@@ -47,14 +48,15 @@ void recording_task(void*) {
     std::optional<firmware::core::AviWriter> writer;
     std::optional<std::string> path;
     firmware::application::RecordingSegmentState state;
-    const auto& settings = camera_adapter().settings();
+    auto& camera = HardwareAdapterFactory::camera();
+    const auto& settings = camera.settings();
     const auto dimensions = firmware::application::camera_dimensions(
         settings.recording_frame_size);
     for (;;) {
         const bool active = firmware::application::recording_conditions_active(
             request.requested(), streamed_play_running(), controller_running());
         if (active && !writer.has_value()) {
-            camera_adapter().set_frame_dimensions(dimensions);
+            camera.set_frame_dimensions(dimensions);
             path = firmware::application::recording_segment_path(
                 recording_source_path, static_cast<std::int64_t>(std::time(nullptr)));
             if (path.has_value()) {
@@ -65,7 +67,7 @@ void recording_task(void*) {
         bool capture_succeeded = false;
         bool write_succeeded = false;
         if (writer.has_value()) {
-            const auto frame = camera_adapter().capture_jpeg();
+            const auto frame = camera.capture_jpeg();
             capture_succeeded = frame.has_value();
             write_succeeded = capture_succeeded && writer->append_frame(*frame);
         }

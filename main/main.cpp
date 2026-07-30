@@ -13,7 +13,7 @@
 
 #include "canopen_target_service.hpp"
 #include "http_server_adapter.hpp"
-#include "camera_adapter.hpp"
+#include "camera_hardware_adapter.hpp"
 #include "web_volume_adapter.hpp"
 #include "storage_retention_adapter.hpp"
 #include "hardware_adapter_factory.hpp"
@@ -168,7 +168,7 @@ extern "C" void app_main() {
     static firmware::target::WebVolumeAdapter web_volume_adapter;
     static firmware::application::WebVolumeStartup web_volume_startup;
     web_volume_startup.start(web_volume_adapter);
-    if (!firmware::target::camera_adapter().initialize()) {
+    if (!firmware::target::HardwareAdapterFactory::camera().initialize()) {
         ESP_LOGW(tag, "Camera startup failed; camera endpoints remain unavailable");
     }
     static firmware::target::HttpServerAdapter http_server;

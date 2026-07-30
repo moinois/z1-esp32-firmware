@@ -4,7 +4,6 @@
 #include "esp_err.h"
 #include "esp_http_server.h"
 #include "esp_partition.h"
-#include "esp_camera.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
 #include "esp_log.h"
@@ -19,7 +18,8 @@
 #include "firmware/core/media_messages.hpp"
 #include "firmware_update_adapter.hpp"
 #include "ota_update_adapter.hpp"
-#include "camera_adapter.hpp"
+#include "hardware_adapter_factory.hpp"
+#include "camera_hardware_adapter.hpp"
 #include "firmware/application/live_control_policy.hpp"
 #include "firmware/application/preview_open.hpp"
 #include "firmware/application/preview_metadata.hpp"
@@ -82,6 +82,19 @@ struct LiveStreamTaskContext {
     std::uint32_t generation;
 };
 
+// Captures and sends one complete camera frame to an admitted live socket.
+bool send_live_frame(httpd_handle_t handle, int socket_id) {
+    const auto frame = HardwareAdapterFactory::camera().capture_jpeg();
+    if (!frame.has_value()) {
+        return false;
+    }
+    httpd_ws_frame_t outgoing{};
+    outgoing.type = HTTPD_WS_TYPE_BINARY;
+    outgoing.payload = const_cast<std::uint8_t*>(frame->data());
+    outgoing.len = frame->size();
+    return httpd_ws_send_frame_async(handle, socket_id, &outgoing) == ESP_OK;
+}
+
 // Captures and asynchronously sends JPEG frames without retaining a request pointer.
 void live_stream_task(void* parameter) {
     auto* context = static_cast<LiveStreamTaskContext*>(parameter);
@@ -89,19 +102,7 @@ void live_stream_task(void* parameter) {
                context->generation &&
            httpd_ws_get_fd_info(context->handle, context->socket_id) ==
                HTTPD_WS_CLIENT_WEBSOCKET) {
-        camera_fb_t* frame = esp_camera_fb_get();
-        if (frame == nullptr) {
-            break;
-        }
-        httpd_ws_frame_t outgoing{};
-        outgoing.type = HTTPD_WS_TYPE_BINARY;
-        outgoing.payload = frame->buf;
-        outgoing.len = frame->len;
-        const bool sent = httpd_ws_send_frame_async(
-                              context->handle, context->socket_id, &outgoing) ==
-                          ESP_OK;
-        esp_camera_fb_return(frame);
-        if (!sent) {
+        if (!send_live_frame(context->handle, context->socket_id)) {
             break;
         }
         vTaskDelay(live_frame_interval);
@@ -246,7 +247,7 @@ public:
 
     // Stops camera ownership before changing the bootable application image.
     bool deinitialize_camera() override {
-        return firmware::target::camera_adapter().deinitialize();
+        return firmware::target::HardwareAdapterFactory::camera().deinitialize();
     }
     // Selects the inactive application partition as the update destination.
     bool select_inactive_partition() override {
@@ -514,7 +515,7 @@ esp_err_t camera_resolution_handler(httpd_req_t* request) {
     firmware::application::CameraResolutionEndpoint endpoint;
     const auto response = endpoint.handle(
         firmware::core::BytesView(body.data(), static_cast<std::size_t>(count)),
-        firmware::target::camera_adapter());
+        firmware::target::HardwareAdapterFactory::camera());
     httpd_resp_set_status(request,
                           EspHttpStaticResponse::status_text(response.status_code));
     httpd_resp_set_type(request, std::string(response.content_type).c_str());
@@ -649,6 +650,16 @@ esp_err_t web_volume_update_handler(httpd_req_t* request) {
 #if CONFIG_HTTPD_WS_SUPPORT
 // Receives one video WebSocket frame and applies the shared message boundary.
 esp_err_t video_websocket_handler(httpd_req_t* request) {
+    // ESP-IDF invokes the URI handler once for the successful HTTP upgrade.
+    // Frame bytes are available only on later non-GET callbacks.
+    if (request->method == HTTP_GET) {
+        const auto socket_id = static_cast<std::uint32_t>(
+            httpd_req_to_sockfd(request));
+        if (!live_control_policy.on_disconnect(socket_id).empty()) {
+            live_generation.fetch_add(1U, std::memory_order_acq_rel);
+        }
+        return ESP_OK;
+    }
     const auto socket_id =
         static_cast<std::uint32_t>(httpd_req_to_sockfd(request));
     httpd_ws_frame_t frame{};
@@ -693,7 +704,10 @@ esp_err_t video_websocket_handler(httpd_req_t* request) {
         }
         if (decision.action == firmware::application::LiveControlAction::start &&
             decision.socket_id == socket_id) {
-            start_live_stream(request);
+            if (send_live_frame(request->handle,
+                                httpd_req_to_sockfd(request))) {
+                start_live_stream(request);
+            }
         }
     }
     return ESP_OK;
@@ -701,6 +715,10 @@ esp_err_t video_websocket_handler(httpd_req_t* request) {
 
 // Receives one preview frame and returns metadata for an accepted open request.
 esp_err_t preview_websocket_handler(httpd_req_t* request) {
+    // Complete the HTTP upgrade without consuming the first data-frame byte.
+    if (request->method == HTTP_GET) {
+        return ESP_OK;
+    }
     const auto socket_id =
         static_cast<std::uint32_t>(httpd_req_to_sockfd(request));
     httpd_ws_frame_t frame{};

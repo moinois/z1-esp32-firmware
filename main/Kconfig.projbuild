@@ -13,6 +13,12 @@ config Z1_MOCK_SD_HARDWARE
     help
         Mount a volatile FAT filesystem at /sd instead of using SDMMC.
 
+config Z1_MOCK_CAMERA_HARDWARE
+    bool "Use a deterministic mock camera"
+    default n
+    help
+        Provide deterministic JPEG frames without probing a physical camera.
+
 config Z1_MOCK_SD_CAPACITY_KIB
     int "Mock SD capacity in KiB"
     depends on Z1_MOCK_ALL_HARDWARE || Z1_MOCK_SD_HARDWARE

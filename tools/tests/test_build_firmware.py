@@ -79,6 +79,17 @@ class BuildFirmwareTests(unittest.TestCase):
             self.assertIn("# CONFIG_Z1_MOCK_ALL_HARDWARE is not set", text)
             self.assertIn("# CONFIG_Z1_MOCK_SD_HARDWARE is not set", text)
 
+    def test_project_kconfig_exposes_camera_and_sd_mocks(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+
+        self.assertEqual(
+            discover_mock_adapters(root / "main" / "Kconfig.projbuild"),
+            {
+                "camera": "CONFIG_Z1_MOCK_CAMERA_HARDWARE",
+                "sd": "CONFIG_Z1_MOCK_SD_HARDWARE",
+            },
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

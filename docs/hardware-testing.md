@@ -37,6 +37,7 @@ Z1_HIL_HOST=192.168.8.119 Z1_ALLOW_DESTRUCTIVE=1 \
 | `Z1_HIL_SERIAL` | Diagnostic serial device | uniquely detected USB modem |
 | `Z1_HIL_SD` | Declares that a physical SD reader and card are installed | disabled |
 | `Z1_HIL_MOCK_SD` | Declares that the flashed firmware uses the mock SD profile | disabled |
+| `Z1_HIL_MOCK_CAMERA` | Declares that the flashed firmware uses the deterministic camera mock | disabled |
 | `Z1_ALLOW_MUTATION` | Enables recoverable persistent changes when `1` | disabled |
 | `Z1_ALLOW_DESTRUCTIVE` | Enables destructive operations when `1` | disabled |
 | `Z1_HIL_OTA_IMAGE` | Valid raw ESP-IDF application image for destructive OTA HIL | unset |
@@ -136,6 +137,8 @@ the standard reusable `build/` tree:
 ```sh
 source /Users/moinois/esp/esp-idf/export.sh
 python3 tools/build_firmware.py --mock sd
+python3 tools/build_firmware.py --mock camera
+python3 tools/build_firmware.py --mock camera,sd
 python3 tools/build_firmware.py --mock-all
 python3 tools/build_firmware.py --mock sd --flash -p /dev/cu.usbmodem...
 Z1_HIL_MOCK_SD=1 Z1_HIL_HOST=192.168.8.119 Z1_ALLOW_MUTATION=1 \
@@ -143,12 +146,20 @@ Z1_HIL_MOCK_SD=1 Z1_HIL_HOST=192.168.8.119 Z1_ALLOW_MUTATION=1 \
 ```
 
 `CONFIG_Z1_MOCK_ALL_HARDWARE` selects every implemented mock adapter;
-`CONFIG_Z1_MOCK_SD_HARDWARE` selects only SD. The SD capacity and mandatory
+`CONFIG_Z1_MOCK_SD_HARDWARE` selects only SD, and
+`CONFIG_Z1_MOCK_CAMERA_HARDWARE` selects only the camera. The SD capacity and mandatory
 post-allocation PSRAM reserve are independently configurable. Neither mock
 switch is enabled in `sdkconfig.defaults`. Every invocation explicitly enables
 or disables all discovered adapters and records the effective choice in
 `build/hardware-selection.json`, preventing stale selections when the build
 directory is reused. `--live` creates an explicit all-live selection.
+
+The camera mock follows the same initialization, configuration, resolution,
+capture, recording, WebSocket streaming, and OTA-deinitialization surface as
+the physical adapter. It emits the deterministic JPEG marker sequence
+`ff d8 ff d9`; this validates framing and routing but is not image-quality,
+sensor, pin, timing, or electrical conformance. Declare the flashed selection
+with `Z1_HIL_MOCK_CAMERA=1` to enable its positive streaming HIL check.
 
 The mutation-gated SD suite includes a native-USB upload/download round trip,
 MD5 verification, cache-preserving rename and delete, traversal confinement,

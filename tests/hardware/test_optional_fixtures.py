@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import socket
 
 import pytest
 
@@ -37,3 +38,38 @@ def test_can_fixture_declares_connection() -> None:
 def test_camera_fixture_detects_sensor(camera_fixture) -> None:
     """Records camera availability without failing camera-less mainboards."""
     assert camera_fixture is None
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.http
+@pytest.mark.camera
+def test_mock_camera_stream_returns_deterministic_jpeg(tcp_host: str) -> None:
+    """Exercises the target camera composition without claiming physical conformance."""
+    if os.getenv("Z1_HIL_MOCK_CAMERA") != "1":
+        pytest.skip("mock camera not declared with Z1_HIL_MOCK_CAMERA=1")
+    request = (
+        "GET /ws_video HTTP/1.1\r\n"
+        f"Host: {tcp_host}:82\r\n"
+        "Connection: Upgrade\r\n"
+        "Upgrade: websocket\r\n"
+        "Sec-WebSocket-Version: 13\r\n"
+        "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n"
+    ).encode("ascii")
+    command = b"start_stream"
+    mask = b"\x12\x34\x56\x78"
+    masked = bytes(value ^ mask[index % 4] for index, value in enumerate(command))
+    frame = bytes((0x81, 0x80 | len(command))) + mask + masked
+    with socket.create_connection((tcp_host, 82), timeout=5.0) as connection:
+        connection.settimeout(5.0)
+        connection.sendall(request)
+        response = connection.recv(1024)
+        assert response.startswith(b"HTTP/1.1 101")
+        connection.sendall(frame)
+        received = bytearray()
+        while len(received) < 6:
+            block = connection.recv(6 - len(received))
+            assert block, "mock camera WebSocket closed before one frame arrived"
+            received.extend(block)
+    assert received[:2] == b"\x82\x04"
+    assert received[2:6] == b"\xff\xd8\xff\xd9"

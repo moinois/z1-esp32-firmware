@@ -6,40 +6,16 @@
 
 #include "firmware/application/camera_hardware_config.hpp"
 #include "firmware/application/camera_settings.hpp"
-#include "configuration_file_store.hpp"
+#include "camera_settings_adapter.hpp"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <string>
 
 namespace firmware::target {
 namespace {
 
 constexpr char tag[] = "CAMERA";
-// Exposes the SD configuration file through the portable camera source port.
-class SdCameraConfigSource final
-    : public firmware::application::CameraConfigSource {
-public:
-    SdCameraConfigSource() = default;
-
-    std::optional<std::string_view> find(std::string_view key) const override {
-        const auto value = firmware::target::ConfigurationFileStore{}.get(
-            firmware::application::camera_configuration_tag, key);
-        if (!value.has_value()) return std::nullopt;
-        values_.emplace_back(*value);
-        return values_.back();
-    }
-
-private:
-    mutable std::vector<std::string> values_;
-};
-
-firmware::application::CameraSettings& cached_camera_settings() {
-    static firmware::application::CameraSettings settings;
-    return settings;
-}
-
 // Maps the portable CAM-001 dimension table to esp32-camera frame-size values.
 constexpr std::array<framesize_t, 15U> frame_sizes{
     FRAMESIZE_QQVGA, FRAMESIZE_128X128, FRAMESIZE_QCIF, FRAMESIZE_HQVGA,
@@ -90,9 +66,7 @@ bool CameraAdapter::initialize() {
     if (initialized_) {
         return true;
     }
-    SdCameraConfigSource source;
-    firmware::application::CameraSettingsLoader loader;
-    cached_camera_settings() = loader.load_once(source);
+    const auto& camera_settings = load_camera_settings();
     const auto config = make_camera_config();
     const esp_err_t result = esp_camera_init(&config);
     if (result != ESP_OK) {
@@ -110,7 +84,7 @@ bool CameraAdapter::initialize() {
     sensor->set_hmirror(sensor, firmware::application::camera_hardware.horizontal_mirror);
     sensor->set_vflip(sensor, firmware::application::camera_hardware.vertical_flip);
     if (sensor->set_framesize(sensor, frame_sizes[
-            cached_camera_settings().stream_frame_size - 1U]) != 0) {
+            camera_settings.stream_frame_size - 1U]) != 0) {
         ESP_LOGW(tag, "Configured stream frame size could not be applied");
     }
     initialized_ = true;
@@ -171,13 +145,8 @@ firmware::application::FrameDimensions CameraAdapter::current_dimensions() const
         static_cast<std::uint8_t>(table_index));
 }
 
-CameraAdapter& camera_adapter() {
-    static CameraAdapter adapter;
-    return adapter;
-}
-
 const firmware::application::CameraSettings& CameraAdapter::settings() const {
-    return cached_camera_settings();
+    return load_camera_settings();
 }
 
 }  // namespace firmware::target
