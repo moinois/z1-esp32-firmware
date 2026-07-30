@@ -150,6 +150,13 @@ or disables all discovered adapters and records the effective choice in
 `build/hardware-selection.json`, preventing stale selections when the build
 directory is reused. `--live` creates an explicit all-live selection.
 
+The mutation-gated SD suite includes a native-USB upload/download round trip,
+MD5 verification, cache-preserving rename and delete, traversal confinement,
+and exact `gcodes` token mapping. These transfers require the board's native
+`USB` connector because ownership must remain on one transport for the complete
+multi-frame exchange. Tests clean up their unique files and directories even
+after an assertion failure.
+
 ## Requirement evidence
 
 Tests carry `requirement` markers. Write a machine-readable report with:
