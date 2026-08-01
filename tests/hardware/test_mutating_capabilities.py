@@ -78,26 +78,64 @@ def _required_frame(frames, frame_type: int):
     return frame
 
 
+def _exchange_until_terminal(
+    client: UsbProtocolClient,
+    command: bytes,
+    timeout_seconds: float,
+):
+    """Collects a WLAN response through its final success or failure frame."""
+
+    client.send(GENERAL_COMMAND, command)
+    deadline = time.monotonic() + timeout_seconds
+    frames = []
+    while time.monotonic() < deadline:
+        frames.extend(client.receive(min(1.0, deadline - time.monotonic())))
+        if any(frame.frame_type in (0x84, 0x85) for frame in frames):
+            return frames
+    pytest.fail(f"no terminal WLAN response for {command!r}: {frames!r}")
+
+
 @pytest.mark.hardware
 @pytest.mark.mutating
 @pytest.mark.usb
 @pytest.mark.wifi
 @pytest.mark.requirement("NET-010")
 @pytest.mark.requirement("NET-022")
-def test_wifi_credentials_can_be_applied_and_saved(usb_client, tcp_host: str) -> None:
+def test_wifi_credentials_can_be_saved(usb_client) -> None:
+    """Verifies only the NVS-save operation selected by the `-s` switch."""
+
     ssid = os.getenv("Z1_HIL_WIFI_SSID")
     password = os.getenv("Z1_HIL_WIFI_PASSWORD")
     if not ssid or password is None:
         pytest.skip("set Z1_HIL_WIFI_SSID and Z1_HIL_WIFI_PASSWORD")
     command = f"wlan -s {ssid} {password}".encode("utf-8")
-    frames = usb_client.exchange(GENERAL_COMMAND, command, 30.0)
-    assert frames
-    payload = b"\n".join(frame.payload for frame in frames).lower()
-    assert b"failed" not in payload
+    frames = _exchange_until_terminal(usb_client, command, 5.0)
+    terminal = next(frame for frame in frames if frame.frame_type in (0x84, 0x85))
+    assert terminal.frame_type == 0x84, frames
+    assert terminal.payload == b"ok\r\n"
 
-    # Applying even unchanged credentials can briefly reassociate the station.
-    # Do not let that deliberate transition leak into later network HIL cases.
-    deadline = time.monotonic() + 60.0
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.usb
+@pytest.mark.wifi
+@pytest.mark.requirement("NET-022")
+@pytest.mark.requirement("NET-044")
+def test_wifi_credentials_can_connect(usb_client, tcp_host: str) -> None:
+    """Verifies association and IP acquisition separately from NVS saving."""
+
+    ssid = os.getenv("Z1_HIL_WIFI_SSID")
+    password = os.getenv("Z1_HIL_WIFI_PASSWORD")
+    if not ssid or password is None:
+        pytest.skip("set Z1_HIL_WIFI_SSID and Z1_HIL_WIFI_PASSWORD")
+    command = f"wlan {ssid} {password}".encode("utf-8")
+    frames = _exchange_until_terminal(usb_client, command, 30.0)
+    terminal = next(frame for frame in frames if frame.frame_type in (0x84, 0x85))
+    assert terminal.frame_type == 0x84, frames
+    assert terminal.payload == b"ok\r\n"
+    assert any(b"WiFi connected, ip:" in frame.payload for frame in frames)
+
+    deadline = time.monotonic() + 10.0
     while time.monotonic() < deadline:
         try:
             with socket.create_connection((tcp_host, 80), timeout=1.0):
@@ -105,7 +143,7 @@ def test_wifi_credentials_can_be_applied_and_saved(usb_client, tcp_host: str) ->
         except OSError:
             time.sleep(0.25)
     else:
-        pytest.fail("network services did not recover after applying credentials")
+        pytest.fail("network services did not start after successful association")
 
 
 @pytest.mark.hardware

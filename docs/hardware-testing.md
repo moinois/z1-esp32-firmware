@@ -440,3 +440,24 @@ observed `tcp-full=1`, closed all four, and observed the following periodic
 advertisement return to `tcp-full=0`. Both read-only checks passed on
 2026-07-31; AP-subnet delivery and the event/command-triggered three-packet
 bursts remain portable-policy evidence rather than physical observations.
+
+On 2026-08-01 the mixed transport baseline reproduced the open endurance
+symptom: nine cases passed before HTTP concurrency timed out, after which the
+station services were unreachable and stale native-USB handles reported I/O
+errors. A host USB bus reset restored an immediate `ftype /` round trip without
+restarting the application, while Wi-Fi remained disconnected. The target RF
+scan still found `Away` at -51 dBm, but a complete manual connection attempt
+ended with the exact terminal failure `ESP-IDF disconnect reason=4`
+(`WIFI_REASON_ASSOC_EXPIRE`/inactivity). This separates current RF association
+failure from the earlier TCP slot-capacity fix.
+
+That run also found a HIL semantic error: `wlan -s` only saves credentials and
+does not initiate association. The fixture now verifies its exact `0x84 ok`
+terminal response separately from a manual `wlan <ssid> <password>` connection,
+which must report an IP and start HTTP before it can pass. Saving the declared
+`Away` credentials passed; the separate association test retained the reason-4
+failure as evidence. With Wi-Fi unavailable, ten independent native-USB and
+mock-SD cases passed in 209.78 seconds, including repeated requests, malformed
+input recovery, file mutations, MD5/cache behavior, logging, cancellation, and
+mock-volume exhaustion/recovery. The report is
+`build/hil-usb-mock-sd-offline.json`.
