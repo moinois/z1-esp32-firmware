@@ -214,6 +214,17 @@ fresh remount and transfer recovery, deterministic 16 KiB read failure,
 failed FAT write and sync operations, cleanup, reformat, and successful reuse.
 The report is retained as `build/hil-mock-sd-faults.json`.
 
+The all-mock camera profile was target-built and OTA-installed on 2026-08-01.
+HIL completed five resolution changes spanning frame-size values 1 through 15;
+each cycle opened `/ws_video`, received three exact deterministic JPEG frames,
+sent `stop_stream`, disconnected, and verified TCP recovery. A second-client
+test retained two simultaneous WebSockets, observed exact `vlive` preemption
+JSON on the former owner after any already-queued JPEGs, streamed from the new
+owner while HTTP Wi-Fi diagnostics and TCP `sys-time` ran concurrently, then
+closed both sockets and admitted a successor stream. The report is retained as
+`build/hil-mock-camera-lifecycle-final.json`. This is simulator evidence, not
+physical sensor conformance.
+
 The camera mock follows the same initialization, configuration, resolution,
 capture, recording, WebSocket streaming, and OTA-deinitialization surface as
 the physical adapter. It emits the deterministic JPEG marker sequence
