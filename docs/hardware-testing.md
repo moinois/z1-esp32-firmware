@@ -481,6 +481,11 @@ native USB protocol fixture. The existing snapshot and all-three-transfer cases
 both passed over USB while Wi-Fi remained unavailable. A new test-only command
 can inject a one-byte, invalid geometry packet, allowing the target to verify
 cancel, preservation of the staged firmware, and a subsequent successful retry.
-The updated `sd,controller` image builds successfully at 0x1a6e20 bytes, but
-that new fault case still awaits flashing because only application USB is
-currently exposed; no serial flash port or working OTA path is available.
+The updated `sd,controller` image builds successfully at 0x1a6e20 bytes. It was
+flashed over COM and boot-checked before moving back to application USB. The
+malformed-geometry case passed in isolation, and the subsequent complete
+controller group passed all three mock cases: retained snapshots, all three
+normal transfer families, and cancellation followed by successful retry. The
+external physical-controller declaration remained correctly skipped. Reports
+are `build/hil-controller-malformed-geometry.json` and
+`build/hil-controller-usb-complete.json`.
