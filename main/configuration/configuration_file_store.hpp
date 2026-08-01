@@ -10,7 +10,8 @@
 
 namespace firmware::target {
 
-// Owns config.txt paths and performs one fresh operation per request.
+// Owns config.txt paths and performs one fresh, cross-transport-safe operation
+// per request.
 class ConfigurationFileStore {
 public:
     // Reports whether the active configuration file exists as a readable file.

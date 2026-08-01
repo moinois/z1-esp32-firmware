@@ -5,6 +5,7 @@
 #include "firmware/core/sd_user_path.hpp"
 
 #include <cstdio>
+#include <mutex>
 #include <utility>
 
 namespace firmware::target {
@@ -13,6 +14,7 @@ namespace {
 const std::string active_path = firmware::core::physical_sd_path("/config.txt");
 const std::string temporary_path = firmware::core::physical_sd_path("/config.tmp");
 constexpr std::size_t buffer_size = 256U;
+std::mutex configuration_file_mutex;
 
 std::string_view effective_tag(std::string_view tag) {
     return tag.empty() ? firmware::application::mainboard_configuration_tag : tag;
@@ -44,6 +46,7 @@ bool write_file(std::string_view path, std::string_view content) {
 }  // namespace
 
 bool ConfigurationFileStore::exists() const {
+    std::lock_guard<std::mutex> lock(configuration_file_mutex);
     std::FILE* file = std::fopen(active_path.c_str(), "rb");
     if (file == nullptr) return false;
     std::fclose(file);
@@ -61,6 +64,7 @@ ConfigurationFileStore::read_document() const {
 
 std::optional<std::string> ConfigurationFileStore::get(
     std::string_view tag, std::string_view key) const {
+    std::lock_guard<std::mutex> lock(configuration_file_mutex);
     auto document = read_document();
     firmware::application::ConfigurationNamespace configuration(
         document, effective_tag(tag));
@@ -71,6 +75,7 @@ std::optional<std::string> ConfigurationFileStore::get(
 
 std::vector<firmware::application::ConfigurationEntry>
 ConfigurationFileStore::get_all(std::string_view tag) const {
+    std::lock_guard<std::mutex> lock(configuration_file_mutex);
     auto document = read_document();
     firmware::application::ConfigurationNamespace configuration(
         document, effective_tag(tag));
@@ -79,6 +84,11 @@ ConfigurationFileStore::get_all(std::string_view tag) const {
 
 bool ConfigurationFileStore::set(std::string_view tag, std::string_view key,
                                  std::string_view value) const {
+    // USB and TCP dispatch on independent tasks. Serialize the complete
+    // read-modify-replace transaction so their shared config.tmp cannot be
+    // renamed by one request while the other is still writing it, and so a
+    // concurrent update cannot silently discard an already accepted value.
+    std::lock_guard<std::mutex> lock(configuration_file_mutex);
     auto document = read_document();
     firmware::application::ConfigurationNamespace configuration(
         document, effective_tag(tag));
@@ -97,6 +107,7 @@ bool ConfigurationFileStore::set(std::string_view tag, std::string_view key,
 }
 
 std::vector<std::string> ConfigurationFileStore::read_lines() const {
+    std::lock_guard<std::mutex> lock(configuration_file_mutex);
     return read_document().lines();
 }
 

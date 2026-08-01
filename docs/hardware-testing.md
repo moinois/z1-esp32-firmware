@@ -168,6 +168,25 @@ or disables all discovered adapters and records the effective choice in
 `build/hardware-selection.json`, preventing stale selections when the build
 directory is reused. `--live` creates an explicit all-live selection.
 
+The 2026-08-01 mock-SD endurance run completed 20 upload/download/MD5/rename/
+download/delete cycles with varied 1--4 KiB payloads through native USB. The
+same build also retained both values from simultaneous USB and TCP
+`config-set` requests. `ConfigurationFileStore` serializes the complete
+read-modify-temporary-write-rename transaction because both transports share
+`config.tmp`.
+
+Runtime mutation across transports exposed a target-specific constraint:
+executing NVS commands directly on a PSRAM-backed TCP client stack reset the
+connection when flash access suspended the external-memory cache. TCP
+`sn-get`, `sn-set`, `sys-time`, and `clearftm` are therefore dispatched through
+one internal-stack worker. On-target validation then passed exact TCP
+`clearftm` acknowledgement, USB observation of the erased value,
+controller-mock recreation with `mock-time`, and identical TCP/USB readback.
+The four-client capacity response and six repeated four-client reuse waves
+also passed, proving that the safety fix did not reduce the normative TCP
+capacity. Reports are retained as `build/hil-mock-runtime-config-endurance.json`,
+`build/hil-tcp-nvs-worker.json`, and `build/hil-tcp-hybrid-capacity.json`.
+
 The camera mock follows the same initialization, configuration, resolution,
 capture, recording, WebSocket streaming, and OTA-deinitialization surface as
 the physical adapter. It emits the deterministic JPEG marker sequence

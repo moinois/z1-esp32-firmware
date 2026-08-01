@@ -5,6 +5,7 @@
 #include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
+#include "freertos/queue.h"
 #include "freertos/task.h"
 
 #include "firmware/core/frame.hpp"
@@ -96,6 +97,65 @@ firmware::application::LiveConfiguration tcp_live_configuration;
 std::atomic_bool m942_exercise_active{false};
 std::mutex tcp_session_registry_mutex;
 std::vector<firmware::application::TcpClientSession*> tcp_sessions;
+QueueHandle_t tcp_nvs_command_queue = nullptr;
+
+enum class TcpNvsCommandKind : std::uint8_t {
+    serial_get,
+    serial_set,
+    system_time,
+    clear_first_time,
+};
+
+struct TcpNvsCommandRequest {
+    firmware::application::TcpClientSession* session;
+    TcpNvsCommandKind kind;
+    std::string_view command;
+    TaskHandle_t requester;
+};
+
+// Executes flash-backed NVS work on an internal-RAM stack. TCP client tasks
+// intentionally use PSRAM so four simultaneous 8 KiB protocol stacks fit, but
+// ESP-IDF can make PSRAM inaccessible while the flash cache is disabled.
+void tcp_nvs_command_task(void*) {
+    TcpNvsCommandRequest* request = nullptr;
+    for (;;) {
+        if (xQueueReceive(tcp_nvs_command_queue, &request, portMAX_DELAY) != pdTRUE ||
+            request == nullptr || request->session == nullptr) {
+            continue;
+        }
+        if (request->kind == TcpNvsCommandKind::serial_get ||
+            request->kind == TcpNvsCommandKind::serial_set) {
+            TcpSerialNumberAdapter port(*request->session);
+            firmware::application::SerialNumberService service(port);
+            if (request->kind == TcpNvsCommandKind::serial_get) {
+                service.handle_get(request->command);
+            } else {
+                service.handle_set(request->command);
+            }
+        } else {
+            TcpRuntimeCommandAdapter port(*request->session);
+            firmware::application::RuntimeCommandService service(port);
+            if (request->kind == TcpNvsCommandKind::system_time) {
+                service.handle_system_time(request->command);
+            } else {
+                service.handle_clear_first_boot(request->command);
+            }
+        }
+        xTaskNotifyGive(request->requester);
+    }
+}
+
+bool run_tcp_nvs_command(firmware::application::TcpClientSession& session,
+                         TcpNvsCommandKind kind, std::string_view command) {
+    if (tcp_nvs_command_queue == nullptr) return false;
+    TcpNvsCommandRequest request{&session, kind, command,
+                                 xTaskGetCurrentTaskHandle()};
+    TcpNvsCommandRequest* queued = &request;
+    if (xQueueSend(tcp_nvs_command_queue, &queued, pdMS_TO_TICKS(250U)) != pdTRUE) {
+        return false;
+    }
+    return ulTaskNotifyTake(pdTRUE, portMAX_DELAY) != 0U;
+}
 
 // Adapts one TCP-origin M942 request to the shared CANopen SDO service.
 class TcpM942Port final : public firmware::application::M942ExercisePort {
@@ -262,22 +322,20 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             frame.payload.size());
         if (match.kind == firmware::core::CommandKind::serial_get
             || match.kind == firmware::core::CommandKind::serial_set) {
-            TcpSerialNumberAdapter serial_port(session);
-            firmware::application::SerialNumberService serial_service(serial_port);
-            if (match.kind == firmware::core::CommandKind::serial_get) {
-                serial_service.handle_get(command);
-            } else {
-                serial_service.handle_set(command);
-            }
+            static_cast<void>(run_tcp_nvs_command(
+                session,
+                match.kind == firmware::core::CommandKind::serial_get
+                    ? TcpNvsCommandKind::serial_get
+                    : TcpNvsCommandKind::serial_set,
+                command));
         } else if (match.kind == firmware::core::CommandKind::system_time
                    || match.kind == firmware::core::CommandKind::clear_first_time) {
-            TcpRuntimeCommandAdapter runtime_port(session);
-            firmware::application::RuntimeCommandService runtime_service(runtime_port);
-            if (match.kind == firmware::core::CommandKind::system_time) {
-                runtime_service.handle_system_time(command);
-            } else {
-                runtime_service.handle_clear_first_boot(command);
-            }
+            static_cast<void>(run_tcp_nvs_command(
+                session,
+                match.kind == firmware::core::CommandKind::system_time
+                    ? TcpNvsCommandKind::system_time
+                    : TcpNvsCommandKind::clear_first_time,
+                command));
         } else if (match.kind == firmware::core::CommandKind::wlan) {
             const auto request = firmware::application::parse_wlan_request(command);
             if (request.kind == firmware::application::WlanRequestKind::scan) {
@@ -758,6 +816,12 @@ void tcp_accept_task(void*) {
 }  // namespace
 
 void TcpControlAdapter::start() {
+    tcp_nvs_command_queue = xQueueCreate(maximum_clients, sizeof(void*));
+    if (tcp_nvs_command_queue == nullptr ||
+        xTaskCreate(tcp_nvs_command_task, "tcp_nvs", 6144U, nullptr, 4U,
+                    nullptr) != pdPASS) {
+        ESP_LOGE(log_tag, "TCP NVS worker allocation failed");
+    }
     xTaskCreate(tcp_accept_task, "tcp_control", 4096U, nullptr, 4U, nullptr);
 }
 
