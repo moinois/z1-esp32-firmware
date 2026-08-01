@@ -501,3 +501,15 @@ USB repetition and noise recovery, fragmented TCP input, exact fifth-client
 rejection, four-client concurrency, six slot-reuse waves, service recovery, and
 the discovery transition `tcp-full=0→1→0`. The complete report is
 `build/hil-transport-full-after-fixture-fix.json`.
+
+The same transport coverage was refreshed after the controller fault-injection
+image was installed on 2026-08-01. One initial USB/TCP coexistence attempt saw
+a TCP connection timeout while HTTP remained reachable, but TCP recovered
+without a target reset. Ten immediate repetitions of the coexistence case then
+passed. A sequential transport run also passed all ten USB, TCP, and UDP cases
+in 77.92 seconds, including four concurrent clients, fifth-client overflow,
+six capacity-reuse waves, fragmented input, and discovery `tcp-full=0→1→0`.
+The first parallel host invocation was discarded because two pytest processes
+contended for the single native USB interface. The retained report is
+`build/hil-tcp-stress-sequential.json`; the isolated timeout remains motivation
+for a longer endurance run rather than evidence of a persistent service loss.
