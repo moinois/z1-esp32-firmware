@@ -109,7 +109,8 @@ unframed USB noise, bytewise fragmented TCP input, the four-client TCP limit,
 four-client concurrency, six consecutive four-client capacity waves,
 simultaneous USB/TCP commands, WLAN scanning, runtime
 and serial-number reads, monotonic Wi-Fi diagnostics, concurrent HTTP requests,
-and recovery after an interrupted multipart request. Persistent Wi-Fi changes,
+bounded TCP-service recovery after a physical station scan, simultaneous
+USB/TCP requests, and recovery after an interrupted multipart request. Persistent Wi-Fi changes,
 USB reset, application OTA, and SPIFFS replacement remain separately gated.
 
 The combined mock HIL run on 2026-07-30 initially exposed an internal-memory

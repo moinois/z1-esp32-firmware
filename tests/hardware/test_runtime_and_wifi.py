@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 import json
+import socket
+import time
 import urllib.request
 
 import pytest
@@ -32,10 +34,23 @@ def test_usb_runtime_and_serial_reads(usb_client) -> None:
 @pytest.mark.usb
 @pytest.mark.wifi
 @pytest.mark.requirement("NET-030")
-def test_usb_wifi_scan_returns_bounded_response(usb_client) -> None:
+def test_usb_wifi_scan_returns_bounded_response(usb_client, tcp_host: str) -> None:
     frames = usb_client.exchange(GENERAL_COMMAND, b"wlan", 15.0)
     assert frames
     assert sum(len(frame.payload) for frame in frames) <= 1024
+
+    # A physical station scan can briefly defer new TCP handshakes even after
+    # its USB response has been queued. Prove bounded service recovery here so
+    # the immediately following cross-transport case does not inherit scan
+    # settling time and report it as an ownership failure.
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection((tcp_host, 2222), timeout=1.0):
+                return
+        except OSError:
+            time.sleep(0.25)
+    pytest.fail("TCP service did not recover within ten seconds after WLAN scan")
 
 
 @pytest.mark.hardware
