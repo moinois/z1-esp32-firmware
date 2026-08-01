@@ -98,6 +98,15 @@ ManualConnectionResult ManualStationConnection::connect(
             associated = true;
             break;
         }
+        // ESP-IDF can associate and obtain an address between two 100 ms
+        // snapshots. Address readiness proves that association occurred even
+        // when this polling policy did not observe the transient intermediate
+        // state; rejecting it caused a false ten-second connection timeout.
+        if (snapshot.state == StationConnectionState::address_ready) {
+            port.record_diagnostic("policy.address_ready_as_associated");
+            associated = true;
+            break;
+        }
     }
     if (!associated) {
         port.record_diagnostic("policy.association.timeout");

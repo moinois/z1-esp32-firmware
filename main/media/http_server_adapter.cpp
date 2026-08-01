@@ -506,6 +506,7 @@ esp_err_t wifi_diagnostics_handler(httpd_req_t* request) {
     statistics.addresses_acquired = events.addresses_acquired;
     statistics.addresses_lost = events.addresses_lost;
     statistics.last_disconnect_reason = events.last_disconnect_reason;
+    statistics.reset_reason = static_cast<std::uint32_t>(esp_reset_reason());
     statistics.recent_events = wifi_diagnostic_log().read();
 
     const std::string payload =

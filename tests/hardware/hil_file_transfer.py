@@ -56,6 +56,33 @@ def _prompt(frames: List[ReceivedFrame], expected_type: int) -> ReceivedFrame | 
     return None
 
 
+def _send_data_with_timed_retry(
+    client: FileTransferClient,
+    payload: bytes,
+    expected_type: int,
+    timeout_seconds: float,
+    *,
+    maximum_attempts: int = 4,
+) -> ReceivedFrame:
+    """Resends one data packet when HFT-022 reports a timed retry.
+
+    The command, MD5, and geometry phases deliberately advance after a retry:
+    the retry identifies the packet the target is currently waiting for. During
+    data transfer that packet remains the current block until the target returns
+    either the next sequence request or completion. Duplicate delivery is safe
+    because the production receiver recognizes the already-written sequence.
+    """
+
+    for _ in range(maximum_attempts):
+        responses = client.exchange(FILE_DATA, payload, timeout_seconds)
+        prompt = _prompt(responses, expected_type)
+        if prompt is not None:
+            return prompt
+    raise FileTransferError(
+        f"target repeated timed retry for response 0x{expected_type:02x}"
+    )
+
+
 def upload_file(
     client: FileTransferClient,
     path: str,
@@ -94,12 +121,17 @@ def upload_file(
                 raise FileTransferError(
                     f"target requested block {requested_sequence}, expected {expected_sequence}"
                 )
-        responses = client.exchange(
-            FILE_DATA,
-            expected_sequence.to_bytes(4, "big") + block,
-            timeout_seconds,
+        expected_response = (
+            FILE_COMPLETE if expected_sequence == len(blocks) else FILE_DATA
         )
-    _frame(responses, FILE_COMPLETE)
+        responses = [
+            _send_data_with_timed_retry(
+                client,
+                expected_sequence.to_bytes(4, "big") + block,
+                expected_response,
+                timeout_seconds,
+            )
+        ]
 
 
 def download_file(

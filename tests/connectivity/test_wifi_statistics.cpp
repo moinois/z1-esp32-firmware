@@ -16,6 +16,7 @@ TEST_CASE(wifi_diagnostics_formats_current_state_counters_and_events) {
     statistics.addresses_acquired = 3U;
     statistics.addresses_lost = 1U;
     statistics.last_disconnect_reason = 205U;
+    statistics.reset_reason = 8U;
     statistics.recent_events = "connected\nreason=\"205\"\\end";
 
     REQUIRE_EQ(firmware::core::format_wifi_statistics_json(statistics),
@@ -25,5 +26,6 @@ TEST_CASE(wifi_diagnostics_formats_current_state_counters_and_events) {
                "\"station_starts\":1,\"associations\":3,"
                "\"disconnections\":2,\"addresses_acquired\":3,"
                "\"addresses_lost\":1,\"last_disconnect_reason\":205,"
+               "\"reset_reason\":8,"
                "\"recent_events\":\"connected\\nreason=\\\"205\\\"\\\\end\"}");
 }

@@ -72,7 +72,7 @@ def test_http_wifi_diagnostics(tcp_host: str) -> None:
         "connected", "rssi_dbm", "channel", "authentication",
         "ipv4_address", "station_starts", "associations",
         "disconnections", "addresses_acquired", "addresses_lost",
-        "last_disconnect_reason", "recent_events",
+        "last_disconnect_reason", "reset_reason", "recent_events",
     }
     assert isinstance(diagnostics["connected"], bool)
     assert isinstance(diagnostics["recent_events"], str)

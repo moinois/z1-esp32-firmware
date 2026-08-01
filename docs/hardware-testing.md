@@ -214,6 +214,16 @@ fresh remount and transfer recovery, deterministic 16 KiB read failure,
 failed FAT write and sync operations, cleanup, reformat, and successful reuse.
 The report is retained as `build/hil-mock-sd-faults.json`.
 
+A combined regression on 2026-08-01 exposed a host-fixture edge case when the
+target's 5.010-second HFT-022 timer expired while the final upload block was
+being completed. The target correctly returned `Info: need retry!`, but the HIL
+driver treated that as terminal instead of repeating the current data packet.
+The driver now retries the same block with a bounded attempt count; duplicate
+delivery remains safe through the production sequence handling. The corrected
+run passed all 20 endurance cycles plus unmount/remount and latched read, write,
+and sync recovery in 633.66 seconds. The report is
+`build/hil-mock-sd-retry-fix.json`.
+
 The all-mock camera profile was target-built and OTA-installed on 2026-08-01.
 HIL completed five resolution changes spanning frame-size values 1 through 15;
 each cycle opened `/ws_video`, received three exact deterministic JPEG frames,
@@ -224,6 +234,14 @@ owner while HTTP Wi-Fi diagnostics and TCP `sys-time` ran concurrently, then
 closed both sockets and admitted a successor stream. The report is retained as
 `build/hil-mock-camera-lifecycle-final.json`. This is simulator evidence, not
 physical sensor conformance.
+
+Recording cannot yet be positively exercised even with both mocks enabled.
+REC-001 currently generates `/sd/videos/session-YYYYMMDD_HHMMSS.avi`, while
+SD-009 disables long-file-name support; the generated base name therefore
+cannot be represented by the mandated 8.3 FAT policy. The recording task also
+does not create `/videos`. This is tracked as a normative conflict rather than
+silently changing either filename or filesystem semantics in the
+implementation.
 
 The camera mock follows the same initialization, configuration, resolution,
 capture, recording, WebSocket streaming, and OTA-deinitialization surface as
@@ -369,7 +387,10 @@ Wi-Fi diagnostics are available through read-only
 `GET /api/wifi/diagnostics`. The response contains current connection state,
 RSSI in dBm, radio channel, authentication mode, station IPv4 address,
 boot-lifetime association/address/disconnection counters, the latest numeric
-ESP-IDF disconnect reason, and the bounded persistent Wi-Fi event log. It does
+ESP-IDF disconnect reason, the current boot's numeric ESP-IDF reset reason, and
+the bounded persistent Wi-Fi event log. The reset reason distinguishes a target
+reboot from a host-only USB or network interruption after connectivity returns.
+It does
 not return saved credentials or BSSID. The HTTP HIL suite validates the schema
 and sensible radio ranges whenever the endpoint is detected.
 
@@ -604,3 +625,16 @@ not deterministically reach the 51-packet boundary before its timed retry, so
 that counter injection deliberately uses one persistent TCP task rather than
 conflating sequence behavior with USB worker-queue pressure. The report is
 `build/hil-mock-transfer-errors-final.json`.
+
+The all-mock regression collected 94 cases on 2026-08-01. Its first pass
+recorded 62 PASS, 27 capability-gated SKIP, one expected configuration-name
+conflict, and four failures. Two storage failures shared the HIL retry defect
+described above. A manual WLAN reconnect then exposed a real polling race:
+ESP-IDF could reach `address_ready` before the 100 ms policy poll observed the
+transient `associated` state, producing a false ten-second timeout and a
+dependent TCP failure. The portable policy now treats an assigned address as
+proof of prior association. Host regression, target build and OTA installation
+passed; the formerly failing WLAN association and simultaneous USB/TCP cases
+both passed in `build/hil-wifi-fast-reconnect.json`. The initial aggregate
+report remains `build/hil-all-mock-full.json` as failure evidence; corrected
+storage evidence is retained separately rather than rewriting that result.

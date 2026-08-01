@@ -56,6 +56,8 @@ std::string format_wifi_statistics_json(const WifiStatistics& statistics) {
         std::to_string(statistics.addresses_lost));
     output.append(",\"last_disconnect_reason\":").append(
         std::to_string(statistics.last_disconnect_reason));
+    output.append(",\"reset_reason\":").append(
+        std::to_string(statistics.reset_reason));
     output.append(",\"recent_events\":");
     append_json_string(output, statistics.recent_events);
     output.push_back('}');

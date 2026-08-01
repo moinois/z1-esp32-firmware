@@ -82,13 +82,16 @@ class HilFileTransferTests(unittest.TestCase):
                 retry,
                 retry,
                 retry,
+                retry,
                 [ReceivedFrame(FILE_COMPLETE, b"ok\r\n")],
             ]
         )
 
         upload_file(client, "/retry.bin", data)
 
-        self.assertEqual(client.requests[-1], (FILE_DATA, b"\0\0\0\1abc"))
+        self.assertEqual(
+            client.requests.count((FILE_DATA, b"\0\0\0\1abc")), 2
+        )
 
     def test_download_can_skip_md5_for_an_internally_appended_debug_log(self) -> None:
         client = ScriptedClient(

@@ -18,6 +18,7 @@ struct WifiStatistics {
     std::uint32_t addresses_acquired = 0U;
     std::uint32_t addresses_lost = 0U;
     std::uint8_t last_disconnect_reason = 0U;
+    std::uint32_t reset_reason = 0U;
     std::string recent_events;
 };
 

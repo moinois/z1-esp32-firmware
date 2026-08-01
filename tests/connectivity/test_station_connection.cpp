@@ -219,7 +219,7 @@ TEST_CASE(net_022_and_025_association_then_address_succeeds_and_saves_credential
                                           "policy.connect.success"}));
 }
 
-TEST_CASE(net_022_address_ready_before_observed_association_still_fails) {
+TEST_CASE(net_022_address_ready_is_sufficient_when_polling_misses_association) {
     StationRuntime runtime;
     FakeStationConnectionPort port;
     port.snapshots = {
@@ -228,11 +228,17 @@ TEST_CASE(net_022_address_ready_before_observed_association_still_fails) {
 
     const auto result = ManualStationConnection::connect(runtime, port, "ap", {});
 
-    REQUIRE(!result.success);
-    REQUIRE_EQ(runtime.state, StationConnectionState::error);
+    REQUIRE(result.success);
+    REQUIRE_EQ(runtime.state, StationConnectionState::address_ready);
     REQUIRE_EQ(runtime.ipv4, std::string("203.0.113.8"));
-    REQUIRE_EQ(runtime.error_detail, std::string("Failed to connect to AP"));
-    REQUIRE_EQ(port.delays.size(), 100U);
+    REQUIRE(runtime.error_detail.empty());
+    REQUIRE_EQ(port.persisted_ssid, std::string("ap"));
+    REQUIRE_EQ(port.delays.size(), 2U);
+    REQUIRE_EQ(port.diagnostics,
+               std::vector<std::string>({"policy.connect.begin",
+                                          "policy.address_ready_as_associated",
+                                          "policy.address_ready",
+                                          "policy.connect.success"}));
 }
 
 TEST_CASE(net_022_association_failure_preserves_target_diagnostic) {
