@@ -318,12 +318,15 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
         } else if (match.kind == firmware::core::CommandKind::config_get ||
                    match.kind == firmware::core::CommandKind::config_set) {
             TcpConfigurationAdapter configuration_port(session);
+            const firmware::core::BytesView argument(
+                frame.payload.data() + match.argument_offset,
+                frame.payload.size() - match.argument_offset);
             if (match.kind == firmware::core::CommandKind::config_get) {
                 firmware::application::ConfigurationGet::execute(
-                    frame.payload, tcp_live_configuration, configuration_port);
+                    argument, tcp_live_configuration, configuration_port);
             } else {
                 firmware::application::ConfigurationSet::execute(
-                    frame.payload, tcp_live_configuration, configuration_port);
+                    argument, tcp_live_configuration, configuration_port);
             }
         } else if (match.kind == firmware::core::CommandKind::diagnose ||
                    match.kind == firmware::core::CommandKind::version) {

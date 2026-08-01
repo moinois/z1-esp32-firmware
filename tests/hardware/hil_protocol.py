@@ -103,6 +103,13 @@ class TcpProtocolClient:
                         if received:
                             break
                         continue
+                    except ConnectionResetError:
+                        # A target may close immediately after its terminal
+                        # response. Preserve already decoded evidence while
+                        # still surfacing resets that arrived before a reply.
+                        if received:
+                            break
+                        raise
                     if not chunk:
                         break
                     frames, remainder = decode_frames(remainder + chunk)

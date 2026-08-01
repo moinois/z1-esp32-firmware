@@ -513,3 +513,17 @@ The first parallel host invocation was discarded because two pytest processes
 contended for the single native USB interface. The retained report is
 `build/hil-tcp-stress-sequential.json`; the isolated timeout remains motivation
 for a longer endurance run rather than evidence of a persistent service loss.
+
+Cross-transport mock-SD HIL on 2026-08-01 then added persistent configuration,
+filesystem mutation, and file-owner contention coverage. The run exposed and
+corrected a target wiring bug where both USB and TCP passed the complete
+`config-get`/`config-set` command to services expecting only the recognized
+argument slice. After OTA installation, USB and TCP mutations observed the same
+configuration bytes; TCP mkdir/move/remove effects were independently verified
+through USB; and an active USB upload rejected TCP before cancel released the
+owner for a successful persistent-socket TCP upload. Three cases passed. The
+fourth is an explicit XFAIL: SD-009 requires short 8.3 names with LFN disabled,
+while CFG-001 requires `/sd/config.default`, whose seven-character extension
+cannot be created by that FAT policy. No implementation policy was changed to
+hide this normative conflict. The report is
+`build/hil-mock-cross-transport-final.json`.

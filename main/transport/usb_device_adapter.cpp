@@ -1128,13 +1128,16 @@ void usb_local_command_task(void* /* unused */) {
             }
         } else if (match.kind == firmware::core::CommandKind::config_get ||
                    match.kind == firmware::core::CommandKind::config_set) {
+            const firmware::core::BytesView argument(
+                command_frame->payload.data() + match.argument_offset,
+                command_frame->payload.size() - match.argument_offset);
             if (match.kind == firmware::core::CommandKind::config_get) {
                 firmware::application::ConfigurationGet::execute(
-                    command_frame->payload, usb_live_configuration,
+                    argument, usb_live_configuration,
                     configuration_port);
             } else {
                 firmware::application::ConfigurationSet::execute(
-                    command_frame->payload, usb_live_configuration,
+                    argument, usb_live_configuration,
                     configuration_port);
             }
         } else if (match.kind == firmware::core::CommandKind::diagnose) {
