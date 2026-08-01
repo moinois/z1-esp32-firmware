@@ -7,6 +7,12 @@ import time
 
 import pytest
 
+from tests.hardware.hil_protocol import (
+    GENERAL_COMMAND,
+    encode_frame,
+    receive_tcp_frames,
+)
+
 
 DISCOVERY_PORT = 3333
 TCP_CONTROL_PORT = 2222
@@ -67,12 +73,21 @@ def test_periodic_station_discovery_payload(tcp_host: str) -> None:
 def test_discovery_reports_exact_tcp_capacity(tcp_host: str) -> None:
     """Advertises tcp-full only while all four TCP slots are occupied."""
 
+    # A preceding case can have closed its host sockets while the target is
+    # still inside the normative receive/keepalive window. Start only after
+    # those client tasks have had time to release their logical slots.
+    time.sleep(10.5)
     clients: list[socket.socket] = []
     try:
         for _ in range(4):
-            clients.append(
-                socket.create_connection((tcp_host, TCP_CONTROL_PORT), timeout=5.0)
+            client = socket.create_connection(
+                (tcp_host, TCP_CONTROL_PORT), timeout=5.0
             )
+            client.sendall(encode_frame(GENERAL_COMMAND, b"ftype /"))
+            frames = receive_tcp_frames(client, 3.0)
+            assert frames
+            assert all(frame.frame_type != 0x91 for frame in frames)
+            clients.append(client)
         _discovery_for_target(tcp_host, "1")
     finally:
         for client in clients:

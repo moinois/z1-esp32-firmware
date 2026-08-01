@@ -489,3 +489,15 @@ normal transfer families, and cancellation followed by successful retry. The
 external physical-controller declaration remained correctly skipped. Reports
 are `build/hil-controller-malformed-geometry.json` and
 `build/hil-controller-usb-complete.json`.
+
+The TCP/UDP transport refresh on 2026-08-01 exposed a fixture-ordering issue:
+the discovery capacity case opened four host sockets without first proving that
+each had been admitted, and it could begin while client tasks from the preceding
+stress case still owned slots. The fixture now waits beyond the normative
+receive window and requires a normal framed response from every retained client
+before checking discovery. After a same-image OTA reset, the isolated transition
+and the complete sequential ten-case transport suite passed. Coverage includes
+USB repetition and noise recovery, fragmented TCP input, exact fifth-client
+rejection, four-client concurrency, six slot-reuse waves, service recovery, and
+the discovery transition `tcp-full=0→1→0`. The complete report is
+`build/hil-transport-full-after-fixture-fix.json`.
