@@ -303,3 +303,69 @@ def test_usb_upload_ownership_rejects_tcp_then_recovers(
             pass
         _remove(usb_client, usb_path)
         _remove(usb_client, tcp_path)
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.sd
+@pytest.mark.usb
+@pytest.mark.tcp
+@pytest.mark.requirement("HFT-005")
+@pytest.mark.requirement("HFT-007")
+@pytest.mark.requirement("OWN-001")
+@pytest.mark.requirement("OWN-003")
+def test_tcp_upload_ownership_rejects_usb_then_recovers(
+    usb_client, tcp_host: str, sd_fixture
+) -> None:
+    """Keeps TCP active, rejects USB, then transfers ownership after cancel."""
+
+    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
+    suffix = uuid.uuid4().hex[:5].upper()
+    tcp_path = f"/P{suffix}.BIN"
+    usb_path = f"/Q{suffix}.BIN"
+    tcp_content = bytes((index * 13 + 9) & 0xFF for index in range(800))
+    usb_content = bytes((index * 17 + 1) & 0xFF for index in range(1100))
+    connection: socket.socket | None = None
+    try:
+        connection = socket.create_connection((tcp_host, 2222), timeout=5.0)
+        connection.sendall(
+            encode_frame(FILE_COMMAND, f"upload {tcp_path}".encode("ascii"))
+            + encode_frame(
+                FILE_MD5,
+                hashlib.md5(tcp_content).hexdigest().encode("ascii"),
+            )
+        )
+        _required_frame(receive_tcp_frames(connection, 5.0), FILE_GEOMETRY)
+        connection.sendall(encode_frame(FILE_GEOMETRY, (2).to_bytes(4, "big")))
+        request = _required_frame(
+            receive_tcp_frames(connection, 5.0), FILE_DATA
+        )
+        assert int.from_bytes(request.payload, "big") == 1
+
+        rejected = usb_client.exchange(
+            FILE_COMMAND, f"upload {usb_path}".encode("ascii"), 4.0
+        )
+        cancel = _required_frame(rejected, FILE_CANCEL)
+        assert b"Other client is currently uploading/downloading files" in cancel.payload
+
+        connection.sendall(encode_frame(FILE_CANCEL, b""))
+        _required_frame(receive_tcp_frames(connection, 5.0), FILE_CANCEL)
+        connection.shutdown(socket.SHUT_RDWR)
+        connection.close()
+        connection = None
+
+        upload_file(usb_client, usb_path, usb_content, block_size=600)
+        assert download_file(usb_client, usb_path) == usb_content
+    finally:
+        if connection is not None:
+            try:
+                connection.sendall(encode_frame(FILE_CANCEL, b""))
+            except OSError:
+                pass
+            connection.close()
+        try:
+            usb_client.exchange(FILE_CANCEL, b"", 2.0)
+        except Exception:
+            pass
+        _remove(usb_client, tcp_path)
+        _remove(usb_client, usb_path)

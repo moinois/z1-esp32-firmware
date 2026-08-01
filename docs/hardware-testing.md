@@ -527,3 +527,9 @@ while CFG-001 requires `/sd/config.default`, whose seven-character extension
 cannot be created by that FAT policy. No implementation policy was changed to
 hide this normative conflict. The report is
 `build/hil-mock-cross-transport-final.json`.
+
+The inverse ownership case passed separately: a persistent TCP upload retained
+the global file owner while USB received the exact limit response, then TCP
+cancel released ownership and USB immediately completed an upload/download.
+Together the two directions verify symmetric arbitration rather than only one
+preferred transport. The report is `build/hil-mock-ownership-reverse.json`.
