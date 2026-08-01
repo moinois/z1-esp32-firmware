@@ -661,3 +661,18 @@ passed; the formerly failing WLAN association and simultaneous USB/TCP cases
 both passed in `build/hil-wifi-fast-reconnect.json`. The initial aggregate
 report remains `build/hil-all-mock-full.json` as failure evidence; corrected
 storage evidence is retained separately rather than rewriting that result.
+
+Additional target tests close two portable-to-target gaps. Four simultaneous
+TCP clients now issue recording, serial-number, runtime, and status commands;
+all receive the exact response type and payload for their own origin before a
+fifth cleanup command verifies slot reuse. A second case sends a TCP-originated
+command across the controller TX bridge, consumes the mock's deliberately
+fragmented controller-origin frame, runs the mainboard serial service, and
+observes the framed UART reply in controller diagnostics. The report is
+`build/hil-tcp-local-routing.json`. Download timing is also exercised through
+the real ESP timer: ten seconds of inactivity produces the exact terminal
+timeout, preserves the source, releases global ownership, and permits a new
+upload/download. Separate malformed-protocol injection sends 51 empty data
+frames and then sequence zero in a fresh session; both exact abort paths and
+subsequent source download pass. Reports are `build/hil-download-timeout.json`
+and `build/hil-download-errors.json`.
