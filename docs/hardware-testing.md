@@ -533,3 +533,17 @@ the global file owner while USB received the exact limit response, then TCP
 cancel released ownership and USB immediately completed an upload/download.
 Together the two directions verify symmetric arbitration rather than only one
 preferred transport. The report is `build/hil-mock-ownership-reverse.json`.
+
+Mock-SD file-transfer error HIL was extended on 2026-08-01 with three cases.
+A persistent TCP upload accepted block one, consumed 51 duplicate block-one
+packets, repeated its outstanding block-two request, and produced exact bytes
+when independently downloaded over USB. A download canceled by the USB host
+returned the exact terminal message, preserved its source, released ownership,
+and allowed an immediate successor upload/download. Finally, both absent and
+malformed MD5 sidecars advertised the required fallback digest while retaining
+the original data; a normal re-upload recreated a valid sidecar and restored
+end-to-end digest verification. All three passed in 93.56 seconds. USB could
+not deterministically reach the 51-packet boundary before its timed retry, so
+that counter injection deliberately uses one persistent TCP task rather than
+conflating sequence behavior with USB worker-queue pressure. The report is
+`build/hil-mock-transfer-errors-final.json`.
