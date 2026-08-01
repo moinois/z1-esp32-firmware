@@ -461,3 +461,15 @@ mock-SD cases passed in 209.78 seconds, including repeated requests, malformed
 input recovery, file mutations, MD5/cache behavior, logging, cancellation, and
 mock-volume exhaustion/recovery. The report is
 `build/hil-usb-mock-sd-offline.json`.
+
+The remaining USB transmit fault cases were then moved out of the FreeRTOS task
+into `UsbTransmitDrain`, which is the same state machine now composed with the
+live TinyUSB endpoint. Its instrumented host port verifies short accepted
+writes, flushing every accepted fragment, pop only after whole-frame completion,
+strict expiry after more than 500 ms without progress, recovery by draining the
+next queued frame, and retaining/restarting the front frame across disconnect.
+The queue test also runs four concurrent producers and proves that exactly 30
+frames are admitted. This closes the production-composition gap without
+claiming that a physical host can force TinyUSB's internal FIFO to stall. Host,
+24 tool tests, and the ESP-IDF `sd,controller` mock build passed; the resulting
+image is 0x1a6d60 bytes with 17 percent free in each 2 MiB OTA partition.

@@ -5,6 +5,10 @@
 #include "firmware/core/file_transfer_limits.hpp"
 #include "firmware/core/protocol_constants.hpp"
 
+#include <atomic>
+#include <thread>
+#include <vector>
+
 using firmware::application::UsbTransmitQueue;
 using firmware::core::ByteVector;
 
@@ -36,4 +40,28 @@ TEST_CASE(usb_007_queue_accepts_a_maximum_file_data_frame) {
         firmware::core::protocol::common_frame_overhead;
     REQUIRE(encoded_file_frame_size <= UsbTransmitQueue::maximum_frame_size);
     REQUIRE(queue.enqueue(ByteVector(encoded_file_frame_size, 0x5aU)));
+}
+
+TEST_CASE(usb_007_concurrent_producers_cannot_exceed_the_thirty_frame_limit) {
+    UsbTransmitQueue queue;
+    std::atomic<std::size_t> accepted{0U};
+    std::vector<std::thread> producers;
+    for (std::size_t producer = 0U; producer < 4U; ++producer) {
+        producers.emplace_back([&queue, &accepted, producer] {
+            for (std::size_t frame = 0U; frame < 20U; ++frame) {
+                if (queue.enqueue(ByteVector{
+                        static_cast<std::uint8_t>(producer),
+                        static_cast<std::uint8_t>(frame)})) {
+                    ++accepted;
+                }
+            }
+        });
+    }
+    for (auto& producer : producers) {
+        producer.join();
+    }
+
+    REQUIRE_EQ(accepted.load(), UsbTransmitQueue::maximum_items);
+    REQUIRE_EQ(queue.size(), UsbTransmitQueue::maximum_items);
+    REQUIRE(!queue.enqueue(ByteVector{0xffU}));
 }

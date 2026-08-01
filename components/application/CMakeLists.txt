@@ -62,6 +62,7 @@ set(APPLICATION_SOURCES
     src/runtime/local_command_classifier.cpp
     src/runtime/local_command_queue.cpp
     src/usb/usb_transmit_queue.cpp
+    src/usb/usb_transmit_drain.cpp
     src/usb/usb_receive_staging.cpp
     src/usb/usb_protocol_state.cpp
     src/usb/usb_descriptors.cpp

@@ -12,7 +12,7 @@
 
 #include "firmware/application/usb_descriptors.hpp"
 #include "firmware/application/usb_protocol_state.hpp"
-#include "firmware/application/usb_transmit_progress.hpp"
+#include "firmware/application/usb_transmit_drain.hpp"
 #include "firmware/application/recording_commands.hpp"
 #include "firmware/application/serial_number.hpp"
 #include "firmware/application/runtime_commands.hpp"
@@ -1166,60 +1166,39 @@ void usb_local_command_task(void* /* unused */) {
     }
 }
 
+/// Adapts the portable transmit drain to TinyUSB's vendor endpoint FIFO.
+class TinyUsbTransmitDrainPort final
+    : public firmware::application::UsbTransmitDrainPort {
+public:
+    /// Returns the currently writable vendor-endpoint capacity.
+    std::size_t available() override {
+        return tud_vendor_write_available();
+    }
+
+    /// Submits one fragment without assuming TinyUSB accepts it completely.
+    std::size_t write(firmware::core::BytesView bytes) override {
+        return tud_vendor_write(bytes.data(),
+                                static_cast<std::uint32_t>(bytes.size()));
+    }
+
+    /// Forces short final fragments out of TinyUSB's software FIFO.
+    void flush() override {
+        tud_vendor_flush();
+    }
+};
+
 /// Drains queued response frames into the TinyUSB vendor endpoint.
 ///
 /// @param unused FreeRTOS task parameter; shared state is module-owned.
 void usb_transmit_task(void* /* unused */) {
-    firmware::application::UsbTransmitProgress progress;
-    const firmware::core::ByteVector* tracked_frame = nullptr;
-    // TinyUSB normally exposes only one endpoint packet at a time. Waiting for
-    // enough space for an entire protocol frame deadlocked frames larger than
-    // that packet, so retain the offset and make progress in partial writes.
-    std::size_t transmitted = 0U;
+    TinyUsbTransmitDrainPort endpoint;
+    firmware::application::UsbTransmitDrain drain(
+        protocol_state.transmit_queue(), endpoint);
     for (;;) {
-        if (protocol_state.can_send()) {
-            const auto* frame = protocol_state.transmit_queue().front();
-            if (frame != tracked_frame) {
-                tracked_frame = frame;
-                transmitted = 0U;
-                progress.begin(static_cast<std::uint64_t>(
-                    esp_timer_get_time() / microseconds_per_millisecond));
-            }
-            const std::uint32_t available = tud_vendor_write_available();
-            if (frame != nullptr && transmitted < frame->size() && available > 0U) {
-                const std::size_t remaining = frame->size() - transmitted;
-                const std::size_t requested = std::min<std::size_t>(available, remaining);
-                const std::uint32_t written = tud_vendor_write(
-                    frame->data() + transmitted, requested);
-                if (written > 0U) {
-                    transmitted += written;
-                    // Flush every accepted fragment. Without this, a short
-                    // final fragment can remain buffered indefinitely because
-                    // no subsequent write arrives to trigger transmission.
-                    tud_vendor_flush();
-                    progress.record_progress(static_cast<std::uint64_t>(
-                        esp_timer_get_time() / microseconds_per_millisecond));
-                }
-                if (transmitted == frame->size()) {
-                    tud_vendor_flush();
-                    protocol_state.transmit_queue().pop_front();
-                    progress.clear();
-                    tracked_frame = nullptr;
-                    transmitted = 0U;
-                }
-            }
-            if (frame != nullptr && progress.expired(static_cast<std::uint64_t>(
-                    esp_timer_get_time() / microseconds_per_millisecond))) {
-                protocol_state.transmit_queue().pop_front();
-                progress.clear();
-                tracked_frame = nullptr;
-                transmitted = 0U;
-            }
-        } else {
-            tracked_frame = nullptr;
-            transmitted = 0U;
-            progress.clear();
-        }
+        drain.process(
+            protocol_state.can_send(),
+            static_cast<std::uint64_t>(
+                esp_timer_get_time() / microseconds_per_millisecond));
         vTaskDelay(pdMS_TO_TICKS(
             firmware::application::usb_task_poll_delay_milliseconds));
     }

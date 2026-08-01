@@ -114,6 +114,7 @@ add_executable(
     runtime/test_local_command_classifier.cpp
     runtime/test_local_command_queue.cpp
     usb/test_usb_transmit_queue.cpp
+    usb/test_usb_transmit_drain.cpp
     usb/test_usb_receive_staging.cpp
     usb/test_usb_protocol_state.cpp
     usb/test_usb_descriptors.cpp
