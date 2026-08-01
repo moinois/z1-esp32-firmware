@@ -12,6 +12,8 @@ enum class HttpRoute {
     firmware_info,
     wifi_diagnostics,
     configuration,
+    gcodes_collection,
+    gcode_file,
     application_update,
     web_volume_update,
     static_file,

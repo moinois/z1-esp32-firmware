@@ -18,6 +18,14 @@ TEST_CASE(web_003_main_routes_match_case_sensitive_paths_and_methods) {
                HttpRoute::configuration);
     REQUIRE_EQ(select_main_http_route("POST", "/api/config?source=ui"),
                HttpRoute::configuration);
+    REQUIRE_EQ(select_main_http_route("GET", "/api/gcodes"),
+               HttpRoute::gcodes_collection);
+    REQUIRE_EQ(select_main_http_route("GET", "/api/gcodes/file?name=JOB.NC"),
+               HttpRoute::gcode_file);
+    REQUIRE_EQ(select_main_http_route("POST", "/api/gcodes/file?name=JOB.NC"),
+               HttpRoute::gcode_file);
+    REQUIRE_EQ(select_main_http_route("DELETE", "/api/gcodes/file?name=JOB.NC"),
+               HttpRoute::gcode_file);
     REQUIRE_EQ(select_main_http_route("POST", "/update"), HttpRoute::application_update);
     REQUIRE_EQ(select_main_http_route("POST", "/updateffs"), HttpRoute::web_volume_update);
     REQUIRE_EQ(select_main_http_route("GET", "/api/camera/resolution"),
@@ -35,5 +43,7 @@ TEST_CASE(web_003_video_routes_expose_only_the_two_websockets) {
 TEST_CASE(web_008_route_matching_is_case_sensitive_and_preserves_unknown_methods) {
     REQUIRE_EQ(select_main_http_route("get", "/api/firmware/info"), HttpRoute::none);
     REQUIRE_EQ(select_main_http_route("DELETE", "/update"), HttpRoute::none);
+    REQUIRE_EQ(select_main_http_route("PUT", "/api/gcodes/file?name=JOB.NC"),
+               HttpRoute::none);
     REQUIRE_EQ(select_main_http_route("PUT", "/unknown"), HttpRoute::none);
 }

@@ -10,6 +10,8 @@ constexpr std::string_view camera_resolution_path = "/api/camera/resolution";
 constexpr std::string_view firmware_info_path = "/api/firmware/info";
 constexpr std::string_view wifi_diagnostics_path = "/api/wifi/diagnostics";
 constexpr std::string_view configuration_path = "/api/config";
+constexpr std::string_view gcodes_path = "/api/gcodes";
+constexpr std::string_view gcode_file_path = "/api/gcodes/file";
 constexpr std::string_view application_update_path = "/update";
 constexpr std::string_view web_volume_update_path = "/updateffs";
 constexpr std::string_view video_websocket_path = "/ws_video";
@@ -21,6 +23,7 @@ HttpRoute select_main_http_route(std::string_view method,
                                  std::string_view complete_uri) {
     const std::string_view path = http_uri_path(complete_uri);
     if (method == "POST") {
+        if (path == gcode_file_path) return HttpRoute::gcode_file;
         if (path == configuration_path) {
             return HttpRoute::configuration;
         }
@@ -36,6 +39,8 @@ HttpRoute select_main_http_route(std::string_view method,
         return HttpRoute::none;
     }
     if (method == "GET") {
+        if (path == gcodes_path) return HttpRoute::gcodes_collection;
+        if (path == gcode_file_path) return HttpRoute::gcode_file;
         if (path == firmware_info_path) {
             return HttpRoute::firmware_info;
         }
@@ -46,6 +51,9 @@ HttpRoute select_main_http_route(std::string_view method,
             return HttpRoute::configuration;
         }
         return HttpRoute::static_file;
+    }
+    if (method == "DELETE" && path == gcode_file_path) {
+        return HttpRoute::gcode_file;
     }
     return HttpRoute::none;
 }
