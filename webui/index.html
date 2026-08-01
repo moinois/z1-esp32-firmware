@@ -18,13 +18,19 @@
         <div>
           <p class="eyebrow">CONFIG.TXT</p>
           <h2 id="settings-title">Settings</h2>
+          <p class="section-description">Current mainboard settings are loaded from the device. Edit a value or add a new setting, then save your changes.</p>
         </div>
-        <button id="add-setting" type="button" class="secondary">Add setting</button>
+        <div class="heading-actions">
+          <button id="reload-settings" type="button" class="secondary">Reload</button>
+          <button id="add-setting" type="button" class="secondary">Add setting</button>
+        </div>
       </div>
       <form id="settings-form">
+        <p id="settings-summary" class="settings-summary" role="status">Loading current settings…</p>
         <div id="settings" aria-live="polite"></div>
+        <p id="empty-settings" class="empty-state" hidden>No mainboard settings are currently stored. Add the first setting to get started.</p>
         <div class="actions">
-          <button id="save" type="submit">Save changes</button>
+          <button id="save" type="submit" disabled>Save changes</button>
           <span id="save-status" role="status"></span>
         </div>
       </form>
@@ -37,6 +43,7 @@
   </main>
   <template id="setting-template">
     <div class="setting-row">
+      <span class="setting-kind"></span>
       <label>Key<input class="key" autocomplete="off" maxlength="128" required></label>
       <label>Value<input class="value" autocomplete="off" maxlength="512" required></label>
       <button class="remove" type="button" aria-label="Remove row">Remove</button>

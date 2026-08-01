@@ -544,9 +544,18 @@ authentication later is a protocol and provisioning decision, not a UI-only
 change. The page exposes firmware identity and privacy-bounded Wi-Fi health but
 never returns stored Wi-Fi passwords.
 
+Existing settings and newly entered settings are intentionally distinguished.
+Keys loaded from the device are read-only in the page because the API updates
+or creates one key but does not define rename or delete semantics. Their values
+remain editable. The save action sends only changed and newly added records,
+then reloads the authoritative document so the page cannot silently diverge
+from the persisted file.
+
 ### Consequences
 
 - New configuration keys appear without rebuilding the UI.
+- Operators can see the current value before changing it and can explicitly
+  reload values changed through USB, TCP, or another browser.
 - Firmware and UI images can be updated independently.
 - Browser POSTs cannot inject extra configuration lines.
 - Anyone with network access to the device can change configuration; deployments

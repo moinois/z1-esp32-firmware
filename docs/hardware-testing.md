@@ -503,6 +503,16 @@ four-client capacity transitions passed. The in-app browser runtime reported
 no available browser backend, so visual/click automation remains pending even
 though the installed browser resources and their live APIs passed HIL.
 
+The web volume was refreshed on 2026-08-01 with an explicit current-settings
+view. Existing MAINBOARD keys are sorted, marked as existing, and protected
+from accidental rename while their values remain editable. New rows are marked
+separately, unsaved changes are counted, unchanged records are not posted, and
+reload retrieves the authoritative device state. The generated 1 MiB image was
+installed through `/updateffs`; after reboot, updated HTML/CSS/JavaScript and
+the live configuration read/update/persistence flow passed 2/2 HIL cases in
+`build/hil-webui-existing-settings.json`. Browser discovery again returned no
+available backend, so this run does not claim visual automation.
+
 The complete mutating collection was also used as an endurance probe. It
 exposed a host-fixture defect: session-scoped PyUSB handles remained invalid
 after an intentional bus reset and caused unrelated later failures. USB and SD

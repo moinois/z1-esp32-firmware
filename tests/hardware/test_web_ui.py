@@ -39,9 +39,9 @@ def test_installed_configuration_ui_assets(tcp_host: str) -> None:
     """Requires the packaged HTML, CSS, and JavaScript to be served verbatim."""
 
     for path, expected_type, marker in (
-        ("/", "text/html", b"Mainboard configuration"),
-        ("/app.css", "text/css", b"radial-gradient"),
-        ("/app.js", "application/javascript", b"/api/config"),
+        ("/", "text/html", b"Current mainboard settings are loaded from the device"),
+        ("/app.css", "text/css", b".setting-kind"),
+        ("/app.js", "application/javascript", b"existing setting"),
     ):
         status, content_type, body = _request(tcp_host, "GET", path)
         assert status == 200
