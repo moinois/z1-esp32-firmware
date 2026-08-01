@@ -16,6 +16,7 @@
 #include "sd_access_diagnostics.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -47,6 +48,9 @@ struct RamDiskState {
 };
 
 RamDiskState disk;
+std::atomic_bool fail_next_read{false};
+std::atomic_bool fail_next_write{false};
+std::atomic_bool fail_next_sync{false};
 
 // Reports whether the single simulated block device has allocated storage.
 DSTATUS ram_status(BYTE drive) {
@@ -61,6 +65,10 @@ DSTATUS ram_initialize(BYTE drive) {
 // Copies complete sectors from the simulated disk into the FatFS buffer.
 DRESULT ram_read(BYTE drive, BYTE* buffer, std::uint32_t sector,
                  unsigned count) {
+    if (fail_next_read.load(std::memory_order_acquire)) {
+        ESP_LOGW(tag, "TEST BUILD: injecting mock SD read failure");
+        return RES_ERROR;
+    }
     const std::size_t offset = static_cast<std::size_t>(sector) * sector_size;
     const std::size_t length = static_cast<std::size_t>(count) * sector_size;
     if (ram_status(drive) != 0 || buffer == nullptr || count == 0U ||
@@ -74,6 +82,10 @@ DRESULT ram_read(BYTE drive, BYTE* buffer, std::uint32_t sector,
 // Copies complete sectors from FatFS into the simulated disk.
 DRESULT ram_write(BYTE drive, const BYTE* buffer, std::uint32_t sector,
                   unsigned count) {
+    if (fail_next_write.load(std::memory_order_acquire)) {
+        ESP_LOGW(tag, "TEST BUILD: injecting mock SD write failure");
+        return RES_ERROR;
+    }
     const std::size_t offset = static_cast<std::size_t>(sector) * sector_size;
     const std::size_t length = static_cast<std::size_t>(count) * sector_size;
     if (ram_status(drive) != 0 || buffer == nullptr || count == 0U ||
@@ -91,6 +103,10 @@ DRESULT ram_ioctl(BYTE drive, BYTE command, void* buffer) {
     }
     switch (command) {
         case CTRL_SYNC:
+            if (fail_next_sync.load(std::memory_order_acquire)) {
+                ESP_LOGW(tag, "TEST BUILD: injecting mock SD sync failure");
+                return RES_ERROR;
+            }
             return RES_OK;
         case GET_SECTOR_COUNT:
             if (buffer == nullptr) return RES_PARERR;
@@ -225,6 +241,48 @@ void MockSdCardAdapter::start() {
     ESP_LOGW(tag, "SD adapter mode=MOCK; contents are lost on reset");
     xTaskCreate(mock_diagnostic_task, "mock_sd_log", diagnostic_task_stack_size,
                 nullptr, diagnostic_task_priority, nullptr);
+}
+
+std::string handle_mock_sd_control(std::string_view command) {
+#if CONFIG_Z1_MOCK_ALL_HARDWARE || CONFIG_Z1_MOCK_SD_HARDWARE
+    constexpr std::string_view prefix = "mock-sd";
+    std::string_view action = command;
+    if (action.starts_with(prefix)) action.remove_prefix(prefix.size());
+    while (!action.empty() && action.front() == ' ') action.remove_prefix(1U);
+    if (action == "fail-read") {
+        fail_next_read.store(true, std::memory_order_release);
+        return "mock-sd fail-read armed\n";
+    }
+    if (action == "fail-write") {
+        fail_next_write.store(true, std::memory_order_release);
+        return "mock-sd fail-write armed\n";
+    }
+    if (action == "fail-sync") {
+        fail_next_sync.store(true, std::memory_order_release);
+        return "mock-sd fail-sync armed\n";
+    }
+    if (action == "unmount") {
+        release_disk();
+        return "mock-sd unmounted\n";
+    }
+    if (action == "mount") {
+        return create_and_mount_disk() ? "mock-sd mounted\n"
+                                       : "mock-sd mount failed\n";
+    }
+    if (action == "clear") {
+        fail_next_read.store(false, std::memory_order_release);
+        fail_next_write.store(false, std::memory_order_release);
+        fail_next_sync.store(false, std::memory_order_release);
+        return "mock-sd faults cleared\n";
+    }
+    if (action == "status") {
+        return disk.mounted ? "mock-sd mounted\n" : "mock-sd unmounted\n";
+    }
+    return "Usage: mock-sd fail-read|fail-write|fail-sync|unmount|mount|clear|status\n";
+#else
+    static_cast<void>(command);
+    return "mock-sd unavailable in live build\n";
+#endif
 }
 
 }  // namespace firmware::target

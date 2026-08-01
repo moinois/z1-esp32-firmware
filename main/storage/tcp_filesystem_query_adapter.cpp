@@ -36,6 +36,10 @@ TcpDirectoryListAdapter::TcpDirectoryListAdapter(
 std::optional<std::vector<firmware::application::DirectoryEntry>>
 TcpDirectoryListAdapter::list_directory(std::string_view path) {
     const std::string root(path);
+    if (!sd_storage_mounted()) {
+        log_sd_access_failure("open directory", root, ENODEV);
+        return std::nullopt;
+    }
     DIR* directory = opendir(root.c_str());
     if (directory == nullptr) {
         const int error_number = errno;

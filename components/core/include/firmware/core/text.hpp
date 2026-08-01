@@ -32,6 +32,7 @@ enum class CommandKind {
     reset,
     diagnose,
     wifi_diagnose,
+    mock_sd_control,
     version
 };
 

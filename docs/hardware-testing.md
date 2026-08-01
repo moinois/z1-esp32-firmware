@@ -200,6 +200,20 @@ that host file ownership does not stall UART command processing. Reports are
 retained as `build/hil-mock-controller-faults-final.json` and
 `build/hil-mock-controller-concurrency.json`.
 
+Mock-SD fault control is available only when the SD mock is selected:
+`mock-sd fail-read`, `fail-write`, and `fail-sync` latch their respective block
+device errors until `mock-sd clear`; `unmount`, `mount`, and `status` exercise
+the complete VFS/FatFS lifecycle. A live build replies `mock-sd unavailable in
+live build` and cannot enable these callbacks. The latched behavior is
+intentional because a single sector error can be consumed by FatFS metadata or
+cache activity before the public operation under test reaches its payload.
+
+The 2026-08-01 HIL run verified unmounted access from USB and TCP, ENODEV
+diagnostic selection before any host-directory VFS fallback, rejected upload,
+fresh remount and transfer recovery, deterministic 16 KiB read failure,
+failed FAT write and sync operations, cleanup, reformat, and successful reuse.
+The report is retained as `build/hil-mock-sd-faults.json`.
+
 The camera mock follows the same initialization, configuration, resolution,
 capture, recording, WebSocket streaming, and OTA-deinitialization surface as
 the physical adapter. It emits the deterministic JPEG marker sequence

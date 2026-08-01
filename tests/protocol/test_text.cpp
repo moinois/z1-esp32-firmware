@@ -58,6 +58,15 @@ TEST_CASE(cmd_002_complete_payload_commands_keep_offset_zero) {
     REQUIRE_EQ(firmware::core::recognize_command(serial).argument_offset, 0U);
 }
 
+TEST_CASE(cmd_mock_sd_control_exposes_only_its_action_as_argument) {
+    const ByteVector command{'m', 'o', 'c', 'k', '-', 's', 'd', ' ',
+                             'f', 'a', 'i', 'l', '-', 'r', 'e', 'a', 'd'};
+    const auto match = firmware::core::recognize_command(command);
+    REQUIRE_EQ(match.kind, firmware::core::CommandKind::mock_sd_control);
+    REQUIRE_EQ(match.argument_offset, 7U);
+    REQUIRE(match.accepted);
+}
+
 TEST_CASE(cmd_003_only_the_named_commands_are_unbounded) {
     const char* unlimited[] = {"?", "ftype", "M951", "M952", "upgrade",
                                "reset", "diagnose", "version"};
