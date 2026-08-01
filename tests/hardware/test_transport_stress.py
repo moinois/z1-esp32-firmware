@@ -146,7 +146,10 @@ def test_tcp_repeated_four_client_waves_release_capacity(tcp_host: str) -> None:
             return False
         return bool(frames) and all(frame.frame_type != 0x91 for frame in frames)
 
-    for wave in range(6):
+    # Twenty waves create and close 80 sessions. This exceeds the connection
+    # churn that previously exhausted per-connection WithCaps cleanup tasks and
+    # permanently wedged TCP and HTTP while USB remained responsive.
+    for wave in range(20):
         with ThreadPoolExecutor(max_workers=4) as executor:
             assert all(executor.map(lambda _: request(), range(4))), (
                 f"TCP capacity was not reusable in four-client wave {wave + 1}"

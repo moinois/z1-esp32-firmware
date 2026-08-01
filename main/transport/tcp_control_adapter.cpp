@@ -92,6 +92,8 @@ std::atomic_uint32_t next_generation{1U};
 firmware::application::Router tcp_router;
 std::mutex tcp_slot_mutex;
 std::array<bool, maximum_clients> occupied_tcp_slots{};
+std::array<QueueHandle_t, maximum_clients> tcp_client_slot_queues{};
+std::array<std::uint8_t, maximum_clients> tcp_client_slot_indices{};
 RecordingRequestState tcp_recording_state;
 firmware::application::StationRuntime tcp_station_runtime;
 firmware::application::LiveConfiguration tcp_live_configuration;
@@ -536,7 +538,6 @@ TcpFileTransferRuntime& transfer_runtime_for_slot(std::uint8_t slot) {
 struct TcpClientContext {
     int socket;
     firmware::application::HostIdentity identity;
-    bool stack_uses_external_memory;
 };
 
 bool send_tcp_bytes(int client, firmware::core::BytesView bytes) {
@@ -618,8 +619,7 @@ void configure_socket(int socket) {
     setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout));
 }
 
-void tcp_client_task(void* parameter) {
-    auto* context = static_cast<TcpClientContext*>(parameter);
+void serve_tcp_client(TcpClientContext* context) {
     const int client = context->socket;
     ESP_LOGD(log_tag, "client start fd=%d generation=%lu active=%d", client,
              static_cast<unsigned long>(context->identity.generation),
@@ -737,12 +737,26 @@ void tcp_client_task(void* parameter) {
     const int previous = active_clients.fetch_sub(1, std::memory_order_acq_rel);
     ESP_LOGD(log_tag, "client stop fd=%d generation=%lu active=%d", client,
              static_cast<unsigned long>(context->identity.generation), previous - 1);
-    const bool stack_uses_external_memory = context->stack_uses_external_memory;
     delete context;
-    if (stack_uses_external_memory) {
-        vTaskDeleteWithCaps(nullptr);
-    } else {
-        vTaskDelete(nullptr);
+}
+
+// Reuses one permanently allocated PSRAM stack for every connection assigned
+// to a logical slot. ESP-IDF's WithCaps self-delete path creates an additional
+// temporary cleanup task for every disconnect; sustained connection churn can
+// exhaust those resources and leave TCP/HTTP unavailable while USB remains
+// healthy. Permanent workers retain the same four-slot admission policy without
+// allocating or destroying a FreeRTOS task for each socket.
+void tcp_client_task(void* parameter) {
+    const auto slot = *static_cast<const std::uint8_t*>(parameter);
+    TcpClientContext* context = nullptr;
+    for (;;) {
+        if (xQueueReceive(tcp_client_slot_queues[slot], &context, portMAX_DELAY) !=
+                pdTRUE ||
+            context == nullptr) {
+            continue;
+        }
+        serve_tcp_client(context);
+        context = nullptr;
     }
 }
 
@@ -794,23 +808,12 @@ void tcp_accept_task(void*) {
             client,
             {firmware::application::HostTransport::tcp,
              *slot,
-             next_generation.fetch_add(1U, std::memory_order_relaxed)},
-            true};
-        TaskHandle_t task = nullptr;
-        BaseType_t created = xTaskCreateWithCaps(
-            tcp_client_task, "tcp_client", client_task_stack_bytes, context,
-            4U, &task, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-        if (created != pdPASS) {
-            context->stack_uses_external_memory = false;
-            created = xTaskCreate(tcp_client_task, "tcp_client",
-                                  client_task_stack_bytes, context, 4U, &task);
-        }
-        if (created != pdPASS) {
-            ESP_LOGE(log_tag,
-                     "client task create failed fd=%d active=%d internal_heap=%u",
-                     client, active_clients.load(std::memory_order_acquire),
-                     static_cast<unsigned>(
-                         heap_caps_get_free_size(MALLOC_CAP_INTERNAL)));
+             next_generation.fetch_add(1U, std::memory_order_relaxed)}};
+        if (tcp_client_slot_queues[*slot] == nullptr ||
+            xQueueSend(tcp_client_slot_queues[*slot], &context, 0U) != pdTRUE) {
+            ESP_LOGE(log_tag, "client slot dispatch failed fd=%d slot=%u active=%d",
+                     client, static_cast<unsigned>(*slot),
+                     active_clients.load(std::memory_order_acquire));
             delete context;
             close(client);
             active_clients.fetch_sub(1, std::memory_order_release);
@@ -829,7 +832,30 @@ void TcpControlAdapter::start() {
                     nullptr) != pdPASS) {
         ESP_LOGE(log_tag, "TCP NVS worker allocation failed");
     }
-    xTaskCreate(tcp_accept_task, "tcp_control", 4096U, nullptr, 4U, nullptr);
+    bool workers_ready = true;
+    for (std::uint8_t slot = 0U; slot < maximum_clients; ++slot) {
+        tcp_client_slot_indices[slot] = slot;
+        tcp_client_slot_queues[slot] = xQueueCreate(1U, sizeof(void*));
+        TaskHandle_t task = nullptr;
+        BaseType_t created = tcp_client_slot_queues[slot] == nullptr
+                                 ? pdFAIL
+                                 : xTaskCreateWithCaps(
+                                       tcp_client_task, "tcp_client",
+                                       client_task_stack_bytes,
+                                       &tcp_client_slot_indices[slot], 4U, &task,
+                                       MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (created != pdPASS) {
+            ESP_LOGE(log_tag,
+                     "permanent TCP worker allocation failed slot=%u internal_heap=%u",
+                     static_cast<unsigned>(slot),
+                     static_cast<unsigned>(
+                         heap_caps_get_free_size(MALLOC_CAP_INTERNAL)));
+            workers_ready = false;
+        }
+    }
+    if (workers_ready) {
+        xTaskCreate(tcp_accept_task, "tcp_control", 4096U, nullptr, 4U, nullptr);
+    }
 }
 
 std::size_t active_tcp_client_count() {

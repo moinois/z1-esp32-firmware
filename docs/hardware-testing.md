@@ -188,6 +188,28 @@ also passed, proving that the safety fix did not reduce the normative TCP
 capacity. Reports are retained as `build/hil-mock-runtime-config-endurance.json`,
 `build/hil-tcp-nvs-worker.json`, and `build/hil-tcp-hybrid-capacity.json`.
 
+A later aggregate run exposed cumulative connection-task exhaustion: after
+many short TCP sessions, new TCP connections were permanently reset and HTTP
+stopped responding while native USB remained healthy and the target had not
+rebooted. Each connection previously created a PSRAM-stack task and invoked
+ESP-IDF's resource-intensive `vTaskDeleteWithCaps` self-delete path. The target
+now creates four permanent PSRAM-stack workers, one per normative client slot,
+and dispatches accepted sockets through one-entry slot queues. This preserves
+the exact four-client limit, per-connection generation identity, ownership
+cleanup, and PSRAM/NVS separation without allocating FreeRTOS tasks per socket.
+Target HIL passed 20 four-client waves (80 sessions), fifth-client rejection,
+fragmentation, UDP `tcp-full` transitions, subsequent HTTP static assets, and a
+mutating configuration request. The report is
+`build/hil-tcp-permanent-workers.json`.
+
+The final all-mock regression then completed all 94 collected cases in 1312.56
+seconds: 66 PASS, 27 capability/safety SKIP, and the one documented
+`config.default`/8.3 XFAIL, with no FAIL. This single run includes the 20-cycle
+mock-SD endurance case, latched storage faults, controller and camera mocks,
+80-session TCP churn, USB/TCP/UDP/HTTP concurrency, WLAN scan recovery, web UI,
+and mutating configuration/storage paths. The retained report is
+`build/hil-all-mock-final.json`.
+
 The controller mock also supports `mock-transfer-timeout firmware` and
 `mock-transfer-cancel firmware`. Timeout injection schedules an unused firmware
 family operation after 5.2 seconds instead of sleeping in the UART callback;
