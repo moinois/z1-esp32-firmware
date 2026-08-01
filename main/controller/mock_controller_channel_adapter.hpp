@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <optional>
 #include <string>
 
 namespace firmware::target {
@@ -33,6 +34,8 @@ private:
     enum class TransferFault {
         none,
         malformed_geometry,
+        timeout,
+        controller_cancel,
     };
 
     // Queues one response using the production frame encoder.
@@ -54,10 +57,17 @@ private:
     // Completes the active transfer and publishes its diagnostic result.
     void complete_transfer(bool succeeded);
 
+    // Delays one controller frame without blocking the production UART task.
+    void schedule_response(firmware::core::Frame frame,
+                           std::uint64_t delay_milliseconds);
+
     firmware::core::StreamDecoder decoder_{
         firmware::core::StreamPolicy::controller_uart()};
     std::deque<std::uint8_t> pending_input_;
+    std::optional<firmware::core::Frame> delayed_response_;
+    std::int64_t delayed_response_due_microseconds_ = 0;
     std::string diagnostic_;
+    std::string pending_command_name_;
     TransferKind transfer_kind_ = TransferKind::none;
     TransferFault transfer_fault_ = TransferFault::none;
     std::uint8_t transfer_family_ = 0U;

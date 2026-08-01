@@ -2,14 +2,28 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import socket
 import time
 
 import pytest
 
-from tests.hardware.hil_file_transfer import FileTransferError, download_file, upload_file
-from tests.hardware.hil_protocol import GENERAL_COMMAND, SINGLE_COMMAND
+from tests.hardware.hil_file_transfer import (
+    FILE_CANCEL,
+    FILE_COMMAND,
+    FILE_GEOMETRY,
+    FILE_MD5,
+    FileTransferError,
+    download_file,
+    upload_file,
+)
+from tests.hardware.hil_protocol import (
+    GENERAL_COMMAND,
+    SINGLE_COMMAND,
+    receive_tcp_frames,
+)
+from tools.wifi_provision_protocol import encode_frame
 
 
 @pytest.mark.hardware
@@ -157,6 +171,152 @@ def test_mock_controller_rejects_malformed_geometry_and_recovers(
     finally:
         try:
             usb_client.exchange(GENERAL_COMMAND, b"rm /lpc1768.bin", 4.0)
+        except Exception:
+            pass
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.controller
+@pytest.mark.sd
+@pytest.mark.requirement("LPCFW-006")
+@pytest.mark.requirement("LPC-013")
+def test_mock_controller_timeout_and_cancel_preserve_staged_firmware(
+    usb_client, sd_fixture
+) -> None:
+    """Injects two transfer faults, verifies cleanup, then retries normally."""
+
+    if os.getenv("Z1_HIL_MOCK_CONTROLLER") != "1":
+        pytest.skip("mock controller not declared with Z1_HIL_MOCK_CONTROLLER=1")
+    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
+    path = "/lpc1768.bin"
+    content = bytes((index * 13 + 9) & 0xFF for index in range(900))
+
+    def wait_for_result(expected: bytes, timeout: float = 9.0) -> None:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            payload = b"\n".join(
+                frame.payload
+                for frame in usb_client.exchange(GENERAL_COMMAND, b"diagnose", 1.0)
+            )
+            if expected in payload:
+                return
+            time.sleep(0.1)
+        pytest.fail(f"mock controller did not publish {expected!r}")
+
+    try:
+        upload_file(usb_client, path, content)
+        usb_client.exchange(
+            GENERAL_COMMAND, b"mock-transfer-timeout firmware", 1.0
+        )
+        wait_for_result(b"XFER:FIRMWARE:TIMEOUT-INJECTED")
+        # LPCFW-006 checks the timeout only after a processed family frame.
+        # A normal controller-bound command must be forwarded again once that
+        # frame has released mainboard transfer suppression.
+        usb_client.exchange(GENERAL_COMMAND, b"mock-command sn-get", 1.0)
+        wait_for_result(b"CMD:sn-get:OK", 5.0)
+        assert download_file(usb_client, path) == content
+
+        usb_client.exchange(
+            GENERAL_COMMAND, b"mock-transfer-cancel firmware", 1.0
+        )
+        wait_for_result(b"XFER:FIRMWARE:ERROR")
+        assert download_file(usb_client, path) == content
+
+        usb_client.exchange(GENERAL_COMMAND, b"mock-transfer firmware", 1.0)
+        wait_for_result(b"XFER:FIRMWARE:OK")
+        with pytest.raises(FileTransferError, match="failed to open file"):
+            download_file(usb_client, path)
+    finally:
+        try:
+            usb_client.exchange(GENERAL_COMMAND, b"rm /lpc1768.bin", 4.0)
+        except Exception:
+            pass
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.controller
+@pytest.mark.requirement("RUN-010")
+@pytest.mark.requirement("REC-001")
+@pytest.mark.requirement("REC-002")
+def test_mock_controller_originated_command_families_receive_replies(
+    usb_client,
+) -> None:
+    """Routes serial and recording commands into and back through controller UART."""
+
+    if os.getenv("Z1_HIL_MOCK_CONTROLLER") != "1":
+        pytest.skip("mock controller not declared with Z1_HIL_MOCK_CONTROLLER=1")
+    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
+
+    def run(command: bytes) -> None:
+        usb_client.exchange(GENERAL_COMMAND, b"mock-command " + command, 1.0)
+        expected = b"CMD:" + command + b":OK"
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline:
+            payload = b"\n".join(
+                frame.payload
+                for frame in usb_client.exchange(GENERAL_COMMAND, b"diagnose", 1.0)
+            )
+            if expected in payload:
+                return
+            time.sleep(0.1)
+        pytest.fail(f"controller-originated {command!r} received no framed reply")
+
+    run(b"sn-get")
+    run(b"M951")
+    run(b"M952")
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.controller
+@pytest.mark.sd
+@pytest.mark.tcp
+@pytest.mark.usb
+@pytest.mark.requirement("OWN-001")
+@pytest.mark.requirement("UART-003")
+def test_controller_uart_remains_live_during_host_file_transfer(
+    usb_client, tcp_host: str, sd_fixture
+) -> None:
+    """Routes a controller command while TCP owns an incomplete SD upload."""
+
+    if os.getenv("Z1_HIL_MOCK_CONTROLLER") != "1":
+        pytest.skip("mock controller not declared with Z1_HIL_MOCK_CONTROLLER=1")
+    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
+    path = "/CXFER.BIN"
+    content = b"controller-traffic-during-host-transfer"
+    connection = socket.create_connection((tcp_host, 2222), timeout=5.0)
+    try:
+        connection.sendall(
+            encode_frame(FILE_COMMAND, f"upload {path}".encode("ascii"))
+            + encode_frame(FILE_MD5, hashlib.md5(content).hexdigest().encode("ascii"))
+        )
+        frames = receive_tcp_frames(connection, 5.0)
+        assert any(frame.frame_type == FILE_GEOMETRY for frame in frames)
+
+        usb_client.exchange(GENERAL_COMMAND, b"mock-command sn-get", 1.0)
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline:
+            diagnostic = b"\n".join(
+                frame.payload
+                for frame in usb_client.exchange(GENERAL_COMMAND, b"diagnose", 1.0)
+            )
+            if b"CMD:sn-get:OK" in diagnostic:
+                break
+            time.sleep(0.1)
+        else:
+            pytest.fail("controller UART did not reply while TCP owned file transfer")
+
+        connection.sendall(encode_frame(FILE_CANCEL, b""))
+        assert any(
+            frame.frame_type == FILE_CANCEL
+            for frame in receive_tcp_frames(connection, 5.0)
+        )
+    finally:
+        connection.close()
+        try:
+            usb_client.exchange(GENERAL_COMMAND, b"rm /CXFER.BIN", 4.0)
         except Exception:
             pass
 

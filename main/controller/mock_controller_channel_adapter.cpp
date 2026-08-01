@@ -4,6 +4,7 @@
 #include "firmware/core/protocol_constants.hpp"
 
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -24,7 +25,13 @@ constexpr std::uint16_t transfer_data_size = 512U;
 constexpr std::string_view transfer_command_prefix = "mock-transfer ";
 constexpr std::string_view transfer_error_command_prefix =
     "mock-transfer-error ";
+constexpr std::string_view transfer_timeout_command_prefix =
+    "mock-transfer-timeout ";
+constexpr std::string_view transfer_cancel_command_prefix =
+    "mock-transfer-cancel ";
 constexpr std::string_view time_command_prefix = "mock-time ";
+constexpr std::string_view controller_command_prefix = "mock-command ";
+constexpr std::uint64_t transfer_timeout_delay_milliseconds = 5200U;
 
 // Converts text constants to owned protocol payloads.
 firmware::core::ByteVector bytes(std::string_view text) {
@@ -49,6 +56,21 @@ int MockControllerChannelAdapter::read(std::uint8_t* destination,
                                        std::size_t capacity) {
     if (!initialized_ || destination == nullptr || capacity == 0U) {
         return 0;
+    }
+    if (pending_input_.empty() && delayed_response_.has_value() &&
+        esp_timer_get_time() >= delayed_response_due_microseconds_) {
+        queue_response(std::move(*delayed_response_));
+        delayed_response_.reset();
+        const std::string_view name =
+            transfer_kind_ == TransferKind::firmware ? "FIRMWARE" : "TRANSFER";
+        diagnostic_ = std::string("{MOCK:1|UART:FRAGMENTED|CTRL:SIMULATED|XFER:") +
+                      std::string(name) + ":TIMEOUT-INJECTED}\n";
+        // The delayed unknown operation is now owned by the mainboard state
+        // machine. Release only the mock-side fixture so a subsequent command
+        // can prove whether host-to-controller routing was unsuppressed.
+        transfer_kind_ = TransferKind::none;
+        transfer_fault_ = TransferFault::none;
+        transfer_family_ = 0U;
     }
     if (pending_input_.empty()) {
         vTaskDelay(pdMS_TO_TICKS(30U));
@@ -90,15 +112,26 @@ void MockControllerChannelAdapter::handle_frame(
                         bytes(diagnostic_)});
     } else if (decoded.type == firmware::core::protocol::general_command &&
                (payload.starts_with(transfer_command_prefix) ||
-                payload.starts_with(transfer_error_command_prefix))) {
-        const bool inject_error =
-            payload.starts_with(transfer_error_command_prefix);
-        const std::string_view prefix =
-            inject_error ? transfer_error_command_prefix : transfer_command_prefix;
-        const std::string_view requested = payload.substr(prefix.size());
+                payload.starts_with(transfer_error_command_prefix) ||
+                payload.starts_with(transfer_timeout_command_prefix) ||
+                payload.starts_with(transfer_cancel_command_prefix))) {
         const TransferFault fault =
-            inject_error ? TransferFault::malformed_geometry
-                         : TransferFault::none;
+            payload.starts_with(transfer_error_command_prefix)
+                ? TransferFault::malformed_geometry
+                : payload.starts_with(transfer_timeout_command_prefix)
+                      ? TransferFault::timeout
+                      : payload.starts_with(transfer_cancel_command_prefix)
+                            ? TransferFault::controller_cancel
+                            : TransferFault::none;
+        const std::string_view prefix =
+            fault == TransferFault::malformed_geometry
+                ? transfer_error_command_prefix
+                : fault == TransferFault::timeout
+                      ? transfer_timeout_command_prefix
+                      : fault == TransferFault::controller_cancel
+                            ? transfer_cancel_command_prefix
+                            : transfer_command_prefix;
+        const std::string_view requested = payload.substr(prefix.size());
         if (requested == "firmware") {
             start_transfer(TransferKind::firmware, fault);
         } else if (requested == "configuration") {
@@ -113,6 +146,23 @@ void MockControllerChannelAdapter::handle_frame(
             std::string(payload.substr(time_command_prefix.size()));
         queue_response({firmware::core::protocol::general_command,
                         bytes(requested_time)});
+    } else if (decoded.type == firmware::core::protocol::general_command &&
+               payload.starts_with(controller_command_prefix)) {
+        const std::string_view command = payload.substr(controller_command_prefix.size());
+        if (command == "sn-get" || command == "clearftm" || command == "M951" ||
+            command == "M952") {
+            pending_command_name_ = std::string(command);
+            diagnostic_ = std::string("{MOCK:1|UART:FRAGMENTED|CTRL:SIMULATED|CMD:") +
+                          pending_command_name_ + ":RUNNING}\n";
+            queue_response({firmware::core::protocol::general_command,
+                            bytes(command)});
+        }
+    } else if ((decoded.type == firmware::core::protocol::text_response ||
+                decoded.type == firmware::core::protocol::general_command) &&
+               !pending_command_name_.empty()) {
+        diagnostic_ = std::string("{MOCK:1|UART:FRAGMENTED|CTRL:SIMULATED|CMD:") +
+                      pending_command_name_ + ":OK}\n";
+        pending_command_name_.clear();
     } else if ((decoded.type & firmware::core::protocol::family_mask) ==
                transfer_family_) {
         handle_transfer_response(decoded);
@@ -159,6 +209,17 @@ void MockControllerChannelAdapter::handle_transfer_response(
                             {0U}});
             return;
         }
+        if (transfer_fault_ == TransferFault::timeout) {
+            // LPCFW-006 advances its timeout only when another family frame is
+            // processed. Schedule an otherwise unused family operation after
+            // five seconds; sleeping here would block the same UART task whose
+            // timeout path the fixture is intended to exercise.
+            schedule_response(
+                {firmware::core::protocol::family_packet(transfer_family_, 0x0FU),
+                 {}},
+                transfer_timeout_delay_milliseconds);
+            return;
+        }
         queue_response({firmware::core::protocol::family_packet(
                             transfer_family_,
                             firmware::core::protocol::transfer_geometry),
@@ -174,7 +235,9 @@ void MockControllerChannelAdapter::handle_transfer_response(
             (static_cast<std::uint32_t>(frame.payload[1]) << 16U) |
             (static_cast<std::uint32_t>(frame.payload[2]) << 8U) |
             static_cast<std::uint32_t>(frame.payload[3]);
-        if (transfer_frame_count_ == 0U) {
+        if (transfer_fault_ == TransferFault::controller_cancel) {
+            complete_transfer(false);
+        } else if (transfer_frame_count_ == 0U) {
             complete_transfer(true);
         } else {
             transfer_index_ = 1U;
@@ -233,6 +296,14 @@ void MockControllerChannelAdapter::complete_transfer(bool succeeded) {
     transfer_family_ = 0U;
     transfer_frame_count_ = 0U;
     transfer_index_ = 0U;
+    delayed_response_.reset();
+}
+
+void MockControllerChannelAdapter::schedule_response(
+    firmware::core::Frame frame, std::uint64_t delay_milliseconds) {
+    delayed_response_ = std::move(frame);
+    delayed_response_due_microseconds_ =
+        esp_timer_get_time() + static_cast<std::int64_t>(delay_milliseconds * 1000U);
 }
 
 void MockControllerChannelAdapter::queue_response(

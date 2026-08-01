@@ -187,6 +187,19 @@ also passed, proving that the safety fix did not reduce the normative TCP
 capacity. Reports are retained as `build/hil-mock-runtime-config-endurance.json`,
 `build/hil-tcp-nvs-worker.json`, and `build/hil-tcp-hybrid-capacity.json`.
 
+The controller mock also supports `mock-transfer-timeout firmware` and
+`mock-transfer-cancel firmware`. Timeout injection schedules an unused firmware
+family operation after 5.2 seconds instead of sleeping in the UART callback;
+this exercises LPCFW-006 and then proves that ordinary controller routing is
+enabled again. Controller cancel preserves `/lpc1768.bin`, and a normal retry
+still consumes it. `mock-command sn-get`, `mock-command M951`, and
+`mock-command M952` inject controller-origin commands and publish `CMD:<name>:OK`
+only after their framed mainboard reply returns through the mock channel. HIL
+also holds a TCP upload open while completing controller `sn-get`, demonstrating
+that host file ownership does not stall UART command processing. Reports are
+retained as `build/hil-mock-controller-faults-final.json` and
+`build/hil-mock-controller-concurrency.json`.
+
 The camera mock follows the same initialization, configuration, resolution,
 capture, recording, WebSocket streaming, and OTA-deinitialization surface as
 the physical adapter. It emits the deterministic JPEG marker sequence
