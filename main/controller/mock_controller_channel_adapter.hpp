@@ -30,6 +30,11 @@ private:
         factory,
     };
 
+    enum class TransferFault {
+        none,
+        malformed_geometry,
+    };
+
     // Queues one response using the production frame encoder.
     void queue_response(firmware::core::Frame frame);
 
@@ -37,7 +42,8 @@ private:
     void handle_frame(const firmware::core::Frame& frame);
 
     // Begins one controller-originated transfer selected by a test command.
-    void start_transfer(TransferKind kind);
+    void start_transfer(TransferKind kind,
+                        TransferFault fault = TransferFault::none);
 
     // Consumes one mainboard transfer response and queues the next request.
     void handle_transfer_response(const firmware::core::Frame& frame);
@@ -53,6 +59,7 @@ private:
     std::deque<std::uint8_t> pending_input_;
     std::string diagnostic_;
     TransferKind transfer_kind_ = TransferKind::none;
+    TransferFault transfer_fault_ = TransferFault::none;
     std::uint8_t transfer_family_ = 0U;
     std::uint32_t transfer_frame_count_ = 0U;
     std::uint32_t transfer_index_ = 0U;

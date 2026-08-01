@@ -182,7 +182,8 @@ periodic `?` and `diagnose` requests. This exercises scheduling, framing,
 snapshot retention, RSSI diagnostic aggregation, and TCP reply routing. Declare
 the flashed selection with `Z1_HIL_MOCK_CONTROLLER=1` to enable the positive
 HIL check. It does not validate UART pins, baud rate, electrical behavior,
-controller timing, or the controller firmware-transfer handshake.
+or controller timing. The controller-originated firmware, configuration, and
+factory-transfer handshakes are covered separately with mock SD.
 
 The combined camera/controller/SD mock profile was built and flashed on
 2026-07-30. Controller HIL passed for deterministic idle status, diagnostic
@@ -473,3 +474,13 @@ frames are admitted. This closes the production-composition gap without
 claiming that a physical host can force TinyUSB's internal FIFO to stall. Host,
 24 tool tests, and the ESP-IDF `sd,controller` mock build passed; the resulting
 image is 0x1a6d60 bytes with 17 percent free in each 2 MiB OTA partition.
+
+Controller HIL was made independent of station networking on 2026-08-01 by
+routing its status, diagnostic, version, and test-transfer commands through the
+native USB protocol fixture. The existing snapshot and all-three-transfer cases
+both passed over USB while Wi-Fi remained unavailable. A new test-only command
+can inject a one-byte, invalid geometry packet, allowing the target to verify
+cancel, preservation of the staged firmware, and a subsequent successful retry.
+The updated `sd,controller` image builds successfully at 0x1a6e20 bytes, but
+that new fault case still awaits flashing because only application USB is
+currently exposed; no serial flash port or working OTA path is available.

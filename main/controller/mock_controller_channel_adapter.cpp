@@ -22,6 +22,8 @@ constexpr std::string_view mock_diagnostic =
 constexpr std::size_t fragmented_read_size = 7U;
 constexpr std::uint16_t transfer_data_size = 512U;
 constexpr std::string_view transfer_command_prefix = "mock-transfer ";
+constexpr std::string_view transfer_error_command_prefix =
+    "mock-transfer-error ";
 constexpr std::string_view time_command_prefix = "mock-time ";
 
 // Converts text constants to owned protocol payloads.
@@ -87,15 +89,22 @@ void MockControllerChannelAdapter::handle_frame(
         queue_response({firmware::core::protocol::diagnostic_data,
                         bytes(diagnostic_)});
     } else if (decoded.type == firmware::core::protocol::general_command &&
-               payload.starts_with(transfer_command_prefix)) {
-        const std::string_view requested =
-            payload.substr(transfer_command_prefix.size());
+               (payload.starts_with(transfer_command_prefix) ||
+                payload.starts_with(transfer_error_command_prefix))) {
+        const bool inject_error =
+            payload.starts_with(transfer_error_command_prefix);
+        const std::string_view prefix =
+            inject_error ? transfer_error_command_prefix : transfer_command_prefix;
+        const std::string_view requested = payload.substr(prefix.size());
+        const TransferFault fault =
+            inject_error ? TransferFault::malformed_geometry
+                         : TransferFault::none;
         if (requested == "firmware") {
-            start_transfer(TransferKind::firmware);
+            start_transfer(TransferKind::firmware, fault);
         } else if (requested == "configuration") {
-            start_transfer(TransferKind::configuration);
+            start_transfer(TransferKind::configuration, fault);
         } else if (requested == "factory") {
-            start_transfer(TransferKind::factory);
+            start_transfer(TransferKind::factory, fault);
         }
     } else if (decoded.type == firmware::core::protocol::general_command &&
                payload.starts_with(time_command_prefix)) {
@@ -110,11 +119,13 @@ void MockControllerChannelAdapter::handle_frame(
     }
 }
 
-void MockControllerChannelAdapter::start_transfer(TransferKind kind) {
+void MockControllerChannelAdapter::start_transfer(TransferKind kind,
+                                                  TransferFault fault) {
     if (transfer_kind_ != TransferKind::none) {
         return;
     }
     transfer_kind_ = kind;
+    transfer_fault_ = fault;
     transfer_family_ =
         kind == TransferKind::firmware
             ? firmware::core::protocol::firmware_family
@@ -138,6 +149,16 @@ void MockControllerChannelAdapter::handle_transfer_response(
         return;
     }
     if (operation == firmware::core::protocol::transfer_start) {
+        if (transfer_fault_ == TransferFault::malformed_geometry) {
+            // A geometry packet must contain a four-byte frame count and a
+            // two-byte block size. This intentionally short payload exercises
+            // the production cancel path without corrupting the byte stream.
+            queue_response({firmware::core::protocol::family_packet(
+                                transfer_family_,
+                                firmware::core::protocol::transfer_geometry),
+                            {0U}});
+            return;
+        }
         queue_response({firmware::core::protocol::family_packet(
                             transfer_family_,
                             firmware::core::protocol::transfer_geometry),
@@ -208,6 +229,7 @@ void MockControllerChannelAdapter::complete_transfer(bool succeeded) {
     diagnostic_ = std::string("{MOCK:1|UART:FRAGMENTED|CTRL:SIMULATED|XFER:") +
                   std::string(name) + (succeeded ? ":OK}\n" : ":ERROR}\n");
     transfer_kind_ = TransferKind::none;
+    transfer_fault_ = TransferFault::none;
     transfer_family_ = 0U;
     transfer_frame_count_ = 0U;
     transfer_index_ = 0U;
