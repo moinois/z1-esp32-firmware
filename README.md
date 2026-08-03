@@ -1,3 +1,5 @@
+![Release](https://github.com/moinois/z1-esp32-firmware/actions/workflows/release-firmware.yml/badge.svg)
+
 # Makera Z1 communications mainboard firmware
 
 This repository contains the C++ implementation of the ESP32-S3 communications
