@@ -1,0 +1,89 @@
+name: Build release firmware
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ESP32-S3 firmware
+    runs-on: ubuntu-latest
+
+    container:
+      image: espressif/idf:v5.4.1
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          submodules: recursive
+
+      - name: Build firmware
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          idf.py set-target esp32s3
+          idf.py build
+
+      - name: Create aggregate update package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 tools/package_firmware.py \
+            --mainboard build/mainboard_firmware.bin
+
+      - name: Prepare release assets
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p release
+
+          cp build/mainboard_firmware.bin \
+            "release/z1-mainboard-${RELEASE_TAG}.bin"
+
+          cp build/firmware.bin \
+            "release/z1-firmware-${RELEASE_TAG}.bin"
+
+          sha256sum release/*.bin > release/SHA256SUMS.txt
+
+      - name: Store build result
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-firmware
+          path: release/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Attach firmware to release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build result
+        uses: actions/download-artifact@v4
+        with:
+          name: release-firmware
+          path: release
+
+      - name: Upload release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          gh release upload "$RELEASE_TAG" \
+            release/* \
+            --clobberß
