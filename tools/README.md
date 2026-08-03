@@ -121,3 +121,19 @@ This clears the mainboard flag, size, and version. The controller image begins
 immediately after the 32-byte header. At least one of `--mainboard` and
 `--controller` is required, and each version switch requires its corresponding
 image switch.
+
+## Local code coverage
+
+Generate a coverage report for the portable host-tested firmware code:
+
+```sh
+python3 tools/host_coverage.py
+```
+
+The complete host test suite is executed before the report is generated.
+
+Open the HTML report with:
+```sh
+open build/host-coverage/coverage/index.html
+````
+Coverage output is isolated from the ordinary host-tests build.

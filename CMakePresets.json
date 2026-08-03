@@ -10,12 +10,46 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_CXX_FLAGS": "-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1"
       }
+    },
+    {
+      "name": "host-coverage",
+      "displayName": "Host tests with code coverage",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/host-coverage",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1 -O0 -g -fprofile-instr-generate -fcoverage-mapping",
+        "CMAKE_EXE_LINKER_FLAGS": "-fprofile-instr-generate"
+      }
     }
   ],
   "buildPresets": [
-    { "name": "host-tests", "configurePreset": "host-tests" }
+    {
+      "name": "host-tests",
+      "configurePreset": "host-tests"
+    },
+    {
+      "name": "host-coverage",
+      "configurePreset": "host-coverage"
+    }
   ],
   "testPresets": [
-    { "name": "host-tests", "configurePreset": "host-tests", "output": { "outputOnFailure": true } }
+    {
+      "name": "host-tests",
+      "configurePreset": "host-tests",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "host-coverage",
+      "configurePreset": "host-coverage",
+      "output": {
+        "outputOnFailure": true
+      },
+      "environment": {
+        "LLVM_PROFILE_FILE": "${sourceDir}/build/host-coverage/coverage-%p.profraw"
+      }
+    }
   ]
 }

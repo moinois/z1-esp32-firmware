@@ -145,7 +145,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.configure_only:
         return 0
     if shutil.which("idf.py") is None:
-        print("idf.py is unavailable; source the ESP-IDF export script", file=sys.stderr)
+        print(
+            "idf.py is unavailable.\n\n"
+            "Before running this command, activate the ESP-IDF environment:\n\n"
+            "    source ~/esp/esp-idf/export.sh\n",
+            file=sys.stderr,
+        )
         return 2
     if args.port and not args.flash:
         print("--port requires --flash", file=sys.stderr)
