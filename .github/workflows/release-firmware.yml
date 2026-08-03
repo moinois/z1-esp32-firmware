@@ -40,13 +40,26 @@ jobs:
             exit 1
           fi
 
+      - name: Verify ESP-IDF environment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          source /opt/esp/idf/export.sh
+
+          idf.py --version
+          python3 --version
+
       - name: Build live firmware
         shell: bash
         run: |
           set -euo pipefail
 
+          source /opt/esp/idf/export.sh
+
           python3 tools/build_firmware.py \
             --live \
+            --release \
             --build-dir build
 
       - name: Determine application binary
