@@ -114,6 +114,11 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="write selection files without invoking ESP-IDF",
     )
+    parser.add_argument(
+        "--release",
+        action="store_true",
+        help="package a successful build as build/firmware.bin"    
+    )
     return parser
 
 
@@ -155,11 +160,53 @@ def main(argv: Sequence[str] | None = None) -> int:
         "-D",
         f"SDKCONFIG_DEFAULTS={root / 'sdkconfig.defaults'}",
     ]
+
     if args.port:
         command.extend(["-p", args.port])
-    command.append("flash" if args.flash else "build")
-    return subprocess.run(command, cwd=root, check=False).returncode
 
+    command.append("flash" if args.flash else "build")
+
+    build_result = subprocess.run(command, cwd=root, check=False)
+    if build_result.returncode != 0:
+        return build_result.returncode
+
+    if not args.release:
+        return 0
+
+    build_directory = config.parent
+    firmware_path = build_directory / "mainboard_firmware.bin"
+    package_path = build_directory / "firmware.bin"
+
+    if not firmware_path.is_file():
+        print(
+            f"expected firmware output was not created: {firmware_path}",
+            file=sys.stderr,
+        )
+        return 1
+
+    package_command = [
+        sys.executable,
+        str(root / "tools" / "package_firmware.py"),
+        "--mainboard",
+        str(firmware_path),
+        "--output",
+        str(package_path),
+    ]
+
+    package_result = subprocess.run(package_command, cwd=root, check=False)
+    if package_result.returncode != 0:
+        return package_result.returncode
+
+    print()
+    print("Release build completed successfully.")
+    print()
+    print("Built firmware:")
+    print(f"  {firmware_path.relative_to(root)}")
+    print()
+    print("Built update package:")
+    print(f"  {package_path.relative_to(root)}")
+
+    return 0
 
 if __name__ == "__main__":
     raise SystemExit(main())

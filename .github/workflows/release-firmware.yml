@@ -1,4 +1,4 @@
-name: Build release firmware
+name: Release firmware
 
 on:
   release:
@@ -8,82 +8,139 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
 jobs:
   build:
-    name: Build ESP32-S3 firmware
+    name: Build release firmware
     runs-on: ubuntu-latest
 
     container:
       image: espressif/idf:v5.4.1
 
     steps:
-      - name: Check out release tag
+      - name: Check out release source
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
           submodules: recursive
 
-      - name: Build firmware
+      - name: Validate release tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must use vMAJOR.MINOR.PATCH"
+            exit 1
+          fi
+
+      - name: Build live firmware
         shell: bash
         run: |
           set -euo pipefail
 
-          idf.py set-target esp32s3
-          idf.py build
+          python3 tools/build_firmware.py \
+            --live \
+            --build-dir build
 
-      - name: Create aggregate update package
+      - name: Determine application binary
+        id: app
         shell: bash
+        run: |
+          set -euo pipefail
+
+          APP_BIN="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          description = json.loads(
+              Path("build/project_description.json").read_text(encoding="utf-8")
+          )
+
+          print(description["app_bin"])
+          PY
+          )"
+
+          test -f "build/$APP_BIN"
+          echo "filename=$APP_BIN" >> "$GITHUB_OUTPUT"
+
+      - name: Encode release version
+        id: version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          VERSION="${RELEASE_TAG#v}"
+          IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
+
+          if (( MAJOR > 255 || MINOR > 255 || PATCH > 255 )); then
+            echo "::error::Version components must fit in one byte"
+            exit 1
+          fi
+
+          ENCODED=$(( (MAJOR << 16) | (MINOR << 8) | PATCH ))
+
+          printf -v ENCODED_HEX '0x%08X' "$ENCODED"
+
+          echo "plain=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "encoded=$ENCODED_HEX" >> "$GITHUB_OUTPUT"
+
+      - name: Package aggregate firmware
+        shell: bash
+        env:
+          APP_BIN: ${{ steps.app.outputs.filename }}
+          MAINBOARD_VERSION: ${{ steps.version.outputs.encoded }}
         run: |
           set -euo pipefail
 
           python3 tools/package_firmware.py \
-            --mainboard build/mainboard_firmware.bin
+            --mainboard "build/$APP_BIN" \
+            --mainboard-version "$MAINBOARD_VERSION" \
+            --output build/firmware.bin
 
       - name: Prepare release assets
         shell: bash
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
+          APP_BIN: ${{ steps.app.outputs.filename }}
         run: |
           set -euo pipefail
 
-          mkdir -p release
+          mkdir -p dist
 
-          cp build/mainboard_firmware.bin \
-            "release/z1-mainboard-${RELEASE_TAG}.bin"
+          cp "build/$APP_BIN" \
+            "dist/z1-mainboard-${RELEASE_TAG}.bin"
 
           cp build/firmware.bin \
-            "release/z1-firmware-${RELEASE_TAG}.bin"
+            "dist/z1-firmware-${RELEASE_TAG}.bin"
 
-          sha256sum release/*.bin > release/SHA256SUMS.txt
+          cp build/hardware-selection.json \
+            dist/hardware-selection.json
 
-      - name: Store build result
+          sha256sum dist/*.bin > dist/SHA256SUMS.txt
+
+      - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-firmware
-          path: release/
+          name: firmware-${{ github.event.release.tag_name }}
+          path: dist/
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
 
-  publish:
-    name: Attach firmware to release
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download build result
-        uses: actions/download-artifact@v4
+      - name: Attach files to release
+        uses: softprops/action-gh-release@v2
         with:
-          name: release-firmware
-          path: release
-
-      - name: Upload release assets
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: |
-          set -euo pipefail
-
-          gh release upload "$RELEASE_TAG" \
-            release/* \
-            --clobberß
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            dist/*.bin
+            dist/SHA256SUMS.txt
+            dist/hardware-selection.json
+          fail_on_unmatched_files: true
