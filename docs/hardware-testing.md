@@ -255,6 +255,14 @@ TCP retry, isolation and recovery after a permanent send error, discovery
 socket recreation, and resumed periodic UDP output. Live builds expose the
 command only to report that the test adapter is unavailable.
 
+The native-USB/network run on 2026-08-09 passed all four injected cases:
+temporary TCP send retry retained the complete response, permanent failure
+closed only its affected session and allowed an immediate successor, and both
+UDP socket-open and send failures were consumed before periodic discovery
+resumed. The fixture initially filtered the correct `0x83` text response as if
+it were `0xa3`; that test-only packet-type error was corrected before retaining
+the passing report as `build/hil-network-fault-usb-fixed.json`.
+
 The 2026-08-01 HIL run verified unmounted access from USB and TCP, ENODEV
 diagnostic selection before any host-directory VFS fallback, rejected upload,
 fresh remount and transfer recovery, deterministic 16 KiB read failure,

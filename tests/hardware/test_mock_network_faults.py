@@ -11,7 +11,9 @@ from tests.hardware.hil_protocol import GENERAL_COMMAND, TcpProtocolClient
 from tests.hardware.test_udp_discovery import _discovery_for_target
 
 
-TEXT_RESPONSE = 0xA3
+# General-command text replies use the protocol's 0x83 response packet, not
+# the 0xA3 request-family value.
+TEXT_RESPONSE = 0x83
 
 
 def _usb_command(usb_client, command: str) -> bytes:
