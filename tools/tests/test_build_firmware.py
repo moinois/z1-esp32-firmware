@@ -11,6 +11,7 @@ from tools.build_firmware import (
     application_binary,
     discover_mock_adapters,
     release_package_command,
+    select_webui_source,
     write_build_selection,
 )
 
@@ -59,8 +60,36 @@ class BuildFirmwareTests(unittest.TestCase):
                     "available_mocks": ["camera", "sd"],
                     "mock_all": False,
                     "selected_mocks": ["sd"],
+                    "webui_source": "webui",
                 },
             )
+
+    def test_selects_public_and_explicit_local_webui_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "webui").mkdir()
+            (root / "webui" / "index.html").write_text("public", encoding="utf-8")
+            (root / "webui-makera").mkdir()
+            (root / "webui-makera" / "index.html").write_text(
+                "local", encoding="utf-8"
+            )
+
+            self.assertEqual(
+                select_webui_source(root, False), (root / "webui").resolve()
+            )
+            self.assertEqual(
+                select_webui_source(root, True), (root / "webui-makera").resolve()
+            )
+
+    def test_rejects_missing_or_empty_alternate_webui_source(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with self.assertRaisesRegex(ValueError, "does not exist"):
+                select_webui_source(root, True)
+
+            (root / "webui-makera").mkdir()
+            with self.assertRaisesRegex(ValueError, "contains no files"):
+                select_webui_source(root, True)
 
     def test_mock_all_and_live_are_unambiguous(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

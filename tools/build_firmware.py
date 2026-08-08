@@ -14,6 +14,8 @@ from typing import Mapping, Sequence, Set, Tuple
 
 MOCK_CONFIG_PATTERN = re.compile(r"^config Z1_MOCK_([A-Z0-9_]+)_HARDWARE$", re.MULTILINE)
 GLOBAL_MOCK_CONFIG = "CONFIG_Z1_MOCK_ALL_HARDWARE"
+DEFAULT_WEBUI_DIRECTORY = "webui"
+ALTERNATE_WEBUI_DIRECTORY = "alt-webui"
 
 
 def application_binary(build_directory: Path) -> Path:
@@ -63,6 +65,20 @@ def discover_mock_adapters(kconfig_path: Path) -> dict[str, str]:
     return dict(sorted(discovered.items()))
 
 
+def select_webui_source(root: Path, alternate: bool) -> Path:
+    """Returns a non-empty public or explicitly selected local Web UI tree."""
+
+    directory_name = (
+        ALTERNATE_WEBUI_DIRECTORY if alternate else DEFAULT_WEBUI_DIRECTORY
+    )
+    source = root / directory_name
+    if not source.is_dir():
+        raise ValueError(f"Web UI source directory does not exist: {source}")
+    if not any(path.is_file() for path in source.rglob("*")):
+        raise ValueError(f"Web UI source directory contains no files: {source}")
+    return source.resolve()
+
+
 def _atomic_text(path: Path, content: str) -> None:
     """Replaces one generated text file without exposing a partial selection."""
 
@@ -77,6 +93,7 @@ def write_build_selection(
     selected: Set[str],
     *,
     mock_all: bool,
+    webui_source: str = DEFAULT_WEBUI_DIRECTORY,
 ) -> Tuple[Path, Path]:
     """Writes complete Kconfig selection and audit manifest into a build tree."""
 
@@ -100,6 +117,7 @@ def write_build_selection(
         "available_mocks": sorted(adapters),
         "mock_all": mock_all,
         "selected_mocks": sorted(selected),
+        "webui_source": webui_source,
     }
     _atomic_text(manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     return config_path, manifest_path
@@ -158,6 +176,13 @@ def _parser() -> argparse.ArgumentParser:
         default=0,
         help="unsigned 32-bit aggregate metadata used with --release",
     )
+    parser.add_argument(
+        "--alt_webui",
+        "--alt-webui",
+        dest="alt_webui",
+        action="store_true",
+        help="build SPIFFS from ignored local webui-makera instead of webui",
+    )
     return parser
 
 
@@ -169,11 +194,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     adapters = discover_mock_adapters(root / "main" / "Kconfig.projbuild")
     selected = _mock_names(args.mock or [])
     try:
+        webui_source = select_webui_source(root, args.alt_webui)
         config, manifest = write_build_selection(
             (root / args.build_dir).resolve(),
             adapters,
             selected,
             mock_all=args.mock_all,
+            webui_source=webui_source.name,
         )
     except ValueError as error:
         print(error, file=sys.stderr)
@@ -209,6 +236,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"SDKCONFIG={config}",
         "-D",
         f"SDKCONFIG_DEFAULTS={root / 'sdkconfig.defaults'}",
+        "-D",
+        f"Z1_WEBUI_DIR={webui_source}",
     ]
 
     if args.port:

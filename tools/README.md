@@ -52,6 +52,7 @@ source /Users/moinois/esp/esp-idf/export.sh
 python3 tools/build_firmware.py --live
 python3 tools/build_firmware.py --mock sd
 python3 tools/build_firmware.py --mock-all
+python3 tools/build_firmware.py --live --alt_webui
 python3 tools/build_firmware.py --live --release \
   --mainboard-version 0x00010203
 ```
@@ -71,6 +72,23 @@ python3 tools/build_firmware.py --mock sd --flash \
 
 The normal `idf.py build` path remains governed by `sdkconfig.defaults`, where
 all mocks are disabled.
+
+`--alt_webui` (also accepted as `--alt-webui`) explicitly builds the SPIFFS
+partition from the local, ignored `webui-makera` directory. The command fails
+if that directory is missing or empty; it never silently falls back to the
+public `webui` tree. The selected directory name is recorded in
+`hardware-selection.json`, while its files remain ignored and are not copied
+into tracked build inputs. Because the SPIFFS image uses ESP-IDF's
+`FLASH_IN_PROJECT`, combining this option with `--flash` flashes the selected
+Web UI together with the firmware:
+
+```text
+python3 tools/build_firmware.py --live --alt_webui --flash \
+  --port /dev/cu.usbmodem...
+```
+
+Ordinary builds and release builds continue to package the repository's
+public `webui` directory unless this local-only option is explicitly supplied.
 
 `--release` additionally creates `firmware.bin` in the selected build
 directory. `--mainboard-version` supplies the aggregate package metadata and
