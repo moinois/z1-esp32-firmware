@@ -785,9 +785,10 @@ served the complete local asset in 10.71 seconds; the report is
 into larger transport writes transferred only 11,214 of 106,343 bytes in 15
 seconds, so that unproven implementation was removed before commit.
 
-Portable coverage was regenerated on 2026-08-09 after the NVS and network
-fault adapters were added. All host tests passed with 95.86 percent line,
-99.00 percent function, and 84.76 percent branch coverage. USB production
+Portable coverage was regenerated on 2026-08-09 after the USB HIL harness and
+stress coverage were completed. All host tests passed with 95.99 percent line
+(7825/8152), 99.01 percent function (800/808), and 84.99 percent branch
+(3187/3750) coverage. USB production
 policy has 100 percent line coverage for protocol state, receive staging,
 transmit drain, and timeout tracking; the remaining USB limitation is physical
 TinyUSB endpoint control, not an uncovered portable branch. CANopen timing was
@@ -796,6 +797,14 @@ write-retry exhaustion, deadline-bounded writes, and reads ending exactly at
 the absolute deadline. The generated report remains local under
 `build/host-coverage/coverage/`; release automation publishes the equivalent
 report and badge.
+
+The next coverage-focused host priorities are AVI preview parsing (26 uncovered
+lines), upload/download failure paths (33 combined), CAN PDO/TPDO composition,
+and filesystem/storage-retention error branches. These can be improved with
+portable fixtures in the current repository. They are separate from the
+remaining conformance limits: physical SD media, controller UART, CAN bus,
+camera behavior, RF-loss endurance, and forced TinyUSB endpoint stalls still
+require their corresponding hardware fixtures or lower-level instrumentation.
 
 The GPIO0 heartbeat is split at the same production boundary: portable tests
 verify the initial high level, exact 1000 ms delay, repeated inversion, and no
