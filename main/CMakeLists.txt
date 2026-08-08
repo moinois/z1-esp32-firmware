@@ -23,6 +23,7 @@ idf_component_register(
         "diagnostics/diagnostic_capture_adapter.cpp"
         "diagnostics/serial_log_mirror_adapter.cpp"
         "runtime/nvs_key_value_adapter.cpp"
+        "runtime/mock_nvs_fault_adapter.cpp"
         "runtime/nvs_command_ports.cpp"
         "runtime/nvs_runtime_counter_adapter.cpp"
         "runtime/runtime_counter_task.cpp"

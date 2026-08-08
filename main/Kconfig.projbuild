@@ -25,6 +25,13 @@ config Z1_MOCK_CONTROLLER_HARDWARE
     help
         Simulate framed controller status, diagnostic, and version traffic.
 
+config Z1_MOCK_NVS_HARDWARE
+    bool "Allow deterministic NVS boundary failures"
+    default n
+    help
+        Permit test commands to fail namespace-open or commit operations.
+        Persistent values still use the real NVS partition.
+
 config Z1_MOCK_SD_CAPACITY_KIB
     int "Mock SD capacity in KiB"
     depends on Z1_MOCK_ALL_HARDWARE || Z1_MOCK_SD_HARDWARE

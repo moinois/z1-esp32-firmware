@@ -27,6 +27,10 @@
 #define CONFIG_Z1_MOCK_CONTROLLER_HARDWARE 0
 #endif
 
+#ifndef CONFIG_Z1_MOCK_NVS_HARDWARE
+#define CONFIG_Z1_MOCK_NVS_HARDWARE 0
+#endif
+
 namespace firmware::target {
 
 namespace {
@@ -39,6 +43,7 @@ SdStorageAdapter& HardwareAdapterFactory::sd_storage() {
         CONFIG_Z1_MOCK_SD_HARDWARE != 0,
         CONFIG_Z1_MOCK_CAMERA_HARDWARE != 0,
         CONFIG_Z1_MOCK_CONTROLLER_HARDWARE != 0,
+        CONFIG_Z1_MOCK_NVS_HARDWARE != 0,
     };
     if constexpr (selection.mock_sd()) {
         ESP_LOGW(tag, "SD adapter selected: MOCK");
@@ -56,6 +61,7 @@ CameraHardwareAdapter& HardwareAdapterFactory::camera() {
         CONFIG_Z1_MOCK_SD_HARDWARE != 0,
         CONFIG_Z1_MOCK_CAMERA_HARDWARE != 0,
         CONFIG_Z1_MOCK_CONTROLLER_HARDWARE != 0,
+        CONFIG_Z1_MOCK_NVS_HARDWARE != 0,
     };
     if constexpr (selection.mock_camera()) {
         static const bool selection_logged = [] {
@@ -81,6 +87,7 @@ ControllerChannelAdapter& HardwareAdapterFactory::controller_channel() {
         CONFIG_Z1_MOCK_SD_HARDWARE != 0,
         CONFIG_Z1_MOCK_CAMERA_HARDWARE != 0,
         CONFIG_Z1_MOCK_CONTROLLER_HARDWARE != 0,
+        CONFIG_Z1_MOCK_NVS_HARDWARE != 0,
     };
     if constexpr (selection.mock_controller()) {
         static const bool selection_logged = [] {
@@ -98,6 +105,17 @@ ControllerChannelAdapter& HardwareAdapterFactory::controller_channel() {
     static_cast<void>(selection_logged);
     static ControllerUartAdapter adapter;
     return adapter;
+}
+
+bool HardwareAdapterFactory::nvs_faults_enabled() {
+    constexpr firmware::application::HardwareAdapterSelection selection{
+        CONFIG_Z1_MOCK_ALL_HARDWARE != 0,
+        CONFIG_Z1_MOCK_SD_HARDWARE != 0,
+        CONFIG_Z1_MOCK_CAMERA_HARDWARE != 0,
+        CONFIG_Z1_MOCK_CONTROLLER_HARDWARE != 0,
+        CONFIG_Z1_MOCK_NVS_HARDWARE != 0,
+    };
+    return selection.mock_nvs();
 }
 
 }  // namespace firmware::target

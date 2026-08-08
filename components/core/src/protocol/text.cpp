@@ -89,6 +89,7 @@ CommandMatch recognize_command(BytesView payload) {
         {"diagnose", CommandKind::diagnose, 0, true},
         {"wifi-diag", CommandKind::wifi_diagnose, 0, true},
         {"mock-sd", CommandKind::mock_sd_control, 7, false},
+        {"mock-nvs", CommandKind::mock_nvs_control, 8, false},
         {"version", CommandKind::version, 0, true},
     };
     for (const auto& rule : rules) {

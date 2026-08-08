@@ -33,6 +33,7 @@ enum class CommandKind {
     diagnose,
     wifi_diagnose,
     mock_sd_control,
+    mock_nvs_control,
     version
 };
 

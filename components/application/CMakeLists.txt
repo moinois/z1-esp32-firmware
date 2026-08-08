@@ -35,6 +35,7 @@ set(APPLICATION_SOURCES
     src/configuration/live_configuration.cpp
     src/runtime/live_control_policy.cpp
     src/runtime/m942_exercise.cpp
+    src/runtime/nvs_fault_injection.cpp
     src/controller/controller_config_transfer.cpp
     src/controller/controller_factory_transfer.cpp
     src/controller/controller_firmware_transfer.cpp

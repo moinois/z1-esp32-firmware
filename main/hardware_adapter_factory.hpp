@@ -17,6 +17,9 @@ public:
 
     // Returns the compile-time-selected controller byte channel singleton.
     static ControllerChannelAdapter& controller_channel();
+
+    // Returns whether test-only NVS boundary failure control is enabled.
+    static bool nvs_faults_enabled();
 };
 
 }  // namespace firmware::target

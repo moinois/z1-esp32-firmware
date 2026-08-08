@@ -1,5 +1,6 @@
 // Implements typed NVS access with explicit missing-key and commit handling.
 #include "nvs_key_value_adapter.hpp"
+#include "mock_nvs_fault_adapter.hpp"
 
 #include "nvs.h"
 
@@ -13,13 +14,21 @@ constexpr nvs_open_mode_t read_write = NVS_READWRITE;
 
 bool open_namespace(std::string_view name_space, nvs_open_mode_t mode,
                     nvs_handle_t& handle) {
+    if (nvs_open_fault_active()) return false;
     return nvs_open(std::string(name_space).c_str(), mode, &handle) == ESP_OK;
+}
+
+// Commits one successful mutation unless the test boundary rejects it.
+esp_err_t commit_mutation(nvs_handle_t handle, esp_err_t mutation_result) {
+    if (mutation_result != ESP_OK) return mutation_result;
+    return nvs_commit_fault_active() ? ESP_FAIL : nvs_commit(handle);
 }
 
 }  // namespace
 
 NvsStringRead NvsKeyValueAdapter::read_string(std::string_view name_space,
                                                std::string_view key) const {
+    if (nvs_open_fault_active()) return {};
     nvs_handle_t handle = 0;
     const esp_err_t open_result = nvs_open(
         std::string(name_space).c_str(), read_only, &handle);
@@ -89,7 +98,7 @@ bool NvsKeyValueAdapter::write_string(std::string_view name_space,
     nvs_handle_t handle = 0;
     if (!open_namespace(name_space, read_write, handle)) return false;
     const esp_err_t result = nvs_set_str(handle, std::string(key).c_str(), std::string(value).c_str());
-    const esp_err_t commit = result == ESP_OK ? nvs_commit(handle) : result;
+    const esp_err_t commit = commit_mutation(handle, result);
     nvs_close(handle);
     return commit == ESP_OK;
 }
@@ -100,7 +109,7 @@ bool NvsKeyValueAdapter::write_u64(std::string_view name_space,
     nvs_handle_t handle = 0;
     if (!open_namespace(name_space, read_write, handle)) return false;
     const esp_err_t result = nvs_set_u64(handle, std::string(key).c_str(), value);
-    const esp_err_t commit = result == ESP_OK ? nvs_commit(handle) : result;
+    const esp_err_t commit = commit_mutation(handle, result);
     nvs_close(handle);
     return commit == ESP_OK;
 }
@@ -112,7 +121,7 @@ bool NvsKeyValueAdapter::write_u8(std::string_view name_space,
         return false;
     }
     const esp_err_t result = nvs_set_u8(handle, std::string(key).c_str(), value);
-    const esp_err_t commit = result == ESP_OK ? nvs_commit(handle) : result;
+    const esp_err_t commit = commit_mutation(handle, result);
     nvs_close(handle);
     return commit == ESP_OK;
 }
@@ -125,6 +134,9 @@ bool NvsKeyValueAdapter::write_i64(std::string_view name_space,
 
 NvsReadState NvsKeyValueAdapter::erase_key(std::string_view name_space,
                                            std::string_view key) const {
+    if (nvs_open_fault_active()) {
+        return NvsReadState::failure;
+    }
     nvs_handle_t handle = 0;
     const esp_err_t open_result = nvs_open(
         std::string(name_space).c_str(), NVS_READWRITE, &handle);
@@ -137,7 +149,8 @@ NvsReadState NvsKeyValueAdapter::erase_key(std::string_view name_space,
         nvs_close(handle);
         return NvsReadState::missing;
     }
-    if (erase_result != ESP_OK || nvs_commit(handle) != ESP_OK) {
+    if (erase_result != ESP_OK || nvs_commit_fault_active() ||
+        nvs_commit(handle) != ESP_OK) {
         nvs_close(handle);
         return NvsReadState::failure;
     }

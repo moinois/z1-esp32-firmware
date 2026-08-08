@@ -35,6 +35,7 @@ add_executable(
     protocol/test_frame.cpp
     configuration/test_live_configuration.cpp
     runtime/test_m942_exercise.cpp
+    runtime/test_nvs_fault_injection.cpp
     connectivity/test_network_policy.cpp
     storage/test_file_transfer_paths.cpp
     storage/test_file_transfer_admission.cpp

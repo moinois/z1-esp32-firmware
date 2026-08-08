@@ -673,6 +673,16 @@ that counter injection deliberately uses one persistent TCP task rather than
 conflating sequence behavior with USB worker-queue pressure. The report is
 `build/hil-mock-transfer-errors-final.json`.
 
+NVS boundary fault control is available only in a build selected with
+`--mock nvs` or `--mock-all`. `mock-nvs fail-open` rejects namespace access,
+`mock-nvs fail-commit` rejects mutations before flash commit, and
+`mock-nvs clear` restores normal operation. The persistent NVS backend is not
+replaced. HIL additionally selects the controller mock to create a known
+`runtime/first_boot` value, verifies exact protocol failures, clears the fault,
+and requires the original value to remain readable. Run the gated case with
+`Z1_HIL_MOCK_NVS=1`, `Z1_HIL_MOCK_CONTROLLER=1`, and
+`Z1_ALLOW_MUTATION=1`.
+
 The all-mock regression collected 94 cases on 2026-08-01. Its first pass
 recorded 62 PASS, 27 capability-gated SKIP, one expected configuration-name
 conflict, and four failures. Two storage failures shared the HIL retry defect
