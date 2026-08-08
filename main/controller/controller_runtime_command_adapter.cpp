@@ -11,7 +11,7 @@ ControllerRuntimeCommandAdapter::ControllerRuntimeCommandAdapter(
     : NvsRuntimeCommandPort(static_cast<FrameSink&>(*this)), channel_(channel) {}
 
 bool ControllerRuntimeCommandAdapter::send_frame(firmware::core::Frame frame) {
-    const auto encoded = firmware::core::encode_frame(frame);
+    const auto encoded = firmware::core::encode_controller_frame(frame);
     if (encoded.empty()) return false;
     const int written = channel_.write(encoded);
     if (written != static_cast<int>(encoded.size())) {

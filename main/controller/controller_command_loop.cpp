@@ -112,7 +112,7 @@ void controller_command_task(void*) {
         const auto due_queries = query_scheduler.poll(
             static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL), true);
         for (const auto& query : due_queries) {
-            const auto encoded = firmware::core::encode_frame(query);
+            const auto encoded = firmware::core::encode_controller_frame(query);
             if (!encoded.empty()) {
                 write_controller_frame(channel, encoded);
             }
@@ -120,7 +120,7 @@ void controller_command_task(void*) {
         const auto now_milliseconds =
             static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
         for (const auto& alarm : activity_monitor.poll(now_milliseconds)) {
-            const auto encoded = firmware::core::encode_frame(alarm);
+            const auto encoded = firmware::core::encode_controller_frame(alarm);
             if (!encoded.empty()) {
                 write_controller_frame(channel, encoded);
             }
@@ -198,7 +198,8 @@ void controller_command_task(void*) {
                 const auto result = firmware::application::handle_recording_command(
                     match.kind, recording_state.requested());
                 recording_state.set_requested(result.requested);
-                const auto encoded = firmware::core::encode_frame(result.response);
+                const auto encoded =
+                    firmware::core::encode_controller_frame(result.response);
                 if (!encoded.empty()) {
                     write_controller_frame(channel, encoded);
                 }

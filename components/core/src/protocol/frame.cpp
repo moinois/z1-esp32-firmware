@@ -25,33 +25,42 @@ void discard_prefix(ByteVector& bytes, std::size_t count) {
     bytes.erase(bytes.begin(), end);
 }
 
-}  // namespace
+bool is_controller_update_type(std::uint8_t type) {
+    return (type & protocol::family_mask) == protocol::firmware_family;
+}
 
-ByteVector encode_frame(const Frame& frame) {
+ByteVector encode_with_crc(const Frame& frame, bool controller_transport) {
     if (frame.payload.size() >
         std::numeric_limits<std::uint16_t>::max() - non_payload_data_length) {
         return {};
     }
-
     const auto length = static_cast<std::uint16_t>(
         frame.payload.size() + non_payload_data_length);
     ByteVector bytes{
-        sync_bytes[0],
-        sync_bytes[1],
+        sync_bytes[0], sync_bytes[1],
         static_cast<std::uint8_t>(length >> 8U),
-        static_cast<std::uint8_t>(length),
-        frame.type,
+        static_cast<std::uint8_t>(length), frame.type,
     };
     bytes.insert(bytes.end(), frame.payload.begin(), frame.payload.end());
-
-    const auto crc = crc16_ccitt(
-        {bytes.data() + length_field_offset, bytes.size() - length_field_offset});
+    const BytesView crc_input{bytes.data() + length_field_offset,
+                              bytes.size() - length_field_offset};
+    const auto crc = controller_transport && is_controller_update_type(frame.type)
+                         ? crc16_controller_update(crc_input)
+                         : crc16_ccitt(crc_input);
     bytes.insert(bytes.end(),
                  {static_cast<std::uint8_t>(crc >> 8U),
-                  static_cast<std::uint8_t>(crc),
-                  tail_bytes[0],
-                  tail_bytes[1]});
+                  static_cast<std::uint8_t>(crc), tail_bytes[0], tail_bytes[1]});
     return bytes;
+}
+
+}  // namespace
+
+ByteVector encode_frame(const Frame& frame) {
+    return encode_with_crc(frame, false);
+}
+
+ByteVector encode_controller_frame(const Frame& frame) {
+    return encode_with_crc(frame, true);
 }
 
 std::vector<Frame> StreamDecoder::push(BytesView input) {
@@ -96,9 +105,14 @@ std::vector<Frame> StreamDecoder::push(BytesView input) {
         const bool valid_tail =
             buffer_[total_size - tail_bytes.size()] == tail_bytes[0] &&
             buffer_[total_size - 1U] == tail_bytes[1];
-        const bool valid_crc = wire_crc == crc16_ccitt(
-            {buffer_.data() + length_field_offset,
-             crc_offset - length_field_offset});
+        const BytesView crc_input{buffer_.data() + length_field_offset,
+                                  crc_offset - length_field_offset};
+        const auto expected_crc =
+            policy_.controller_update_crc &&
+                    is_controller_update_type(buffer_[frame_type_offset])
+                ? crc16_controller_update(crc_input)
+                : crc16_ccitt(crc_input);
+        const bool valid_crc = wire_crc == expected_crc;
         if (!valid_tail || !valid_crc) {
             const std::size_t discard_size =
                 policy_.recovery == RecoveryMode::discard_candidate ? total_size : 1U;

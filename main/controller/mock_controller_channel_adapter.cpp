@@ -308,7 +308,7 @@ void MockControllerChannelAdapter::schedule_response(
 
 void MockControllerChannelAdapter::queue_response(
     firmware::core::Frame frame) {
-    const auto encoded = firmware::core::encode_frame(frame);
+    const auto encoded = firmware::core::encode_controller_frame(frame);
     pending_input_.insert(pending_input_.end(), encoded.begin(), encoded.end());
 }
 

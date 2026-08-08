@@ -12,6 +12,25 @@ TEST_CASE(frm_001_encoder_produces_exact_common_envelope) {
                ByteVector({0x86, 0x68, 0x00, 0x04, 0xA1, 0x3F, 0x35, 0x33, 0x55, 0xAA}));
 }
 
+TEST_CASE(frm_006_controller_update_uses_compatibility_crc_on_uart) {
+    const Frame frame{0xC3U, {0xC2U}};
+    const ByteVector encoded = firmware::core::encode_controller_frame(frame);
+    REQUIRE_EQ(encoded,
+               ByteVector({0x86U, 0x68U, 0x00U, 0x04U, 0xC3U, 0xC2U,
+                           0x74U, 0xF8U, 0x55U, 0xAAU}));
+
+    StreamDecoder controller(StreamPolicy::controller_uart());
+    REQUIRE_EQ(controller.push(encoded), std::vector<Frame>({frame}));
+    StreamDecoder host(StreamPolicy::tcp());
+    REQUIRE(host.push(encoded).empty());
+}
+
+TEST_CASE(frm_006_controller_transport_keeps_standard_crc_outside_c_family) {
+    const Frame frame{0xD3U, {0xC2U}};
+    REQUIRE_EQ(firmware::core::encode_controller_frame(frame),
+               firmware::core::encode_frame(frame));
+}
+
 TEST_CASE(frm_010_decoder_preserves_partial_frames_across_reads) {
     const auto encoded = firmware::core::encode_frame(Frame{0x83, {'o', 'k'}});
     StreamDecoder decoder(StreamPolicy::tcp());

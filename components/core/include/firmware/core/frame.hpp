@@ -17,22 +17,25 @@ enum class RecoveryMode { scan_inside_candidate, discard_candidate };
 struct StreamPolicy {
     std::size_t maximum_frame_size;
     RecoveryMode recovery;
+    bool controller_update_crc;
     static constexpr StreamPolicy controller_uart() {
         return {protocol::controller_maximum_frame_size,
-                RecoveryMode::scan_inside_candidate};
+                RecoveryMode::scan_inside_candidate, true};
     }
 
     static constexpr StreamPolicy tcp() {
         return {protocol::host_maximum_frame_size,
-                RecoveryMode::scan_inside_candidate};
+                RecoveryMode::scan_inside_candidate, false};
     }
 
     static constexpr StreamPolicy usb() {
         return {protocol::host_maximum_frame_size,
-                RecoveryMode::discard_candidate};
+                RecoveryMode::discard_candidate, false};
     }
 };
 ByteVector encode_frame(const Frame& frame);
+// Encodes controller-bound frames with FRM-007 only for packet types 0xc0-0xcf.
+ByteVector encode_controller_frame(const Frame& frame);
 class StreamDecoder {
 public:
     explicit StreamDecoder(StreamPolicy policy) : policy_(policy) {}
