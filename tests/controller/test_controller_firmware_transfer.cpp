@@ -4,6 +4,7 @@
 #include "firmware/application/controller_firmware_transfer.hpp"
 
 #include <optional>
+#include <limits>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -232,4 +233,83 @@ TEST_CASE(lpcfw_006_late_valid_geometry_is_processed_before_timeout_check) {
 
     REQUIRE(transfer.active());
     REQUIRE_EQ(port.sent.back().type, 0xC2U);
+}
+
+TEST_CASE(lpc_016_cancel_ends_transfer_with_cancelled_event) {
+    ControllerFirmwareTransfer transfer;
+    FakeFirmwarePort port;
+    transfer.handle({0xC1U, {}}, 0U, port);
+
+    transfer.handle({0xC5U, {}}, 1U, port);
+
+    REQUIRE(!transfer.active());
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::cancelled);
+    REQUIRE_EQ(transfer.frame_count(), 0U);
+}
+
+TEST_CASE(lpc_013_start_and_geometry_send_failures_publish_errors) {
+    ControllerFirmwareTransfer transfer;
+    FakeFirmwarePort port;
+    port.send_succeeds = false;
+
+    transfer.handle({0xC1U, {}}, 0U, port);
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+    REQUIRE(transfer.active());
+
+    port.events.clear();
+    transfer.handle(geometry(0U, 100U), 1U, port);
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+    REQUIRE_EQ(transfer.frame_data_size(), 100U);
+}
+
+TEST_CASE(lpc_013_geometry_rejects_malformed_missing_oversized_and_overflow) {
+    ControllerFirmwareTransfer transfer;
+    FakeFirmwarePort port;
+
+    transfer.handle({0xC2U, {1U}}, 0U, port);
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+
+    port.size = std::nullopt;
+    transfer.handle(geometry(0U, 100U), 0U, port);
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+
+    port.size = 1U;
+    transfer.handle(geometry(0U, 1025U), 0U, port);
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+
+    port.size = std::numeric_limits<std::uint64_t>::max();
+    transfer.handle(geometry(0U, 1U), 0U, port);
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+    REQUIRE_EQ(transfer.frame_count(), 0U);
+}
+
+TEST_CASE(lpc_015_data_rejects_malformed_read_failure_and_send_failure) {
+    ControllerFirmwareTransfer transfer;
+    FakeFirmwarePort port;
+    transfer.handle(geometry(0U, 100U), 0U, port);
+
+    transfer.handle({0xC3U, {1U}}, 1U, port);
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+
+    port.read_result = std::nullopt;
+    transfer.handle({0xC3U, {0U, 0U, 0U, 1U}}, 1U, port);
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+
+    port.read_result = ByteVector({1U, 2U});
+    port.send_succeeds = false;
+    transfer.handle({0xC3U, {0U, 0U, 0U, 1U}}, 1U, port);
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+}
+
+TEST_CASE(lpcfw_003_data_is_truncated_to_negotiated_frame_size) {
+    ControllerFirmwareTransfer transfer;
+    FakeFirmwarePort port;
+    port.read_result = ByteVector(150U, 0xA5U);
+    transfer.handle(geometry(0U, 100U), 0U, port);
+
+    transfer.handle({0xC3U, {0U, 0U, 0U, 1U}}, 1U, port);
+
+    REQUIRE_EQ(port.sent.back().type, 0xC3U);
+    REQUIRE_EQ(port.sent.back().payload.size(), 104U);
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::progress);
 }
