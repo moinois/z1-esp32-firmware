@@ -45,7 +45,9 @@
 #include <vector>
 
 namespace {
-constexpr std::uint32_t heartbeat_stack_size = 2048U;
+// The virtual adapter call chain and ESP-IDF GPIO logging exceed the original
+// 2048-byte task stack during physical boot, causing a watchdog reset loop.
+constexpr std::uint32_t heartbeat_stack_size = 4096U;
 constexpr UBaseType_t heartbeat_priority = 3U;
 constexpr char tag[] = "MAIN";
 

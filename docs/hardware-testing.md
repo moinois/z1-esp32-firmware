@@ -753,3 +753,11 @@ side effects after configuration failure. The ESP-IDF adapter retains the
 specified push-pull output configuration with both internal pulls and GPIO
 interrupts disabled. A target build verifies composition; electrical level and
 one-second wall-clock accuracy still require a probe or oscilloscope.
+
+The first physical boot of that refactor exposed a heartbeat-task stack
+overflow with the inherited 2048-byte allocation. The task now has a documented
+4096-byte stack budget. After rebuilding and reflashing over COM, both serial
+discovery and the mutating reset/healthy-boot diagnostic passed without panic,
+watchdog, assertion, or stack-overflow output. The report is retained as
+`build/hil-heartbeat-boot-fixed.json`; it proves healthy composition but not the
+electrical waveform.
