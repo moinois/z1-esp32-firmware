@@ -1,4 +1,4 @@
-// Declares bounded JSON-prefix parsing for web request payloads.
+/** @file @brief Bounded JSON-prefix parsing for web request payloads. */
 #pragma once
 
 #include "firmware/core/bytes.hpp"
@@ -10,26 +10,29 @@
 
 namespace firmware::core {
 
-// Stores scalar members from one parsed top-level JSON object.
+/** Scalar member from one parsed top-level JSON object. */
 struct JsonMember {
+    /// Member name exactly as encoded after JSON unescaping.
     std::string name;
+    /// Numeric value when the member contains a supported JSON number.
     std::optional<double> number;
+    /// String value when the member contains a supported JSON string.
     std::optional<std::string> string;
 };
 
-// Owns the members extracted from one valid JSON value at the input start.
+/** Owns supported members extracted from one valid top-level object. */
 struct JsonDocument {
     std::vector<JsonMember> members;
 };
 
-// Parses one top-level object up to its closing value and ignores later bytes.
+/** Parses one top-level object and deliberately ignores later transport bytes. */
 std::optional<JsonDocument> parse_json_prefix(BytesView input);
 
-// Finds the first numeric member whose ASCII name matches case-insensitively.
+/** Finds the first numeric member with an ASCII case-insensitive name match. */
 std::optional<double> find_json_number(const JsonDocument& document,
                                        std::string_view member_name);
 
-// Finds the first string member whose ASCII name matches case-insensitively.
+/** Finds the first string member with an ASCII case-insensitive name match. */
 std::optional<std::string> find_json_string(const JsonDocument& document,
                                             std::string_view member_name);
 

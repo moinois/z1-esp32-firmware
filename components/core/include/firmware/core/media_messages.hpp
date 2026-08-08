@@ -1,4 +1,4 @@
-// Declares compact JSON messages shared by live and preview media channels.
+/** @file @brief Compact JSON messages shared by live and preview channels. */
 #pragma once
 
 #include <string>
@@ -6,10 +6,10 @@
 
 namespace firmware::core {
 
-// Formats the exact live-channel preemption response.
+/** Formats the exact live-channel preemption response with JSON escaping. */
 std::string format_live_preemption(std::string_view reason);
 
-// Formats the exact preview-channel preemption response and optional session.
+/** Formats a preview preemption response and optional retained session ID. */
 std::string format_preview_preemption(std::string_view reason,
                                       std::string_view session_id);
 

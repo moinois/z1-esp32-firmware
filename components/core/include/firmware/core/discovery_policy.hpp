@@ -1,4 +1,4 @@
-// Declares deterministic UDP discovery state, payload, and IPv4 policy.
+/** @file @brief Deterministic UDP discovery payload and IPv4 policy. */
 #pragma once
 
 #include <cstddef>
@@ -8,17 +8,19 @@
 
 namespace firmware::core {
 
-// Extracts the bounded state field or the specified absent/malformed fallback.
+/** Extracts the bounded controller state or its protocol fallback. */
 std::string discovery_machine_state(
     std::optional<std::string_view> controller_status);
 
-// Formats and bounds one discovery datagram payload without a line ending.
+/** Formats and bounds one discovery datagram without a line ending. */
 std::string format_discovery_payload(std::string_view machine_name,
                                      std::string_view interface_ipv4,
                                      std::size_t active_tcp_clients,
                                      std::string_view machine_state);
 
-// Computes an IPv4 subnet broadcast address from dotted address and netmask.
+/** Computes an IPv4 subnet broadcast address from dotted address and netmask.
+ *  @return Dotted broadcast address, or no value for malformed IPv4 input.
+ */
 std::optional<std::string> ipv4_broadcast_address(std::string_view ipv4,
                                                   std::string_view netmask);
 

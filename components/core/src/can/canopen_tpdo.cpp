@@ -7,14 +7,11 @@
 namespace firmware::core {
 namespace {
 
-constexpr std::uint8_t pdo_count = 4U;
 constexpr std::uint8_t communication_identifier_subindex = 1U;
 constexpr std::uint8_t transmission_type_subindex = 2U;
 constexpr std::uint8_t event_timer_subindex = 5U;
 constexpr std::uint8_t mapping_count_subindex = 0U;
 constexpr std::uint8_t mapping_first_subindex = 1U;
-constexpr std::uint8_t maximum_mapping_entries = 8U;
-constexpr std::uint32_t disabled_identifier_mask = 0x80000000U;
 constexpr std::uint32_t identifier_mask = 0x7ffU;
 constexpr std::uint32_t cycle_milliseconds = 10U;
 
@@ -33,7 +30,7 @@ CanopenTransmitPdoScheduler::CanopenTransmitPdoScheduler(
     : dictionary_(dictionary) {}
 
 std::optional<CanFrame> CanopenTransmitPdoScheduler::process_cycle() {
-    for (std::uint8_t pdo = 0U; pdo < pdo_count; ++pdo) {
+    for (std::uint8_t pdo = 0U; pdo < canopen_dictionary::pdo_count; ++pdo) {
         elapsed_milliseconds_[pdo] += cycle_milliseconds;
         if (const auto frame = build_tpdo(pdo); frame.has_value()) {
             elapsed_milliseconds_[pdo] = 0U;
@@ -55,7 +52,7 @@ std::optional<CanFrame> CanopenTransmitPdoScheduler::build_tpdo(
     if (identifier.abort != SdoAbort::none || transmission.abort != SdoAbort::none ||
         timer.abort != SdoAbort::none || identifier.data.size() != 4U ||
         transmission.data.size() != 1U || timer.data.size() != 2U ||
-        (read_le(identifier) & disabled_identifier_mask) != 0U ||
+        (read_le(identifier) & canopen_dictionary::disabled_identifier_mask) != 0U ||
         read_le(timer) == 0U ||
         elapsed_milliseconds_[pdo_number] < read_le(timer)) {
         return std::nullopt;
@@ -65,7 +62,7 @@ std::optional<CanFrame> CanopenTransmitPdoScheduler::build_tpdo(
         canopen_object::first_tpdo_mapping + pdo_number);
     const auto count = dictionary_.read(mapping_index, mapping_count_subindex);
     if (count.abort != SdoAbort::none || count.data.size() != 1U ||
-        count.data[0] > maximum_mapping_entries) {
+        count.data[0] > canopen_dictionary::maximum_mapping_entries) {
         return std::nullopt;
     }
 

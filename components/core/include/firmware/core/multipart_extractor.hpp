@@ -1,4 +1,4 @@
-// Declares a bounded-header, streaming extractor for the first multipart part.
+/** @file @brief Bounded streaming extraction of the first multipart part. */
 #pragma once
 
 #include "firmware/core/bytes.hpp"
@@ -9,7 +9,7 @@
 
 namespace firmware::core {
 
-// Describes the lifecycle of one multipart first-part extraction.
+/** Lifecycle of a first-part multipart extraction. */
 enum class MultipartExtractStatus {
     reading_headers,
     reading_content,
@@ -17,31 +17,33 @@ enum class MultipartExtractStatus {
     failed,
 };
 
-// Extracts part content while retaining data across arbitrary transport blocks.
+/** Extracts first-part content across arbitrary transport block boundaries. */
 class MultipartPartExtractor {
 public:
-    // Retains the boundary used to identify the first part's content terminator.
+    /** Retains the validated boundary used to find the content terminator. */
     explicit MultipartPartExtractor(std::string_view boundary);
 
-    // Feeds one block and optionally marks transport end-of-input.
+    /** Feeds one block and optionally marks transport end-of-input.
+     *  @return False once parsing has failed; true for progress or completion.
+     */
     bool feed(BytesView block, bool transport_finished);
 
-    // Offers a text-view convenience overload for host and adapter callers.
+    /// Text-view convenience overload for HTTP adapter callers.
     bool feed(std::string_view block, bool transport_finished) {
         return feed(BytesView(block), transport_finished);
     }
 
-    // Reports the current extraction lifecycle state.
+    /// Reports the current extraction lifecycle state.
     MultipartExtractStatus status() const;
 
-    // Returns all bytes accepted as the first part's content.
+    /// Returns all accepted content; valid until this extractor is destroyed.
     const ByteVector& content() const;
 
 private:
-    // Searches buffered headers and transitions to content mode when complete.
+    /// Searches bounded headers and transitions to content mode when complete.
     bool process_headers(bool transport_finished);
 
-    // Searches for a split-safe boundary marker and finalizes content if found.
+    /// Searches for a split-safe terminator and finalizes content when found.
     bool process_content(bool transport_finished);
 
     std::string boundary_;

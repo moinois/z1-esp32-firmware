@@ -1,4 +1,6 @@
-// Defines shared packet identifiers and wire limits without depending on services.
+/** @file
+ *  @brief Canonical packet identifiers and framing limits shared by transports.
+ */
 #pragma once
 
 #include <cstddef>
@@ -46,6 +48,7 @@ inline constexpr std::size_t controller_maximum_item_size = 544U;
 inline constexpr std::size_t host_maximum_frame_size = 8300U;
 
 // Combines a family high nibble and operation low nibble into one packet type.
+/// Combines a packet-family high nibble and operation low nibble safely.
 constexpr std::uint8_t family_packet(std::uint8_t family, std::uint8_t operation) {
     return static_cast<std::uint8_t>((family & family_mask) | (operation & operation_mask));
 }

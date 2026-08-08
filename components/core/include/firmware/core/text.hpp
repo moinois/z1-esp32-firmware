@@ -1,11 +1,15 @@
-// Declares shared command text, escaping, and safe path operations.
+/** @file @brief Shared command recognition, escape decoding, and path cleanup. */
 #pragma once
 #include "firmware/core/bytes.hpp"
 #include <cstddef>
 #include <string>
 namespace firmware::core {
+/** Decodes the protocol's backslash/escape representation without tokenizing. */
 std::string decode_escaped(BytesView input);
+/** Lexically normalizes separators and dot components without filesystem I/O. */
 std::string normalize_path(std::string input);
+
+/** Semantic command selected by the shared, transport-independent classifier. */
 enum class CommandKind {
     unknown,
     status,
@@ -38,10 +42,19 @@ enum class CommandKind {
     version
 };
 
+/** Result of recognizing the leading token in a framed text command. */
 struct CommandMatch {
+    /// Semantic command, or `unknown` when no supported token matched.
     CommandKind kind = CommandKind::unknown;
+    /// First byte after the recognized command and its delimiter.
     std::size_t argument_offset = 0;
+    /// Distinguishes a recognized command from an unknown or malformed prefix.
     bool accepted = false;
 };
+
+/** Recognizes a bounded command prefix without decoding its arguments.
+ *  @param payload Complete text-command payload.
+ *  @return Command identity and argument slice offset for downstream parsers.
+ */
 CommandMatch recognize_command(BytesView payload);
 }  // namespace firmware::core

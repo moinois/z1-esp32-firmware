@@ -1,4 +1,4 @@
-// Defines deterministic host file-transfer path and MD5 cache transformations.
+/** @file @brief Host transfer path parsing and sidecar transformations. */
 #pragma once
 
 #include "firmware/core/bytes.hpp"
@@ -9,30 +9,33 @@
 
 namespace firmware::core {
 
+/** Direction selected by the initiating `0xB0` host packet. */
 enum class FileTransferDirection {
+    /// Host writes a file to the device.
     upload,
+    /// Host reads a file from the device.
     download,
 };
 
-// Holds one validated start direction and normalized absolute path.
+/** Validated transfer direction and normalized logical SD path. */
 struct FileTransferStart {
     FileTransferDirection direction;
     std::string path;
 };
 
-// Holds optional MD5 and compressed sidecar paths for a logical file.
+/** Derived cache paths; absence means the mapping rule does not apply. */
 struct FileCachePaths {
     std::optional<std::string> md5_path;
     std::optional<std::string> compressed_path;
 };
 
-// Parses, decodes, trims, and resolves one `0xB0` start payload.
+/** Parses, decodes, trims, and resolves one `0xB0` start payload. */
 std::optional<FileTransferStart> parse_file_transfer_start(BytesView payload);
 
-// Applies the first-literal-substring cache mapping to a resolved path.
+/** Applies token-aware `gcodes` and general SD cache mapping rules. */
 FileCachePaths map_file_cache_paths(std::string_view resolved_path);
 
-// Collects and normalizes the first 32 hexadecimal characters in 63 bytes.
+/** Collects and normalizes the first MD5 digest in the bounded cache payload. */
 std::optional<std::string> extract_cached_md5(BytesView content);
 
 }  // namespace firmware::core

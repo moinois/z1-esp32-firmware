@@ -1,11 +1,11 @@
-// Declares case-sensitive HTTP route selection for both firmware web servers.
+/** @file @brief Case-sensitive route selection for both firmware web servers. */
 #pragma once
 
 #include <string_view>
 
 namespace firmware::core {
 
-// Identifies every route exposed by the main and video HTTP servers.
+/** Logical route selected before target HTTP handler dispatch. */
 enum class HttpRoute {
     none,
     camera_resolution,
@@ -21,11 +21,11 @@ enum class HttpRoute {
     preview_websocket,
 };
 
-// Selects a main-server route from method and complete request URI.
+/** Selects a main-server route from method and complete request URI. */
 HttpRoute select_main_http_route(std::string_view method,
                                  std::string_view complete_uri);
 
-// Selects a video-server route from method and complete request URI.
+/** Selects a video-server route from method and complete request URI. */
 HttpRoute select_video_http_route(std::string_view method,
                                   std::string_view complete_uri);
 

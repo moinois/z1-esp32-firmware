@@ -8,12 +8,9 @@
 namespace firmware::core {
 namespace {
 
-constexpr std::uint8_t pdo_count = 4U;
 constexpr std::uint8_t mapping_count_subindex = 0U;
 constexpr std::uint8_t communication_identifier_subindex = 1U;
 constexpr std::uint8_t mapping_first_subindex = 1U;
-constexpr std::uint8_t maximum_mapping_entries = 8U;
-constexpr std::uint32_t disabled_identifier_mask = 0x80000000U;
 constexpr std::uint32_t identifier_mask = 0x7ffU;
 
 std::uint32_t decode_le(const std::array<std::uint8_t, 8U>& data,
@@ -33,7 +30,7 @@ CanopenReceivePdoRouter::CanopenReceivePdoRouter(
     : dictionary_(dictionary) {}
 
 bool CanopenReceivePdoRouter::receive(const CanFrame& frame) {
-    for (std::uint8_t pdo = 0U; pdo < pdo_count; ++pdo) {
+    for (std::uint8_t pdo = 0U; pdo < canopen_dictionary::pdo_count; ++pdo) {
         if (receive_from(pdo, frame)) {
             return true;
         }
@@ -55,7 +52,7 @@ bool CanopenReceivePdoRouter::receive_from(std::uint8_t pdo_number,
         (static_cast<std::uint32_t>(identifier.data[1]) << 8U) |
         (static_cast<std::uint32_t>(identifier.data[2]) << 16U) |
         (static_cast<std::uint32_t>(identifier.data[3]) << 24U);
-    if ((configured_identifier & disabled_identifier_mask) != 0U ||
+    if ((configured_identifier & canopen_dictionary::disabled_identifier_mask) != 0U ||
         (configured_identifier & identifier_mask) != frame.identifier) {
         return false;
     }
@@ -65,7 +62,7 @@ bool CanopenReceivePdoRouter::receive_from(std::uint8_t pdo_number,
                                    pdo_number),
         mapping_count_subindex);
     if (count.abort != SdoAbort::none || count.data.size() != 1U ||
-        count.data[0] > maximum_mapping_entries) {
+        count.data[0] > canopen_dictionary::maximum_mapping_entries) {
         return false;
     }
     std::size_t payload_offset = 0U;
