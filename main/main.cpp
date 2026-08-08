@@ -158,7 +158,7 @@ extern "C" void app_main() {
     static firmware::target::BlufiProvisioningAdapter blufi_port;
     static firmware::application::StationRuntime blufi_station_runtime;
     static firmware::application::BleProvisioning blufi_provisioning(
-        blufi_station_runtime, blufi_port);
+        blufi_station_runtime, blufi_port, machine_name);
     static firmware::target::BlufiCallbackAdapter blufi_callbacks(blufi_provisioning);
     static firmware::target::BlufiLifecycleAdapter blufi_lifecycle;
     if (!blufi_lifecycle.start(&blufi_callbacks.callbacks()) ||

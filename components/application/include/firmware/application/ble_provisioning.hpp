@@ -111,7 +111,8 @@ public:
 class BleProvisioning {
 public:
     // Binds provisioning to the shared station runtime and outer adapter.
-    BleProvisioning(StationRuntime& runtime, BleProvisioningPort& port);
+    BleProvisioning(StationRuntime& runtime, BleProvisioningPort& port,
+                    std::string_view machine_name);
 
     // Initializes provisioning and starts advertising; failure remains local.
     bool start();
@@ -171,6 +172,7 @@ private:
 
     StationRuntime& runtime_;
     BleProvisioningPort& port_;
+    std::string device_name_;
     std::array<std::uint8_t, 6U> bssid_{};
     std::string associated_ssid_;
     bool client_connected_ = false;

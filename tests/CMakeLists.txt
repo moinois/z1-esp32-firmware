@@ -59,6 +59,7 @@ add_executable(
     connectivity/test_automatic_connection.cpp
     connectivity/test_wifi_statistics.cpp
     provisioning/test_ble_provisioning.cpp
+    provisioning/test_blufi_advertising.cpp
     provisioning/test_blufi_fragment.cpp
     provisioning/test_blufi_gatt.cpp
     provisioning/test_blufi_product.cpp

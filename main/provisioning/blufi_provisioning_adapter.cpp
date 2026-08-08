@@ -34,8 +34,7 @@ bool BlufiProvisioningAdapter::initialize(
 }
 
 bool BlufiProvisioningAdapter::start_advertising(std::string_view device_name) {
-    static_cast<void>(device_name);
-    if (!restart_blufi_advertising()) {
+    if (!restart_blufi_advertising(device_name)) {
         return false;
     }
     return true;

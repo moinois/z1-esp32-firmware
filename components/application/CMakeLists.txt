@@ -8,6 +8,7 @@ set(APPLICATION_SOURCES
     src/web/static_file_server.cpp
     src/web/web_volume_startup.cpp
     src/provisioning/ble_provisioning.cpp
+    src/provisioning/blufi_advertising.cpp
     src/provisioning/blufi_fragment.cpp
     src/provisioning/blufi_gatt.cpp
     src/provisioning/blufi_product.cpp

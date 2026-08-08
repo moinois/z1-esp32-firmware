@@ -1,6 +1,7 @@
 // Implements BLE lifecycle gates and provisioning Wi-Fi command behavior.
 #include "firmware/application/ble_provisioning.hpp"
 
+#include "firmware/application/blufi_advertising.hpp"
 #include "firmware/application/connectivity_defaults.hpp"
 #include "firmware/core/text.hpp"
 
@@ -14,7 +15,6 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::string_view provisioning_device_name = "BLUFI_DEVICE";
 constexpr std::size_t maximum_ssid_input_size = 31U;
 constexpr std::size_t maximum_password_input_size = 63U;
 constexpr std::uint8_t data_format_error = 9U;
@@ -37,14 +37,15 @@ constexpr BleLifecycleConfig lifecycle_config{
 }  // namespace
 
 BleProvisioning::BleProvisioning(StationRuntime& runtime,
-                                 BleProvisioningPort& port)
-    : runtime_(runtime), port_(port) {}
+                                 BleProvisioningPort& port,
+                                 std::string_view machine_name)
+    : runtime_(runtime), port_(port), device_name_(blufi_device_name(machine_name)) {}
 
 bool BleProvisioning::start() {
     if (!port_.initialize(lifecycle_config)) {
         return false;
     }
-    return port_.start_advertising(provisioning_device_name);
+    return port_.start_advertising(device_name_);
 }
 
 void BleProvisioning::client_connected() {
@@ -58,7 +59,7 @@ void BleProvisioning::client_disconnected() {
     port_.destroy_security_context();
     client_connected_ = false;
     security_ready_ = false;
-    static_cast<void>(port_.start_advertising(provisioning_device_name));
+    static_cast<void>(port_.start_advertising(device_name_));
 }
 
 void BleProvisioning::security_negotiated() {

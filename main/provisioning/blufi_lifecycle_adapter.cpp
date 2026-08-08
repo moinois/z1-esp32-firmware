@@ -1,6 +1,8 @@
 // Implements the BLE controller and standard ESP-IDF BLUFI profile startup.
 #include "blufi_lifecycle_adapter.hpp"
 
+#include "firmware/application/blufi_advertising.hpp"
+
 #include "esp_blufi.h"
 #include "esp_bt.h"
 #include "esp_bt_main.h"
@@ -9,18 +11,14 @@
 #include "esp_log.h"
 
 #include <cstdint>
+#include <string>
 
 namespace firmware::target {
 namespace {
 
-constexpr char blufi_device_name[] = "BLUFI_DEVICE";
 constexpr char tag[] = "BLUFI_LIFE";
-// ESP-IDF accepts service UUID input as one or more 128-bit Bluetooth-base
-// UUIDs and compresses this value to the advertised 16-bit UUID 0xffff.
-std::uint8_t blufi_service_uuid[] = {
-    0xfbU, 0x34U, 0x9bU, 0x5fU, 0x80U, 0x00U, 0x00U, 0x80U,
-    0x00U, 0x10U, 0x00U, 0x00U, 0xffU, 0xffU, 0x00U, 0x00U,
-};
+std::string active_device_name;
+firmware::core::ByteVector active_advertising_data;
 
 esp_ble_adv_params_t blufi_advertising_parameters{
     .adv_int_min = 256U,
@@ -36,11 +34,11 @@ esp_ble_adv_params_t blufi_advertising_parameters{
 // Starts advertising only after ESP-IDF confirms the data is installed.
 void blufi_gap_callback(esp_gap_ble_cb_event_t event,
                         esp_ble_gap_cb_param_t* parameter) {
-    if (event == ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT) {
+    if (event == ESP_GAP_BLE_ADV_DATA_RAW_SET_COMPLETE_EVT) {
         if (parameter != nullptr &&
-            parameter->adv_data_cmpl.status != ESP_BT_STATUS_SUCCESS) {
+            parameter->adv_data_raw_cmpl.status != ESP_BT_STATUS_SUCCESS) {
             ESP_LOGE(tag, "Advertising data installation failed: status=%d",
-                     parameter->adv_data_cmpl.status);
+                     parameter->adv_data_raw_cmpl.status);
             return;
         }
         const esp_err_t result = esp_ble_gap_start_advertising(
@@ -48,30 +46,31 @@ void blufi_gap_callback(esp_gap_ble_cb_event_t event,
         if (result != ESP_OK) {
             ESP_LOGE(tag, "Advertising start failed: %s", esp_err_to_name(result));
         } else {
-            ESP_LOGI(tag, "Advertising started as %s", blufi_device_name);
+            ESP_LOGI(tag, "Advertising started as %s", active_device_name.c_str());
         }
     }
 }
 
 // Applies the product advertising contract.
-bool configure_blufi_advertising() {
-    const esp_err_t name_result = esp_ble_gap_set_device_name(blufi_device_name);
+bool configure_blufi_advertising(std::string_view device_name) {
+    active_device_name = device_name;
+    const esp_err_t name_result =
+        esp_ble_gap_set_device_name(active_device_name.c_str());
     if (name_result != ESP_OK) {
         ESP_LOGE(tag, "Device-name configuration failed: %s",
                  esp_err_to_name(name_result));
         return false;
     }
-    esp_ble_adv_data_t advertising{};
-    advertising.set_scan_rsp = false;
-    advertising.include_name = true;
-    advertising.include_txpower = true;
-    advertising.min_interval = 0x0006;
-    advertising.max_interval = 0x0010;
-    advertising.service_uuid_len = sizeof(blufi_service_uuid);
-    advertising.p_service_uuid = blufi_service_uuid;
-    advertising.flag = ESP_BLE_ADV_FLAG_GEN_DISC |
-                       ESP_BLE_ADV_FLAG_BREDR_NOT_SPT;
-    const esp_err_t advertising_result = esp_ble_gap_config_adv_data(&advertising);
+    // ESP-IDF's structured builder may reorder or silently omit fields when
+    // the name approaches 31 bytes. BWF-002 requires an exact conditional
+    // layout, so retain and install the portable raw payload verbatim.
+    const auto power_level = esp_ble_tx_power_get(ESP_BLE_PWR_TYPE_ADV);
+    const auto power_dbm = static_cast<std::int8_t>(
+        -12 + 3 * static_cast<int>(power_level));
+    active_advertising_data = firmware::application::blufi_advertising_data(
+        active_device_name, power_dbm);
+    const esp_err_t advertising_result = esp_ble_gap_config_adv_data_raw(
+        active_advertising_data.data(), active_advertising_data.size());
     if (advertising_result != ESP_OK) {
         ESP_LOGE(tag, "Advertising-data configuration failed: %s",
                  esp_err_to_name(advertising_result));
@@ -102,8 +101,8 @@ esp_blufi_callbacks_t lifecycle_callbacks{
 
 }  // namespace
 
-bool restart_blufi_advertising() {
-    return configure_blufi_advertising();
+bool restart_blufi_advertising(std::string_view device_name) {
+    return configure_blufi_advertising(device_name);
 }
 
 bool BlufiLifecycleAdapter::start(const esp_blufi_callbacks_t* callbacks) {

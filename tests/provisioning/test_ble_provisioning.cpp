@@ -145,18 +145,18 @@ public:
 TEST_CASE(ble_001_to_005_startup_uses_exact_identity_and_security_policy) {
     StationRuntime runtime;
     FakeBleProvisioningPort port;
-    BleProvisioning provisioning(runtime, port);
+    BleProvisioning provisioning(runtime, port, "Makera_Z1_1234");
 
     REQUIRE(provisioning.start());
     REQUIRE(port.lifecycle_config.standard_blufi_service);
     REQUIRE(port.lifecycle_config.low_energy_only);
     REQUIRE(!port.lifecycle_config.link_pairing_enabled);
     REQUIRE(!port.lifecycle_config.security_manager_authentication);
-    REQUIRE_EQ(port.advertised_name, std::string("BLUFI_DEVICE"));
+    REQUIRE_EQ(port.advertised_name, std::string("MK_Makera_Z1_1234"));
 
     FakeBleProvisioningPort failed_port;
     failed_port.initialization_succeeds = false;
-    BleProvisioning optional_service(runtime, failed_port);
+    BleProvisioning optional_service(runtime, failed_port, "Makera_Z1_1234");
     REQUIRE(!optional_service.start());
     REQUIRE_EQ(failed_port.calls, std::vector<std::string>({"initialize"}));
 }
@@ -166,7 +166,7 @@ TEST_CASE(ble_003_and_006_connections_replace_security_but_retain_credentials) {
     runtime.ssid = "retained";
     runtime.password = "secret";
     FakeBleProvisioningPort port;
-    BleProvisioning provisioning(runtime, port);
+    BleProvisioning provisioning(runtime, port, "Makera_Z1_1234");
     REQUIRE(provisioning.start());
 
     provisioning.client_connected();
@@ -186,7 +186,7 @@ TEST_CASE(ble_003_and_006_connections_replace_security_but_retain_credentials) {
 TEST_CASE(ble_010_credentials_and_connect_are_ignored_before_security) {
     StationRuntime runtime;
     FakeBleProvisioningPort port;
-    BleProvisioning provisioning(runtime, port);
+    BleProvisioning provisioning(runtime, port, "Makera_Z1_1234");
 
     provisioning.receive_ssid(bytes("ap"));
     provisioning.receive_password(bytes("pw"));
@@ -201,7 +201,7 @@ TEST_CASE(ble_010_credentials_and_connect_are_ignored_before_security) {
 TEST_CASE(ble_010_credentials_validate_raw_length_then_decode_escapes) {
     StationRuntime runtime;
     FakeBleProvisioningPort port;
-    BleProvisioning provisioning(runtime, port);
+    BleProvisioning provisioning(runtime, port, "Makera_Z1_1234");
     provisioning.client_connected();
     provisioning.security_negotiated();
 
@@ -223,7 +223,7 @@ TEST_CASE(ble_011_secure_connect_uses_fast_scan_without_manual_attempt_state) {
     StationRuntime runtime;
     runtime.automatic_retry_number = 3U;
     FakeBleProvisioningPort port;
-    BleProvisioning provisioning(runtime, port);
+    BleProvisioning provisioning(runtime, port, "Makera_Z1_1234");
     provisioning.client_connected();
     provisioning.security_negotiated();
     provisioning.receive_ssid(bytes("ap"));
@@ -246,7 +246,7 @@ TEST_CASE(ble_011_secure_connect_uses_fast_scan_without_manual_attempt_state) {
 TEST_CASE(ble_011_missing_ssid_reports_data_format_error) {
     StationRuntime runtime;
     FakeBleProvisioningPort port;
-    BleProvisioning provisioning(runtime, port);
+    BleProvisioning provisioning(runtime, port, "Makera_Z1_1234");
     provisioning.client_connected();
     provisioning.security_negotiated();
 
@@ -260,7 +260,7 @@ TEST_CASE(ble_012_disconnect_and_operation_mode_do_not_clear_credentials) {
     runtime.ssid = "ap";
     runtime.password = "pw";
     FakeBleProvisioningPort port;
-    BleProvisioning provisioning(runtime, port);
+    BleProvisioning provisioning(runtime, port, "Makera_Z1_1234");
 
     provisioning.disconnect_station();
     provisioning.set_operation_mode(1U);
@@ -275,7 +275,7 @@ TEST_CASE(ble_013_status_uses_mode_runtime_state_bssid_and_ssid) {
     StationRuntime runtime;
     runtime.ssid = "ap";
     FakeBleProvisioningPort port;
-    BleProvisioning provisioning(runtime, port);
+    BleProvisioning provisioning(runtime, port, "Makera_Z1_1234");
     const std::array<std::uint8_t, 6U> bssid{1U, 2U, 3U, 4U, 5U, 6U};
     provisioning.station_associated(bssid, "reported-ap");
 
@@ -302,7 +302,7 @@ TEST_CASE(ble_014_ipv4_event_reports_only_to_connected_ble_client) {
     StationRuntime runtime;
     runtime.password = "pw";
     FakeBleProvisioningPort port;
-    BleProvisioning provisioning(runtime, port);
+    BleProvisioning provisioning(runtime, port, "Makera_Z1_1234");
     const std::array<std::uint8_t, 6U> bssid{6U, 5U, 4U, 3U, 2U, 1U};
     provisioning.station_associated(bssid, "ap");
 
@@ -328,7 +328,7 @@ TEST_CASE(ble_014_ipv4_event_reports_only_to_connected_ble_client) {
 TEST_CASE(ble_015_wifi_list_uses_user_scan_policy_and_omits_empty_results) {
     StationRuntime runtime;
     FakeBleProvisioningPort port;
-    BleProvisioning provisioning(runtime, port);
+    BleProvisioning provisioning(runtime, port, "Makera_Z1_1234");
     port.scan_outcome.observations = {
         {bytes("weak"), -80, 1U},
         {bytes("strong"), -30, 0U},
@@ -364,7 +364,7 @@ TEST_CASE(ble_015_wifi_list_uses_user_scan_policy_and_omits_empty_results) {
 TEST_CASE(ble_016_error_is_echoed_and_custom_data_only_reaches_diagnostics) {
     StationRuntime runtime;
     FakeBleProvisioningPort port;
-    BleProvisioning provisioning(runtime, port);
+    BleProvisioning provisioning(runtime, port, "Makera_Z1_1234");
 
     provisioning.receive_error(7U);
     provisioning.receive_custom_data(bytes("diagnostic"));
