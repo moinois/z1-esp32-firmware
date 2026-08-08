@@ -1,4 +1,4 @@
-// Implements BLE lifecycle gates and provisioning Wi-Fi command behavior.
+/** @file @brief Implements BLE lifecycle gates and provisioning Wi-Fi command behavior. */
 #include "firmware/application/ble_provisioning.hpp"
 
 #include "firmware/application/blufi_advertising.hpp"

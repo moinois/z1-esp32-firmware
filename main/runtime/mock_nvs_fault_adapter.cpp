@@ -1,4 +1,4 @@
-// Implements deterministic, nonpersistent NVS fault controls for mock builds.
+/** @file @brief Implements deterministic, nonpersistent NVS fault controls for mock builds. */
 #include "mock_nvs_fault_adapter.hpp"
 
 #include "hardware_adapter_factory.hpp"

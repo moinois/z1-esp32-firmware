@@ -1,4 +1,4 @@
-// Implements the logical SD root and canonical G-code directory mapping.
+/** @file @brief Implements the logical SD root and canonical G-code directory mapping. */
 #include "firmware/core/sd_user_path.hpp"
 
 #include "firmware/core/text.hpp"

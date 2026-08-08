@@ -1,4 +1,4 @@
-// Implements deterministic controller responses over the production framing codec.
+/** @file @brief Implements deterministic controller responses over the production framing codec. */
 #include "mock_controller_channel_adapter.hpp"
 
 #include "firmware/core/protocol_constants.hpp"

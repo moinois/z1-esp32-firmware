@@ -1,4 +1,4 @@
-// Implements target runtime status sources and the shared snapshot store.
+/** @file @brief Implements target runtime status sources and the shared snapshot store. */
 #include "runtime_status_adapter.hpp"
 
 #include "recording_request_state.hpp"

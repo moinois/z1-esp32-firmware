@@ -1,4 +1,4 @@
-// Implements USB enumeration, protocol activation, and disconnect semantics.
+/** @file @brief Implements USB enumeration, protocol activation, and disconnect semantics. */
 #include "firmware/application/usb_protocol_state.hpp"
 
 namespace firmware::application {

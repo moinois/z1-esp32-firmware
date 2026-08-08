@@ -1,4 +1,4 @@
-// Implements bounded start serialization and latest-value packet replacement.
+/** @file @brief Implements bounded start serialization and latest-value packet replacement. */
 #include "firmware/application/file_transfer_admission.hpp"
 
 #include <utility>

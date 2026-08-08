@@ -1,4 +1,4 @@
-// Implements the BLE controller and standard ESP-IDF BLUFI profile startup.
+/** @file @brief Implements the BLE controller and standard ESP-IDF BLUFI profile startup. */
 #include "blufi_lifecycle_adapter.hpp"
 
 #include "firmware/application/blufi_advertising.hpp"

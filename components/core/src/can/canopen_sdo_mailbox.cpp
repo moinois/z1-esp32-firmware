@@ -1,4 +1,4 @@
-// Implements serialized SDO request admission, matching, and deadlines.
+/** @file @brief Implements serialized SDO request admission, matching, and deadlines. */
 #include "firmware/core/canopen_sdo_mailbox.hpp"
 
 namespace firmware::core {

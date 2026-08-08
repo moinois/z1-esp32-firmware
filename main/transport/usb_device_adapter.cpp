@@ -1,4 +1,4 @@
-// Implements TinyUSB vendor callbacks over the transport-neutral USB policies.
+/** @file @brief Implements TinyUSB vendor callbacks over the transport-neutral USB policies. */
 #include "usb_device_adapter.hpp"
 
 #include "tinyusb.h"

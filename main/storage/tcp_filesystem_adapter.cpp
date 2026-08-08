@@ -1,4 +1,4 @@
-// Implements POSIX filesystem operations and TCP-origin response routing.
+/** @file @brief Implements POSIX filesystem operations and TCP-origin response routing. */
 #include "tcp_filesystem_adapter.hpp"
 #include "sd_access_diagnostics.hpp"
 

@@ -1,4 +1,4 @@
-// Implements UDP broadcast sockets behind the portable discovery service.
+/** @file @brief Implements UDP broadcast sockets behind the portable discovery service. */
 #include "tcp_discovery_adapter.hpp"
 
 #include "firmware/application/discovery_service.hpp"

@@ -1,4 +1,4 @@
-// Implements exact update command recognition and one-request coalescing.
+/** @file @brief Implements exact update command recognition and one-request coalescing. */
 #include "firmware/application/update_trigger.hpp"
 #include "firmware/core/sd_user_path.hpp"
 

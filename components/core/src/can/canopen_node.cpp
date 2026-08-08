@@ -1,4 +1,4 @@
-// Implements target-independent CANopen NMT and producer-heartbeat timing.
+/** @file @brief Implements target-independent CANopen NMT and producer-heartbeat timing. */
 #include "firmware/core/canopen_node.hpp"
 
 #include <algorithm>

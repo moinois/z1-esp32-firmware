@@ -1,4 +1,4 @@
-/// @file
+/** @file @brief @file */
 /// Declares the ESP-IDF TinyUSB vendor-interface lifecycle adapter.
 #pragma once
 

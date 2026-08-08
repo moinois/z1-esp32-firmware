@@ -1,4 +1,4 @@
-// Implements streamed-play line observation, truncation, and long-line collapse.
+/** @file @brief Implements streamed-play line observation, truncation, and long-line collapse. */
 #include "firmware/application/play_line_reader.hpp"
 
 #include <algorithm>

@@ -1,4 +1,4 @@
-// Implements serial-number syntax, immutable persistence, and exact responses.
+/** @file @brief Implements serial-number syntax, immutable persistence, and exact responses. */
 #include "firmware/application/serial_number.hpp"
 
 #include <algorithm>

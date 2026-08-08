@@ -1,4 +1,4 @@
-// Implements controller firmware transfer independently of concrete I/O adapters.
+/** @file @brief Implements controller firmware transfer independently of concrete I/O adapters. */
 #include "firmware/application/controller_firmware_transfer.hpp"
 
 #include "firmware/application/controller_transfer.hpp"

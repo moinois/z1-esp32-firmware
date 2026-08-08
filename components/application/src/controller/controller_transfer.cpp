@@ -1,4 +1,4 @@
-// Implements common controller-transfer parsing and paced family inboxes.
+/** @file @brief Implements common controller-transfer parsing and paced family inboxes. */
 #include "firmware/application/controller_transfer.hpp"
 
 #include "firmware/core/protocol_constants.hpp"

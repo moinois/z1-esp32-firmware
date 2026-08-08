@@ -1,4 +1,4 @@
-// Implements deterministic enabled-RPDO mapping and dictionary writes.
+/** @file @brief Implements deterministic enabled-RPDO mapping and dictionary writes. */
 #include "firmware/core/canopen_pdo.hpp"
 
 #include <array>

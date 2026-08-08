@@ -1,10 +1,11 @@
-// Declares transport-specific delivery behind a shared target frame sink.
+/** @file @brief Declares transport-specific delivery behind a shared target frame sink. */
 #pragma once
 
 #include "firmware/core/frame.hpp"
 
 namespace firmware::target {
 
+/** Minimal encoded-frame destination shared by controller and host adapters. */
 class FrameSink {
 public:
     virtual ~FrameSink() = default;

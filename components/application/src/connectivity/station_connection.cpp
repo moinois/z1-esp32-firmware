@@ -1,4 +1,4 @@
-// Implements bounded manual station connection and disconnection state policy.
+/** @file @brief Implements bounded manual station connection and disconnection state policy. */
 #include "firmware/application/station_connection.hpp"
 
 #include <cstddef>

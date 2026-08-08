@@ -1,4 +1,4 @@
-// Implements transport-independent ESP-IDF Wi-Fi scanning and conversion.
+/** @file @brief Implements transport-independent ESP-IDF Wi-Fi scanning and conversion. */
 #include "esp_wifi_scanner.hpp"
 
 #include "esp_wifi.h"

@@ -1,10 +1,11 @@
-// Declares the ESP-IDF GPIO and FreeRTOS heartbeat port.
+/** @file @brief Declares the ESP-IDF GPIO and FreeRTOS heartbeat port. */
 #pragma once
 
 #include "firmware/application/heartbeat.hpp"
 
 namespace firmware::target {
 
+/** Implements heartbeat GPIO and delay operations using ESP-IDF primitives. */
 class EspHeartbeatAdapter final : public application::HeartbeatPort {
 public:
     bool configure_output() override;

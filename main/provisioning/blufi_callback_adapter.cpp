@@ -1,4 +1,4 @@
-// Implements the narrow ESP-IDF-to-application BLUFI callback translation.
+/** @file @brief Implements the narrow ESP-IDF-to-application BLUFI callback translation. */
 #include "blufi_callback_adapter.hpp"
 
 #include "firmware/core/bytes.hpp"

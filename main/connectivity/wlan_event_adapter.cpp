@@ -1,4 +1,4 @@
-// Implements event-driven station discovery state synchronization.
+/** @file @brief Implements event-driven station discovery state synchronization. */
 #include "wlan_event_adapter.hpp"
 
 #include "esp_event.h"

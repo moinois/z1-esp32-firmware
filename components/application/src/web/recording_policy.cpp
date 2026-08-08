@@ -1,4 +1,4 @@
-// Implements recording path validation, UTC naming, and interval accounting.
+/** @file @brief Implements recording path validation, UTC naming, and interval accounting. */
 #include "firmware/application/recording_policy.hpp"
 #include "firmware/core/sd_user_path.hpp"
 

@@ -1,14 +1,15 @@
-// Declares ESP-IDF station operations for a TCP-origin WLAN command.
+/** @file @brief Declares ESP-IDF station operations for a TCP-origin WLAN command. */
 #pragma once
 
 #include "firmware/application/station_connection.hpp"
 
 namespace firmware::target {
 
+/** Implements station connect/disconnect operations with ESP-IDF and NVS. */
 class TcpWlanStationAdapter final
     : public firmware::application::StationConnectionPort {
 public:
-    // Provides replaceable station operations over ESP-IDF Wi-Fi APIs.
+    /// Provides replaceable station operations over ESP-IDF Wi-Fi APIs.
     TcpWlanStationAdapter() = default;
 
     firmware::application::StationApiResult request_disconnect() override;
@@ -20,7 +21,7 @@ public:
     firmware::application::StationApiResult save_credentials(
         std::string_view ssid, std::string_view password) override;
 
-    // Returns the current STA netmask in dotted-decimal form.
+    /// Returns the current STA netmask in dotted-decimal form.
     std::string current_netmask() const;
 };
 

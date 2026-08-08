@@ -1,4 +1,4 @@
-// Implements update recovery, bounded phase publication, and visible progress.
+/** @file @brief Implements update recovery, bounded phase publication, and visible progress. */
 #include "firmware/application/update_phase.hpp"
 #include "firmware/core/protocol_constants.hpp"
 

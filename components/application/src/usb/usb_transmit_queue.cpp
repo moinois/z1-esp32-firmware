@@ -1,4 +1,4 @@
-// Implements whole-frame USB transmit admission and FIFO ordering.
+/** @file @brief Implements whole-frame USB transmit admission and FIFO ordering. */
 #include "firmware/application/usb_transmit_queue.hpp"
 
 namespace firmware::application {

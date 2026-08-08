@@ -1,4 +1,4 @@
-// Owns the process-wide streamed-play session instance.
+/** @file @brief Owns the process-wide streamed-play session instance. */
 #include "play_runtime_state.hpp"
 
 namespace firmware::target {

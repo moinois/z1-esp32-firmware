@@ -1,4 +1,4 @@
-// Implements host file-transfer start parsing and cache path derivation.
+/** @file @brief Implements host file-transfer start parsing and cache path derivation. */
 #include "firmware/core/file_transfer_paths.hpp"
 
 #include "firmware/core/sd_user_path.hpp"

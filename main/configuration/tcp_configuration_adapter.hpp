@@ -1,4 +1,4 @@
-// Declares TCP-origin live configuration and SD persistence operations.
+/** @file @brief Declares TCP-origin live configuration and SD persistence operations. */
 #pragma once
 
 #include "firmware/application/configuration_get.hpp"
@@ -12,12 +12,12 @@ class TcpClientSession;
 
 namespace firmware::target {
 
-// Implements both live configuration ports over POSIX VFS and TCP responses.
+/// Implements both live configuration ports over POSIX VFS and TCP responses.
 class TcpConfigurationAdapter final
     : public firmware::application::ConfigurationGetPort,
       public firmware::application::ConfigurationSetPort {
 public:
-    // Binds configuration responses to the originating TCP session.
+    /// Binds configuration responses to the originating TCP session.
     explicit TcpConfigurationAdapter(firmware::application::TcpClientSession& session);
     ~TcpConfigurationAdapter() override;
 

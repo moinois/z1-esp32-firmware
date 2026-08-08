@@ -1,4 +1,4 @@
-// Implements preview JSON validation, command matching, and numeric normalization.
+/** @file @brief Implements preview JSON validation, command matching, and numeric normalization. */
 #include "firmware/application/preview_request.hpp"
 #include "firmware/core/file_transfer_limits.hpp"
 

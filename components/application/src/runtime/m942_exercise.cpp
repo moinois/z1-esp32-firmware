@@ -1,4 +1,4 @@
-// Implements M942 routing independence and deadline-bounded SDO exercise cycles.
+/** @file @brief Implements M942 routing independence and deadline-bounded SDO exercise cycles. */
 #include "firmware/application/m942_exercise.hpp"
 
 #include <algorithm>

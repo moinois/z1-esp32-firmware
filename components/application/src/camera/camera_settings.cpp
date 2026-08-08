@@ -1,4 +1,4 @@
-// Implements strict signed-decimal camera configuration and dimension policy.
+/** @file @brief Implements strict signed-decimal camera configuration and dimension policy. */
 #include "firmware/application/camera_settings.hpp"
 
 #include <array>

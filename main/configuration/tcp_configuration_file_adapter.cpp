@@ -1,4 +1,4 @@
-// Implements bytewise configuration copies using POSIX VFS files.
+/** @file @brief Implements bytewise configuration copies using POSIX VFS files. */
 #include "tcp_configuration_file_adapter.hpp"
 #include "configuration_file_store.hpp"
 

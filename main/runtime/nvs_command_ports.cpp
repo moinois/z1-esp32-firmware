@@ -1,4 +1,4 @@
-// Implements common NVS persistence while delegating response delivery.
+/** @file @brief Implements common NVS persistence while delegating response delivery. */
 #include "nvs_command_ports.hpp"
 
 #include "nvs_key_value_adapter.hpp"

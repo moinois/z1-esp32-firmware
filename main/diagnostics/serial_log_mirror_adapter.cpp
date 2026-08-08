@@ -1,4 +1,4 @@
-// Implements bounded serial.log writes without feeding errors back into ESP_LOG.
+/** @file @brief Implements bounded serial.log writes without feeding errors back into ESP_LOG. */
 #include "serial_log_mirror_adapter.hpp"
 
 #include "sd_access_diagnostics.hpp"

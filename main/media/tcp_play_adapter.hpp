@@ -1,4 +1,4 @@
-// Declares TCP-origin file preparation for the shared streamed-play session.
+/** @file @brief Declares TCP-origin file preparation for the shared streamed-play session. */
 #pragma once
 
 #include "firmware/application/play_session.hpp"
@@ -10,11 +10,11 @@ class TcpClientSession;
 
 namespace firmware::target {
 
-// Implements preparation-only play I/O while retaining the TCP response origin.
+/// Implements preparation-only play I/O while retaining the TCP response origin.
 class TcpPlayPreparationAdapter final
     : public firmware::application::PlayPreparationPort {
 public:
-    // Binds preparation failures and success responses to one TCP session.
+    /// Binds preparation failures and success responses to one TCP session.
     explicit TcpPlayPreparationAdapter(
         firmware::application::TcpClientSession& session);
     ~TcpPlayPreparationAdapter() override;

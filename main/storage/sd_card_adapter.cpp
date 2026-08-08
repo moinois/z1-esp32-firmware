@@ -1,4 +1,4 @@
-// Implements SDMMC slot-1 mounting with the specified GPIO and card-detect policy.
+/** @file @brief Implements SDMMC slot-1 mounting with the specified GPIO and card-detect policy. */
 #include "sd_card_adapter.hpp"
 #include "sd_access_diagnostics.hpp"
 
@@ -27,6 +27,10 @@ namespace {
 
 constexpr gpio_num_t card_detect_gpio = GPIO_NUM_2;
 constexpr char tag[] = "SD";
+constexpr std::uint32_t sd_bus_frequency_khz = 20000U;
+constexpr std::uint64_t diagnostic_shutdown_timeout_milliseconds = 5000U;
+constexpr std::uint32_t sd_monitor_task_stack_size = 4096U;
+constexpr UBaseType_t sd_monitor_task_priority = 4U;
 const firmware::application::SdMountConfig mount_policy{
     firmware::core::sd_mount_path, false, 16U, 16U * 1024U};
 
@@ -43,7 +47,7 @@ public:
             return true;
         }
         sdmmc_host_t host = SDMMC_HOST_DEFAULT();
-        host.max_freq_khz = 20000U;
+        host.max_freq_khz = sd_bus_frequency_khz;
         sdmmc_slot_config_t slot = SDMMC_SLOT_CONFIG_DEFAULT();
         slot.width = 4U;
         slot.clk = GPIO_NUM_39;
@@ -75,7 +79,8 @@ public:
 
     void stop_and_drain_logging() override {
         writer_.begin_shutdown(now_milliseconds());
-        writer_.poll_shutdown(now_milliseconds() + 5000U,
+        writer_.poll_shutdown(now_milliseconds() +
+                                  diagnostic_shutdown_timeout_milliseconds,
                               diagnostic_capture_state(), *this);
     }
 
@@ -204,7 +209,8 @@ bool SdCardAdapter::mount_for_boot() {
 }
 
 void SdCardAdapter::start() {
-    xTaskCreate(sd_monitor_task, "sd_monitor", 4096U, nullptr, 4U, nullptr);
+    xTaskCreate(sd_monitor_task, "sd_monitor", sd_monitor_task_stack_size,
+                nullptr, sd_monitor_task_priority, nullptr);
 }
 
 }  // namespace firmware::target

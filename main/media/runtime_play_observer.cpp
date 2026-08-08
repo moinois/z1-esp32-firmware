@@ -1,4 +1,4 @@
-// Implements play-state forwarding without coupling controllers to NVS.
+/** @file @brief Implements play-state forwarding without coupling controllers to NVS. */
 #include "runtime_play_observer.hpp"
 
 #include "runtime_counter_task.hpp"

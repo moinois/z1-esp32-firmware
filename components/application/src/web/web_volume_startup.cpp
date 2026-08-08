@@ -1,4 +1,4 @@
-// Implements nonfatal web-volume mount and format-on-failure sequencing.
+/** @file @brief Implements nonfatal web-volume mount and format-on-failure sequencing. */
 #include "firmware/application/web_volume_startup.hpp"
 
 namespace firmware::application {

@@ -1,4 +1,4 @@
-// Implements POSIX directory enumeration and mbedTLS MD5 queries.
+/** @file @brief Implements POSIX directory enumeration and mbedTLS MD5 queries. */
 #include "tcp_filesystem_query_adapter.hpp"
 #include "posix_file.hpp"
 #include "sd_access_diagnostics.hpp"

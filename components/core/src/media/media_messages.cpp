@@ -1,4 +1,4 @@
-// Implements compact ordered media JSON responses with JSON string escaping.
+/** @file @brief Implements compact ordered media JSON responses with JSON string escaping. */
 #include "firmware/core/media_messages.hpp"
 
 namespace firmware::core {

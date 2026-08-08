@@ -1,4 +1,4 @@
-// Implements bytewise configuration copies and exact command result mapping.
+/** @file @brief Implements bytewise configuration copies and exact command result mapping. */
 #include "firmware/application/configuration_files.hpp"
 
 #include "firmware/core/protocol_constants.hpp"

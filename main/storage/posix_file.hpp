@@ -1,4 +1,4 @@
-// Declares reusable ownership and operations for the mounted POSIX VFS.
+/** @file @brief Declares reusable ownership and operations for the mounted POSIX VFS. */
 #pragma once
 
 #include "firmware/core/bytes.hpp"
@@ -11,6 +11,7 @@
 
 namespace firmware::target {
 
+/** Move-only RAII wrapper for a POSIX descriptor used by target file adapters. */
 class PosixFile {
 public:
     PosixFile() = default;

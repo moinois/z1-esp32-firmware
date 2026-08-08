@@ -1,4 +1,4 @@
-// Implements atomic one-shot network failure selection.
+/** @file @brief Implements atomic one-shot network failure selection. */
 #include "firmware/application/network_fault_injection.hpp"
 
 namespace firmware::application {

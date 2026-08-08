@@ -1,4 +1,4 @@
-// Implements shared byte escaping, normalized paths, and ordered prefix matching.
+/** @file @brief Implements shared byte escaping, normalized paths, and ordered prefix matching. */
 #include "firmware/core/text.hpp"
 #include <algorithm>
 #include <array>

@@ -1,4 +1,4 @@
-// Implements config-set source selection, atomic replacement steps, and replies.
+/** @file @brief Implements config-set source selection, atomic replacement steps, and replies. */
 #include "firmware/application/configuration_set.hpp"
 #include "firmware/application/configuration_sources.hpp"
 #include "firmware/application/configuration_tags.hpp"

@@ -1,4 +1,4 @@
-// Implements log session markers, tracked writes, rotation, and bounded shutdown.
+/** @file @brief Implements log session markers, tracked writes, rotation, and bounded shutdown. */
 #include "firmware/application/diagnostic_log_writer.hpp"
 #include "firmware/core/sd_user_path.hpp"
 

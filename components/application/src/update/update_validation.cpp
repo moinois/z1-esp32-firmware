@@ -1,4 +1,4 @@
-// Implements aggregate cleanup, read-failure classification, and validation.
+/** @file @brief Implements aggregate cleanup, read-failure classification, and validation. */
 #include "firmware/application/update_validation.hpp"
 #include "firmware/core/sd_user_path.hpp"
 #include "firmware/core/protocol_constants.hpp"

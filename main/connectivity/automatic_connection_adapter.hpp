@@ -1,4 +1,4 @@
-// Declares the ESP-IDF adapter for saved-credential station startup.
+/** @file @brief Declares the ESP-IDF adapter for saved-credential station startup. */
 #pragma once
 
 #include "firmware/application/automatic_connection.hpp"
@@ -7,14 +7,14 @@
 
 namespace firmware::target {
 
-// Owns the platform task used by the portable automatic reconnect policy.
+/// Owns the platform task used by the portable automatic reconnect policy.
 class AutomaticConnectionAdapter final
     : public firmware::application::AutomaticConnectionPort {
 public:
-    // Loads saved credentials and schedules the initial delayed association.
+    /// Loads saved credentials and schedules the initial delayed association.
     void start(firmware::application::StationRuntime& runtime);
 
-    // Applies one station-disconnect event to the retry policy.
+    /// Applies one station-disconnect event to the retry policy.
     void on_station_disconnected();
 
     firmware::application::StoredString read_string(

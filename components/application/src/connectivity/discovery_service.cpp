@@ -1,4 +1,4 @@
-// Implements discovery socket lifecycle, periodic sends, and temporary bursts.
+/** @file @brief Implements discovery socket lifecycle, periodic sends, and temporary bursts. */
 #include "firmware/application/discovery_service.hpp"
 
 #include "firmware/application/connectivity_defaults.hpp"

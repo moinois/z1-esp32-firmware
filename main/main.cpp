@@ -1,4 +1,4 @@
-// Starts the mainboard services in the normative order defined by BOOT-010 through BOOT-019.
+/** @file @brief Starts the mainboard services in the normative order defined by BOOT-010 through BOOT-019. */
 #include "esp_err.h"
 #include "esp_event.h"
 #include "esp_log.h"

@@ -1,4 +1,4 @@
-// Implements host download protocol sequencing, retries, errors, and timeout.
+/** @file @brief Implements host download protocol sequencing, retries, errors, and timeout. */
 #include "firmware/application/file_download.hpp"
 
 #include "firmware/core/protocol_constants.hpp"

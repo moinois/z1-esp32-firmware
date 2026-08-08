@@ -1,4 +1,4 @@
-// Implements classic-CAN frame I/O using the ESP-IDF legacy TWAI driver API.
+/** @file @brief Implements classic-CAN frame I/O using the ESP-IDF legacy TWAI driver API. */
 #include "can_twai_adapter.hpp"
 
 #include "firmware/application/can_twai_config.hpp"

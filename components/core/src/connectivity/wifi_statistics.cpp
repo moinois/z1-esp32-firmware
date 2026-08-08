@@ -1,4 +1,4 @@
-// Implements stable JSON formatting for a Wi-Fi diagnostic snapshot.
+/** @file @brief Implements stable JSON formatting for a Wi-Fi diagnostic snapshot. */
 #include "firmware/core/wifi_statistics.hpp"
 
 #include <cstdio>

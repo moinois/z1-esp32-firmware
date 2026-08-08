@@ -1,4 +1,4 @@
-// Implements parsing, namespaced lookup, and lossless config serialization.
+/** @file @brief Implements parsing, namespaced lookup, and lossless config serialization. */
 #include "firmware/application/configuration_document.hpp"
 
 #include <algorithm>

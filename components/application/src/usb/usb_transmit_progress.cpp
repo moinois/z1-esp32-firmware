@@ -1,4 +1,4 @@
-// Implements USB transmit progress timing with wrap-safe elapsed arithmetic.
+/** @file @brief Implements USB transmit progress timing with wrap-safe elapsed arithmetic. */
 #include "firmware/application/usb_transmit_progress.hpp"
 
 namespace firmware::application {

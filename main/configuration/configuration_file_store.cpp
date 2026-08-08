@@ -1,4 +1,4 @@
-// Implements fresh SD reads and atomic config.txt updates.
+/** @file @brief Implements fresh SD reads and atomic config.txt updates. */
 #include "configuration_file_store.hpp"
 
 #include "firmware/application/configuration_tags.hpp"

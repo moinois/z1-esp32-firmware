@@ -1,4 +1,4 @@
-// Implements blocking ESP-IDF Wi-Fi scanning for TCP-origin commands.
+/** @file @brief Implements blocking ESP-IDF Wi-Fi scanning for TCP-origin commands. */
 #include "tcp_wlan_scan_adapter.hpp"
 #include "esp_wifi_scanner.hpp"
 

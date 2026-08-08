@@ -1,4 +1,4 @@
-// Declares the common byte channel used by live and mock controllers.
+/** @file @brief Declares the common byte channel used by live and mock controllers. */
 #pragma once
 
 #include "firmware/core/bytes.hpp"
@@ -8,19 +8,19 @@
 
 namespace firmware::target {
 
-// Isolates controller protocol services from the selected UART implementation.
+/// Isolates controller protocol services from the selected UART implementation.
 class ControllerChannelAdapter {
 public:
-    // Enables safe destruction through either hardware implementation.
+    /// Enables safe destruction through either hardware implementation.
     virtual ~ControllerChannelAdapter() = default;
 
-    // Starts the selected controller channel.
+    /// Starts the selected controller channel.
     virtual bool initialize() = 0;
 
-    // Reads one bounded chunk of encoded controller traffic.
+    /// Reads one bounded chunk of encoded controller traffic.
     virtual int read(std::uint8_t* destination, std::size_t capacity) = 0;
 
-    // Submits one complete encoded controller frame.
+    /// Submits one complete encoded controller frame.
     virtual int write(firmware::core::BytesView frame) = 0;
 };
 

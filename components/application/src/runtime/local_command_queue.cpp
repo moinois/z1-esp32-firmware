@@ -1,4 +1,4 @@
-// Implements bounded FIFO admission for serialized local commands.
+/** @file @brief Implements bounded FIFO admission for serialized local commands. */
 #include "firmware/application/local_command_queue.hpp"
 
 #include "firmware/core/frame.hpp"

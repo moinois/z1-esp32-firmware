@@ -1,4 +1,4 @@
-// Implements BLUFI DH, MD5, and AES-CFB128 operations with ESP-IDF mbedTLS.
+/** @file @brief Implements BLUFI DH, MD5, and AES-CFB128 operations with ESP-IDF mbedTLS. */
 #include "blufi_crypto_adapter.hpp"
 
 #include "esp_blufi_api.h"

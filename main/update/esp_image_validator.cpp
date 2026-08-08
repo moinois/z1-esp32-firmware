@@ -1,4 +1,4 @@
-// Implements bounded ESP image header, segment, and checksum validation.
+/** @file @brief Implements bounded ESP image header, segment, and checksum validation. */
 #include "esp_image_validator.hpp"
 
 #include "esp_app_format.h"

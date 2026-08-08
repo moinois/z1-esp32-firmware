@@ -1,4 +1,4 @@
-// Implements SPIFFS registration and formatting through ESP-IDF.
+/** @file @brief Implements SPIFFS registration and formatting through ESP-IDF. */
 #include "web_volume_adapter.hpp"
 
 #include "esp_err.h"

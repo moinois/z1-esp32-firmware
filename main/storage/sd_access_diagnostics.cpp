@@ -1,4 +1,4 @@
-// Implements shared SD mount state and APP_FILE failure diagnostics.
+/** @file @brief Implements shared SD mount state and APP_FILE failure diagnostics. */
 #include "sd_access_diagnostics.hpp"
 
 #include "esp_log.h"

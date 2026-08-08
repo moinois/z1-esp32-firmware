@@ -1,4 +1,4 @@
-// Implements UART frame decoding and wall-clock command dispatch.
+/** @file @brief Implements UART frame decoding and wall-clock command dispatch. */
 #include "controller_command_loop.hpp"
 
 #include "controller_channel_adapter.hpp"
@@ -44,6 +44,9 @@ namespace firmware::target {
 namespace {
 
 constexpr char controller_uart_tag[] = "uart_task";
+constexpr std::size_t controller_read_buffer_size = 256U;
+constexpr std::uint32_t controller_task_stack_size = 6144U;
+constexpr UBaseType_t controller_task_priority = 5U;
 
 // Writes one complete frame and emits the specified diagnostic on failure.
 void write_controller_frame(ControllerChannelAdapter& channel,
@@ -106,7 +109,7 @@ void controller_command_task(void*) {
         static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL));
     firmware::application::ControllerActivityMonitor activity_monitor(
         static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL));
-    std::uint8_t input[256];
+    std::uint8_t input[controller_read_buffer_size];
     for (;;) {
         drain_forwarded_frames(channel);
         const auto due_queries = query_scheduler.poll(
@@ -218,8 +221,9 @@ void ControllerCommandLoop::start() {
     if (controller_forwarder_mutex == nullptr) {
         return;
     }
-    xTaskCreate(controller_command_task, "controller_commands", 6144U, nullptr,
-                5U, nullptr);
+    xTaskCreate(controller_command_task, "controller_commands",
+                controller_task_stack_size, nullptr, controller_task_priority,
+                nullptr);
 }
 
 bool enqueue_controller_frame(const firmware::core::Frame& frame) {

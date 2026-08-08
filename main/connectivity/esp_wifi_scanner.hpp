@@ -1,10 +1,11 @@
-// Declares shared ESP-IDF Wi-Fi scan operations for every response transport.
+/** @file @brief Declares shared ESP-IDF Wi-Fi scan operations for every response transport. */
 #pragma once
 
 #include "firmware/application/wlan_command.hpp"
 
 namespace firmware::target {
 
+/** Executes bounded ESP-IDF station scans and converts SDK records to policy input. */
 class EspWifiScanner {
 public:
     void stop_scan() const;

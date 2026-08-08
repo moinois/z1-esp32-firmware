@@ -1,4 +1,4 @@
-// Implements bounded JSON object parsing without a filesystem or JSON library.
+/** @file @brief Implements bounded JSON object parsing without a filesystem or JSON library. */
 #include "firmware/core/json_input.hpp"
 
 #include <cctype>

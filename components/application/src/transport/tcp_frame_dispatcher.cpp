@@ -1,4 +1,4 @@
-// Implements callback-based TCP routing without transport dependencies.
+/** @file @brief Implements callback-based TCP routing without transport dependencies. */
 #include "firmware/application/tcp_frame_dispatcher.hpp"
 
 #include <utility>

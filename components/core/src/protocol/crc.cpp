@@ -1,4 +1,4 @@
-// Implements compact table-free checksums to avoid permanent lookup-table cost.
+/** @file @brief Implements compact table-free checksums to avoid permanent lookup-table cost. */
 #include "firmware/core/crc.hpp"
 
 namespace firmware::core {

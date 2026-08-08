@@ -1,4 +1,4 @@
-// Implements streamed-play path preparation, identity, and status behavior.
+/** @file @brief Implements streamed-play path preparation, identity, and status behavior. */
 #include "firmware/application/play_session.hpp"
 
 #include "firmware/core/crc.hpp"

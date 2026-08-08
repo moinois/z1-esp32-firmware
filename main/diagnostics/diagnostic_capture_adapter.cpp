@@ -1,4 +1,4 @@
-// Implements a nonblocking ESP-IDF vprintf hook over DiagnosticCapture.
+/** @file @brief Implements a nonblocking ESP-IDF vprintf hook over DiagnosticCapture. */
 #include "diagnostic_capture_adapter.hpp"
 
 #include "esp_log.h"

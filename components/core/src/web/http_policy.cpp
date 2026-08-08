@@ -1,4 +1,4 @@
-// Implements HTTP response mapping and case-sensitive URI-handler selection.
+/** @file @brief Implements HTTP response mapping and case-sensitive URI-handler selection. */
 #include "firmware/core/http_policy.hpp"
 
 namespace firmware::core {

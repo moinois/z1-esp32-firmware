@@ -1,4 +1,4 @@
-// Implements bounded configuration reads, rewrites, and TCP response delivery.
+/** @file @brief Implements bounded configuration reads, rewrites, and TCP response delivery. */
 #include "tcp_configuration_adapter.hpp"
 
 #include "configuration_file_store.hpp"

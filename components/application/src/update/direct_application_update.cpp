@@ -1,4 +1,4 @@
-// Implements direct application OTA ordering, abort behavior, and restart handoff.
+/** @file @brief Implements direct application OTA ordering, abort behavior, and restart handoff. */
 #include "firmware/application/direct_application_update.hpp"
 
 namespace firmware::application {

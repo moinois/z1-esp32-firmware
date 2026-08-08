@@ -1,4 +1,4 @@
-// Implements routing precedence without performing queue or transport operations.
+/** @file @brief Implements routing precedence without performing queue or transport operations. */
 #include "firmware/application/router.hpp"
 
 #include "firmware/core/protocol_constants.hpp"

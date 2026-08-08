@@ -1,4 +1,4 @@
-// Implements upload/download file effects through POSIX VFS and mbedTLS MD5.
+/** @file @brief Implements upload/download file effects through POSIX VFS and mbedTLS MD5. */
 #include "tcp_file_transfer_adapter.hpp"
 #include "sd_access_diagnostics.hpp"
 

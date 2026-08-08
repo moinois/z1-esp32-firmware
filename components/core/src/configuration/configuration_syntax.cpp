@@ -1,4 +1,4 @@
-// Implements ASCII trimming, SD line parsing, and pre-decode token splitting.
+/** @file @brief Implements ASCII trimming, SD line parsing, and pre-decode token splitting. */
 #include "firmware/core/configuration_syntax.hpp"
 
 #include "firmware/core/text.hpp"

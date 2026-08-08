@@ -1,4 +1,4 @@
-// Implements bounded update deletion retries and exact recovery delays.
+/** @file @brief Implements bounded update deletion retries and exact recovery delays. */
 #include "firmware/application/update_deletion.hpp"
 #include "firmware/core/sd_user_path.hpp"
 #include "firmware/core/protocol_constants.hpp"

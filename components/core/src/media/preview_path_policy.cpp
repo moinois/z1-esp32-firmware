@@ -1,4 +1,4 @@
-// Implements preview path root matching and literal traversal rejection.
+/** @file @brief Implements preview path root matching and literal traversal rejection. */
 #include "firmware/core/preview_path_policy.hpp"
 
 #include "firmware/core/sd_user_path.hpp"

@@ -1,4 +1,4 @@
-// Composes independent runtime observations into host-visible status fields.
+/** @file @brief Composes independent runtime observations into host-visible status fields. */
 #include "firmware/application/runtime_status.hpp"
 
 #include <algorithm>

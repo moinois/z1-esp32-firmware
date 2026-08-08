@@ -1,4 +1,4 @@
-// Declares TCP-origin bytewise configuration-copy file operations.
+/** @file @brief Declares TCP-origin bytewise configuration-copy file operations. */
 #pragma once
 
 #include "firmware/application/configuration_files.hpp"
@@ -9,13 +9,13 @@ class TcpClientSession;
 
 namespace firmware::target {
 
-// Implements configuration copy I/O over POSIX VFS and a TCP response queue.
+/// Implements configuration copy I/O over POSIX VFS and a TCP response queue.
 class TcpConfigurationFileAdapter final
     : public firmware::application::ConfigurationFilePort {
 public:
     std::string_view active_configuration_path() const override;
     std::string_view default_configuration_path() const override;
-    // Binds copy responses to the originating TCP session.
+    /// Binds copy responses to the originating TCP session.
     explicit TcpConfigurationFileAdapter(
         firmware::application::TcpClientSession& session);
     ~TcpConfigurationFileAdapter() override;

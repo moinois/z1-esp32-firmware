@@ -1,4 +1,4 @@
-// Implements directory filtering, wire formatting, bounded chunks, and completion.
+/** @file @brief Implements directory filtering, wire formatting, bounded chunks, and completion. */
 #include "firmware/application/directory_listing.hpp"
 
 #include "firmware/core/filesystem_syntax.hpp"

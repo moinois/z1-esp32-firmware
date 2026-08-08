@@ -1,4 +1,4 @@
-// Implements BLUFI GATT response ordering, aggregation, and notification retry.
+/** @file @brief Implements BLUFI GATT response ordering, aggregation, and notification retry. */
 #include "firmware/application/blufi_gatt.hpp"
 
 #include <algorithm>

@@ -1,4 +1,4 @@
-// Implements bounded POSIX file reads and serialized controller UART replies.
+/** @file @brief Implements bounded POSIX file reads and serialized controller UART replies. */
 #include "controller_transfer_adapter.hpp"
 #include "configuration_file_store.hpp"
 #include "esp_log.h"

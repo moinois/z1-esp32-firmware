@@ -1,4 +1,4 @@
-// Routes shared NVS serial-number behavior as framed UART responses.
+/** @file @brief Routes shared NVS serial-number behavior as framed UART responses. */
 #include "serial_number_adapter.hpp"
 #include "controller_channel_adapter.hpp"
 #include "esp_log.h"

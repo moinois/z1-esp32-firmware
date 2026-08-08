@@ -1,4 +1,4 @@
-// Implements TCP control listener configuration and bounded connection slots.
+/** @file @brief Implements TCP control listener configuration and bounded connection slots. */
 #include "tcp_control_adapter.hpp"
 
 #include "esp_log.h"
@@ -89,6 +89,14 @@ constexpr long send_timeout_seconds = 5L;
 // adapters on this task's stack. The previous 4096-byte allocation overflowed
 // on a physical `version` request after the complete target was composed.
 constexpr std::uint32_t client_task_stack_bytes = 8192U;
+constexpr std::size_t client_receive_buffer_size = 2048U;
+constexpr UBaseType_t client_task_priority = 4U;
+constexpr std::uint32_t m942_task_stack_size = 6144U;
+constexpr UBaseType_t m942_task_priority = 4U;
+constexpr std::uint32_t nvs_task_stack_size = 6144U;
+constexpr UBaseType_t nvs_task_priority = 4U;
+constexpr std::uint32_t accept_task_stack_size = 4096U;
+constexpr UBaseType_t accept_task_priority = 4U;
 std::atomic_int active_clients{0};
 std::atomic_uint32_t next_generation{1U};
 firmware::application::Router tcp_router;
@@ -284,8 +292,8 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
         }
         TcpM942WorkerContext* raw_context = context.release();
         TaskHandle_t worker = nullptr;
-        if (xTaskCreate(tcp_m942_worker, "m942", 6144U, raw_context,
-                        4U, &worker) != pdPASS) {
+        if (xTaskCreate(tcp_m942_worker, "m942", m942_task_stack_size,
+                        raw_context, m942_task_priority, &worker) != pdPASS) {
             m942_exercise_active.store(false, std::memory_order_release);
             delete raw_context;
             return;
@@ -674,7 +682,7 @@ void serve_tcp_client(TcpClientContext* context) {
             },
             {}});
     configure_socket(client);
-    std::uint8_t input[2048];
+    std::uint8_t input[client_receive_buffer_size];
     bool transport_healthy = drain_tcp_transmit_queue(client, session);
     while (transport_healthy) {
         fd_set readable;
@@ -852,8 +860,8 @@ void tcp_accept_task(void*) {
 void TcpControlAdapter::start() {
     tcp_nvs_command_queue = xQueueCreate(maximum_clients, sizeof(void*));
     if (tcp_nvs_command_queue == nullptr ||
-        xTaskCreate(tcp_nvs_command_task, "tcp_nvs", 6144U, nullptr, 4U,
-                    nullptr) != pdPASS) {
+        xTaskCreate(tcp_nvs_command_task, "tcp_nvs", nvs_task_stack_size,
+                    nullptr, nvs_task_priority, nullptr) != pdPASS) {
         ESP_LOGE(log_tag, "TCP NVS worker allocation failed");
     }
     bool workers_ready = true;
@@ -866,7 +874,8 @@ void TcpControlAdapter::start() {
                                  : xTaskCreateWithCaps(
                                        tcp_client_task, "tcp_client",
                                        client_task_stack_bytes,
-                                       &tcp_client_slot_indices[slot], 4U, &task,
+                                       &tcp_client_slot_indices[slot],
+                                       client_task_priority, &task,
                                        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
         if (created != pdPASS) {
             ESP_LOGE(log_tag,
@@ -878,7 +887,8 @@ void TcpControlAdapter::start() {
         }
     }
     if (workers_ready) {
-        xTaskCreate(tcp_accept_task, "tcp_control", 4096U, nullptr, 4U, nullptr);
+        xTaskCreate(tcp_accept_task, "tcp_control", accept_task_stack_size,
+                    nullptr, accept_task_priority, nullptr);
     }
 }
 

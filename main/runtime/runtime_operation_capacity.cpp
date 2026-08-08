@@ -1,4 +1,4 @@
-// Implements the shared eight-slot FreeRTOS operation capacity.
+/** @file @brief Implements the shared eight-slot FreeRTOS operation capacity. */
 #include "runtime_operation_capacity.hpp"
 
 #include "freertos/FreeRTOS.h"

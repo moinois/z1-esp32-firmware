@@ -1,4 +1,4 @@
-// Selects live or simulated hardware adapters from the reviewed Kconfig policy.
+/** @file @brief Selects live or simulated hardware adapters from the reviewed Kconfig policy. */
 #include "hardware_adapter_factory.hpp"
 
 #include "sdkconfig.h"

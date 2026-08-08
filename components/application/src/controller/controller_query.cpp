@@ -1,4 +1,4 @@
-// Implements drift-free, non-deferred controller query scheduling.
+/** @file @brief Implements drift-free, non-deferred controller query scheduling. */
 #include "firmware/application/controller_query.hpp"
 
 #include "firmware/application/controller_command_frames.hpp"

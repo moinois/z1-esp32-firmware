@@ -1,4 +1,4 @@
-// Implements host upload sequencing, file lifecycle, retries, and timeout.
+/** @file @brief Implements host upload sequencing, file lifecycle, retries, and timeout. */
 #include "firmware/application/file_upload.hpp"
 
 #include "firmware/core/protocol_constants.hpp"

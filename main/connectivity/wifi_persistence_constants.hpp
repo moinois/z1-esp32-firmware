@@ -1,4 +1,4 @@
-// Defines the shared NVS identifiers used by station credential adapters.
+/** @file @brief Defines the shared NVS identifiers used by station credential adapters. */
 #pragma once
 
 namespace firmware::target::wifi_persistence {

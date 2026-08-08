@@ -1,4 +1,4 @@
-// Implements MD5 path validation, lowercase formatting, and exact errors.
+/** @file @brief Implements MD5 path validation, lowercase formatting, and exact errors. */
 #include "firmware/application/file_hash_command.hpp"
 
 #include "firmware/core/filesystem_syntax.hpp"

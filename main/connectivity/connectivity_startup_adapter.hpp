@@ -1,11 +1,11 @@
-// Declares the ESP-IDF implementation of the application connectivity port.
+/** @file @brief Declares the ESP-IDF implementation of the application connectivity port. */
 #pragma once
 
 #include "firmware/application/connectivity_startup.hpp"
 
 namespace firmware::target {
 
-// Translates the portable startup policy into ESP-IDF Wi-Fi/netif calls.
+/// Translates the portable startup policy into ESP-IDF Wi-Fi/netif calls.
 class ConnectivityStartupAdapter final
     : public firmware::application::ConnectivityStartupPort {
 public:

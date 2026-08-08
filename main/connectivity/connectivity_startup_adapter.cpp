@@ -1,4 +1,4 @@
-// Implements the station scan and concurrent AP/STA setup required at boot.
+/** @file @brief Implements the station scan and concurrent AP/STA setup required at boot. */
 #include "connectivity_startup_adapter.hpp"
 
 #include "esp_netif.h"

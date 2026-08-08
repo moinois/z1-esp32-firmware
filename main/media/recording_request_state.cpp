@@ -1,4 +1,4 @@
-// Implements the atomic process-wide recording request flag.
+/** @file @brief Implements the atomic process-wide recording request flag. */
 #include "recording_request_state.hpp"
 
 #include <atomic>

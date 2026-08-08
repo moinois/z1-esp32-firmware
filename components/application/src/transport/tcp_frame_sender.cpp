@@ -1,4 +1,4 @@
-// Implements whole-frame TCP transmission and retry semantics.
+/** @file @brief Implements whole-frame TCP transmission and retry semantics. */
 #include "firmware/application/tcp_frame_sender.hpp"
 
 namespace firmware::application {

@@ -1,4 +1,4 @@
-// Implements config-get cache lifetime, fresh SD parsing, and exact replies.
+/** @file @brief Implements config-get cache lifetime, fresh SD parsing, and exact replies. */
 #include "firmware/application/configuration_get.hpp"
 #include "firmware/application/configuration_sources.hpp"
 #include "firmware/application/configuration_tags.hpp"

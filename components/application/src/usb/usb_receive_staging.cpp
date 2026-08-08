@@ -1,4 +1,4 @@
-// Implements USB receive staging with whole-block capacity admission.
+/** @file @brief Implements USB receive staging with whole-block capacity admission. */
 #include "firmware/application/usb_receive_staging.hpp"
 
 namespace firmware::application {

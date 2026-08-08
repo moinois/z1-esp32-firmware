@@ -1,4 +1,4 @@
-// Implements the ESP-IDF camera pin, capture, orientation, and resolution bridge.
+/** @file @brief Implements the ESP-IDF camera pin, capture, orientation, and resolution bridge. */
 #include "camera_adapter.hpp"
 
 #include "esp_camera.h"

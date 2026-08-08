@@ -1,4 +1,4 @@
-// Implements literal static paths, MIME selection, and firmware identity.
+/** @file @brief Implements literal static paths, MIME selection, and firmware identity. */
 #include "firmware/core/web_static.hpp"
 
 namespace firmware::core {

@@ -1,4 +1,4 @@
-// Implements exact ESP-IDF HTTP listener configuration and nonfatal startup.
+/** @file @brief Implements exact ESP-IDF HTTP listener configuration and nonfatal startup. */
 #include "http_server_adapter.hpp"
 
 #include "esp_err.h"
@@ -60,6 +60,10 @@ constexpr char tag[] = "HTTP";
 constexpr std::size_t maximum_configuration_request_size = 1024U;
 constexpr std::size_t maximum_configuration_key_size = 128U;
 constexpr std::size_t maximum_configuration_value_size = 512U;
+constexpr std::uint32_t live_stream_task_stack_size = 4096U;
+constexpr UBaseType_t live_stream_task_priority = 4U;
+constexpr std::uint32_t preview_task_stack_size = 6144U;
+constexpr UBaseType_t preview_task_priority = 4U;
 firmware::application::LiveControlPolicy live_control_policy;
 
 #if CONFIG_HTTPD_WS_SUPPORT
@@ -127,8 +131,9 @@ void start_live_stream(httpd_req_t* request) {
         httpd_req_to_sockfd(request),
         generation,
     };
-    if (xTaskCreate(live_stream_task, "live_stream", 4096U, context, 4U,
-                    nullptr) != pdPASS) {
+    if (xTaskCreate(live_stream_task, "live_stream",
+                    live_stream_task_stack_size, context,
+                    live_stream_task_priority, nullptr) != pdPASS) {
         delete context;
     }
 }
@@ -239,8 +244,9 @@ void start_preview_playback_task(httpd_req_t* request,
         static_cast<std::size_t>(runtime.current_frame) + 1U,
         preview_generation.load(std::memory_order_acquire),
     };
-    if (xTaskCreate(preview_playback_task, "preview_play", 6144U, context,
-                    4U, nullptr) != pdPASS) {
+    if (xTaskCreate(preview_playback_task, "preview_play",
+                    preview_task_stack_size, context, preview_task_priority,
+                    nullptr) != pdPASS) {
         delete context;
     }
 }

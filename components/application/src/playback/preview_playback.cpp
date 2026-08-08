@@ -1,4 +1,4 @@
-// Implements deterministic preview command ownership and frame selection rules.
+/** @file @brief Implements deterministic preview command ownership and frame selection rules. */
 #include "firmware/application/preview_playback.hpp"
 
 #include <algorithm>

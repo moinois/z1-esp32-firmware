@@ -1,4 +1,4 @@
-// Declares TCP-origin WLAN connection responses and discovery timing.
+/** @file @brief Declares TCP-origin WLAN connection responses and discovery timing. */
 #pragma once
 
 #include "firmware/application/wlan_command.hpp"
@@ -9,10 +9,11 @@ class TcpClientSession;
 
 namespace firmware::target {
 
+/** Routes WLAN connection policy responses back to their originating TCP session. */
 class TcpWlanConnectionAdapter final
     : public firmware::application::WlanConnectionResponsePort {
 public:
-    // Binds connection responses to one TCP session.
+    /// Binds connection responses to one TCP session.
     explicit TcpWlanConnectionAdapter(firmware::application::TcpClientSession& session);
 
     void send(firmware::core::Frame frame) override;

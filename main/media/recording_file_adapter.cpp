@@ -1,4 +1,4 @@
-// Implements complete AVI segment writes through the ESP-IDF POSIX VFS.
+/** @file @brief Implements complete AVI segment writes through the ESP-IDF POSIX VFS. */
 #include "recording_file_adapter.hpp"
 
 #include <cerrno>

@@ -1,4 +1,4 @@
-// Declares ESP-IDF OTA and staged-controller operations for update application.
+/** @file @brief Declares ESP-IDF OTA and staged-controller operations for update application. */
 #pragma once
 
 #include "firmware/application/update_application.hpp"
@@ -7,12 +7,12 @@
 
 namespace firmware::target {
 
-// Owns one inactive OTA partition and its active write handle.
+/// Owns one inactive OTA partition and its active write handle.
 class OtaUpdateAdapter final : public firmware::application::UpdateApplicationPort {
 public:
     void publish_phase(std::uint8_t phase) override;
     bool select_inactive_partition() override;
-    // Erases the complete selected partition for a direct web update.
+    /// Erases the complete selected partition for a direct web update.
     bool erase_inactive_partition();
     bool begin_mainboard_write(std::uint32_t size) override;
     bool write_mainboard(firmware::core::BytesView image) override;

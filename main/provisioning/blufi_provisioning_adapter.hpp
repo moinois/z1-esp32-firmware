@@ -1,11 +1,11 @@
-// Declares ESP-IDF Wi-Fi and BLUFI operations for provisioning policy.
+/** @file @brief Declares ESP-IDF Wi-Fi and BLUFI operations for provisioning policy. */
 #pragma once
 
 #include "firmware/application/ble_provisioning.hpp"
 
 namespace firmware::target {
 
-// Translates provisioning port calls into ESP-IDF Wi-Fi/BLUFI operations.
+/// Translates provisioning port calls into ESP-IDF Wi-Fi/BLUFI operations.
 class BlufiProvisioningAdapter final
     : public firmware::application::BleProvisioningPort {
 public:

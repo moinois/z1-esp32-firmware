@@ -1,4 +1,4 @@
-// Declares the ESP-IDF NVS backend for runtime counters.
+/** @file @brief Declares the ESP-IDF NVS backend for runtime counters. */
 #pragma once
 
 #include "firmware/application/runtime_counters.hpp"
@@ -6,9 +6,10 @@
 
 namespace firmware::target {
 
+/** Persists first-boot and runtime counters in their specified NVS namespace. */
 class NvsRuntimeCounterAdapter final : public firmware::application::RuntimeCounterPort {
 public:
-    // Reads first-boot and runtime counters from the normative NVS keys.
+    /// Reads first-boot and runtime counters from the normative NVS keys.
     firmware::application::FirstBootRead read_first_boot(
         std::string_view name_space, std::string_view key) override;
     std::optional<std::uint64_t> read_counter(

@@ -1,4 +1,4 @@
-// Routes shared NVS serial-number behavior to one TCP session.
+/** @file @brief Routes shared NVS serial-number behavior to one TCP session. */
 #include "tcp_serial_number_adapter.hpp"
 #include "firmware/application/tcp_client_session.hpp"
 

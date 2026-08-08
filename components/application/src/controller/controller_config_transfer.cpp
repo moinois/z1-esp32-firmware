@@ -1,4 +1,4 @@
-// Implements configuration record selection and aggregation for the controller.
+/** @file @brief Implements configuration record selection and aggregation for the controller. */
 #include "firmware/application/controller_config_transfer.hpp"
 
 #include "firmware/application/controller_transfer.hpp"

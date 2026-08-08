@@ -1,4 +1,4 @@
-// Implements streamed-play file access, checksum lookup, and UART responses.
+/** @file @brief Implements streamed-play file access, checksum lookup, and UART responses. */
 #include "controller_play_adapter.hpp"
 #include "esp_log.h"
 

@@ -1,4 +1,4 @@
-// Declares the ESP-IDF log-hook adapter for bounded diagnostic capture.
+/** @file @brief Declares the ESP-IDF log-hook adapter for bounded diagnostic capture. */
 #pragma once
 
 #include "firmware/core/bytes.hpp"
@@ -8,16 +8,17 @@
 
 namespace firmware::target {
 
+/** Installs an ESP logging hook that mirrors bounded records into diagnostics. */
 class DiagnosticCaptureAdapter {
 public:
-    // Installs the capture hook while preserving the existing console output.
+    /// Installs the capture hook while preserving the existing console output.
     void start();
 };
 
-// Removes the oldest captured record for consumption by the SD log writer.
+/// Removes the oldest captured record for consumption by the SD log writer.
 std::optional<firmware::core::ByteVector> take_captured_diagnostic();
 
-// Provides the global capture state to the SD writer shutdown drain.
+/// Provides the global capture state to the SD writer shutdown drain.
 firmware::application::DiagnosticCapture& diagnostic_capture_state();
 
 }  // namespace firmware::target

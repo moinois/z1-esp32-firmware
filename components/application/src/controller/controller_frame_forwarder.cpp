@@ -1,4 +1,4 @@
-// Implements frame encoding and delegation to the controller output queue.
+/** @file @brief Implements frame encoding and delegation to the controller output queue. */
 #include "firmware/application/controller_frame_forwarder.hpp"
 
 namespace firmware::application {

@@ -1,4 +1,4 @@
-// Declares a small ESP-IDF NVS adapter for persistent scalar values.
+/** @file @brief Declares a small ESP-IDF NVS adapter for persistent scalar values. */
 #pragma once
 
 #include <cstdint>
@@ -8,19 +8,22 @@
 
 namespace firmware::target {
 
+/** Distinguishes absent data from driver/storage failure at NVS boundaries. */
 enum class NvsReadState { found, missing, failure };
 
+/** String read outcome that preserves missing-versus-failure semantics. */
 struct NvsStringRead {
     NvsReadState state = NvsReadState::failure;
     std::string value;
 };
 
+/** Unsigned scalar read outcome that preserves missing-versus-failure semantics. */
 struct NvsU64Read {
     NvsReadState state = NvsReadState::failure;
     std::uint64_t value = 0U;
 };
 
-// Reads and writes NVS values while keeping namespace/key handling centralized.
+/// Reads and writes NVS values while keeping namespace/key handling centralized.
 class NvsKeyValueAdapter {
 public:
     NvsStringRead read_string(std::string_view name_space,
@@ -41,7 +44,7 @@ public:
                   std::uint8_t value) const;
     bool write_i64(std::string_view name_space, std::string_view key,
                    std::int64_t value) const;
-    // Erases one key and distinguishes missing keys from storage failures.
+    /// Erases one key and distinguishes missing keys from storage failures.
     NvsReadState erase_key(std::string_view name_space,
                            std::string_view key) const;
 };

@@ -1,4 +1,4 @@
-// Implements the exact GPIO0 heartbeat electrical configuration.
+/** @file @brief Implements the exact GPIO0 heartbeat electrical configuration. */
 #include "heartbeat_adapter.hpp"
 
 #include "driver/gpio.h"

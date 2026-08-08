@@ -1,4 +1,4 @@
-// Implements recording command state transitions independent of routing transport.
+/** @file @brief Implements recording command state transitions independent of routing transport. */
 #include "firmware/application/recording_commands.hpp"
 
 namespace firmware::application {

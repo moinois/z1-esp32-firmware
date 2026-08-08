@@ -1,4 +1,4 @@
-// Implements periodic runtime-counter persistence over FreeRTOS timing.
+/** @file @brief Implements periodic runtime-counter persistence over FreeRTOS timing. */
 #include "runtime_counter_task.hpp"
 
 #include "freertos/FreeRTOS.h"
@@ -14,6 +14,9 @@ namespace firmware::target {
 namespace {
 
 firmware::application::RuntimeCounterService* active_service = nullptr;
+constexpr std::uint32_t persistence_interval_milliseconds = 1000U;
+constexpr std::uint32_t runtime_task_stack_size = 4096U;
+constexpr UBaseType_t runtime_task_priority = 3U;
 
 void runtime_counter_task(void*) {
     NvsRuntimeCounterAdapter nvs;
@@ -26,7 +29,7 @@ void runtime_counter_task(void*) {
     for (;;) {
         const std::uint64_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
         service.save_power_on(now);
-        vTaskDelay(pdMS_TO_TICKS(1000U));
+        vTaskDelay(pdMS_TO_TICKS(persistence_interval_milliseconds));
     }
 }
 
@@ -51,8 +54,8 @@ void request_runtime_persistence(std::uint64_t monotonic_milliseconds) {
 }
 
 void RuntimeCounterTask::start() {
-    xTaskCreate(runtime_counter_task, "runtime_counters", 4096U, nullptr, 3U,
-                nullptr);
+    xTaskCreate(runtime_counter_task, "runtime_counters",
+                runtime_task_stack_size, nullptr, runtime_task_priority, nullptr);
 }
 
 }  // namespace firmware::target

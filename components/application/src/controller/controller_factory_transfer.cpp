@@ -1,4 +1,4 @@
-// Implements factory-data record selection and lifecycle behavior.
+/** @file @brief Implements factory-data record selection and lifecycle behavior. */
 #include "firmware/application/controller_factory_transfer.hpp"
 
 #include "firmware/application/controller_transfer.hpp"

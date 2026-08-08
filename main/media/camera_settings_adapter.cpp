@@ -1,4 +1,4 @@
-// Implements shared camera configuration loading through the SD file store.
+/** @file @brief Implements shared camera configuration loading through the SD file store. */
 #include "camera_settings_adapter.hpp"
 
 #include "configuration_file_store.hpp"

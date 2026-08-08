@@ -1,4 +1,4 @@
-// Implements recording segment lifecycle over camera, AVI, and FAT adapters.
+/** @file @brief Implements recording segment lifecycle over camera, AVI, and FAT adapters. */
 #include "recording_task_adapter.hpp"
 
 #include "hardware_adapter_factory.hpp"
@@ -25,6 +25,8 @@ namespace {
 
 const std::string recording_source_path =
     firmware::core::physical_sd_path("/videos/session.avi");
+constexpr std::uint32_t recording_task_stack_size = 6144U;
+constexpr UBaseType_t recording_task_priority = 3U;
 
 // Finalizes and durably writes one active in-memory AVI segment.
 void close_segment(std::optional<firmware::core::AviWriter>& writer,
@@ -86,7 +88,8 @@ void recording_task(void*) {
 }  // namespace
 
 void RecordingTaskAdapter::start() {
-    xTaskCreate(recording_task, "recording", 6144U, nullptr, 3U, nullptr);
+    xTaskCreate(recording_task, "recording", recording_task_stack_size, nullptr,
+                recording_task_priority, nullptr);
 }
 
 }  // namespace firmware::target

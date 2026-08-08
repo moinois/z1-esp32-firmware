@@ -1,4 +1,4 @@
-// Implements bounded multipart Content-Type boundary extraction.
+/** @file @brief Implements bounded multipart Content-Type boundary extraction. */
 #include "firmware/core/multipart_policy.hpp"
 
 namespace firmware::core {

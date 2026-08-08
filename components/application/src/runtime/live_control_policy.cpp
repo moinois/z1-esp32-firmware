@@ -1,4 +1,4 @@
-// Implements live-video start/stop ownership and cross-socket preemption.
+/** @file @brief Implements live-video start/stop ownership and cross-socket preemption. */
 #include "firmware/application/live_control_policy.hpp"
 
 namespace firmware::application {

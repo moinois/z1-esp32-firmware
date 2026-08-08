@@ -1,4 +1,4 @@
-// Implements compact, table-shaped CANopen dictionary storage and validation.
+/** @file @brief Implements compact, table-shaped CANopen dictionary storage and validation. */
 #include "firmware/core/canopen_dictionary.hpp"
 
 #include <algorithm>

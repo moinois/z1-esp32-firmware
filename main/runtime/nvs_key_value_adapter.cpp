@@ -1,4 +1,4 @@
-// Implements typed NVS access with explicit missing-key and commit handling.
+/** @file @brief Implements typed NVS access with explicit missing-key and commit handling. */
 #include "nvs_key_value_adapter.hpp"
 #include "mock_nvs_fault_adapter.hpp"
 

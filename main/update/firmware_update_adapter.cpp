@@ -1,4 +1,4 @@
-// Implements SD aggregate loading and application update service composition.
+/** @file @brief Implements SD aggregate loading and application update service composition. */
 #include "firmware_update_adapter.hpp"
 
 #include "controller_command_loop.hpp"
@@ -29,6 +29,9 @@ namespace firmware::target {
 namespace {
 
 constexpr char tag[] = "UPDATE";
+constexpr std::uint32_t update_monitor_interval_milliseconds = 250U;
+constexpr std::uint32_t update_task_stack_size = 8192U;
+constexpr UBaseType_t update_task_priority = 4U;
 std::atomic_bool update_requested{false};
 std::atomic<firmware::application::UpdateControllerMonitor*> controller_monitor{
     nullptr};
@@ -230,15 +233,15 @@ void update_task(void*) {
         if (update_requested.exchange(false)) {
             process_update_once();
         }
-        vTaskDelay(pdMS_TO_TICKS(250U));
+        vTaskDelay(pdMS_TO_TICKS(update_monitor_interval_milliseconds));
     }
 }
 
 }  // namespace
 
 void FirmwareUpdateAdapter::start() {
-    if (xTaskCreate(update_task, "firmware_update", 8192U, nullptr, 4U, nullptr) !=
-        pdPASS) {
+    if (xTaskCreate(update_task, "firmware_update", update_task_stack_size,
+                    nullptr, update_task_priority, nullptr) != pdPASS) {
         ESP_LOGW(tag, "could not create firmware update task");
     }
 }

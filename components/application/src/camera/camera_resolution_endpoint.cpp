@@ -1,4 +1,4 @@
-// Implements camera-resolution JSON validation, normalization, and responses.
+/** @file @brief Implements camera-resolution JSON validation, normalization, and responses. */
 #include "firmware/application/camera_resolution_endpoint.hpp"
 
 #include "firmware/core/json_input.hpp"

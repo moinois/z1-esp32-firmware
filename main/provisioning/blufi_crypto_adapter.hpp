@@ -1,4 +1,4 @@
-// Declares the mbedTLS implementation of portable BLUFI security operations.
+/** @file @brief Declares the mbedTLS implementation of portable BLUFI security operations. */
 #pragma once
 
 #include "firmware/application/blufi_security.hpp"
@@ -10,7 +10,7 @@
 
 namespace firmware::target {
 
-// Owns one bounded Diffie-Hellman and AES-CFB context for a BLE connection.
+/// Owns one bounded Diffie-Hellman and AES-CFB context for a BLE connection.
 class BlufiCryptoAdapter final : public firmware::application::BlufiSecurityPort {
 public:
     BlufiCryptoAdapter();
@@ -29,7 +29,7 @@ public:
     void send_negotiation_response(firmware::core::BytesView response) override;
     void report_error(std::uint8_t error) override;
 
-    // Returns and clears the most recent negotiation response.
+    /// Returns and clears the most recent negotiation response.
     std::optional<firmware::core::ByteVector> take_negotiation_response();
 
 private:

@@ -1,4 +1,4 @@
-// Declares POSIX file-transfer ports bound to one TCP client session.
+/** @file @brief Declares POSIX file-transfer ports bound to one TCP client session. */
 #pragma once
 
 #include "firmware/application/file_download.hpp"
@@ -17,7 +17,7 @@ class TcpClientSession;
 
 namespace firmware::target {
 
-// Implements upload filesystem effects and origin-preserving responses.
+/// Implements upload filesystem effects and origin-preserving responses.
 class TcpFileUploadAdapter final : public firmware::application::FileUploadPort {
 public:
     TcpFileUploadAdapter() = default;
@@ -42,7 +42,7 @@ private:
     PosixFile md5_;
 };
 
-// Implements download filesystem effects and origin-preserving responses.
+/// Implements download filesystem effects and origin-preserving responses.
 class TcpFileDownloadAdapter final : public firmware::application::FileDownloadPort {
 public:
     TcpFileDownloadAdapter() = default;

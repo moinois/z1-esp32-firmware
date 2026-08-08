@@ -1,4 +1,4 @@
-// Implements the bounded Wi-Fi diagnostic log on top of NVS string storage.
+/** @file @brief Implements the bounded Wi-Fi diagnostic log on top of NVS string storage. */
 #include "wifi_diagnostic_log.hpp"
 
 #include "esp_log.h"

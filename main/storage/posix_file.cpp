@@ -1,4 +1,4 @@
-// Implements shared POSIX VFS file ownership, bounded I/O, and hashing.
+/** @file @brief Implements shared POSIX VFS file ownership, bounded I/O, and hashing. */
 #include "posix_file.hpp"
 #include "sd_access_diagnostics.hpp"
 #include "firmware/core/sd_user_path.hpp"

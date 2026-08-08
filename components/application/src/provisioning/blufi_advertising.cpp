@@ -1,4 +1,4 @@
-// Implements deterministic conditional packing for the 31-byte BLE AD limit.
+/** @file @brief Implements deterministic conditional packing for the 31-byte BLE AD limit. */
 #include "firmware/application/blufi_advertising.hpp"
 
 #include <algorithm>

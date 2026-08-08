@@ -1,4 +1,4 @@
-// Implements bounded output, ANSI removal, timestamps, and nonblocking queueing.
+/** @file @brief Implements bounded output, ANSI removal, timestamps, and nonblocking queueing. */
 #include "firmware/application/diagnostic_capture.hpp"
 
 #include <algorithm>

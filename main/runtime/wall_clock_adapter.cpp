@@ -1,4 +1,4 @@
-// Implements wall-clock access through POSIX time APIs and runtime notification.
+/** @file @brief Implements wall-clock access through POSIX time APIs and runtime notification. */
 #include "wall_clock_adapter.hpp"
 
 #include "esp_log.h"

@@ -1,4 +1,4 @@
-// Declares shared NVS-backed implementations of runtime and serial-number ports.
+/** @file @brief Declares shared NVS-backed implementations of runtime and serial-number ports. */
 #pragma once
 
 #include "frame_sink.hpp"
@@ -7,6 +7,7 @@
 
 namespace firmware::target {
 
+/** Shared NVS-backed runtime-command operations independent of response transport. */
 class NvsRuntimeCommandPort : public firmware::application::RuntimeCommandPort {
 public:
     explicit NvsRuntimeCommandPort(FrameSink& sink);
@@ -27,6 +28,7 @@ private:
     std::string name_space_;
 };
 
+/** Shared factory serial-number persistence independent of response transport. */
 class NvsSerialNumberPort : public firmware::application::SerialNumberPort {
 public:
     explicit NvsSerialNumberPort(FrameSink& sink);

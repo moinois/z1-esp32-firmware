@@ -1,4 +1,4 @@
-// Routes shared NVS runtime behavior to one TCP session.
+/** @file @brief Routes shared NVS runtime behavior to one TCP session. */
 #include "tcp_runtime_command_adapter.hpp"
 #include "firmware/application/tcp_client_session.hpp"
 

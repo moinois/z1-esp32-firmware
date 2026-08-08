@@ -1,4 +1,4 @@
-// Implements little-endian 224-byte-header MJPEG AVI segment generation.
+/** @file @brief Implements little-endian 224-byte-header MJPEG AVI segment generation. */
 #include "firmware/core/avi_writer.hpp"
 
 #include <algorithm>

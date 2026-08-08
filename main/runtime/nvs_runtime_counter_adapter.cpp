@@ -1,4 +1,4 @@
-// Implements runtime-counter persistence over the shared NVS adapter.
+/** @file @brief Implements runtime-counter persistence over the shared NVS adapter. */
 #include "nvs_runtime_counter_adapter.hpp"
 
 namespace firmware::target {

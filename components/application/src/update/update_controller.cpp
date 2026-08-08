@@ -1,4 +1,4 @@
-// Implements controller update reset scheduling and transfer outcome effects.
+/** @file @brief Implements controller update reset scheduling and transfer outcome effects. */
 #include "firmware/application/update_controller.hpp"
 #include "firmware/core/sd_user_path.hpp"
 

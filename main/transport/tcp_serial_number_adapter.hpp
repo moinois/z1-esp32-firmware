@@ -1,4 +1,4 @@
-// Declares shared NVS serial-number behavior routed to one TCP session.
+/** @file @brief Declares shared NVS serial-number behavior routed to one TCP session. */
 #pragma once
 
 #include "nvs_command_ports.hpp"
@@ -7,6 +7,7 @@ namespace firmware::application { class TcpClientSession; }
 
 namespace firmware::target {
 
+/** Runs serial-number commands and responds to the originating TCP session. */
 class TcpSerialNumberAdapter final : public NvsSerialNumberPort,
                                      private FrameSink {
 public:

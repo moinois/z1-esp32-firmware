@@ -1,4 +1,4 @@
-// Declares an ESP-IDF scan port with responses routed to one TCP session.
+/** @file @brief Declares an ESP-IDF scan port with responses routed to one TCP session. */
 #pragma once
 
 #include "firmware/application/wlan_command.hpp"
@@ -9,10 +9,11 @@ class TcpClientSession;
 
 namespace firmware::target {
 
+/** Adapts the shared WLAN scan service to origin-aware TCP responses. */
 class TcpWlanScanAdapter final
     : public firmware::application::WlanCommandPort {
 public:
-    // Binds Wi-Fi scan results and response frames to one TCP client.
+    /// Binds Wi-Fi scan results and response frames to one TCP client.
     explicit TcpWlanScanAdapter(firmware::application::TcpClientSession& session);
 
     void stop_scan() override;

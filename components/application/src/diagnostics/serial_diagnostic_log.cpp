@@ -1,4 +1,4 @@
-// Implements opt-in serial.log mirroring without changing the UART destination.
+/** @file @brief Implements opt-in serial.log mirroring without changing the UART destination. */
 #include "firmware/application/serial_diagnostic_log.hpp"
 
 #include "firmware/core/sd_user_path.hpp"

@@ -1,4 +1,4 @@
-// Implements preview path, file, AVI, buffer, and session admission rules.
+/** @file @brief Implements preview path, file, AVI, buffer, and session admission rules. */
 #include "firmware/application/preview_open.hpp"
 
 #include "firmware/core/preview_path_policy.hpp"

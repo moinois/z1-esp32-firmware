@@ -1,4 +1,4 @@
-// Implements byte-exact common framing without exceptions or target dependencies.
+/** @file @brief Implements byte-exact common framing without exceptions or target dependencies. */
 #include "firmware/core/frame.hpp"
 
 #include "firmware/core/crc.hpp"

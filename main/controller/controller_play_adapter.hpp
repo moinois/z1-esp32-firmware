@@ -1,4 +1,4 @@
-// Declares the POSIX file and UART port used by streamed-play controller logic.
+/** @file @brief Declares the POSIX file and UART port used by streamed-play controller logic. */
 #pragma once
 
 #include "firmware/application/play_controller.hpp"
@@ -8,11 +8,11 @@
 namespace firmware::target {
 class ControllerChannelAdapter;
 
-// Bridges PlayControllerPort and PlayLineSource to one controller UART task.
+/// Bridges PlayControllerPort and PlayLineSource to one controller UART task.
 class ControllerPlayAdapter final
     : public firmware::application::PlayControllerPort {
 public:
-    // Binds play responses and file reads to the controller UART.
+    /// Binds play responses and file reads to the controller UART.
     explicit ControllerPlayAdapter(ControllerChannelAdapter& channel);
     ~ControllerPlayAdapter() override;
 

@@ -1,4 +1,4 @@
-// Implements nonfatal mount lifecycle, three-sample debounce, and capacity policy.
+/** @file @brief Implements nonfatal mount lifecycle, three-sample debounce, and capacity policy. */
 #include "firmware/application/sd_card_lifecycle.hpp"
 #include "firmware/core/sd_user_path.hpp"
 

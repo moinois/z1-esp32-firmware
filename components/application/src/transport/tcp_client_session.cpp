@@ -1,4 +1,4 @@
-// Implements per-connection framing and outgoing queue composition.
+/** @file @brief Implements per-connection framing and outgoing queue composition. */
 #include "firmware/application/tcp_client_session.hpp"
 
 namespace firmware::application {

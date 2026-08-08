@@ -1,4 +1,4 @@
-// Implements exact startup and sampled CAN digital-output diagnostics.
+/** @file @brief Implements exact startup and sampled CAN digital-output diagnostics. */
 #include "firmware/application/can_output_monitor.hpp"
 
 #include <cinttypes>

@@ -1,4 +1,4 @@
-// Declares ESP-IDF BLUFI event translation into the portable provisioning policy.
+/** @file @brief Declares ESP-IDF BLUFI event translation into the portable provisioning policy. */
 #pragma once
 
 #include "esp_blufi_api.h"
@@ -9,12 +9,12 @@
 
 namespace firmware::target {
 
-// Owns the callback table while forwarding only supported product events.
+/// Owns the callback table while forwarding only supported product events.
 class BlufiCallbackAdapter {
 public:
     explicit BlufiCallbackAdapter(firmware::application::BleProvisioning& provisioning);
 
-    // Returns the stable callback table consumed by esp_blufi_register_callbacks.
+    /// Returns the stable callback table consumed by esp_blufi_register_callbacks.
     const esp_blufi_callbacks_t& callbacks() const;
 
 private:

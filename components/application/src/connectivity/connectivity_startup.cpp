@@ -1,4 +1,4 @@
-// Implements exact station-scan then concurrent AP/station startup policy.
+/** @file @brief Implements exact station-scan then concurrent AP/station startup policy. */
 #include "firmware/application/connectivity_startup.hpp"
 
 #include "firmware/application/connectivity_defaults.hpp"

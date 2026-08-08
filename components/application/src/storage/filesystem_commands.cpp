@@ -1,4 +1,4 @@
-// Implements primary filesystem mutations, best-effort cache effects, and replies.
+/** @file @brief Implements primary filesystem mutations, best-effort cache effects, and replies. */
 #include "firmware/application/filesystem_commands.hpp"
 
 #include "firmware/core/file_transfer_paths.hpp"

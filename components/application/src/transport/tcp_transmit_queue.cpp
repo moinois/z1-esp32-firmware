@@ -1,4 +1,4 @@
-// Implements the fixed-capacity, whole-frame TCP transmit queue.
+/** @file @brief Implements the fixed-capacity, whole-frame TCP transmit queue. */
 #include "firmware/application/tcp_transmit_queue.hpp"
 #include "firmware/core/protocol_constants.hpp"
 

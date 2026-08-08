@@ -1,4 +1,4 @@
-// Implements saved-credential loading and bounded reconnect tasks with ESP-IDF.
+/** @file @brief Implements saved-credential loading and bounded reconnect tasks with ESP-IDF. */
 #include "automatic_connection_adapter.hpp"
 
 #include "nvs_key_value_adapter.hpp"

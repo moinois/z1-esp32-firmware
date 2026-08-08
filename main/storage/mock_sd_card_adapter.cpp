@@ -1,4 +1,4 @@
-// Implements a volatile FAT block device in PSRAM for target-level SD tests.
+/** @file @brief Implements a volatile FAT block device in PSRAM for target-level SD tests. */
 #include "mock_sd_card_adapter.hpp"
 
 #include "diskio_impl.h"

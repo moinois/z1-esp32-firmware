@@ -1,4 +1,4 @@
-// Implements deterministic camera behavior without physical camera access.
+/** @file @brief Implements deterministic camera behavior without physical camera access. */
 #include "mock_camera_adapter.hpp"
 
 #include "camera_settings_adapter.hpp"

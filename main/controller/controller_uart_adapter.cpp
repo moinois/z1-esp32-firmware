@@ -1,4 +1,4 @@
-// Implements controller UART access using the ESP-IDF UART driver.
+/** @file @brief Implements controller UART access using the ESP-IDF UART driver. */
 #include "controller_uart_adapter.hpp"
 
 #include "firmware/application/controller_uart_config.hpp"

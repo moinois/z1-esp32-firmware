@@ -1,4 +1,4 @@
-// Routes shared NVS runtime behavior as framed UART responses.
+/** @file @brief Routes shared NVS runtime behavior as framed UART responses. */
 #include "controller_runtime_command_adapter.hpp"
 #include "controller_channel_adapter.hpp"
 #include "esp_log.h"

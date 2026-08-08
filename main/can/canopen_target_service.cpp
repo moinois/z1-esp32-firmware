@@ -1,4 +1,4 @@
-// Runs the portable CANopen service through ESP-IDF TWAI and FreeRTOS adapters.
+/** @file @brief Runs the portable CANopen service through ESP-IDF TWAI and FreeRTOS adapters. */
 #include "canopen_target_service.hpp"
 
 #include "esp_log.h"

@@ -1,4 +1,4 @@
-// Declares POSIX-backed controller transfer ports using one serialized UART.
+/** @file @brief Declares POSIX-backed controller transfer ports using one serialized UART. */
 #pragma once
 
 #include "firmware/application/controller_config_transfer.hpp"
@@ -8,13 +8,13 @@
 namespace firmware::target {
 class ControllerChannelAdapter;
 
-// Provides common file reads and framed UART responses for all transfer families.
+/// Provides common file reads and framed UART responses for all transfer families.
 class ControllerTransferAdapter final
     : public firmware::application::ControllerFirmwarePort,
       public firmware::application::ControllerConfigPort,
       public firmware::application::ControllerFactoryPort {
 public:
-    // Binds the adapter to the controller UART owned by the command task.
+    /// Binds the adapter to the controller UART owned by the command task.
     explicit ControllerTransferAdapter(ControllerChannelAdapter& channel);
 
     bool file_exists(std::string_view path) override;

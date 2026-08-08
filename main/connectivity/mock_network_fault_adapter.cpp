@@ -1,4 +1,4 @@
-// Implements deterministic socket failure controls without replacing lwIP.
+/** @file @brief Implements deterministic socket failure controls without replacing lwIP. */
 #include "mock_network_fault_adapter.hpp"
 
 #include "hardware_adapter_factory.hpp"

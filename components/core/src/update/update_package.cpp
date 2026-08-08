@@ -1,4 +1,4 @@
-// Implements overflow-safe aggregate header and checksum validation.
+/** @file @brief Implements overflow-safe aggregate header and checksum validation. */
 #include "firmware/core/update_package.hpp"
 
 namespace firmware::core {

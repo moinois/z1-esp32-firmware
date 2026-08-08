@@ -1,4 +1,4 @@
-// Declares a POSIX filesystem port whose responses target one TCP session.
+/** @file @brief Declares a POSIX filesystem port whose responses target one TCP session. */
 #pragma once
 
 #include "firmware/application/filesystem_commands.hpp"
@@ -9,10 +9,11 @@ class TcpClientSession;
 
 namespace firmware::target {
 
+/** Executes filesystem mutations and returns framed results to one TCP origin. */
 class TcpFilesystemAdapter final
     : public firmware::application::FilesystemCommandPort {
 public:
-    // Binds filesystem mutation responses to the originating TCP session.
+    /// Binds filesystem mutation responses to the originating TCP session.
     explicit TcpFilesystemAdapter(firmware::application::TcpClientSession& session);
 
     bool create_directory(std::string_view path, std::uint32_t mode) override;

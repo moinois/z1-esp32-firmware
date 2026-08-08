@@ -1,4 +1,4 @@
-// Implements storage retention through POSIX VFS and a bounded FreeRTOS task.
+/** @file @brief Implements storage retention through POSIX VFS and a bounded FreeRTOS task. */
 #include "storage_retention_adapter.hpp"
 
 #include "esp_log.h"
@@ -26,6 +26,8 @@ constexpr char tag[] = "RETENTION";
 const std::string videos_directory =
     firmware::core::physical_sd_path("/videos");
 constexpr std::uint32_t retention_interval_milliseconds = 60000U;
+constexpr std::uint32_t retention_task_stack_size = 4096U;
+constexpr UBaseType_t retention_task_priority = 3U;
 
 class PosixRetentionPort final : public firmware::application::StorageRetentionPort {
 public:
@@ -78,7 +80,8 @@ void retention_task(void*) {
 }  // namespace
 
 void StorageRetentionAdapter::start() {
-    xTaskCreate(retention_task, "retention", 4096U, nullptr, 3U, nullptr);
+    xTaskCreate(retention_task, "retention", retention_task_stack_size, nullptr,
+                retention_task_priority, nullptr);
 }
 
 }  // namespace firmware::target

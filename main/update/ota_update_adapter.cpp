@@ -1,4 +1,4 @@
-// Implements bounded ESP-IDF OTA writes and staged controller-image effects.
+/** @file @brief Implements bounded ESP-IDF OTA writes and staged controller-image effects. */
 #include "ota_update_adapter.hpp"
 
 #include "esp_log.h"

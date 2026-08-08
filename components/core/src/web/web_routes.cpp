@@ -1,4 +1,4 @@
-// Implements exact endpoint matching and GET-only static fallback behavior.
+/** @file @brief Implements exact endpoint matching and GET-only static fallback behavior. */
 #include "firmware/core/web_routes.hpp"
 
 #include "firmware/core/http_policy.hpp"

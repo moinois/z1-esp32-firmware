@@ -1,4 +1,4 @@
-// Implements origin-aware WLAN response transport for TCP clients.
+/** @file @brief Implements origin-aware WLAN response transport for TCP clients. */
 #include "tcp_wlan_connection_adapter.hpp"
 
 #include "freertos/FreeRTOS.h"

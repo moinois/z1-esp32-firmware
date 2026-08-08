@@ -1,4 +1,4 @@
-// Implements the stable mapping from command recognition to service families.
+/** @file @brief Implements the stable mapping from command recognition to service families. */
 #include "firmware/application/local_command_classifier.hpp"
 
 namespace firmware::application {

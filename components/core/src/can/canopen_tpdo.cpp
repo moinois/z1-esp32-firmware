@@ -1,4 +1,4 @@
-// Implements event-timed TPDO payload construction from mapped dictionary values.
+/** @file @brief Implements event-timed TPDO payload construction from mapped dictionary values. */
 #include "firmware/core/canopen_tpdo.hpp"
 
 #include <cstddef>

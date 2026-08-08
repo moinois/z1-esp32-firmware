@@ -1,4 +1,4 @@
-// Implements ESP-IDF provisioning actions behind the portable BLUFI policy.
+/** @file @brief Implements ESP-IDF provisioning actions behind the portable BLUFI policy. */
 #include "blufi_provisioning_adapter.hpp"
 
 #include "esp_blufi.h"

@@ -1,4 +1,4 @@
-// Implements TCP-origin play preparation over the mounted POSIX VFS.
+/** @file @brief Implements TCP-origin play preparation over the mounted POSIX VFS. */
 #include "tcp_play_adapter.hpp"
 
 #include "firmware/application/tcp_client_session.hpp"

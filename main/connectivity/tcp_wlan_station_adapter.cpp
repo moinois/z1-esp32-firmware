@@ -1,4 +1,4 @@
-// Implements ESP-IDF station configuration, association, and IPv4 polling.
+/** @file @brief Implements ESP-IDF station configuration, association, and IPv4 polling. */
 #include "tcp_wlan_station_adapter.hpp"
 
 #include "nvs_key_value_adapter.hpp"

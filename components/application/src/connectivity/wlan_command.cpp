@@ -1,4 +1,4 @@
-// Implements exact user Wi-Fi scan sequencing and host response framing.
+/** @file @brief Implements exact user Wi-Fi scan sequencing and host response framing. */
 #include "firmware/application/wlan_command.hpp"
 
 #include "firmware/application/connectivity_defaults.hpp"

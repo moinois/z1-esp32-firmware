@@ -1,4 +1,4 @@
-// Implements controller staging and mainboard OTA application state ordering.
+/** @file @brief Implements controller staging and mainboard OTA application state ordering. */
 #include "firmware/application/update_application.hpp"
 #include "firmware/application/update_phase.hpp"
 #include "firmware/core/sd_user_path.hpp"

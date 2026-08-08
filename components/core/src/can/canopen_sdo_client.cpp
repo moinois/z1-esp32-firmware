@@ -1,4 +1,4 @@
-// Implements exact little-endian expedited SDO client wire codecs.
+/** @file @brief Implements exact little-endian expedited SDO client wire codecs. */
 #include "firmware/core/canopen_sdo_client.hpp"
 
 namespace firmware::core {

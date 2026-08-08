@@ -1,4 +1,4 @@
-// Implements independent single-client ownership with specification identities.
+/** @file @brief Implements independent single-client ownership with specification identities. */
 #include "firmware/application/ownership.hpp"
 
 namespace firmware::application {

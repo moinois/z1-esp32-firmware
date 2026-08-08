@@ -1,4 +1,4 @@
-// Declares target runtime status sources and shared controller snapshots.
+/** @file @brief Declares target runtime status sources and shared controller snapshots. */
 #pragma once
 
 #include "firmware/application/controller_snapshots.hpp"
@@ -10,11 +10,11 @@ class Router;
 
 namespace firmware::target {
 
-// Provides live target sources to the portable aggregate status composer.
+/// Provides live target sources to the portable aggregate status composer.
 class RuntimeStatusAdapter final
     : public firmware::application::AggregatedStatusPort {
 public:
-    // Binds status ownership and recording sources to the application router/state.
+    /// Binds status ownership and recording sources to the application router/state.
     explicit RuntimeStatusAdapter(firmware::application::Router& router);
 
     bool host_transfer_active() const override;
@@ -28,13 +28,13 @@ private:
     firmware::application::Router& router_;
 };
 
-// Returns the process-wide controller snapshot store used by TCP and UART tasks.
+/// Returns the process-wide controller snapshot store used by TCP and UART tasks.
 firmware::application::ControllerSnapshots& shared_controller_snapshots();
 
-// Publishes the newest update phase for aggregate status composition.
+/// Publishes the newest update phase for aggregate status composition.
 void publish_runtime_update_phase(std::uint8_t phase);
 
-// Publishes controller-transfer phase and rounded progress for machine status.
+/// Publishes controller-transfer phase and rounded progress for machine status.
 void publish_controller_transfer_status(std::uint8_t phase,
                                         std::uint32_t progress);
 

@@ -1,4 +1,4 @@
-// Implements escaped, whitespace-free preview command response JSON.
+/** @file @brief Implements escaped, whitespace-free preview command response JSON. */
 #include "firmware/application/preview_responses.hpp"
 
 namespace firmware::application {
