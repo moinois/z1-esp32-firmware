@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-BLUFI_NAME = "BLUFI_DEVICE"
+BLUFI_NAME_PREFIX = "MK_"
 BLUFI_SERVICE = "0000ffff-0000-1000-8000-00805f9b34fb"
 BLUFI_WRITE = "0000ff01-0000-1000-8000-00805f9b34fb"
 BLUFI_NOTIFY = "0000ff02-0000-1000-8000-00805f9b34fb"
@@ -24,6 +24,22 @@ BLUFI_SALT = bytes.fromhex(
 def _require_ble_fixture() -> None:
     if os.getenv("Z1_HIL_BLE") != "1":
         pytest.skip("declare the host BLE adapter with Z1_HIL_BLE=1")
+
+
+def _expected_blufi_name() -> str | None:
+    machine_name = os.getenv("Z1_HIL_MACHINE_NAME")
+    if machine_name is None:
+        return None
+    return BLUFI_NAME_PREFIX + machine_name.encode()[:23].decode(
+        errors="surrogateescape"
+    )
+
+
+def _matches_blufi_name(name: str | None) -> bool:
+    if name is None:
+        return False
+    expected = _expected_blufi_name()
+    return name == expected if expected is not None else name.startswith(BLUFI_NAME_PREFIX)
 
 
 async def _find_blufi():
@@ -38,14 +54,17 @@ async def _find_blufi():
             f"permission for the terminal/Codex process: {error}"
         )
     for device, advertisement in devices.values():
-        if device.name == BLUFI_NAME or advertisement.local_name == BLUFI_NAME:
+        if _matches_blufi_name(device.name) or _matches_blufi_name(
+            advertisement.local_name
+        ):
             return device, advertisement
     return None
 
 
 async def _require_blufi():
     found = await _find_blufi()
-    assert found is not None, f"{BLUFI_NAME} was not advertised within 10 seconds"
+    expected = _expected_blufi_name() or f"{BLUFI_NAME_PREFIX}<machine-name>"
+    assert found is not None, f"{expected} was not advertised within 10 seconds"
     return found
 
 
@@ -257,9 +276,20 @@ def _assert_wifi_records(payload: bytes) -> None:
 def test_blufi_advertises_required_identity_and_service() -> None:
     _require_ble_fixture()
     found = asyncio.run(_require_blufi())
-    _, advertisement = found
+    device, advertisement = found
+    advertised_name = advertisement.local_name or device.name
+    assert advertised_name is not None
+    expected_name = _expected_blufi_name()
+    if expected_name is not None:
+        assert advertised_name == expected_name
+    assert advertised_name.startswith(BLUFI_NAME_PREFIX)
+    suffix_size = len(advertised_name.encode()) - len(BLUFI_NAME_PREFIX)
+    assert 0 <= suffix_size <= 23
     advertised = {value.lower() for value in advertisement.service_uuids}
-    assert BLUFI_SERVICE in advertised
+    if suffix_size <= 16:
+        assert BLUFI_SERVICE in advertised
+    else:
+        assert BLUFI_SERVICE not in advertised
 
 
 @pytest.mark.hardware
@@ -309,7 +339,7 @@ def test_blufi_resumes_advertising_after_disconnect() -> None:
         assert not client.is_connected
         await asyncio.sleep(0.5)
         assert await _find_blufi() is not None, (
-            f"{BLUFI_NAME} did not resume advertising after disconnect"
+            "the machine-named BLUFI device did not resume advertising after disconnect"
         )
 
     asyncio.run(validate())
@@ -708,7 +738,7 @@ def test_blufi_recovers_advertising_after_target_reset() -> None:
                 await client.disconnect()
         await asyncio.sleep(6.0)
         assert await _find_blufi() is not None, (
-            f"{BLUFI_NAME} did not advertise after target reset"
+            "the machine-named BLUFI device did not advertise after target reset"
         )
 
     asyncio.run(validate())
