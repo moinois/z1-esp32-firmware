@@ -33,6 +33,7 @@
 #include "tcp_discovery_adapter.hpp"
 #include "mock_sd_card_adapter.hpp"
 #include "mock_nvs_fault_adapter.hpp"
+#include "mock_network_fault_adapter.hpp"
 #include "firmware_update_adapter.hpp"
 #include "firmware/application/filesystem_commands.hpp"
 #include "firmware/application/file_upload.hpp"
@@ -320,6 +321,7 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             && match.kind != firmware::core::CommandKind::diagnose
             && match.kind != firmware::core::CommandKind::mock_sd_control
             && match.kind != firmware::core::CommandKind::mock_nvs_control
+            && match.kind != firmware::core::CommandKind::mock_network_control
             && match.kind != firmware::core::CommandKind::version) {
             return;
         }
@@ -399,6 +401,11 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
                  {response.begin(), response.end()}}));
         } else if (match.kind == firmware::core::CommandKind::mock_nvs_control) {
             const std::string response = handle_mock_nvs_control(command);
+            static_cast<void>(session.queue_frame(
+                {firmware::core::protocol::text_response,
+                 {response.begin(), response.end()}}));
+        } else if (match.kind == firmware::core::CommandKind::mock_network_control) {
+            const std::string response = handle_mock_network_control(command);
             static_cast<void>(session.queue_frame(
                 {firmware::core::protocol::text_response,
                  {response.begin(), response.end()}}));
@@ -550,6 +557,16 @@ struct TcpClientContext {
 bool send_tcp_bytes(int client, firmware::core::BytesView bytes) {
     firmware::application::TcpFrameSender sender;
     return sender.send(bytes, [client](firmware::core::BytesView remaining) {
+        if (consume_network_fault(
+                firmware::application::NetworkFault::tcp_temporary_send)) {
+            return firmware::application::TcpSendResult{
+                firmware::application::TcpSendStatus::temporary_failure, 0U};
+        }
+        if (consume_network_fault(
+                firmware::application::NetworkFault::tcp_permanent_send)) {
+            return firmware::application::TcpSendResult{
+                firmware::application::TcpSendStatus::permanent_failure, 0U};
+        }
         const ssize_t result = send(client, remaining.data(), remaining.size(), 0);
         if (result > 0) {
             return firmware::application::TcpSendResult{

@@ -76,6 +76,15 @@ TEST_CASE(cmd_mock_nvs_control_exposes_only_its_action_as_argument) {
     REQUIRE(match.accepted);
 }
 
+TEST_CASE(cmd_mock_network_control_exposes_only_its_action_as_argument) {
+    const ByteVector command{'m', 'o', 'c', 'k', '-', 'n', 'e', 't', ' ',
+                             'f', 'a', 'i', 'l', '-', 't', 'c', 'p'};
+    const auto match = firmware::core::recognize_command(command);
+    REQUIRE_EQ(match.kind, firmware::core::CommandKind::mock_network_control);
+    REQUIRE_EQ(match.argument_offset, 8U);
+    REQUIRE(match.accepted);
+}
+
 TEST_CASE(cmd_003_only_the_named_commands_are_unbounded) {
     const char* unlimited[] = {"?", "ftype", "M951", "M952", "upgrade",
                                "reset", "diagnose", "version"};

@@ -16,6 +16,7 @@
 #include "firmware/application/recording_commands.hpp"
 #include "mock_sd_card_adapter.hpp"
 #include "mock_nvs_fault_adapter.hpp"
+#include "mock_network_fault_adapter.hpp"
 #include "firmware/application/serial_number.hpp"
 #include "firmware/application/runtime_commands.hpp"
 #include "firmware/application/local_command_queue.hpp"
@@ -1177,6 +1178,11 @@ void usb_local_command_task(void* /* unused */) {
             static_cast<void>(usb_frame_sink.send_frame(
                 {firmware::core::protocol::text_response,
                  {response.begin(), response.end()}}));
+        } else if (match.kind == firmware::core::CommandKind::mock_network_control) {
+            const std::string response = handle_mock_network_control(command);
+            static_cast<void>(usb_frame_sink.send_frame(
+                {firmware::core::protocol::text_response,
+                 {response.begin(), response.end()}}));
         } else if (match.kind == firmware::core::CommandKind::version) {
             const auto response = shared_controller_snapshots().version_reply();
             static_cast<void>(protocol_state.transmit_queue().enqueue(
@@ -1519,6 +1525,10 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::mock_nvs_control) {
+                static_cast<void>(enqueue_usb_local_command(frame));
+                continue;
+            }
+            if (match.kind == firmware::core::CommandKind::mock_network_control) {
                 static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }

@@ -245,6 +245,16 @@ live build` and cannot enable these callbacks. The latched behavior is
 intentional because a single sector error can be consumed by FatFS metadata or
 cache activity before the public operation under test reaches its payload.
 
+Network fault control is available only when the network mock is selected with
+`--mock network` (or as one item in a comma-separated mock selection). The
+native USB commands `mock-net fail-tcp-temporary`, `fail-tcp-permanent`,
+`fail-discovery-open`, and `fail-discovery-send` arm one deterministic socket
+boundary failure; `status` and `clear` inspect or cancel it. Run the target
+checks with `Z1_HIL_MOCK_NETWORK=1 Z1_ALLOW_MUTATION=1`. They verify whole-frame
+TCP retry, isolation and recovery after a permanent send error, discovery
+socket recreation, and resumed periodic UDP output. Live builds expose the
+command only to report that the test adapter is unavailable.
+
 The 2026-08-01 HIL run verified unmounted access from USB and TCP, ENODEV
 diagnostic selection before any host-directory VFS fallback, rejected upload,
 fresh remount and transfer recovery, deterministic 16 KiB read failure,

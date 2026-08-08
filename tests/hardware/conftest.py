@@ -137,6 +137,14 @@ def tcp_client(tcp_host: str) -> TcpProtocolClient:
 
 
 @pytest.fixture(scope="session")
+def network_mock_fixture() -> None:
+    """Requires firmware built with the deterministic network fault adapter."""
+
+    if os.getenv("Z1_HIL_MOCK_NETWORK") != "1":
+        pytest.skip("network fault HIL requires Z1_HIL_MOCK_NETWORK=1")
+
+
+@pytest.fixture(scope="session")
 def camera_fixture(tcp_host: str) -> None:
     """Detects an initialized camera through its public runtime API."""
     connection = http.client.HTTPConnection(tcp_host, 80, timeout=5.0)

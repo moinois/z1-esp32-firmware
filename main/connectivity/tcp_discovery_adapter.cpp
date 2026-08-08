@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "tcp_control_adapter.hpp"
+#include "mock_network_fault_adapter.hpp"
 
 #include <arpa/inet.h>
 #include <cerrno>
@@ -23,6 +24,10 @@ class EspDiscoveryPort final : public firmware::application::DiscoveryPort {
 public:
     bool open_long_lived_socket() override {
         if (long_socket_ >= 0) return true;
+        if (consume_network_fault(
+                firmware::application::NetworkFault::discovery_open)) {
+            return false;
+        }
         long_socket_ = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         return long_socket_ >= 0;
     }
@@ -73,6 +78,10 @@ private:
     static void send_datagram(int socket_fd, std::string_view destination,
                               std::uint16_t port, std::string_view payload) {
         if (socket_fd < 0) return;
+        if (consume_network_fault(
+                firmware::application::NetworkFault::discovery_send)) {
+            return;
+        }
         sockaddr_in address{};
         address.sin_family = AF_INET;
         address.sin_port = htons(port);
@@ -116,6 +125,10 @@ void update_tcp_discovery_station(std::string_view ipv4,
 
 void clear_tcp_discovery_station() {
     discovery_service.station_disconnected();
+}
+
+void recreate_tcp_discovery_socket() {
+    discovery_service.recreate_socket();
 }
 
 void start_tcp_discovery_task() {

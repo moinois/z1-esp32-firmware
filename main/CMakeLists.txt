@@ -51,6 +51,7 @@ idf_component_register(
         "connectivity/tcp_wlan_station_adapter.cpp"
         "connectivity/tcp_wlan_connection_adapter.cpp"
         "connectivity/tcp_discovery_adapter.cpp"
+        "connectivity/mock_network_fault_adapter.cpp"
         "connectivity/wlan_event_adapter.cpp"
         "connectivity/wifi_diagnostic_log.cpp"
         "connectivity/connectivity_startup_adapter.cpp"

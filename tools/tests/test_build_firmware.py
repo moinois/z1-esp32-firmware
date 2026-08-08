@@ -119,6 +119,7 @@ class BuildFirmwareTests(unittest.TestCase):
                 "camera": "CONFIG_Z1_MOCK_CAMERA_HARDWARE",
                 "controller": "CONFIG_Z1_MOCK_CONTROLLER_HARDWARE",
                 "nvs": "CONFIG_Z1_MOCK_NVS_HARDWARE",
+                "network": "CONFIG_Z1_MOCK_NETWORK_HARDWARE",
                 "sd": "CONFIG_Z1_MOCK_SD_HARDWARE",
             },
         )

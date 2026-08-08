@@ -199,6 +199,25 @@ TEST_CASE(disc_005_and_006_address_and_disconnect_recreate_with_event_burst) {
                std::string("192.168.4.255"));
 }
 
+TEST_CASE(disc_socket_recreation_preserves_station_destination) {
+    FakeDiscoveryPort port;
+    DiscoveryService service(port, "machine");
+    service.station_address_assigned("172.16.1.2", "255.255.255.0",
+                                     "<Idle|X:1>", 0U);
+    service.periodic_cycle("<Idle|X:1>", 0U);
+    port.operations.clear();
+    port.long_datagrams.clear();
+
+    service.recreate_socket();
+    service.periodic_cycle("<Idle|X:1>", 0U);
+
+    REQUIRE_EQ(port.operations[0], std::string("close-long"));
+    REQUIRE_EQ(port.operations[1], std::string("open-long"));
+    REQUIRE_EQ(port.long_datagrams.size(), 2U);
+    REQUIRE_EQ(port.long_datagrams.front().destination,
+               std::string("172.16.1.255"));
+}
+
 TEST_CASE(disc_007_and_008_command_burst_delays_after_all_three_or_silently_omits) {
     FakeDiscoveryPort port;
     DiscoveryService service(port, "machine");

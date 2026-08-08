@@ -32,6 +32,7 @@ add_executable(
     diagnostics/test_diagnostic_log_writer.cpp
     diagnostics/test_serial_diagnostic_log.cpp
     connectivity/test_discovery.cpp
+    connectivity/test_network_fault_injection.cpp
     protocol/test_frame.cpp
     configuration/test_live_configuration.cpp
     runtime/test_m942_exercise.cpp

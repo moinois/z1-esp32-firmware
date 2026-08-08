@@ -18,6 +18,9 @@ void update_tcp_discovery_station(std::string_view ipv4,
 // Clears station-specific discovery state after a successful disconnect.
 void clear_tcp_discovery_station();
 
+// Recreates the retained socket without clearing the station destination.
+void recreate_tcp_discovery_socket();
+
 // Starts the periodic discovery task after networking has been initialized.
 void start_tcp_discovery_task();
 

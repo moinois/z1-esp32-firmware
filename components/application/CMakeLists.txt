@@ -27,6 +27,7 @@ set(APPLICATION_SOURCES
     src/diagnostics/diagnostic_log_writer.cpp
     src/diagnostics/serial_diagnostic_log.cpp
     src/connectivity/discovery_service.cpp
+    src/connectivity/network_fault_injection.cpp
     src/storage/file_transfer_admission.cpp
     src/storage/file_download.cpp
     src/storage/file_hash_command.cpp

@@ -66,6 +66,9 @@ public:
     // Clears the station destination and requests long-lived socket recreation.
     void station_disconnected();
 
+    // Requests long-lived socket recreation without changing station state.
+    void recreate_socket();
+
     // Sends the command-triggered burst with a delay after every copy.
     void send_command_burst(
         std::optional<std::string_view> controller_status,

@@ -9,6 +9,7 @@ struct HardwareAdapterSelection {
     bool mock_camera_hardware;
     bool mock_controller_hardware;
     bool mock_nvs_hardware;
+    bool mock_network_hardware;
 
     // Selects the mock SD backend when either the global or specific switch is active.
     constexpr bool mock_sd() const {
@@ -28,6 +29,11 @@ struct HardwareAdapterSelection {
     // Enables controlled NVS faults without replacing persistent flash storage.
     constexpr bool mock_nvs() const {
         return mock_all_hardware || mock_nvs_hardware;
+    }
+
+    // Enables one-shot socket failures while retaining the live network stack.
+    constexpr bool mock_network() const {
+        return mock_all_hardware || mock_network_hardware;
     }
 };
 

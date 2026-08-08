@@ -20,6 +20,9 @@ public:
 
     // Returns whether test-only NVS boundary failure control is enabled.
     static bool nvs_faults_enabled();
+
+    // Returns whether one-shot target socket failures are enabled.
+    static bool network_faults_enabled();
 };
 
 }  // namespace firmware::target

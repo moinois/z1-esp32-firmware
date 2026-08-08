@@ -81,6 +81,10 @@ void DiscoveryService::station_disconnected() {
     recreate_long_socket_ = true;
 }
 
+void DiscoveryService::recreate_socket() {
+    recreate_long_socket_ = true;
+}
+
 void DiscoveryService::send_command_burst(
     std::optional<std::string_view> controller_status,
     std::size_t active_tcp_clients) {
