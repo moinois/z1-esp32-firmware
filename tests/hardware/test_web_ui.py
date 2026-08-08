@@ -5,6 +5,7 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import time
 
 import pytest
 
@@ -18,11 +19,12 @@ def _request(
     path: str,
     body: bytes | None = None,
     content_type: str | None = None,
+    timeout: float = 8.0,
 ) -> tuple[int, str, bytes]:
     """Performs one bounded HTTP request against the main web server."""
 
     headers = {"Content-Type": content_type} if content_type else {}
-    connection = http.client.HTTPConnection(host, 80, timeout=8.0)
+    connection = http.client.HTTPConnection(host, 80, timeout=timeout)
     try:
         connection.request(method, path, body=body, headers=headers)
         response = connection.getresponse()
@@ -47,6 +49,31 @@ def test_installed_configuration_ui_assets(tcp_host: str) -> None:
         assert status == 200
         assert content_type == expected_type
         assert marker in body
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.http
+@pytest.mark.requirement("WEB-011")
+def test_large_static_asset_completes_without_transport_stall(tcp_host: str) -> None:
+    """Times an explicitly selected local asset without publishing its path."""
+
+    asset_path = os.getenv("Z1_HIL_STATIC_ASSET")
+    if not asset_path:
+        pytest.skip("set Z1_HIL_STATIC_ASSET to an installed static asset path")
+    if not asset_path.startswith("/"):
+        pytest.fail("Z1_HIL_STATIC_ASSET must be an absolute HTTP path")
+    timeout = float(os.getenv("Z1_HIL_STATIC_ASSET_TIMEOUT", "60"))
+    if timeout <= 0.0:
+        pytest.fail("Z1_HIL_STATIC_ASSET_TIMEOUT must be greater than zero")
+
+    started = time.monotonic()
+    status, _, body = _request(tcp_host, "GET", asset_path, timeout=timeout)
+    elapsed = time.monotonic() - started
+
+    assert status == 200
+    assert body
+    assert elapsed < timeout, f"static response stalled for {elapsed:.3f} seconds"
 
 
 @pytest.mark.hardware

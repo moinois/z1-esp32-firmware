@@ -700,3 +700,17 @@ upload/download. Separate malformed-protocol injection sends 51 empty data
 frames and then sequence zero in a fresh session; both exact abort paths and
 subsequent source download pass. Reports are `build/hil-download-timeout.json`
 and `build/hil-download-errors.json`.
+
+An alternate local Web UI trace was analysed on 2026-08-08 without adding its
+copyrighted files or paths to the repository. The UI attempted an undocumented
+WebSocket connection on port 81, while the implemented and specified video
+WebSocket on port 82 upgraded successfully. No port-81 endpoint was added
+because its protocol is unknown and WEB-001/WEB-003 only define ports 80 and
+82. The observed MIME types and 256-byte static-file chunks were also retained:
+changing either would contradict WEB-011/WEB-012. An opt-in large-asset HIL
+check now accepts a private path through `Z1_HIL_STATIC_ASSET` and a bounded
+timeout through `Z1_HIL_STATIC_ASSET_TIMEOUT`. The committed implementation
+served the complete local asset in 10.71 seconds; the report is
+`build/hil-static-baseline.json`. A trial that combined multiple HTTP chunks
+into larger transport writes transferred only 11,214 of 106,343 bytes in 15
+seconds, so that unproven implementation was removed before commit.
