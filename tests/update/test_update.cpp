@@ -63,3 +63,39 @@ TEST_CASE(upd_013_declared_images_must_fit_but_trailing_bytes_are_allowed) {
     put_le32(bytes, 28, firmware::core::aggregate_file_crc(bytes));
     REQUIRE_EQ(firmware::core::parse_update_package(bytes).error, firmware::core::UpdateError::size);
 }
+
+TEST_CASE(upd_010_rejects_short_magic_version_and_header_length) {
+    REQUIRE_EQ(firmware::core::aggregate_file_crc(ByteVector(31U, 0U)), 0U);
+    REQUIRE_EQ(firmware::core::parse_update_package(ByteVector(31U, 0U)).error,
+               firmware::core::UpdateError::short_file);
+
+    auto bytes = valid_package();
+    bytes[0] ^= 0xFFU;
+    REQUIRE_EQ(firmware::core::parse_update_package(bytes).error,
+               firmware::core::UpdateError::magic);
+
+    for (const std::uint8_t version : {0U, 3U}) {
+        bytes = valid_package();
+        bytes[4] = version;
+        REQUIRE_EQ(firmware::core::parse_update_package(bytes).error,
+                   firmware::core::UpdateError::version);
+    }
+
+    bytes = valid_package();
+    bytes[5] = 31U;
+    REQUIRE_EQ(firmware::core::parse_update_package(bytes).error,
+               firmware::core::UpdateError::header_length);
+}
+
+TEST_CASE(upd_012_rejects_header_crc_and_non_esp_mainboard_image) {
+    auto bytes = valid_package();
+    bytes[24] ^= 0xFFU;
+    REQUIRE_EQ(firmware::core::parse_update_package(bytes).error,
+               firmware::core::UpdateError::header_crc);
+
+    bytes = valid_package();
+    bytes[32] = 0x00U;
+    put_le32(bytes, 28, firmware::core::aggregate_file_crc(bytes));
+    REQUIRE_EQ(firmware::core::parse_update_package(bytes).error,
+               firmware::core::UpdateError::image);
+}

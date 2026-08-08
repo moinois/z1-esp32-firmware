@@ -114,3 +114,40 @@ TEST_CASE(avi_003_invalid_index_is_rejected_without_fallback) {
     file[idx1 + 4U] = 3U;
     REQUIRE(!AviPreview::parse(file).has_value());
 }
+
+TEST_CASE(avi_004_frame_read_rejects_invalid_index_extents_and_chunk_metadata) {
+    auto file = make_avi();
+    const auto parsed = AviPreview::parse(file);
+    REQUIRE(parsed.has_value());
+
+    REQUIRE(!read_avi_frame(file, *parsed, 1U, 16U).has_value());
+    auto avi = *parsed;
+    avi.movi_data_offset = 3U;
+    REQUIRE(!read_avi_frame(file, avi, 0U, 16U).has_value());
+    avi = *parsed;
+    avi.entries[0].advertised_size = 0U;
+    REQUIRE(!read_avi_frame(file, avi, 0U, 16U).has_value());
+    avi = *parsed;
+    avi.entries[0].advertised_size = 17U;
+    REQUIRE(!read_avi_frame(file, avi, 0U, 16U).has_value());
+    avi = *parsed;
+    avi.movi_data_offset = file.size() + 1U;
+    REQUIRE(!read_avi_frame(file, avi, 0U, 16U).has_value());
+    avi = *parsed;
+    avi.entries[0].offset = static_cast<std::uint32_t>(file.size() + 1U);
+    REQUIRE(!read_avi_frame(file, avi, 0U, 16U).has_value());
+
+    const std::size_t seek = parsed->movi_data_offset + parsed->entries[0].offset - 4U;
+    auto wrong_id = file;
+    wrong_id[seek] = 'X';
+    REQUIRE(!read_avi_frame(wrong_id, *parsed, 0U, 16U).has_value());
+    auto zero_size = file;
+    zero_size[seek + 4U] = 0U;
+    zero_size[seek + 5U] = 0U;
+    zero_size[seek + 6U] = 0U;
+    zero_size[seek + 7U] = 0U;
+    REQUIRE(!read_avi_frame(zero_size, *parsed, 0U, 16U).has_value());
+    auto oversized = file;
+    oversized[seek + 4U] = 17U;
+    REQUIRE(!read_avi_frame(oversized, *parsed, 0U, 16U).has_value());
+}
