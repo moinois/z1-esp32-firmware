@@ -4,7 +4,13 @@ const status = document.querySelector('#save-status');
 const summary = document.querySelector('#settings-summary');
 const empty = document.querySelector('#empty-settings');
 const save = document.querySelector('#save');
+const api = Object.freeze({
+  firmwareInfo: '/api/firmware/info',
+  configuration: '/api/config',
+  wifiDiagnostics: '/api/wifi/diagnostics',
+});
 
+/** Recomputes dirty state, empty-state visibility, and the settings summary. */
 function updateState() {
   const rows = [...settings.querySelectorAll('.setting-row')];
   const changed = rows.filter(item => item.dataset.originalValue !== item.querySelector('.value').value || item.dataset.isNew === 'true');
@@ -13,6 +19,11 @@ function updateState() {
   summary.textContent = `${rows.filter(item => item.dataset.isNew !== 'true').length} existing setting${rows.filter(item => item.dataset.isNew !== 'true').length === 1 ? '' : 's'} loaded${changed.length ? ` · ${changed.length} unsaved change${changed.length === 1 ? '' : 's'}` : ''}`;
 }
 
+/**
+ * Appends one editable configuration row while retaining its original value.
+ * @param {{key: string, value: string}} setting Current key/value pair.
+ * @param {boolean} isNew Whether the key exists only in this browser session.
+ */
 function row(setting = {key: '', value: ''}, isNew = false) {
   const fragment = template.content.cloneNode(true);
   const item = fragment.querySelector('.setting-row');
@@ -37,19 +48,25 @@ function row(setting = {key: '', value: ''}, isNew = false) {
   settings.append(fragment);
 }
 
+/**
+ * Fetches and decodes one JSON API resource with consistent HTTP failures.
+ * @param {string} path Absolute API path on the current device.
+ * @returns {Promise<object>} Parsed response document.
+ */
 async function json(path) {
   const response = await fetch(path);
   if (!response.ok) throw new Error(`${path} returned HTTP ${response.status}`);
   return response.json();
 }
 
+/** Reloads authoritative firmware, configuration, and Wi-Fi state in parallel. */
 async function load() {
   status.textContent = '';
   summary.textContent = 'Loading current settings…';
   const [firmware, configuration, wifi] = await Promise.all([
-    json('/api/firmware/info'),
-    json('/api/config'),
-    json('/api/wifi/diagnostics'),
+    json(api.firmwareInfo),
+    json(api.configuration),
+    json(api.wifiDiagnostics),
   ]);
   document.querySelector('#device-status').textContent = `Firmware ${firmware.version} · ${wifi.ipv4_address || 'no network address'}`;
   settings.replaceChildren();
@@ -81,7 +98,7 @@ document.querySelector('#settings-form').addEventListener('submit', async event 
     .map(item => ({key:item.querySelector('.key').value.trim(),value:item.querySelector('.value').value}));
   try {
     for (const record of records) {
-      const response = await fetch('/api/config', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(record)});
+      const response = await fetch(api.configuration, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(record)});
       if (!response.ok) throw new Error(await response.text());
     }
     await load();
