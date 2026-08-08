@@ -18,6 +18,9 @@ from tools.wifi_provision_protocol import decode_frames, encode_frame
 
 SINGLE_COMMAND = 0xA1
 GENERAL_COMMAND = 0xA2
+DEFAULT_USB_QUIESCENCE_TIMEOUT_MS = 100
+_STALE_HANDLE_ERRNOS = frozenset({5, 6, 19})
+_STALE_HANDLE_BACKEND_CODES = frozenset({-1, -4})
 
 
 @dataclass(frozen=True)
@@ -28,14 +31,46 @@ class ReceivedFrame:
     payload: bytes
 
 
+class UsbTransferError(RuntimeError):
+    """Adds transfer context and stale-handle guidance to a PyUSB failure."""
+
+    def __init__(self, operation: str, error: Exception) -> None:
+        """Classifies one failed bulk operation without hiding its root cause."""
+
+        self.operation = operation
+        self.errno = getattr(error, "errno", None)
+        self.backend_error_code = getattr(error, "backend_error_code", None)
+        self.stale_handle_candidate = (
+            self.errno in _STALE_HANDLE_ERRNOS
+            or self.backend_error_code in _STALE_HANDLE_BACKEND_CODES
+        )
+        guidance = (
+            "; the device may still be enumerated, retry with a fresh USB handle"
+            if self.stale_handle_candidate
+            else ""
+        )
+        super().__init__(
+            f"USB {operation} failed (errno={self.errno}, "
+            f"backend={self.backend_error_code}): {error}{guidance}"
+        )
+
+
 class UsbProtocolClient:
     """Sends bounded request frames over the native USB vendor interface."""
 
-    def __init__(self, device: Any, timeout_ms: int = DEFAULT_TIMEOUT_MS) -> None:
+    def __init__(
+        self,
+        device: Any,
+        timeout_ms: int = DEFAULT_TIMEOUT_MS,
+        quiescence_timeout_ms: int = DEFAULT_USB_QUIESCENCE_TIMEOUT_MS,
+    ) -> None:
         """Claims vendor bulk endpoints from an already discovered USB device."""
 
+        if timeout_ms <= 0 or quiescence_timeout_ms <= 0:
+            raise ValueError("USB timeouts must be positive")
         self.device = device
         self.timeout_ms = timeout_ms
+        self.quiescence_timeout_ms = min(timeout_ms, quiescence_timeout_ms)
         self.output, self.input = _find_endpoints(device)
 
     def exchange(
@@ -49,12 +84,20 @@ class UsbProtocolClient:
     def send(self, frame_type: int, payload: bytes) -> None:
         """Writes one encoded frame without waiting for a target response."""
 
-        self.output.write(encode_frame(frame_type, payload), timeout=self.timeout_ms)
+        usb = _load_usb()
+        try:
+            self.output.write(encode_frame(frame_type, payload), timeout=self.timeout_ms)
+        except usb.core.USBError as error:
+            raise UsbTransferError("bulk write", error) from error
 
     def send_encoded(self, encoded_frames: bytes) -> None:
         """Writes pre-encoded frames, allowing tests to fragment or batch traffic."""
 
-        self.output.write(encoded_frames, timeout=self.timeout_ms)
+        usb = _load_usb()
+        try:
+            self.output.write(encoded_frames, timeout=self.timeout_ms)
+        except usb.core.USBError as error:
+            raise UsbTransferError("bulk write", error) from error
 
     def receive(self, timeout_seconds: float = 3.0) -> List[ReceivedFrame]:
         """Receives all complete response frames available before the deadline."""
@@ -65,13 +108,18 @@ class UsbProtocolClient:
         received: List[ReceivedFrame] = []
         while time.monotonic() < deadline:
             try:
+                read_timeout_ms = (
+                    self.quiescence_timeout_ms if received else self.timeout_ms
+                )
                 chunk = bytes(
-                    self.input.read(self.input.wMaxPacketSize, timeout=self.timeout_ms)
+                    self.input.read(self.input.wMaxPacketSize, timeout=read_timeout_ms)
                 )
             except usb.core.USBTimeoutError:
                 if received:
                     break
                 continue
+            except usb.core.USBError as error:
+                raise UsbTransferError("bulk read", error) from error
             frames, remainder = decode_frames(remainder + chunk)
             received.extend(ReceivedFrame(kind, body) for kind, body in frames)
         return received

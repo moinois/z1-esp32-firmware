@@ -159,22 +159,28 @@ def test_mock_sd_repeated_transfer_and_metadata_cycles(usb_client, sd_fixture) -
             moved = f"{directory}/M{cycle:02d}.BIN"
             size = 1024 + cycle * 173
             content = bytes((index * (cycle + 3) + cycle) & 0xFF for index in range(size))
-            upload_file(usb_client, source, content, block_size=511)
-            assert download_file(usb_client, source) == content
-            renamed = _payload(
-                usb_client.exchange(
-                    GENERAL_COMMAND,
-                    f"mv {source} {moved}".encode("ascii"),
-                    5.0,
+            try:
+                upload_file(usb_client, source, content, block_size=511)
+                assert download_file(usb_client, source) == content
+                renamed = _payload(
+                    usb_client.exchange(
+                        GENERAL_COMMAND,
+                        f"mv {source} {moved}".encode("ascii"),
+                        5.0,
+                    )
+                ).lower()
+                assert b"renamed" in renamed
+                assert download_file(usb_client, moved) == content
+                removed = _payload(
+                    usb_client.exchange(
+                        GENERAL_COMMAND, f"rm {moved}".encode("ascii"), 5.0
+                    )
+                ).lower()
+                assert b"ok" in removed
+            except Exception as error:
+                pytest.fail(
+                    f"mock SD endurance failed at cycle={cycle}, source={source}, "
+                    f"moved={moved}, bytes={size}, block_size=511: {error}"
                 )
-            ).lower()
-            assert b"renamed" in renamed
-            assert download_file(usb_client, moved) == content
-            removed = _payload(
-                usb_client.exchange(
-                    GENERAL_COMMAND, f"rm {moved}".encode("ascii"), 5.0
-                )
-            ).lower()
-            assert b"ok" in removed
     finally:
         _remove(usb_client, directory)
