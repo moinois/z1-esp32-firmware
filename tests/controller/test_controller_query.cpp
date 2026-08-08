@@ -2,6 +2,7 @@
 #include "test.hpp"
 
 #include "firmware/application/controller_query.hpp"
+#include "firmware/application/controller_command_frames.hpp"
 
 using firmware::application::ControllerQueryScheduler;
 
@@ -15,7 +16,15 @@ TEST_CASE(lpc_001_both_controller_queries_are_due_immediately) {
     REQUIRE_EQ(queries[0].payload, firmware::core::ByteVector({'?'}));
     REQUIRE_EQ(queries[1].type, 0xA2U);
     REQUIRE_EQ(queries[1].payload,
-               firmware::core::ByteVector({'d', 'i', 'a', 'g', 'n', 'o', 's', 'e', 0}));
+               firmware::core::ByteVector({'d', 'i', 'a', 'g', 'n', 'o', 's', 'e', '\n'}));
+}
+
+TEST_CASE(upd_005_030_055_controller_reset_uses_line_feed_termination) {
+    const auto reset = firmware::application::controller_reset_command();
+
+    REQUIRE_EQ(reset.type, 0xA2U);
+    REQUIRE_EQ(reset.payload,
+               firmware::core::ByteVector({'r', 'e', 's', 'e', 't', '\n'}));
 }
 
 TEST_CASE(lpc_001_query_periods_are_independent) {
