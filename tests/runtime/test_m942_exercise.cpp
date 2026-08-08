@@ -92,6 +92,11 @@ public:
         write_values.push_back(value);
         write_timeouts.push_back(protocol_timeout_milliseconds);
         write_deadlines.push_back(absolute_deadline_milliseconds);
+        now += std::min<std::uint64_t>(
+            write_attempt_milliseconds,
+            absolute_deadline_milliseconds > now
+                ? absolute_deadline_milliseconds - now
+                : 0U);
         if (!write_results.empty()) {
             const bool result = write_results.front();
             write_results.erase(write_results.begin());
@@ -103,6 +108,7 @@ public:
     std::uint64_t now = 1000U;
     std::uint64_t lock_wait_milliseconds = 0U;
     std::uint64_t read_attempt_milliseconds = 0U;
+    std::uint64_t write_attempt_milliseconds = 0U;
     std::optional<std::uint32_t> default_read_result = 1U;
     bool default_write_result = true;
     std::vector<std::optional<std::uint32_t>> read_results;
@@ -263,4 +269,57 @@ TEST_CASE(can_015_unbounded_lock_wait_can_exhaust_absolute_deadline) {
     REQUIRE_EQ(port.lock_count, 1U);
     REQUIRE_EQ(port.unlock_count, 1U);
     REQUIRE(port.read_nodes.empty());
+}
+
+TEST_CASE(can_015_inactive_or_already_expired_exercise_performs_no_io) {
+    FakeM942Port port;
+    M942ExerciseService service(port);
+
+    service.run();
+    REQUIRE(port.read_nodes.empty());
+
+    const HostIdentity host{firmware::application::HostTransport::tcp, 1U};
+    REQUIRE(service.submit(host, command(), true));
+    port.now += firmware::application::m942::exercise_duration_milliseconds;
+    service.run();
+
+    REQUIRE(!service.exercise_active());
+    REQUIRE(port.read_nodes.empty());
+    REQUIRE(port.write_values.empty());
+}
+
+TEST_CASE(can_015_failed_writes_retry_and_stop_at_absolute_deadline) {
+    FakeM942Port port;
+    port.default_write_result = false;
+    port.write_attempt_milliseconds = 210U;
+    M942ExerciseService service(port);
+    const HostIdentity host{firmware::application::HostTransport::usb, 0U};
+    REQUIRE(service.submit(host, command(), true));
+
+    service.run();
+
+    REQUIRE_EQ(port.write_values.size(), 35U);
+    REQUIRE_EQ(port.write_nodes.front(), 1U);
+    REQUIRE_EQ(port.write_indices.front(), 0x6001U);
+    REQUIRE_EQ(port.write_subindices.front(), 1U);
+    REQUIRE_EQ(port.write_timeouts.front(), 800U);
+    REQUIRE_EQ(port.write_deadlines.front(), 9000U);
+    REQUIRE_EQ(port.now, 9000U);
+    REQUIRE_EQ(port.lock_count, 1U);
+    REQUIRE_EQ(port.unlock_count, 1U);
+}
+
+TEST_CASE(can_015_read_that_reaches_deadline_does_not_start_a_write) {
+    FakeM942Port port;
+    port.read_attempt_milliseconds =
+        firmware::application::m942::exercise_duration_milliseconds;
+    M942ExerciseService service(port);
+    const HostIdentity host{firmware::application::HostTransport::tcp, 1U};
+    REQUIRE(service.submit(host, command(), true));
+
+    service.run();
+
+    REQUIRE_EQ(port.read_nodes.size(), 1U);
+    REQUIRE(port.write_values.empty());
+    REQUIRE_EQ(port.unlock_count, 1U);
 }

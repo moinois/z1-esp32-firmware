@@ -734,3 +734,15 @@ served the complete local asset in 10.71 seconds; the report is
 `build/hil-static-baseline.json`. A trial that combined multiple HTTP chunks
 into larger transport writes transferred only 11,214 of 106,343 bytes in 15
 seconds, so that unproven implementation was removed before commit.
+
+Portable coverage was regenerated on 2026-08-09 after the NVS and network
+fault adapters were added. All host tests passed with 95.86 percent line,
+99.00 percent function, and 84.76 percent branch coverage. USB production
+policy has 100 percent line coverage for protocol state, receive staging,
+transmit drain, and timeout tracking; the remaining USB limitation is physical
+TinyUSB endpoint control, not an uncovered portable branch. CANopen timing was
+additionally exercised with virtual time for inactive/expired M942 runs,
+write-retry exhaustion, deadline-bounded writes, and reads ending exactly at
+the absolute deadline. The generated report remains local under
+`build/host-coverage/coverage/`; release automation publishes the equivalent
+report and badge.
