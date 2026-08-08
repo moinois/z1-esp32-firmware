@@ -746,3 +746,10 @@ write-retry exhaustion, deadline-bounded writes, and reads ending exactly at
 the absolute deadline. The generated report remains local under
 `build/host-coverage/coverage/`; release automation publishes the equivalent
 report and badge.
+
+The GPIO0 heartbeat is split at the same production boundary: portable tests
+verify the initial high level, exact 1000 ms delay, repeated inversion, and no
+side effects after configuration failure. The ESP-IDF adapter retains the
+specified push-pull output configuration with both internal pulls and GPIO
+interrupts disabled. A target build verifies composition; electrical level and
+one-second wall-clock accuracy still require a probe or oscilloscope.

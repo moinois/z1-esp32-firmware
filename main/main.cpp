@@ -1,5 +1,4 @@
 // Starts the mainboard services in the normative order defined by BOOT-010 through BOOT-019.
-#include "driver/gpio.h"
 #include "esp_err.h"
 #include "esp_event.h"
 #include "esp_log.h"
@@ -31,6 +30,7 @@
 #include "diagnostic_capture_adapter.hpp"
 #include "wifi_diagnostic_log.hpp"
 #include "runtime_counter_task.hpp"
+#include "heartbeat_adapter.hpp"
 #include "usb_device_adapter.hpp"
 #include "recording_task_adapter.hpp"
 #include "configuration_file_store.hpp"
@@ -45,8 +45,6 @@
 #include <vector>
 
 namespace {
-constexpr gpio_num_t heartbeat_gpio = GPIO_NUM_0;
-constexpr std::uint32_t heartbeat_period_milliseconds = 1000U;
 constexpr std::uint32_t heartbeat_stack_size = 2048U;
 constexpr UBaseType_t heartbeat_priority = 3U;
 constexpr char tag[] = "MAIN";
@@ -89,27 +87,22 @@ bool initialize_persistent_store() {
 
 // Toggles the active-high heartbeat output once per second for the lifetime of the firmware.
 void heartbeat_task(void*) {
-    bool high = true;
-    gpio_set_level(heartbeat_gpio, high);
+    firmware::target::EspHeartbeatAdapter port;
+    firmware::application::HeartbeatService service(port);
+    if (!service.start()) {
+        vTaskDelete(nullptr);
+        return;
+    }
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(heartbeat_period_milliseconds));
-        high = !high;
-        gpio_set_level(heartbeat_gpio, high);
+        service.run_cycle();
     }
 }
 
 // Starts the nonfatal heartbeat service and leaves later services independent of its result.
 void start_heartbeat() {
-    const gpio_config_t config{.pin_bit_mask = 1ULL << heartbeat_gpio,
-                               .mode = GPIO_MODE_OUTPUT,
-                               .pull_up_en = GPIO_PULLUP_DISABLE,
-                               .pull_down_en = GPIO_PULLDOWN_DISABLE,
-                               .intr_type = GPIO_INTR_DISABLE};
-    if (gpio_config(&config) != ESP_OK) {
-        return;
-    }
-    xTaskCreate(heartbeat_task, "heartbeat", heartbeat_stack_size, nullptr,
-                heartbeat_priority, nullptr);
+    static_cast<void>(xTaskCreate(heartbeat_task, "heartbeat",
+                                  heartbeat_stack_size, nullptr,
+                                  heartbeat_priority, nullptr));
 }
 }  // namespace
 

@@ -51,6 +51,7 @@ add_executable(
     media/test_play_line_reader.cpp
     media/test_play_goto.cpp
     runtime/test_routing.cpp
+    runtime/test_heartbeat.cpp
     runtime/test_runtime_counters.cpp
     runtime/test_runtime_commands.cpp
     runtime/test_runtime_status.cpp

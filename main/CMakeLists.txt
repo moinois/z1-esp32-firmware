@@ -28,6 +28,7 @@ idf_component_register(
         "runtime/nvs_runtime_counter_adapter.cpp"
         "runtime/runtime_counter_task.cpp"
         "runtime/runtime_operation_capacity.cpp"
+        "runtime/heartbeat_adapter.cpp"
         "media/runtime_play_observer.cpp"
         "runtime/wall_clock_adapter.cpp"
         "runtime/wall_clock_command_dispatcher.cpp"
