@@ -25,6 +25,14 @@ ByteVector le(std::uint32_t value, std::size_t size) {
     return bytes;
 }
 
+// Describes one writable scalar and its exact encoded width.
+struct ScalarWrite {
+    std::uint16_t index;
+    std::uint8_t subindex;
+    std::uint32_t value;
+    std::size_t size;
+};
+
 // Reads one required dictionary scalar as an unsigned host value.
 std::uint32_t read_value(const CanopenObjectDictionary& dictionary,
                          std::uint16_t index,
@@ -237,4 +245,76 @@ TEST_CASE(od_040_tpdo_accepts_zero_event_driven_transmission_type) {
 
     CanopenTransmitPdoScheduler scheduler(dictionary);
     REQUIRE(scheduler.process_cycle().has_value());
+}
+
+TEST_CASE(od_010_mutable_communication_objects_retain_written_values) {
+    CanopenObjectDictionary dictionary;
+    const ScalarWrite writes[] = {
+        {0x1005U, 0U, 0x81U, 4U}, {0x1006U, 0U, 1000U, 4U},
+        {0x1007U, 0U, 500U, 4U}, {0x1012U, 0U, 0x101U, 4U},
+        {0x1014U, 0U, 0x82U, 4U}, {0x1015U, 0U, 25U, 2U},
+        {0x1019U, 0U, 7U, 1U}, {0x1010U, 2U, 0x65766173U, 4U},
+        {0x1011U, 3U, 0x64616f6cU, 4U}, {0x1016U, 5U, 0x1234U, 4U},
+        {0x1280U, 1U, 0x601U, 4U}, {0x1280U, 2U, 0x581U, 4U},
+        {0x1280U, 3U, 2U, 1U},
+    };
+
+    for (const auto& write : writes) {
+        REQUIRE_EQ(dictionary.write(write.index, write.subindex,
+                                    le(write.value, write.size)).abort,
+                   SdoAbort::none);
+        REQUIRE_EQ(read_value(dictionary, write.index, write.subindex),
+                   write.value);
+    }
+    dictionary.set_error_register(0x55U);
+    REQUIRE_EQ(read_value(dictionary, 0x1001U, 0U), 0x55U);
+    dictionary.set_error_history(99U, 0xdeadbeefU);
+    REQUIRE_EQ(read_value(dictionary, 0x1003U, 0U), 0U);
+}
+
+TEST_CASE(od_030_and_040_all_pdo_communication_fields_are_writable) {
+    CanopenObjectDictionary dictionary;
+
+    REQUIRE_EQ(dictionary.write(0x1401U, 1U, le(0x301U, 4U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1401U, 2U, le(1U, 1U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1401U, 5U, le(20U, 2U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(read_value(dictionary, 0x1401U, 1U), 0x301U);
+    REQUIRE_EQ(read_value(dictionary, 0x1401U, 2U), 1U);
+    REQUIRE_EQ(read_value(dictionary, 0x1401U, 5U), 20U);
+
+    for (const auto& field : {ScalarWrite{0x1801U, 1U, 0x281U, 4U},
+                              ScalarWrite{0x1801U, 2U, 2U, 1U},
+                              ScalarWrite{0x1801U, 3U, 30U, 2U},
+                              ScalarWrite{0x1801U, 5U, 40U, 2U},
+                              ScalarWrite{0x1801U, 6U, 3U, 1U}}) {
+        REQUIRE_EQ(dictionary.write(field.index, field.subindex,
+                                    le(field.value, field.size)).abort,
+                   SdoAbort::none);
+        REQUIRE_EQ(read_value(dictionary, field.index, field.subindex),
+                   field.value);
+    }
+}
+
+TEST_CASE(od_003_missing_permissions_and_mapping_boundaries_are_rejected) {
+    CanopenObjectDictionary dictionary;
+
+    REQUIRE(!dictionary.permissions(0x2222U, 0U).has_value());
+    REQUIRE(!dictionary.permissions(0x1016U, 9U).has_value());
+    REQUIRE_EQ(dictionary.write(0x2222U, 0U, le(1U, 4U)).abort,
+               SdoAbort::object_not_found);
+    REQUIRE_EQ(dictionary.write(0x1016U, 9U, le(1U, 4U)).abort,
+               SdoAbort::subindex_not_found);
+    REQUIRE_EQ(dictionary.write(0x1003U, 0U, le(1U, 1U)).abort,
+               SdoAbort::value_range);
+    REQUIRE_EQ(dictionary.write(0x1600U, 1U, le(0U, 4U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1a00U, 1U, le(0U, 4U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1600U, 1U, le(0x22220120U, 4U)).abort,
+               SdoAbort::pdo_mapping);
+    REQUIRE_EQ(dictionary.write(0x1a00U, 1U, le(0x60000110U, 4U)).abort,
+               SdoAbort::pdo_mapping);
 }
