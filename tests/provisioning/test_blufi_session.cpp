@@ -158,6 +158,12 @@ ByteVector incoming_frame(std::uint8_t subtype, std::uint8_t flags,
     return frame;
 }
 
+// Builds an incoming control frame with no product payload.
+ByteVector incoming_control(std::uint8_t subtype, std::uint8_t sequence) {
+    return ByteVector{
+        static_cast<std::uint8_t>(subtype << 2U), 0U, sequence, 0U};
+}
+
 }  // namespace
 
 TEST_CASE(blufi_session_dispatches_plain_data_from_characteristic_input) {
@@ -236,4 +242,56 @@ TEST_CASE(blufi_session_reset_clears_sequences_fragments_and_security_notice) {
                std::vector<ByteVector>({{'b'}}));
     REQUIRE(fixture.session.send_product_data(0x13U, ByteVector({'x'})));
     REQUIRE_EQ(fixture.transport.sent.back()[2], 0U);
+}
+
+TEST_CASE(blufi_session_forwards_control_and_data_product_actions) {
+    SessionFixture fixture;
+
+    fixture.session.receive_characteristic(incoming_control(3U, 0U));
+    fixture.session.receive_characteristic(incoming_control(4U, 1U));
+    fixture.session.receive_characteristic(incoming_control(5U, 2U));
+    fixture.session.receive_characteristic(incoming_control(9U, 3U));
+    fixture.session.receive_characteristic(
+        incoming_frame(3U, 0U, 4U, {'p', 'w'}));
+    fixture.session.receive_characteristic(
+        incoming_frame(0x12U, 0U, 5U, {7U}));
+    fixture.session.receive_characteristic(
+        incoming_frame(0x13U, 0U, 6U, {'d'}));
+
+    REQUIRE_EQ(fixture.actions.calls,
+               std::vector<std::string>({"connect", "disconnect", "status",
+                                         "list", "password"}));
+    REQUIRE_EQ(fixture.actions.passwords,
+               std::vector<ByteVector>({{'p', 'w'}}));
+    REQUIRE_EQ(fixture.actions.received_errors,
+               std::vector<std::uint8_t>({7U}));
+    REQUIRE_EQ(fixture.actions.custom_data,
+               std::vector<ByteVector>({{'d'}}));
+}
+
+TEST_CASE(blufi_session_applies_mtu_and_sends_product_generated_data) {
+    SessionFixture fixture;
+    fixture.session.set_att_mtu(40U);
+
+    REQUIRE(fixture.session.send_product_data(0x13U, ByteVector(13U, 'x')));
+    REQUIRE_EQ(fixture.transport.sent.size(), 1U);
+    fixture.session.receive_characteristic(incoming_control(7U, 0U));
+
+    REQUIRE_EQ(fixture.transport.sent.size(), 2U);
+    REQUIRE_EQ(fixture.transport.sent.back(),
+               ByteVector({0x41U, 0x04U, 1U, 2U, 0x01U, 0x03U}));
+}
+
+TEST_CASE(blufi_session_reports_explicit_and_product_format_errors) {
+    SessionFixture fixture;
+
+    fixture.session.report_protocol_error(4U);
+    fixture.session.receive_characteristic(
+        incoming_frame(0x12U, 0U, 0U, {1U, 2U}));
+
+    REQUIRE_EQ(fixture.transport.sent,
+               std::vector<ByteVector>({
+                   {0x49U, 0x04U, 0U, 1U, 4U},
+                   {0x49U, 0x04U, 1U, 1U, 9U},
+               }));
 }

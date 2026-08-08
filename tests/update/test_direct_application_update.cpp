@@ -130,3 +130,46 @@ TEST_CASE(webup_014_empty_or_invalid_finalization_uses_finish_failure) {
     REQUIRE(!service.apply(ByteVector{}, empty));
     REQUIRE_EQ(empty.response_body, std::string_view("OTA finish Failed"));
 }
+
+TEST_CASE(webup_011_camera_and_begin_failures_stop_before_writing) {
+    DirectApplicationUpdateService service;
+
+    FakeDirectUpdatePort camera;
+    camera.camera_ok = false;
+    REQUIRE(!service.apply(ByteVector({'x'}), camera));
+    REQUIRE_EQ(camera.events,
+               std::vector<std::string>({"camera", "response"}));
+    REQUIRE_EQ(camera.response_body, std::string_view("OTA finish Failed"));
+
+    FakeDirectUpdatePort begin;
+    begin.begin_ok = false;
+    REQUIRE(!service.apply(ByteVector({'x'}), begin));
+    REQUIRE_EQ(begin.events,
+               std::vector<std::string>({"camera", "partition", "erase",
+                                         "begin:1", "response"}));
+    REQUIRE_EQ(begin.response_body,
+               std::string_view("Unable to initialize OTA process"));
+}
+
+TEST_CASE(webup_011_finish_and_boot_failures_do_not_restart) {
+    DirectApplicationUpdateService service;
+
+    FakeDirectUpdatePort finish;
+    finish.finish_ok = false;
+    REQUIRE(!service.apply(ByteVector({'x'}), finish));
+    REQUIRE_EQ(finish.events,
+               std::vector<std::string>({"camera", "partition", "erase",
+                                         "begin:1", "write:1", "finish",
+                                         "abort", "response"}));
+    REQUIRE_EQ(finish.response_body, std::string_view("OTA finish Failed"));
+
+    FakeDirectUpdatePort boot;
+    boot.boot_ok = false;
+    REQUIRE(!service.apply(ByteVector({'x'}), boot));
+    REQUIRE_EQ(boot.events,
+               std::vector<std::string>({"camera", "partition", "erase",
+                                         "begin:1", "write:1", "finish",
+                                         "boot", "response"}));
+    REQUIRE_EQ(boot.response_body,
+               std::string_view("Failed to set boot partition"));
+}

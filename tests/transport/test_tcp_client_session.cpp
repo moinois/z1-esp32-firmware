@@ -56,3 +56,29 @@ TEST_CASE(tcp_session_sender_removes_frame_only_after_success) {
         }));
     REQUIRE(!session.has_pending_transmit_frame());
 }
+
+TEST_CASE(tcp_session_ignores_input_without_a_handler) {
+    firmware::application::TcpClientSession session({});
+    const auto encoded = firmware::core::encode_frame({0x31U, {'x'}});
+
+    session.receive(encoded, {});
+
+    REQUIRE(!session.has_pending_transmit_frame());
+}
+
+TEST_CASE(tcp_session_take_returns_fifo_frames_and_empty_state) {
+    firmware::application::TcpClientSession session({});
+    const firmware::core::Frame first{0x31U, {'a'}};
+    const firmware::core::Frame second{0x32U, {'b'}};
+    REQUIRE(session.queue_frame(first));
+    REQUIRE(session.queue_frame(second));
+
+    REQUIRE_EQ(session.take_next_transmit_frame(),
+               std::optional<firmware::core::ByteVector>(
+                   firmware::core::encode_frame(first)));
+    REQUIRE_EQ(session.take_next_transmit_frame(),
+               std::optional<firmware::core::ByteVector>(
+                   firmware::core::encode_frame(second)));
+    REQUIRE(!session.take_next_transmit_frame().has_value());
+    REQUIRE(session.send_next_transmit_frame({}));
+}
