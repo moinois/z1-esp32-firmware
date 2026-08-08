@@ -413,6 +413,12 @@ operations log that state before classifying POSIX errno, allowing an absent
 card to be distinguished from a missing path without changing command response
 contracts such as `FILE-015`.
 
+This sandbox is an implementation security policy retained independently of
+whether the upstream specification states the confinement as explicitly. The
+upstream repository remains the normative external reference and is not
+modified by this project; the local policy narrows user-controlled storage I/O
+to the SD volume without changing the documented wire responses.
+
 ### Consequences
 
 - User input cannot select `/spiffs` or another VFS mount.

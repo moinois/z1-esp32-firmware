@@ -25,6 +25,17 @@ TEST_CASE(bwf_002_short_name_includes_all_conditional_structures_in_order) {
 }
 
 TEST_CASE(bwf_002_suffix_boundaries_pack_exactly_within_legacy_capacity) {
+    const auto ten = firmware::application::blufi_advertising_data(
+        std::string("MK_") + std::string(10U, 'z'), -6);
+    REQUIRE_EQ(ByteVector(ten.end() - 6, ten.end()),
+               ByteVector({0x05U, 0x12U, 0x06U, 0x00U, 0x10U, 0x00U}));
+
+    const auto eleven = firmware::application::blufi_advertising_data(
+        std::string("MK_") + std::string(11U, 'z'), -6);
+    REQUIRE_EQ(eleven.size(), 25U);
+    REQUIRE_EQ(ByteVector(eleven.end() - 4, eleven.end()),
+               ByteVector({0x03U, 0x03U, 0xFFU, 0xFFU}));
+
     const auto sixteen = firmware::application::blufi_advertising_data(
         std::string("MK_") + std::string(16U, 'a'), -3);
     REQUIRE_EQ(sixteen.size(), 31U);

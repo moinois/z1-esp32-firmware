@@ -289,7 +289,7 @@ The first core-to-periphery development slice contains:
 - Controller UART task now emits drift-free periodic status and diagnostic queries through the tested scheduler;
 - ESP32 image validator checks application headers, bounded segments, and image checksum before update acceptance;
 - ESP-IDF OTA adapter selects inactive partitions, writes/finalizes images, selects boot, aborts failures, and stages controller images;
-- OTA controller-only completion now queues the exact `0xa2 reset\0` frame through the serialized UART forwarder;
+- OTA controller-only completion now queues the exact `0xa2 reset\n` frame through the serialized UART forwarder;
 - Firmware update task composes SD aggregate loading, validation, OTA application, controller staging, and restart effects after SD startup;
 - Local `upgrade` and `reset` commands now coalesce into a thread-safe update-processing request;
 - OTA phase publication persists the specified byte in NVS namespace `ota_state`, key `phase`;
@@ -551,10 +551,13 @@ writes BLUFI frames to `0xff01`, and completes the BLUFI Diffie-Hellman security
 negotiation before sending Wi-Fi credentials. Link-level pairing is deliberately
 disabled.
 
-The normative advertised name is currently `BLUFI_DEVICE`. Field feedback
-indicates that some desktop-client builds may instead filter for
-`Makera_Z1_*`; changing this requires a specification decision and is not yet
-implemented.
+The advertised name is `MK_` followed by at most the first 23 bytes of the
+configured or MAC-derived machine name. The default is therefore
+`MK_Makera_Z1_XXXX`. Advertising uses one byte-exact legacy payload with no
+scan response; transmit power, service UUID `0xffff`, and preferred connection
+interval are included only at the suffix lengths permitted by BWF-002. Clients
+must therefore discover the device by its `MK_` identity rather than require
+the service UUID to be present in every advertisement.
 
 - The HTTP server and SPIFFS static-file support are implemented, but the
   browser-based configuration interface itself is not. No HTML, CSS, or

@@ -49,6 +49,7 @@ Z1_HIL_HOST=192.168.8.119 Z1_ALLOW_DESTRUCTIVE=1 \
 | `Z1_HIL_CONTROLLER` | Declares an attached controller fixture | disabled |
 | `Z1_HIL_CAN` | Declares an attached CAN fixture | disabled |
 | `Z1_HIL_BLE` | Declares an available BLE scanner | disabled |
+| `Z1_HIL_MACHINE_NAME` | Exact configured machine name for BLE identity verification | unset |
 | `Z1_HIL_WIFI_SSID` | Test-network SSID used by mutating BLUFI provisioning | unset |
 | `Z1_HIL_WIFI_PASSWORD` | Test-network password; an empty value is valid | unset |
 
@@ -58,8 +59,10 @@ response marks camera-dependent HIL as skipped; no environment declaration is
 required.
 
 BLE HIL uses the host adapter through Bleak. With `Z1_HIL_BLE=1`, absence of
-the required `BLUFI_DEVICE` advertisement is a failure rather than a fixture
-skip. The read-only baseline validates service UUID `0xffff`, characteristics
+an `MK_`-prefixed machine-name advertisement is a failure rather than a fixture
+skip. Set `Z1_HIL_MACHINE_NAME` to additionally require the exact name after
+the normative 23-byte truncation. The read-only baseline validates the
+conditional BWF-002 service-UUID advertisement rule, service UUID `0xffff`, characteristics
 `0xff01` and `0xff02`, their write/notify properties, and the fixed outgoing
 read value. Encrypted provisioning remains gated until this baseline passes.
 On macOS, the terminal/Codex Python process must also be allowed under System
@@ -70,6 +73,8 @@ argument in the target advertising configuration. After correcting the ESP-IDF
 128-bit input representation for advertised UUID `0xffff`, a freshly flashed
 build logged `Advertising started as BLUFI_DEVICE`; both advertisement/service
 discovery and the standard GATT schema/fixed-read checks passed physically.
+This is retained as historical evidence for the superseded fixed-name build,
+not as validation of the current machine-named advertising contract.
 The expanded read-only fixture also verifies advertising recovery after a
 disconnect, three complete connection/read/disconnection cycles, notification
 subscription, a response-bearing invalid-envelope write, and continued GATT
@@ -94,9 +99,9 @@ Two robustness fixtures are also available. Declaring `Z1_HIL_HOST` adds eight
 concurrent Wi-Fi-diagnostics requests while an encrypted BLE status exchange is
 in flight. Declaring `Z1_HIL_SERIAL` together with `Z1_ALLOW_MUTATION=1` resets
 the target during an active GATT connection, requires a disconnect callback,
-and then requires `BLUFI_DEVICE` to resume advertising after boot. Both cases
+and then requires the `MK_`-prefixed device to resume advertising after boot. Both cases
 passed physically on 2026-07-30; the reset case observed the disconnect and
-rediscovered the advertisement after the target booted.
+rediscovered the then-current fixed-name advertisement after the target booted.
 
 Additional read-only negative-wire fixtures exercise sequence rejection with a
 correct retry in the same connection, acknowledgement-before-product-response
