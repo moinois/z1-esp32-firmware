@@ -1,4 +1,4 @@
-// Declares callback-based dispatch from TCP routing decisions to services.
+/** @file @brief Callback dispatch from TCP routing decisions to services. */
 #pragma once
 
 #include "firmware/application/router.hpp"
@@ -8,6 +8,7 @@
 
 namespace firmware::application {
 
+/** Optional service sinks corresponding to every TCP-selectable route target. */
 struct TcpDispatchSinks {
     std::function<void(TcpClientSession&, const core::Frame&)> controller;
     std::function<void(TcpClientSession&, const core::Frame&)> local_command;
@@ -15,12 +16,13 @@ struct TcpDispatchSinks {
     std::function<void(TcpClientSession&, const core::Frame&)> play_status;
 };
 
+/** Applies shared routing policy and invokes all selected available sinks. */
 class TcpFrameDispatcher {
 public:
-    // Creates a dispatcher that evaluates host frames through the shared router.
+    /// Creates a dispatcher using the shared ownership-aware router.
     TcpFrameDispatcher(Router& router, TcpDispatchSinks sinks);
 
-    // Routes one frame to every selected sink; absent sinks are safely ignored.
+    /// Routes one frame to every selected sink; absent sinks are safely ignored.
     void dispatch(TcpClientSession& session, const core::Frame& frame) const;
 
 private:

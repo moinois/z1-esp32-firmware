@@ -1,4 +1,4 @@
-// Defines common wire parsing and queueing for controller transfer families.
+/** @file @brief Defines common wire parsing and queueing for controller transfer families. */
 #pragma once
 
 #include "firmware/core/frame.hpp"
@@ -14,6 +14,7 @@ namespace firmware::application {
 inline constexpr std::size_t controller_transfer_chunk_size = 255U;
 inline constexpr std::uint16_t controller_transfer_frame_data_size = 512U;
 
+/** Low-nibble controller transfer operation after family classification. */
 enum class TransferOperation {
     start,
     geometry,
@@ -23,48 +24,48 @@ enum class TransferOperation {
     unknown,
 };
 
-// Holds the controller's proposed frame count and frame-data size.
+/// Holds the controller's proposed frame count and frame-data size.
 struct TransferGeometry {
     std::uint32_t frame_count;
     std::uint16_t frame_data_size;
 };
 
-// Holds a decoded data index and the exact bytes required in its reply.
+/// Holds a decoded data index and the exact bytes required in its reply.
 struct TransferDataRequest {
     std::uint32_t index;
     core::ByteVector wire_index;
 };
 
-// Maps the common low nibble of a controller transfer packet to its operation.
+/// Maps the common low nibble of a controller transfer packet to its operation.
 TransferOperation transfer_operation(std::uint8_t packet_type);
 
-// Decodes the first six geometry bytes as unsigned big-endian values.
+/// Decodes the first six geometry bytes as unsigned big-endian values.
 std::optional<TransferGeometry> parse_transfer_geometry(core::BytesView payload);
 
-// Decodes and retains the first four bytes of a transfer data request.
+/// Decodes and retains the first four bytes of a transfer data request.
 std::optional<TransferDataRequest> parse_transfer_data_request(core::BytesView payload);
 
-// Encodes retained transfer geometry as six unsigned big-endian bytes.
+/// Encodes retained transfer geometry as six unsigned big-endian bytes.
 core::ByteVector encode_transfer_geometry(std::uint32_t frame_count,
                                           std::uint16_t frame_data_size);
 
-// Creates a response using a transfer-family high nibble and response low nibble.
+/// Creates a response using a transfer-family high nibble and response low nibble.
 core::Frame make_transfer_reply(std::uint8_t family, std::uint8_t low_nibble,
                                 core::ByteVector payload = {});
 
-// Queues one controller transfer family with bounded, paced FIFO processing.
+/// Queues one controller transfer family with bounded, paced FIFO processing.
 class ControllerTransferInbox {
 public:
-    // Selects the packet-type high nibble accepted by this inbox.
+    /// Selects the packet-type high nibble accepted by this inbox.
     explicit ControllerTransferInbox(std::uint8_t family);
 
-    // Accepts one complete frame when family, encoded size, and capacity permit.
+    /// Accepts one complete frame when family, encoded size, and capacity permit.
     bool enqueue(core::Frame frame);
 
-    // Removes the next frame when the nominal processing interval has elapsed.
+    /// Removes the next frame when the nominal processing interval has elapsed.
     std::optional<core::Frame> take_ready(std::uint64_t now_milliseconds);
 
-    // Returns the number of accepted frames awaiting processing.
+    /// Returns the number of accepted frames awaiting processing.
     std::size_t pending() const;
 
 private:

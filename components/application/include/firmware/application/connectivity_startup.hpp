@@ -1,4 +1,4 @@
-// Declares deterministic connectivity startup orchestration behind a Wi-Fi port.
+/** @file @brief Declares deterministic connectivity startup orchestration behind a Wi-Fi port. */
 #pragma once
 
 #include <cstdint>
@@ -8,12 +8,12 @@
 
 namespace firmware::application {
 
-// Identifies the required radio band without depending on ESP-IDF enums.
+/// Identifies the required radio band without depending on ESP-IDF enums.
 enum class WifiBand {
     ghz_2_4,
 };
 
-// Holds the exact congestion scan settings used before concurrent mode.
+/// Holds the exact congestion scan settings used before concurrent mode.
 struct StartupScanConfig {
     bool blocking = false;
     bool active = false;
@@ -22,7 +22,7 @@ struct StartupScanConfig {
     std::uint16_t maximum_active_dwell_milliseconds = 0U;
 };
 
-// Distinguishes the nonfatal allocation fallback from fatal scan API failures.
+/// Distinguishes the nonfatal allocation fallback from fatal scan API failures.
 enum class StartupScanState {
     success,
     allocation_failure,
@@ -31,13 +31,13 @@ enum class StartupScanState {
     records_failure,
 };
 
-// Holds observed channels or the stage at which startup scanning failed.
+/// Holds observed channels or the stage at which startup scanning failed.
 struct StartupScanOutcome {
     StartupScanState state;
     std::vector<std::uint8_t> observed_channels;
 };
 
-// Holds the complete AP/station network configuration selected by policy.
+/// Holds the complete AP/station network configuration selected by policy.
 struct ConnectivityStartupConfig {
     std::string access_point_ssid;
     bool visible = false;
@@ -54,28 +54,28 @@ struct ConnectivityStartupConfig {
     bool station_dhcp_client = false;
 };
 
-// Isolates startup sequencing from ESP-IDF Wi-Fi and network-interface APIs.
+/// Isolates startup sequencing from ESP-IDF Wi-Fi and network-interface APIs.
 class ConnectivityStartupPort {
 public:
-    // Enables safe destruction through a substituted startup adapter.
+    /// Enables safe destruction through a substituted startup adapter.
     virtual ~ConnectivityStartupPort() = default;
 
-    // Enters station-only mode before the channel congestion scan.
+    /// Enters station-only mode before the channel congestion scan.
     virtual bool enter_station_only_mode() = 0;
 
-    // Performs the blocking startup scan and reports its precise outcome.
+    /// Performs the blocking startup scan and reports its precise outcome.
     virtual StartupScanOutcome scan_channels(
         const StartupScanConfig& config) = 0;
 
-    // Applies and starts the selected concurrent AP/station configuration.
+    /// Applies and starts the selected concurrent AP/station configuration.
     virtual bool start_access_point_and_station(
         const ConnectivityStartupConfig& config) = 0;
 };
 
-// Selects the AP channel and starts required connectivity in normative order.
+/// Selects the AP channel and starts required connectivity in normative order.
 class ConnectivityStartup {
 public:
-    // Returns false for any fatal mode, scan, or concurrent-start failure.
+    /// Returns false for any fatal mode, scan, or concurrent-start failure.
     static bool start(ConnectivityStartupPort& port,
                       std::string_view machine_name);
 };

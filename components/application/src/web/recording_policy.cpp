@@ -7,6 +7,12 @@
 #include <sstream>
 
 namespace firmware::application {
+namespace {
+
+constexpr std::size_t maximum_recording_path_size = 255U;
+constexpr std::size_t maximum_inactive_intervals = 30U;
+
+}  // namespace
 
 std::optional<std::string> recording_segment_path(
     std::string_view retained_play_path, std::int64_t utc_seconds) {
@@ -27,7 +33,7 @@ std::optional<std::string> recording_segment_path(
            << '_' << std::setw(2) << utc.tm_hour << std::setw(2) << utc.tm_min
            << std::setw(2) << utc.tm_sec << ".avi";
     const std::string path = output.str();
-    if (path.size() > 255U) return std::nullopt;
+    if (path.size() > maximum_recording_path_size) return std::nullopt;
     return path;
 }
 
@@ -47,7 +53,7 @@ bool advance_recording_segment(RecordingSegmentState& state,
     if (!conditions_active) ++state.inactive_intervals;
     if (frames_of_one_file == 0U) return true;
     if (state.attempted_frames >= frames_of_one_file) return true;
-    return state.inactive_intervals > 30U;
+    return state.inactive_intervals > maximum_inactive_intervals;
 }
 
 }  // namespace firmware::application

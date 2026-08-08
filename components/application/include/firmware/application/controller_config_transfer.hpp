@@ -1,4 +1,4 @@
-// Defines the controller configuration-transfer service and replaceable I/O port.
+/** @file @brief Defines the controller configuration-transfer service and replaceable I/O port. */
 #pragma once
 
 #include "firmware/core/frame.hpp"
@@ -11,36 +11,36 @@
 
 namespace firmware::application {
 
-// Isolates configuration-transfer rules from storage and controller output.
+/// Isolates configuration-transfer rules from storage and controller output.
 class ControllerConfigPort {
 public:
-    // Enables safe destruction through a substituted port implementation.
+    /// Enables safe destruction through a substituted port implementation.
     virtual ~ControllerConfigPort() = default;
 
-    // Reports whether the configuration file is currently available.
+    /// Reports whether the configuration file is currently available.
     virtual bool configuration_available() = 0;
 
-    // Reads the file as fixed-size input chunks or reports failure.
+    /// Reads the file as fixed-size input chunks or reports failure.
     virtual std::optional<std::vector<core::ByteVector>>
     read_configuration_chunks(std::size_t chunk_size) = 0;
 
-    // Submits one complete response and reports queue acceptance.
+    /// Submits one complete response and reports queue acceptance.
     virtual bool send(core::Frame frame) = 0;
 };
 
-// Processes the `0xD1` through `0xD5` configuration exchange.
+/// Processes the `0xD1` through `0xD5` configuration exchange.
 class ControllerConfigTransfer {
 public:
-    // Processes one accepted configuration-family frame.
+    /// Processes one accepted configuration-family frame.
     void handle(const core::Frame& frame, ControllerConfigPort& port);
 
-    // Reports whether ordinary host-to-controller traffic must be suppressed.
+    /// Reports whether ordinary host-to-controller traffic must be suppressed.
     bool active() const;
 
-    // Exposes the retained count of transferable input chunks.
+    /// Exposes the retained count of transferable input chunks.
     std::uint32_t frame_count() const;
 
-    // Exposes the fixed retained response data size.
+    /// Exposes the fixed retained response data size.
     std::uint16_t frame_data_size() const;
 
 private:

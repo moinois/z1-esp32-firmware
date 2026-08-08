@@ -1,4 +1,4 @@
-// Defines connectivity defaults shared only within the application partition.
+/** @file @brief Defines connectivity defaults shared only within the application partition. */
 #pragma once
 
 #include <cstddef>

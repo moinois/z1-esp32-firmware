@@ -1,4 +1,4 @@
-// Defines source names shared by configuration get and set commands.
+/** @file @brief Defines source names shared by configuration get and set commands. */
 #pragma once
 
 #include <string_view>

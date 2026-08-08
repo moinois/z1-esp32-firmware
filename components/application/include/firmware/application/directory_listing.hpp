@@ -1,4 +1,4 @@
-// Declares deterministic directory-list policy behind a replaceable filesystem port.
+/** @file @brief Declares deterministic directory-list policy behind a replaceable filesystem port. */
 #pragma once
 
 #include "firmware/core/bytes.hpp"
@@ -12,7 +12,7 @@
 
 namespace firmware::application {
 
-// Holds a filesystem modification time already converted to UTC.
+/// Holds a filesystem modification time already converted to UTC.
 struct UtcFileTime {
     std::uint16_t year;
     std::uint8_t month;
@@ -22,7 +22,7 @@ struct UtcFileTime {
     std::uint8_t second;
 };
 
-// Describes one enumerated entry without exposing platform stat structures.
+/// Describes one enumerated entry without exposing platform stat structures.
 struct DirectoryEntry {
     std::string name;
     bool directory;
@@ -31,24 +31,24 @@ struct DirectoryEntry {
     bool metadata_available;
 };
 
-// Isolates listing policy from directory enumeration and response transport.
+/// Isolates listing policy from directory enumeration and response transport.
 class DirectoryListPort {
 public:
-    // Enables safe destruction through a substituted port implementation.
+    /// Enables safe destruction through a substituted port implementation.
     virtual ~DirectoryListPort() = default;
 
-    // Enumerates a resolved directory in filesystem order or reports failure.
+    /// Enumerates a resolved directory in filesystem order or reports failure.
     virtual std::optional<std::vector<DirectoryEntry>> list_directory(
         std::string_view path) = 0;
 
-    // Sends one response to the command's destination selected by its adapter.
+    /// Sends one response to the command's destination selected by its adapter.
     virtual void send(core::Frame frame) = 0;
 };
 
-// Formats and chunks one complete `ls` operation.
+/// Formats and chunks one complete `ls` operation.
 class DirectoryListing {
 public:
-    // Executes an argument and always emits the terminal completion response.
+    /// Executes an argument and always emits the terminal completion response.
     static void execute(core::BytesView argument, DirectoryListPort& port);
 };
 

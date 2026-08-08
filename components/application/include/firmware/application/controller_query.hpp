@@ -1,4 +1,4 @@
-// Defines the transport-independent schedule for periodic controller queries.
+/** @file @brief Defines the transport-independent schedule for periodic controller queries. */
 #pragma once
 
 #include "firmware/core/frame.hpp"
@@ -8,12 +8,13 @@
 
 namespace firmware::application {
 
+/** Schedules periodic controller status and diagnostic query packets. */
 class ControllerQueryScheduler {
 public:
-    // Starts both schedules at the supplied monotonic millisecond value.
+    /// Starts both schedules at the supplied monotonic millisecond value.
     explicit ControllerQueryScheduler(std::uint64_t start_milliseconds);
 
-    // Returns queries due now and advances all elapsed schedule opportunities.
+    /// Returns queries due now and advances all elapsed schedule opportunities.
     std::vector<core::Frame> poll(std::uint64_t now_milliseconds, bool controller_traffic_allowed);
 
 private:

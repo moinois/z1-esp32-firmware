@@ -1,4 +1,4 @@
-// Defines target-neutral HTTP server and SPIFFS volume configuration.
+/** @file @brief Defines target-neutral HTTP server and SPIFFS volume configuration. */
 #pragma once
 
 #include <cstddef>
@@ -14,7 +14,7 @@ inline constexpr std::size_t uri_capacity = 512U;
 
 }  // namespace web
 
-// Groups listener and session limits for one plaintext HTTP server.
+/// Groups listener and session limits for one plaintext HTTP server.
 struct HttpServerConfig {
     std::uint16_t port;
     std::uint16_t control_port;
@@ -39,7 +39,7 @@ inline constexpr HttpServerConfig video_http_server{
     82U, 32764U, 7U, 5U, 5U, 10U, false, false, false, true,
     false, false, false, false};
 
-// Groups mount and on-flash format settings for the independent web volume.
+/// Groups mount and on-flash format settings for the independent web volume.
 struct WebVolumeConfig {
     std::string_view mount_path;
     std::size_t maximum_open_files;

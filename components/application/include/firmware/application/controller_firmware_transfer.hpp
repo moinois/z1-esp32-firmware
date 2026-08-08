@@ -1,4 +1,4 @@
-// Defines the controller firmware-transfer state machine and its replaceable port.
+/** @file @brief Defines the controller firmware-transfer state machine and its replaceable port. */
 #pragma once
 
 #include "firmware/core/frame.hpp"
@@ -10,6 +10,7 @@
 
 namespace firmware::application {
 
+/** Controller firmware-transfer event emitted by validated protocol input. */
 enum class FirmwareTransferEvent {
     started,
     progress,
@@ -19,45 +20,45 @@ enum class FirmwareTransferEvent {
     timed_out,
 };
 
-// Isolates firmware-transfer policy from storage, transport, and status sinks.
+/// Isolates firmware-transfer policy from storage, transport, and status sinks.
 class ControllerFirmwarePort {
 public:
-    // Enables safe destruction through a substituted port implementation.
+    /// Enables safe destruction through a substituted port implementation.
     virtual ~ControllerFirmwarePort() = default;
 
-    // Reports whether the requested firmware file is currently available.
+    /// Reports whether the requested firmware file is currently available.
     virtual bool file_exists(std::string_view path) = 0;
 
-    // Returns the current firmware file size or failure.
+    /// Returns the current firmware file size or failure.
     virtual std::optional<std::uint64_t> file_size(std::string_view path) = 0;
 
-    // Reopens and reads at most one negotiated block from the requested offset.
+    /// Reopens and reads at most one negotiated block from the requested offset.
     virtual std::optional<core::ByteVector> read_file(std::string_view path,
                                                       std::uint64_t offset,
                                                       std::size_t maximum_size) = 0;
 
-    // Submits one complete controller response and reports queue acceptance.
+    /// Submits one complete controller response and reports queue acceptance.
     virtual bool send(core::Frame frame) = 0;
 
-    // Publishes controller-update state without coupling to its representation.
+    /// Publishes controller-update state without coupling to its representation.
     virtual void publish(FirmwareTransferEvent event, std::uint32_t index,
                          std::uint32_t frame_count) = 0;
 };
 
-// Processes the `0xC1` through `0xC5` firmware-transfer exchange.
+/// Processes the `0xC1` through `0xC5` firmware-transfer exchange.
 class ControllerFirmwareTransfer {
 public:
-    // Processes one accepted family frame and then applies its conditional timeout.
+    /// Processes one accepted family frame and then applies its conditional timeout.
     void handle(const core::Frame& frame, std::uint64_t now_milliseconds,
                 ControllerFirmwarePort& port);
 
-    // Reports whether ordinary host-to-controller traffic must be suppressed.
+    /// Reports whether ordinary host-to-controller traffic must be suppressed.
     bool active() const;
 
-    // Exposes retained geometry for status and deterministic tests.
+    /// Exposes retained geometry for status and deterministic tests.
     std::uint32_t frame_count() const;
 
-    // Exposes the retained block size for status and deterministic tests.
+    /// Exposes the retained block size for status and deterministic tests.
     std::uint16_t frame_data_size() const;
 
 private:

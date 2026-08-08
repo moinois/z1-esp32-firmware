@@ -1,4 +1,4 @@
-// Declares USB physical/protocol activity and disconnect state transitions.
+/** @file @brief USB physical and protocol activity state transitions. */
 #pragma once
 
 #include "firmware/application/usb_receive_staging.hpp"
@@ -8,32 +8,34 @@
 
 namespace firmware::application {
 
-// Coordinates USB activity without coupling policy to TinyUSB callbacks.
+/** Coordinates callback/task USB state without depending on TinyUSB types. */
 class UsbProtocolState {
 public:
-    // Records physical enumeration without enabling protocol destinations.
+    /// Records enumeration without enabling response routing prematurely.
     void enumerated();
 
-    // Activates protocol routing after the first structurally valid frame.
+    /// Activates protocol routing after the first structurally valid frame.
     void valid_frame_received();
 
-    // Clears receive state and protocol activity while retaining transmit queue.
+    /** Clears partial receive/activity state while retaining queued responses. */
     void disconnected();
 
-    // Reports whether responses may currently be sent.
+    /// Reports whether both physical presence and protocol activation permit send.
     bool can_send() const;
 
-    // Reports physical presence independently from protocol activity.
+    /// Reports physical presence independently from protocol activation.
     bool physically_present() const;
 
-    // Reports whether a valid frame has activated the protocol.
+    /// Reports whether a valid frame has activated protocol destinations.
     bool protocol_active() const;
 
+    /// Exposes receive staging owned for the full protocol-state lifetime.
     UsbReceiveStaging& receive_staging();
+    /// Exposes the queue retained across disconnect/re-enumeration.
     UsbTransmitQueue& transmit_queue();
 
 private:
-    // Callback/task shared flags use lock-free atomic state transitions.
+    /// Callback/task shared flags use lock-free atomic state transitions.
     std::atomic_bool physically_present_{false};
     std::atomic_bool protocol_active_{false};
     UsbReceiveStaging receive_staging_;

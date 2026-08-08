@@ -1,4 +1,4 @@
-// Declares bounded FIFO policy for outgoing TCP frames.
+/** @file @brief Bounded FIFO policy for outgoing TCP frames. */
 #pragma once
 
 #include "firmware/core/bytes.hpp"
@@ -8,18 +8,19 @@
 
 namespace firmware::application {
 
+/** Retains encoded frames until a session sender completes each front item. */
 class TcpTransmitQueue {
 public:
-    // Enqueues one nonempty frame no larger than the host protocol limit.
+    /// Enqueues one nonempty frame no larger than the host protocol limit.
     bool enqueue(core::BytesView frame);
 
-    // Returns the oldest complete frame without removing it.
+    /// Returns the oldest frame; valid until the next mutating queue operation.
     const core::ByteVector* front() const;
 
-    // Removes the oldest frame after the transport fully sends it.
+    /// Removes the oldest frame after the transport fully sends it.
     void pop_front();
 
-    // Reports current queued-item count.
+    /// Reports the current queued-item count.
     std::size_t size() const;
 
 private:

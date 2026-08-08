@@ -1,4 +1,4 @@
-// Defines streamed-play controller lifecycle handling around a shared play session.
+/** @file @brief Defines streamed-play controller lifecycle handling around a shared play session. */
 #pragma once
 
 #include "firmware/application/play_line_reader.hpp"
@@ -9,32 +9,32 @@
 
 namespace firmware::application {
 
-// Extends play preparation I/O with controller output and lifecycle observers.
+/// Extends play preparation I/O with controller output and lifecycle observers.
 class PlayControllerPort : public PlayPreparationPort, public PlayLineSource {
 public:
-    // Submits one complete controller response and reports queue acceptance.
+    /// Submits one complete controller response and reports queue acceptance.
     virtual bool send(core::Frame frame) = 0;
 
-    // Notifies recording and runtime observers of play state.
+    /// Notifies recording and runtime observers of play state.
     virtual void play_state_changed(bool running) = 0;
 
-    // Releases physical play ownership after terminal cleanup.
+    /// Releases physical play ownership after terminal cleanup.
     virtual void release_play_ownership() = 0;
 
-    // Rewinds the prepared file to its first byte.
+    /// Rewinds the prepared file to its first byte.
     virtual bool rewind_file() = 0;
 
-    // Returns monotonic time for progress-report pacing during synchronous scans.
+    /// Returns monotonic time for progress-report pacing during synchronous scans.
     virtual std::uint64_t now_milliseconds() const = 0;
 };
 
-// Processes controller start and terminal packets for streamed play.
+/// Processes controller start and terminal packets for streamed play.
 class PlayController {
 public:
-    // Uses the supplied shared session for host preparation and controller state.
+    /// Uses the supplied shared session for host preparation and controller state.
     explicit PlayController(PlaySession& session);
 
-    // Processes one accepted `0xF` family frame.
+    /// Processes one accepted `0xF` family frame.
     void handle(const core::Frame& frame, std::uint64_t now_milliseconds,
                 PlayControllerPort& port);
 

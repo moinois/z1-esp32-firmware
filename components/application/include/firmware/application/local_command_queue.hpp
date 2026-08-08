@@ -1,4 +1,4 @@
-// Declares the bounded FIFO used to serialize local command handling.
+/** @file @brief Bounded FIFO used to serialize local command handling. */
 #pragma once
 
 #include "firmware/core/frame.hpp"
@@ -10,21 +10,21 @@
 
 namespace firmware::application {
 
-// Stores at most 32 local commands and rejects frames outside the local limit.
+/** Stores bounded local commands so flash-using services execute serially. */
 class LocalCommandQueue {
 public:
-    // Local command frames include the common nine-byte framing envelope.
+    /// Encoded-size admission limit including the common framing envelope.
     static constexpr std::size_t maximum_frame_size =
         core::protocol::controller_maximum_item_size;
     static constexpr std::size_t maximum_pending_commands = 32U;
 
-    // Queues one non-empty frame when both capacity limits permit it.
+    /// Queues one non-empty frame when size and capacity limits permit it.
     bool enqueue(const core::Frame& frame);
 
-    // Removes and returns the oldest command, if one is available.
+    /// Removes and returns the oldest command, if available.
     std::optional<core::Frame> dequeue();
 
-    // Reports the number of commands waiting for serialized handling.
+    /// Reports the number of commands waiting for serialized handling.
     std::size_t pending() const;
 
 private:
@@ -32,3 +32,4 @@ private:
 };
 
 }  // namespace firmware::application
+    /// Maximum work retained to bound memory and response latency.

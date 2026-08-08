@@ -1,4 +1,4 @@
-// Defines the controller UART contract shared by policy tests and the ESP-IDF adapter.
+/** @file @brief Defines the controller UART contract shared by policy tests and the ESP-IDF adapter. */
 #pragma once
 
 #include <cstddef>
@@ -6,7 +6,7 @@
 
 namespace firmware::application {
 
-// Groups the immutable hardware and receive-loop settings for the controller link.
+/// Groups the immutable hardware and receive-loop settings for the controller link.
 struct ControllerUartConfig {
     int port;
     int tx_gpio;

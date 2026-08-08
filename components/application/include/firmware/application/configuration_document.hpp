@@ -1,4 +1,4 @@
-// Declares the target-neutral parsed representation of config.txt.
+/** @file @brief Declares the target-neutral parsed representation of config.txt. */
 #pragma once
 
 #include <optional>
@@ -8,34 +8,34 @@
 
 namespace firmware::application {
 
-// Represents one normalized configuration key/value pair.
+/// Represents one normalized configuration key/value pair.
 struct ConfigurationEntry {
     std::string key;
     std::string value;
 };
 
-// Preserves configuration text while providing structured key/value access.
+/// Preserves configuration text while providing structured key/value access.
 class ConfigurationDocument {
 public:
-    // Parses comments, key/value lines, and unknown text from a complete file.
+    /// Parses comments, key/value lines, and unknown text from a complete file.
     static ConfigurationDocument parse(std::string_view text);
 
-    // Returns the first value for an exact key.
+    /// Returns the first value for an exact key.
     std::optional<std::string_view> get(std::string_view key) const;
 
-    // Replaces the first key or appends a new key/value line.
+    /// Replaces the first key or appends a new key/value line.
     void set(std::string_view key, std::string_view value);
 
-    // Canonicalizes every parsed key before a complete document is persisted.
+    /// Canonicalizes every parsed key before a complete document is persisted.
     void uppercase_keys();
 
-    // Returns all parsed entries in source order.
+    /// Returns all parsed entries in source order.
     std::vector<ConfigurationEntry> entries() const;
 
-    // Serializes the document while retaining comments and unknown lines.
+    /// Serializes the document while retaining comments and unknown lines.
     std::string serialize() const;
 
-    // Returns the source lines without parsing them into settings.
+    /// Returns the source lines without parsing them into settings.
     std::vector<std::string> lines() const;
 
 private:
@@ -48,19 +48,19 @@ private:
     std::vector<Line> lines_;
 };
 
-// Provides access to entries below a normalized tag_ prefix.
+/// Provides access to entries below a normalized tag_ prefix.
 class ConfigurationNamespace {
 public:
-    // Creates a namespace view over one parsed document.
+    /// Creates a namespace view over one parsed document.
     ConfigurationNamespace(ConfigurationDocument& document, std::string_view tag);
 
-    // Reads one suffix below the namespace prefix.
+    /// Reads one suffix below the namespace prefix.
     std::optional<std::string_view> get(std::string_view key) const;
 
-    // Replaces or appends one namespaced setting.
+    /// Replaces or appends one namespaced setting.
     void set(std::string_view key, std::string_view value);
 
-    // Returns all settings below the namespace prefix.
+    /// Returns all settings below the namespace prefix.
     std::vector<ConfigurationEntry> get_all() const;
 
 private:

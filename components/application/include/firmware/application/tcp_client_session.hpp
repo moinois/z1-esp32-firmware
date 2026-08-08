@@ -1,4 +1,4 @@
-// Declares state shared by one TCP connection's receive and transmit paths.
+/** @file @brief State shared by one TCP connection's RX and TX paths. */
 #pragma once
 
 #include "firmware/application/ownership.hpp"
@@ -11,33 +11,35 @@
 
 namespace firmware::application {
 
+/** Owns stream decoding, stable identity, and output queue for one connection. */
 class TcpClientSession {
 public:
+    /// Receives each decoded frame together with the stable connection identity.
     using FrameHandler = std::function<void(const HostIdentity&, const core::Frame&)>;
 
-    // Creates a session with a stable connection identity and TCP decoder policy.
+    /// Creates a session with a stable identity and TCP stream recovery policy.
     explicit TcpClientSession(HostIdentity identity);
 
-    // Decodes received bytes and delivers every complete frame to the handler.
+    /// Decodes arbitrary stream fragments and delivers every complete frame.
     void receive(core::BytesView bytes, const FrameHandler& handler);
 
-    // Encodes and queues one outgoing frame for later whole-frame transmission.
+    /// Encodes and queues one outgoing frame for whole-frame transmission.
     bool queue_frame(const core::Frame& frame);
 
-    // Provides the session's bounded outgoing queue to the transport adapter.
+    /// Provides the bounded outgoing queue to the owning transport adapter.
     TcpTransmitQueue& transmit_queue();
 
-    // Atomically removes and returns the next encoded frame for a sender.
+    /// Atomically removes and returns the next encoded frame for a sender.
     std::optional<core::ByteVector> take_next_transmit_frame();
 
-    // Sends the queued front frame and removes it only after completion.
+    /// Sends the front frame and removes it only after complete transmission.
     bool send_next_transmit_frame(
         const std::function<bool(core::BytesView)>& send_function);
 
-    // Reports whether at least one encoded frame is waiting for transmission.
+    /// Reports whether at least one encoded frame awaits transmission.
     bool has_pending_transmit_frame() const;
 
-    // Returns this connection's ownership identity.
+    /// Returns this connection's immutable ownership identity.
     const HostIdentity& identity() const;
 
 private:

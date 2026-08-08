@@ -1,4 +1,4 @@
-// Declares sampled diagnostics for the local CANopen digital-output object.
+/** @file @brief Declares sampled diagnostics for the local CANopen digital-output object. */
 #pragma once
 
 #include "firmware/core/canopen_dictionary.hpp"
@@ -21,32 +21,32 @@ inline constexpr std::string_view gpio_message =
 
 }  // namespace can_output_monitor
 
-// Isolates sampled output diagnostics from the target logging implementation.
+/// Isolates sampled output diagnostics from the target logging implementation.
 class CanOutputMonitorPort {
 public:
-    // Enables safe destruction through a substituted diagnostic adapter.
+    /// Enables safe destruction through a substituted diagnostic adapter.
     virtual ~CanOutputMonitorPort() = default;
 
-    // Emits one informational record under the supplied tag.
+    /// Emits one informational record under the supplied tag.
     virtual void log_info(std::string_view tag,
                           std::string_view message) = 0;
 };
 
-// Collapses dictionary changes between nominal 50 ms observations.
+/// Collapses dictionary changes between nominal 50 ms observations.
 class CanOutputMonitor {
 public:
-    // Binds the monitor to read-only dictionary state and a log destination.
+    /// Binds the monitor to read-only dictionary state and a log destination.
     CanOutputMonitor(const core::CanopenObjectDictionary& dictionary,
                      CanOutputMonitorPort& port);
 
-    // Emits the two exact startup records and resets first-sample state.
+    /// Emits the two exact startup records and resets first-sample state.
     void start();
 
-    // Logs the first or changed output value using exact lowercase formatting.
+    /// Logs the first or changed output value using exact lowercase formatting.
     void sample();
 
 private:
-    // Reads the fixed 32-bit output object from its little-endian bytes.
+    /// Reads the fixed 32-bit output object from its little-endian bytes.
     std::optional<std::uint32_t> output_value() const;
 
     const core::CanopenObjectDictionary& dictionary_;

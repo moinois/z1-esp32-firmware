@@ -1,4 +1,4 @@
-// Defines the target-neutral TWAI hardware contract used by its ESP-IDF adapter.
+/** @file @brief Defines the target-neutral TWAI hardware contract used by its ESP-IDF adapter. */
 #pragma once
 
 #include <cstddef>
@@ -6,7 +6,7 @@
 
 namespace firmware::application {
 
-// Groups all fixed CAN controller, timing, filter, queue, and pin settings.
+/// Groups all fixed CAN controller, timing, filter, queue, and pin settings.
 struct CanTwaiConfig {
     bool normal_mode;
     std::uint32_t bitrate;

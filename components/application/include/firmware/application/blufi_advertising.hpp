@@ -1,4 +1,4 @@
-// Declares the byte-exact legacy BLUFI advertising policy from BLE-002/BWF-002.
+/** @file @brief Declares the byte-exact legacy BLUFI advertising policy from BLE-002/BWF-002. */
 #pragma once
 
 #include "firmware/core/bytes.hpp"
@@ -9,10 +9,10 @@
 
 namespace firmware::application {
 
-// Builds `MK_` followed by at most the first 23 machine-name bytes.
+/// Builds `MK_` followed by at most the first 23 machine-name bytes.
 std::string blufi_device_name(std::string_view machine_name);
 
-// Packs one complete legacy advertising-data payload without a scan response.
+/// Packs one complete legacy advertising-data payload without a scan response.
 core::ByteVector blufi_advertising_data(std::string_view device_name,
                                         std::int8_t transmit_power_dbm);
 

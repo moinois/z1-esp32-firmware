@@ -1,4 +1,4 @@
-// Defines the target-neutral camera pin, allocation, and capture contract.
+/** @file @brief Defines the target-neutral camera pin, allocation, and capture contract. */
 #pragma once
 
 #include <array>
@@ -7,7 +7,7 @@
 
 namespace firmware::application {
 
-// Groups all fixed electrical and capture settings for the camera adapter.
+/// Groups all fixed electrical and capture settings for the camera adapter.
 struct CameraHardwareConfig {
     std::array<int, 8U> data_gpio;
     int vsync_gpio;

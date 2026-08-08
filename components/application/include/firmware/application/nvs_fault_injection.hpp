@@ -1,4 +1,4 @@
-// Declares deterministic failure selection at persistent NVS boundaries.
+/** @file @brief Declares deterministic failure selection at persistent NVS boundaries. */
 #pragma once
 
 #include <atomic>
@@ -6,22 +6,23 @@
 
 namespace firmware::application {
 
+/** One-shot NVS boundary fault selected by the mock control command. */
 enum class NvsFault : std::uint8_t {
     none,
     open,
     commit,
 };
 
-// Stores one active NVS failure without replacing the persistent backend.
+/// Stores one active NVS failure without replacing the persistent backend.
 class NvsFaultInjection {
 public:
-    // Replaces the active failure; selecting none restores normal operation.
+    /// Replaces the active failure; selecting none restores normal operation.
     void select(NvsFault fault);
 
-    // Returns true when namespace opening must fail before calling ESP-IDF.
+    /// Returns true when namespace opening must fail before calling ESP-IDF.
     bool fail_open() const;
 
-    // Returns true when a write must fail before committing it to flash.
+    /// Returns true when a write must fail before committing it to flash.
     bool fail_commit() const;
 
 private:

@@ -1,4 +1,4 @@
-// Defines the shared persistent namespace and keys for runtime accounting.
+/** @file @brief Defines the shared persistent namespace and keys for runtime accounting. */
 #pragma once
 
 #include <string_view>

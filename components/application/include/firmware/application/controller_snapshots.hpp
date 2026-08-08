@@ -1,4 +1,4 @@
-// Stores bounded controller snapshots and creates local host response frames.
+/** @file @brief Stores bounded controller snapshots and creates local host response frames. */
 #pragma once
 
 #include "firmware/core/frame.hpp"
@@ -11,30 +11,31 @@
 
 namespace firmware::application {
 
+/** Retains latest controller status, diagnostics, and version atomically by type. */
 class ControllerSnapshots {
 public:
-    // Creates the store with the specified initial status sample.
+    /// Creates the store with the specified initial status sample.
     ControllerSnapshots();
 
-    // Replaces the latest nonempty status and queues it for one pending request.
+    /// Replaces the latest nonempty status and queues it for one pending request.
     void update_status(core::BytesView payload);
 
-    // Replaces diagnostic data, including with an empty payload.
+    /// Replaces diagnostic data, including with an empty payload.
     void update_diagnostic(core::BytesView payload);
 
-    // Replaces controller version data, including with an empty payload.
+    /// Replaces controller version data, including with an empty payload.
     void update_version(core::BytesView payload);
 
-    // Consumes pending status state and creates the extended status response.
+    /// Consumes pending status state and creates the extended status response.
     std::optional<core::Frame> status_reply(const core::StatusExtension& extension);
 
-    // Creates a diagnostic response when the retained syntax is usable.
+    /// Creates a diagnostic response when the retained syntax is usable.
     std::optional<core::Frame> diagnostic_reply(std::int32_t rssi) const;
 
-    // Creates the fixed mainboard version response with an optional controller prefix.
+    /// Creates the fixed mainboard version response with an optional controller prefix.
     core::Frame version_reply() const;
 
-    // Exposes retained sizes for capacity tests and diagnostic reporting.
+    /// Exposes retained sizes for capacity tests and diagnostic reporting.
     std::size_t latest_status_size() const;
     std::size_t diagnostic_size() const;
     std::size_t version_size() const;

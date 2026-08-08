@@ -1,4 +1,4 @@
-// Declares the storage retention service over replaceable filesystem operations.
+/** @file @brief Declares the storage retention service over replaceable filesystem operations. */
 #pragma once
 
 #include "firmware/application/storage_retention.hpp"
@@ -9,11 +9,13 @@
 
 namespace firmware::application {
 
+/** Capacity snapshot used to decide whether recording retention is required. */
 struct StorageUsage {
     std::uint64_t total_bytes = 0U;
     std::uint64_t free_bytes = 0U;
 };
 
+/** Filesystem operations required by the storage-retention policy. */
 class StorageRetentionPort {
 public:
     virtual ~StorageRetentionPort() = default;
@@ -23,7 +25,7 @@ public:
     virtual void request_persistence() = 0;
 };
 
-// Runs one check, pruning candidates and refreshing usage after each deletion.
+/// Runs one check, pruning candidates and refreshing usage after each deletion.
 class StorageRetentionService {
 public:
     void run_check(StorageRetentionPort& port);
