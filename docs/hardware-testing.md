@@ -31,6 +31,10 @@ Z1_HIL_HOST=192.168.8.119 Z1_ALLOW_DESTRUCTIVE=1 \
   python3 -m pytest tests/hardware/test_ota.py
 ```
 
+`pytest-timeout` applies a ten-minute per-test safety limit. Individual transport
+deadlines remain the primary assertions; the outer limit prevents a lost host
+USB handle or fixture deadlock from blocking an unattended HIL run forever.
+
 | Variable | Meaning | Default |
 |---|---|---|
 | `Z1_HIL_HOST` | Target IPv4 address for TCP/HTTP tests | `192.168.4.1` |
@@ -461,6 +465,34 @@ completion alone cannot prove a mount. Controller, CAN, BLE, RF-control, and
 recording still need dedicated fixture drivers. Capability-gate tests document
 missing controller, CAN, BLE, and camera fixtures as skips; the camera gate
 probes the firmware automatically.
+
+On 2026-08-09 an all-mock image was flashed from `build-hil-all`. COM reset and
+boot diagnostics passed 2/2. The applicable native-USB mutating suite produced
+44 PASS, three capability-gated SKIP, and the documented SD-009/CFG-001 XFAIL;
+the remaining 30-case storage, controller, NVS, Wi-Fi, and USB group passed
+without failure. Destructive HIL then installed the generated 1 MiB SPIFFS
+image, verified runtime/serial/Wi-Fi persistence across a same-image OTA reboot,
+and completed an OTA whose multipart body paused for seven seconds. All three
+destructive cases passed. These results are mock-adapter and real ESP32-S3
+transport/flash evidence; they do not claim a physical SD card, controller,
+camera, or CAN bus.
+
+The first 20-cycle USB/mock-SD endurance run failed after approximately eight
+minutes with macOS/libusb `errno=5` on one bulk write. The device remained
+enumerated and immediately answered `version` through a fresh handle. A clean
+full rerun passed in 8:59, so the event is retained as intermittent host-handle
+evidence rather than classified as a firmware deadlock. The HIL client now
+reports the failed operation, backend codes, stale-handle candidacy, and exact
+cycle/file/block context. It also uses a 100 ms post-frame quiescence window
+while retaining the full initial response deadline; the unchanged 20-cycle
+test passed in 3:09.
+
+Extended USB stress then passed three rounds of upload/download for 63, 511,
+2048, and 8192-byte blocks with files up to 64 KiB. Three separate 12 KiB,
+three-block uploads reset the USB bus after block one; each re-enumerated link
+continued from block two, completed block three, downloaded identical bytes,
+and cleaned up. Repeated control requests and recovery after unframed noise also
+passed. Reports remain local under `build/hil-*.json`.
 
 On 2026-07-27 the expanded suite was run through native USB and station Wi-Fi
 at `192.168.8.119`. The safe run produced 19 PASS, 12 capability/safety SKIP,
