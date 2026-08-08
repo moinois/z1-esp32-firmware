@@ -1,4 +1,5 @@
 ![Release](https://github.com/moinois/z1-esp32-firmware/actions/workflows/release-firmware.yml/badge.svg)
+[![Coverage](https://raw.githubusercontent.com/moinois/z1-esp32-firmware/coverage/badge.svg)](https://github.com/moinois/z1-esp32-firmware/tree/coverage)
 
 # Makera Z1 communications mainboard firmware
 

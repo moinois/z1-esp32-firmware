@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
@@ -15,6 +16,53 @@ BUILD_DIR = ROOT / "build" / "host-coverage"
 REPORT_DIR = BUILD_DIR / "coverage"
 PROFILE_DATA = BUILD_DIR / "coverage.profdata"
 TEST_BINARY = BUILD_DIR / "tests" / "core_tests"
+SUMMARY_PATH = REPORT_DIR / "coverage-summary.json"
+BADGE_PATH = REPORT_DIR / "badge.svg"
+
+
+def line_coverage(exported: dict[str, object]) -> float:
+    """Extracts total line coverage from one llvm-cov summary export."""
+
+    data = exported.get("data")
+    if not isinstance(data, list) or len(data) != 1:
+        raise ValueError("llvm-cov export must contain exactly one data record")
+    try:
+        percent = data[0]["totals"]["lines"]["percent"]
+    except (KeyError, TypeError) as error:
+        raise ValueError("llvm-cov export has no total line percentage") from error
+    if not isinstance(percent, (int, float)) or not 0.0 <= percent <= 100.0:
+        raise ValueError("llvm-cov line percentage is outside 0 through 100")
+    return float(percent)
+
+
+def coverage_color(percent: float) -> str:
+    """Maps line coverage to the conventional badge quality palette."""
+
+    for threshold, color in (
+        (90.0, "#4c1"),
+        (80.0, "#97ca00"),
+        (70.0, "#a4a61d"),
+        (60.0, "#dfb317"),
+        (50.0, "#fe7d37"),
+    ):
+        if percent >= threshold:
+            return color
+    return "#e05d44"
+
+
+def coverage_badge_svg(percent: float) -> str:
+    """Builds a dependency-free static SVG badge for the latest release."""
+
+    value = f"{percent:.1f}%"
+    color = coverage_color(percent)
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="124" height="20" role="img" aria-label="coverage: {value}">
+  <title>coverage: {value}</title>
+  <linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
+  <clipPath id="r"><rect width="124" height="20" rx="3" fill="#fff"/></clipPath>
+  <g clip-path="url(#r)"><rect width="75" height="20" fill="#555"/><rect x="75" width="49" height="20" fill="{color}"/><rect width="124" height="20" fill="url(#s)"/></g>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11"><text x="37.5" y="15" fill="#010101" fill-opacity=".3">coverage</text><text x="37.5" y="14">coverage</text><text x="99.5" y="15" fill="#010101" fill-opacity=".3">{value}</text><text x="99.5" y="14">{value}</text></g>
+</svg>
+"""
 
 
 def run(command: Sequence[str], *, env: dict[str, str] | None = None) -> None:
@@ -61,6 +109,10 @@ def find_llvm_toolchain() -> tuple[str, str, str]:
     path_clang = shutil.which("clang++")
     if path_clang:
         roots.append(Path(path_clang).resolve().parent.parent)
+    roots.extend(
+        path.parent.parent
+        for path in Path("/usr/lib").glob("llvm-*/bin/clang++")
+    )
 
     xcrun = shutil.which("xcrun")
     if xcrun:
@@ -157,6 +209,28 @@ def main() -> int:
             ]
         )
 
+        exported = subprocess.run(
+            [
+                llvm_cov,
+                "export",
+                str(TEST_BINARY),
+                f"-instr-profile={PROFILE_DATA}",
+                "-summary-only",
+                "-ignore-filename-regex=(/tests/|/usr/|/Library/)",
+            ],
+            cwd=ROOT,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+        ).stdout
+        summary = json.loads(exported)
+        SUMMARY_PATH.write_text(
+            json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        BADGE_PATH.write_text(
+            coverage_badge_svg(line_coverage(summary)), encoding="utf-8"
+        )
+
         print()
         run(
             [
@@ -175,6 +249,8 @@ def main() -> int:
         print()
         print("Coverage report:")
         print(f"  {report.relative_to(ROOT)}")
+        print(f"  {SUMMARY_PATH.relative_to(ROOT)}")
+        print(f"  {BADGE_PATH.relative_to(ROOT)}")
         print()
         print("Open with:")
         print(f"  open {report.relative_to(ROOT)}")

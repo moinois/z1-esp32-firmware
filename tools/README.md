@@ -146,3 +146,7 @@ Open the HTML report with:
 open build/host-coverage/coverage/index.html
 ```
 Coverage output is isolated from the ordinary host-tests build.
+Each successful release run uploads this directory as a workflow artifact and
+publishes the latest report plus `badge.svg` to the generated `coverage`
+branch. The README badge reads that static file, so it reports the measured
+line coverage of the latest release rather than a manually maintained value.
