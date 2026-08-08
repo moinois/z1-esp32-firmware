@@ -155,3 +155,50 @@ TEST_CASE(lpcfac_004_cancellation_does_not_remove_the_factory_file) {
     REQUIRE_EQ(port.remove_count, 0U);
     REQUIRE_EQ(transfer.frame_data_size(), 0U);
 }
+
+TEST_CASE(lpcfac_001_start_send_failure_reports_cancel_but_stays_active) {
+    ControllerFactoryTransfer transfer;
+    FakeFactoryPort port;
+    port.send_succeeds = false;
+
+    transfer.handle({0xE1U, {}}, port);
+
+    REQUIRE(transfer.active());
+    REQUIRE_EQ(port.sent.size(), 2U);
+    REQUIRE_EQ(port.sent.back().type, 0xE5U);
+}
+
+TEST_CASE(lpcfac_002_geometry_rejects_malformed_read_and_send_failures) {
+    ControllerFactoryTransfer transfer;
+    FakeFactoryPort port;
+
+    transfer.handle({0xE2U, {1U}}, port);
+    REQUIRE_EQ(port.sent.back().type, 0xE5U);
+    port.chunks = std::nullopt;
+    transfer.handle(geometry(100U), port);
+    REQUIRE_EQ(port.sent.back().type, 0xE5U);
+    port.chunks = std::vector<ByteVector>{bytes("value")};
+    port.send_succeeds = false;
+    transfer.handle(geometry(100U), port);
+    REQUIRE_EQ(port.sent.back().type, 0xE5U);
+}
+
+TEST_CASE(lpcfac_003_data_rejects_malformed_unconfigured_and_io_failures) {
+    ControllerFactoryTransfer transfer;
+    FakeFactoryPort port;
+
+    transfer.handle({0xE3U, {1U}}, port);
+    REQUIRE_EQ(port.sent.back().type, 0xE5U);
+    const std::size_t before_unconfigured = port.sent.size();
+    transfer.handle({0xE3U, {0U, 0U, 0U, 1U}}, port);
+    REQUIRE_EQ(port.sent.size(), before_unconfigured);
+
+    transfer.handle(geometry(100U), port);
+    port.chunks = std::nullopt;
+    transfer.handle({0xE3U, {0U, 0U, 0U, 1U}}, port);
+    REQUIRE_EQ(port.sent.back().type, 0xE5U);
+    port.chunks = std::vector<ByteVector>{bytes("value")};
+    port.send_succeeds = false;
+    transfer.handle({0xE3U, {0U, 0U, 0U, 1U}}, port);
+    REQUIRE_EQ(port.sent.back().type, 0xE5U);
+}

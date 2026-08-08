@@ -161,3 +161,54 @@ TEST_CASE(lpccfg_006_terminal_packet_ends_transfer_and_there_is_no_idle_timeout)
     REQUIRE(!transfer.active());
     REQUIRE_EQ(transfer.frame_data_size(), 0U);
 }
+
+TEST_CASE(lpccfg_001_start_send_failure_reports_cancel_but_stays_active) {
+    ControllerConfigTransfer transfer;
+    FakeConfigPort port;
+    port.send_succeeds = false;
+
+    transfer.handle({0xD1U, {}}, port);
+
+    REQUIRE(transfer.active());
+    REQUIRE_EQ(port.sent.size(), 2U);
+    REQUIRE_EQ(port.sent.back().type, 0xD5U);
+}
+
+TEST_CASE(lpccfg_002_geometry_rejects_malformed_read_and_send_failures) {
+    ControllerConfigTransfer transfer;
+    FakeConfigPort port;
+
+    transfer.handle({0xD2U, {1U}}, port);
+    REQUIRE_EQ(port.sent.back().type, 0xD5U);
+    port.chunks = std::nullopt;
+    transfer.handle(geometry(), port);
+    REQUIRE_EQ(port.sent.back().type, 0xD5U);
+    port.chunks = std::vector<ByteVector>{bytes("abc\n")};
+    port.send_succeeds = false;
+    transfer.handle(geometry(), port);
+    REQUIRE_EQ(port.sent.back().type, 0xD5U);
+}
+
+TEST_CASE(lpccfg_003_data_rejects_malformed_unconfigured_and_io_failures) {
+    ControllerConfigTransfer transfer;
+    FakeConfigPort port;
+
+    transfer.handle({0xD3U, {1U}}, port);
+    REQUIRE_EQ(port.sent.back().type, 0xD5U);
+    const std::size_t before_unconfigured = port.sent.size();
+    transfer.handle({0xD3U, {0U, 0U, 0U, 1U}}, port);
+    REQUIRE_EQ(port.sent.size(), before_unconfigured);
+
+    transfer.handle(geometry(), port);
+    port.chunks = std::nullopt;
+    transfer.handle({0xD3U, {0U, 0U, 0U, 1U}}, port);
+    REQUIRE_EQ(port.sent.back().type, 0xD5U);
+    port.chunks = std::vector<ByteVector>{bytes("#none\n")};
+    const std::size_t before_empty = port.sent.size();
+    transfer.handle({0xD3U, {0U, 0U, 0U, 1U}}, port);
+    REQUIRE_EQ(port.sent.size(), before_empty);
+    port.chunks = std::vector<ByteVector>{bytes("value\n")};
+    port.send_succeeds = false;
+    transfer.handle({0xD3U, {0U, 0U, 0U, 1U}}, port);
+    REQUIRE_EQ(port.sent.back().type, 0xD5U);
+}
