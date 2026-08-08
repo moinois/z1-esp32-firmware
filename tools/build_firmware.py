@@ -16,6 +16,39 @@ MOCK_CONFIG_PATTERN = re.compile(r"^config Z1_MOCK_([A-Z0-9_]+)_HARDWARE$", re.M
 GLOBAL_MOCK_CONFIG = "CONFIG_Z1_MOCK_ALL_HARDWARE"
 
 
+def application_binary(build_directory: Path) -> Path:
+    """Returns the generated application binary named by ESP-IDF metadata."""
+
+    description_path = build_directory / "project_description.json"
+    description = json.loads(description_path.read_text(encoding="utf-8"))
+    relative = Path(description["app_bin"])
+    candidate = (build_directory / relative).resolve()
+    resolved_build = build_directory.resolve()
+    if candidate.parent != resolved_build or not candidate.is_file():
+        raise ValueError(
+            "ESP-IDF application binary must exist directly inside the build directory"
+        )
+    return candidate
+
+
+def release_package_command(
+    root: Path, build_directory: Path, mainboard_version: int
+) -> list[str]:
+    """Builds the aggregate-packager invocation for one successful build."""
+
+    firmware_path = application_binary(build_directory)
+    return [
+        sys.executable,
+        str(root / "tools" / "package_firmware.py"),
+        "--mainboard",
+        str(firmware_path),
+        "--mainboard-version",
+        f"0x{mainboard_version:08X}",
+        "--output",
+        str(build_directory / "firmware.bin"),
+    ]
+
+
 def discover_mock_adapters(kconfig_path: Path) -> dict[str, str]:
     """Returns CLI names and Kconfig symbols for every specific mock adapter."""
 
@@ -117,7 +150,13 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--release",
         action="store_true",
-        help="package a successful build as build/firmware.bin"    
+        help="package a successful build as BUILD_DIR/firmware.bin",
+    )
+    parser.add_argument(
+        "--mainboard-version",
+        type=lambda value: int(value, 0),
+        default=0,
+        help="unsigned 32-bit aggregate metadata used with --release",
     )
     return parser
 
@@ -155,6 +194,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.port and not args.flash:
         print("--port requires --flash", file=sys.stderr)
         return 2
+    if not args.release and args.mainboard_version != 0:
+        print("--mainboard-version requires --release", file=sys.stderr)
+        return 2
+    if not 0 <= args.mainboard_version <= 0xFFFFFFFF:
+        print("--mainboard-version must be an unsigned 32-bit value", file=sys.stderr)
+        return 2
 
     command = [
         "idf.py",
@@ -179,24 +224,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     build_directory = config.parent
-    firmware_path = build_directory / "mainboard_firmware.bin"
     package_path = build_directory / "firmware.bin"
-
-    if not firmware_path.is_file():
-        print(
-            f"expected firmware output was not created: {firmware_path}",
-            file=sys.stderr,
+    try:
+        firmware_path = application_binary(build_directory)
+        package_command = release_package_command(
+            root, build_directory, args.mainboard_version
         )
+    except (KeyError, OSError, ValueError, json.JSONDecodeError) as error:
+        print(f"could not locate ESP-IDF application binary: {error}", file=sys.stderr)
         return 1
-
-    package_command = [
-        sys.executable,
-        str(root / "tools" / "package_firmware.py"),
-        "--mainboard",
-        str(firmware_path),
-        "--output",
-        str(package_path),
-    ]
 
     package_result = subprocess.run(package_command, cwd=root, check=False)
     if package_result.returncode != 0:

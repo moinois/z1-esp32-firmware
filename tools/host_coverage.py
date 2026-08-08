@@ -22,29 +22,73 @@ def run(command: Sequence[str], *, env: dict[str, str] | None = None) -> None:
     subprocess.run(command, cwd=ROOT, env=env, check=True)
 
 
-def find_llvm_tool(name: str) -> str:
-    """Find an LLVM tool through xcrun or PATH."""
+def _compiler_has_standard_library(compiler: str) -> bool:
+    """Checks that a candidate compiler can include the C++ standard library."""
+
+    result = subprocess.run(
+        [compiler, "-fsyntax-only", "-x", "c++", "-"],
+        input="#include <cstddef>\nint main() { return 0; }\n",
+        text=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def _homebrew_llvm_root() -> Path | None:
+    """Returns the optional keg-only Homebrew LLVM root."""
+
+    brew = shutil.which("brew")
+    if brew is None:
+        return None
+    result = subprocess.run(
+        [brew, "--prefix", "llvm"],
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    if result.returncode != 0:
+        return None
+    return Path(result.stdout.strip())
+
+
+def find_llvm_toolchain() -> tuple[str, str, str]:
+    """Finds one coherent Clang, llvm-profdata, and llvm-cov installation."""
+
+    roots = [root for root in [_homebrew_llvm_root()] if root is not None]
+    path_clang = shutil.which("clang++")
+    if path_clang:
+        roots.append(Path(path_clang).resolve().parent.parent)
 
     xcrun = shutil.which("xcrun")
     if xcrun:
         result = subprocess.run(
-            [xcrun, "--find", name],
+            [xcrun, "--find", "clang++"],
             check=False,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
         )
         if result.returncode == 0:
-            path = result.stdout.strip()
-            if path:
-                return path
+            roots.append(Path(result.stdout.strip()).resolve().parent.parent)
 
-    path = shutil.which(name)
-    if path:
-        return path
+    for root in roots:
+        compiler = root / "bin" / "clang++"
+        llvm_profdata = root / "bin" / "llvm-profdata"
+        llvm_cov = root / "bin" / "llvm-cov"
+        if (
+            compiler.is_file()
+            and llvm_profdata.is_file()
+            and llvm_cov.is_file()
+            and _compiler_has_standard_library(str(compiler))
+        ):
+            return str(compiler), str(llvm_profdata), str(llvm_cov)
 
     raise RuntimeError(
-        f"{name} was not found; install or select the Xcode Command Line Tools"
+        "no coherent LLVM toolchain with C++ standard-library headers was found; "
+        "repair Xcode Command Line Tools or install Homebrew llvm"
     )
 
 
@@ -58,25 +102,26 @@ def main() -> int:
             )
         if shutil.which("ctest") is None:
             raise RuntimeError(
-                "cmake is unavailable.\n\n"
+                "ctest is unavailable.\n\n"
                 "Before running this command, activate the ESP-IDF environment:\n\n"
                 "    source ~/esp/esp-idf/export.sh"
             )
 
-        llvm_profdata = find_llvm_tool("llvm-profdata")
-        llvm_cov = find_llvm_tool("llvm-cov")
+        compiler, llvm_profdata, llvm_cov = find_llvm_toolchain()
 
-        # Remove stale profile data so it cannot contaminate the new report.
-        for profile in BUILD_DIR.glob("coverage-*.profraw"):
-            profile.unlink()
+        # Coverage is entirely generated output. Starting clean prevents a
+        # previously selected compiler from contaminating the profile format.
+        if BUILD_DIR.exists():
+            shutil.rmtree(BUILD_DIR)
 
-        if PROFILE_DATA.exists():
-            PROFILE_DATA.unlink()
-
-        if REPORT_DIR.exists():
-            shutil.rmtree(REPORT_DIR)
-
-        run(["cmake", "--preset", "host-coverage"])
+        run(
+            [
+                "cmake",
+                "--preset",
+                "host-coverage",
+                f"-DCMAKE_CXX_COMPILER={compiler}",
+            ]
+        )
         run(["cmake", "--build", "--preset", "host-coverage"])
         run(["ctest", "--preset", "host-coverage"])
 

@@ -8,7 +8,9 @@ import unittest
 from pathlib import Path
 
 from tools.build_firmware import (
+    application_binary,
     discover_mock_adapters,
+    release_package_command,
     write_build_selection,
 )
 
@@ -90,6 +92,40 @@ class BuildFirmwareTests(unittest.TestCase):
                 "sd": "CONFIG_Z1_MOCK_SD_HARDWARE",
             },
         )
+
+    def test_release_uses_the_application_named_by_project_description(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            build = root / "custom-build"
+            build.mkdir()
+            (build / "project_description.json").write_text(
+                json.dumps({"app_bin": "renamed-mainboard.bin"}),
+                encoding="utf-8",
+            )
+            (build / "renamed-mainboard.bin").write_bytes(b"\xE9image")
+
+            self.assertEqual(
+                application_binary(build), (build / "renamed-mainboard.bin").resolve()
+            )
+            self.assertEqual(
+                release_package_command(root, build, 0x010203)[-4:],
+                [
+                    "--mainboard-version",
+                    "0x00010203",
+                    "--output",
+                    str(build / "firmware.bin"),
+                ],
+            )
+
+    def test_release_rejects_application_paths_outside_the_build_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            build = Path(directory)
+            (build / "project_description.json").write_text(
+                json.dumps({"app_bin": "../outside.bin"}), encoding="utf-8"
+            )
+
+            with self.assertRaisesRegex(ValueError, "inside the build directory"):
+                application_binary(build)
 
 
 if __name__ == "__main__":

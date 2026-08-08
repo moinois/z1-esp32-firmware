@@ -109,6 +109,15 @@ ordering, and the exact checksum-error report. All three passed physically on
 2026-07-30. The same run rechecked GATT discovery, minimum MTU/write capacity,
 and the fixed outgoing read.
 
+The updated machine-name advertising build was flashed and exercised on
+2026-08-08. The fixture found the exact MAC-derived
+`MK_Makera_Z1_0274` name, observed the BWF-002 service entry appropriate for
+that suffix length, and passed all 14 available read-only identity, GATT,
+lifecycle, error, negotiation, encryption, and fragmentation cases. The
+separately gated BLE/HTTP concurrency case was skipped in that isolated run.
+The mutating COM-reset fixture also passed and rediscovered the same name after
+boot; serial diagnostics contained no fatal startup records.
+
 The read-only suite also exercises repeated native USB requests, recovery after
 unframed USB noise, bytewise fragmented TCP input, the four-client TCP limit,
 four-client concurrency, six consecutive four-client capacity waves,

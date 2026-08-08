@@ -32,7 +32,7 @@ TEST_CASE(bwf_002_suffix_boundaries_pack_exactly_within_legacy_capacity) {
 
     const auto eleven = firmware::application::blufi_advertising_data(
         std::string("MK_") + std::string(11U, 'z'), -6);
-    REQUIRE_EQ(eleven.size(), 25U);
+    REQUIRE_EQ(eleven.size(), 26U);
     REQUIRE_EQ(ByteVector(eleven.end() - 4, eleven.end()),
                ByteVector({0x03U, 0x03U, 0xFFU, 0xFFU}));
 

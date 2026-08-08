@@ -50,39 +50,6 @@ jobs:
           idf.py --version
           python3 --version
 
-      - name: Build live firmware
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          source /opt/esp/idf/export.sh
-
-          python3 tools/build_firmware.py \
-            --live \
-            --release \
-            --build-dir build
-
-      - name: Determine application binary
-        id: app
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          APP_BIN="$(python3 - <<'PY'
-          import json
-          from pathlib import Path
-
-          description = json.loads(
-              Path("build/project_description.json").read_text(encoding="utf-8")
-          )
-
-          print(description["app_bin"])
-          PY
-          )"
-
-          test -f "build/$APP_BIN"
-          echo "filename=$APP_BIN" >> "$GITHUB_OUTPUT"
-
       - name: Encode release version
         id: version
         shell: bash
@@ -93,6 +60,12 @@ jobs:
 
           VERSION="${RELEASE_TAG#v}"
           IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
+
+          # Force decimal parsing so valid zero-padded components such as 08
+          # are not interpreted as invalid Bash octal literals.
+          MAJOR=$((10#$MAJOR))
+          MINOR=$((10#$MINOR))
+          PATCH=$((10#$PATCH))
 
           if (( MAJOR > 255 || MINOR > 255 || PATCH > 255 )); then
             echo "::error::Version components must fit in one byte"
@@ -106,28 +79,32 @@ jobs:
           echo "plain=$VERSION" >> "$GITHUB_OUTPUT"
           echo "encoded=$ENCODED_HEX" >> "$GITHUB_OUTPUT"
 
-      - name: Package aggregate firmware
+      - name: Build and package live firmware
         shell: bash
         env:
-          APP_BIN: ${{ steps.app.outputs.filename }}
           MAINBOARD_VERSION: ${{ steps.version.outputs.encoded }}
         run: |
           set -euo pipefail
 
-          python3 tools/package_firmware.py \
-            --mainboard "build/$APP_BIN" \
+          source /opt/esp/idf/export.sh
+
+          python3 tools/build_firmware.py \
+            --live \
+            --release \
             --mainboard-version "$MAINBOARD_VERSION" \
-            --output build/firmware.bin
+            --build-dir build
 
       - name: Prepare release assets
         shell: bash
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
-          APP_BIN: ${{ steps.app.outputs.filename }}
         run: |
           set -euo pipefail
 
           mkdir -p dist
+
+          APP_BIN="$(python3 -c 'import json; print(json.load(open("build/project_description.json"))["app_bin"])')"
+          test -f "build/$APP_BIN"
 
           cp "build/$APP_BIN" \
             "dist/z1-mainboard-${RELEASE_TAG}.bin"

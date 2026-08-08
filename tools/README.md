@@ -52,6 +52,8 @@ source /Users/moinois/esp/esp-idf/export.sh
 python3 tools/build_firmware.py --live
 python3 tools/build_firmware.py --mock sd
 python3 tools/build_firmware.py --mock-all
+python3 tools/build_firmware.py --live --release \
+  --mainboard-version 0x00010203
 ```
 
 As more adapters are implemented, combinations such as `--mock sd,camera`
@@ -69,6 +71,10 @@ python3 tools/build_firmware.py --mock sd --flash \
 
 The normal `idf.py build` path remains governed by `sdkconfig.defaults`, where
 all mocks are disabled.
+
+`--release` additionally creates `firmware.bin` in the selected build
+directory. `--mainboard-version` supplies the aggregate package metadata and
+requires `--release`; it does not change the ESP-IDF application version.
 
 ## Package mainboard firmware
 
@@ -131,9 +137,12 @@ python3 tools/host_coverage.py
 ```
 
 The complete host test suite is executed before the report is generated.
+The script selects one coherent Clang/LLVM installation for compilation,
+profile merging, and reporting. It uses Xcode Command Line Tools when complete
+and otherwise supports the keg-only Homebrew `llvm` package.
 
 Open the HTML report with:
 ```sh
 open build/host-coverage/coverage/index.html
-````
+```
 Coverage output is isolated from the ordinary host-tests build.

@@ -7,8 +7,7 @@
       "generator": "Ninja",
       "binaryDir": "/private/tmp/z1-mainboard-host-build",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_FLAGS": "-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
@@ -18,7 +17,7 @@
       "binaryDir": "${sourceDir}/build/host-coverage",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_FLAGS": "-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1 -O0 -g -fprofile-instr-generate -fcoverage-mapping",
+        "CMAKE_CXX_FLAGS": "-O0 -g -fprofile-instr-generate -fcoverage-mapping",
         "CMAKE_EXE_LINKER_FLAGS": "-fprofile-instr-generate"
       }
     }
