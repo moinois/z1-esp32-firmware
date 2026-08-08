@@ -189,12 +189,20 @@ def test_native_usb_disconnect_discards_partial_receive_frame(usb_device) -> Non
 @pytest.mark.sd
 @pytest.mark.requirement("USB-005")
 @pytest.mark.requirement("OWN-008")
-def test_native_usb_upload_continues_after_disconnect(usb_device, sd_fixture) -> None:
+@pytest.mark.parametrize("stress_round", range(3))
+def test_native_usb_upload_continues_after_disconnect(
+    usb_device, sd_fixture, stress_round: int
+) -> None:
     """Continues an owned upload at the pending sequence after a bus reset."""
 
     _require_usb_reset()
-    path = f"/U{uuid.uuid4().hex[:5].upper()}.BIN"
-    content = bytes((index * 31 + 9) & 0xFF for index in range(4096))
+    path = f"/U{stress_round}{uuid.uuid4().hex[:4].upper()}.BIN"
+    block_size = 4096
+    content = bytes((index * 31 + 9) & 0xFF for index in range(3 * block_size))
+    blocks = [
+        content[index : index + block_size]
+        for index in range(0, len(content), block_size)
+    ]
     client = UsbProtocolClient(usb_device)
     try:
         # A successful upload start is silent, so batch it with the first
@@ -207,14 +215,31 @@ def test_native_usb_upload_continues_after_disconnect(usb_device, sd_fixture) ->
         )
         _required_frame(client.receive(4.0), FILE_GEOMETRY)
         request = _required_frame(
-            client.exchange(FILE_GEOMETRY, (1).to_bytes(4, "big"), 4.0),
+            client.exchange(FILE_GEOMETRY, len(blocks).to_bytes(4, "big"), 4.0),
             FILE_DATA,
         )
         assert request.payload == (1).to_bytes(4, "big")
 
+        request = _required_frame(
+            client.exchange(
+                FILE_DATA,
+                (1).to_bytes(4, "big") + blocks[0],
+                4.0,
+            ),
+            FILE_DATA,
+        )
+        assert request.payload == (2).to_bytes(4, "big")
+
         usb_device.reset()
-        client, completed = _exchange_after_reenumeration(
-            FILE_DATA, (1).to_bytes(4, "big") + content
+        client, resumed = _exchange_after_reenumeration(
+            FILE_DATA, (2).to_bytes(4, "big") + blocks[1]
+        )
+        request = _required_frame(resumed, FILE_DATA)
+        assert request.payload == (3).to_bytes(4, "big")
+        completed = client.exchange(
+            FILE_DATA,
+            (3).to_bytes(4, "big") + blocks[2],
+            4.0,
         )
         _required_frame(completed, FILE_COMPLETE)
         assert download_file(client, path) == content

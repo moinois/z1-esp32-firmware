@@ -184,3 +184,42 @@ def test_mock_sd_repeated_transfer_and_metadata_cycles(usb_client, sd_fixture) -
                 )
     finally:
         _remove(usb_client, directory)
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.sd
+@pytest.mark.usb
+@pytest.mark.requirement("USB-007")
+@pytest.mark.requirement("USB-008")
+@pytest.mark.requirement("HFTU-001")
+@pytest.mark.requirement("HFTD-001")
+@pytest.mark.parametrize("stress_round", range(3))
+def test_mock_sd_usb_roundtrips_varied_large_frames(
+    usb_client, sd_fixture, stress_round: int
+) -> None:
+    """Round-trips increasing files across small through near-maximum frames."""
+
+    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
+    cases = (
+        (63, 4097),
+        (511, 16 * 1024),
+        (2048, 32 * 1024),
+        (8192, 64 * 1024),
+    )
+    for case, (block_size, size) in enumerate(cases):
+        path = f"/L{stress_round}{case}{uuid.uuid4().hex[:3].upper()}.BIN"
+        content = bytes(
+            (index * (case * 10 + 17) + block_size) & 0xFF
+            for index in range(size)
+        )
+        try:
+            upload_file(usb_client, path, content, block_size=block_size)
+            assert download_file(usb_client, path) == content
+        except Exception as error:
+            pytest.fail(
+                f"USB large-frame round-trip failed for path={path}, bytes={size}, "
+                f"block_size={block_size}, stress_round={stress_round}: {error}"
+            )
+        finally:
+            _remove(usb_client, path)
