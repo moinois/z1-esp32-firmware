@@ -11,3 +11,4 @@ __pycache__/
 backups/
 binaries/
 webui-alt/*
+build-nvs/
