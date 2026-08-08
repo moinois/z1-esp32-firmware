@@ -701,6 +701,16 @@ and requires the original value to remain readable. Run the gated case with
 `Z1_HIL_MOCK_NVS=1`, `Z1_HIL_MOCK_CONTROLLER=1`, and
 `Z1_ALLOW_MUTATION=1`.
 
+This fixture passed on native USB on 2026-08-09 after exposing an ESP-IDF NVS
+transaction detail: closing a handle does not discard an uncommitted mutation
+from the shared in-memory cache. The adapter therefore consumes an injected
+commit fault before calling `nvs_set_*` or `nvs_erase_key`, while retaining the
+post-mutation guard for races. The test confirmed that both injected open and
+commit failures are reported, the prior `runtime/first_boot` value remains
+unchanged, and normal access resumes after clearing the fault. The report is
+`build/hil-nvs-fault-usb-fixed.json`; the flashed image also passed the two-case
+reset diagnostics in `build/hil-nvs-fixed-boot.json`.
+
 The all-mock regression collected 94 cases on 2026-08-01. Its first pass
 recorded 62 PASS, 27 capability-gated SKIP, one expected configuration-name
 conflict, and four failures. Two storage failures shared the HIL retry defect

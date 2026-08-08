@@ -97,6 +97,13 @@ bool NvsKeyValueAdapter::write_string(std::string_view name_space,
                                       std::string_view value) const {
     nvs_handle_t handle = 0;
     if (!open_namespace(name_space, read_write, handle)) return false;
+    // ESP-IDF keeps uncommitted mutations in a shared in-memory NVS cache;
+    // closing the handle does not roll them back. Inject before nvs_set_* so a
+    // simulated commit failure cannot become visible to subsequent reads.
+    if (nvs_commit_fault_active()) {
+        nvs_close(handle);
+        return false;
+    }
     const esp_err_t result = nvs_set_str(handle, std::string(key).c_str(), std::string(value).c_str());
     const esp_err_t commit = commit_mutation(handle, result);
     nvs_close(handle);
@@ -108,6 +115,10 @@ bool NvsKeyValueAdapter::write_u64(std::string_view name_space,
                                    std::uint64_t value) const {
     nvs_handle_t handle = 0;
     if (!open_namespace(name_space, read_write, handle)) return false;
+    if (nvs_commit_fault_active()) {
+        nvs_close(handle);
+        return false;
+    }
     const esp_err_t result = nvs_set_u64(handle, std::string(key).c_str(), value);
     const esp_err_t commit = commit_mutation(handle, result);
     nvs_close(handle);
@@ -118,6 +129,10 @@ bool NvsKeyValueAdapter::write_u8(std::string_view name_space,
                                   std::string_view key, std::uint8_t value) const {
     nvs_handle_t handle = 0;
     if (!open_namespace(name_space, read_write, handle)) {
+        return false;
+    }
+    if (nvs_commit_fault_active()) {
+        nvs_close(handle);
         return false;
     }
     const esp_err_t result = nvs_set_u8(handle, std::string(key).c_str(), value);
@@ -141,6 +156,10 @@ NvsReadState NvsKeyValueAdapter::erase_key(std::string_view name_space,
     const esp_err_t open_result = nvs_open(
         std::string(name_space).c_str(), NVS_READWRITE, &handle);
     if (open_result != ESP_OK) {
+        return NvsReadState::failure;
+    }
+    if (nvs_commit_fault_active()) {
+        nvs_close(handle);
         return NvsReadState::failure;
     }
     const esp_err_t erase_result = nvs_erase_key(handle,
