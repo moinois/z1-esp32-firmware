@@ -15,7 +15,7 @@ from typing import Mapping, Sequence, Set, Tuple
 MOCK_CONFIG_PATTERN = re.compile(r"^config Z1_MOCK_([A-Z0-9_]+)_HARDWARE$", re.MULTILINE)
 GLOBAL_MOCK_CONFIG = "CONFIG_Z1_MOCK_ALL_HARDWARE"
 DEFAULT_WEBUI_DIRECTORY = "webui"
-ALTERNATE_WEBUI_DIRECTORY = "alt-webui"
+ALTERNATE_WEBUI_DIRECTORY = "webui-alt"
 
 
 def application_binary(build_directory: Path) -> Path:
@@ -181,7 +181,7 @@ def _parser() -> argparse.ArgumentParser:
         "--alt-webui",
         dest="alt_webui",
         action="store_true",
-        help="build SPIFFS from ignored local webui-makera instead of webui",
+        help="build SPIFFS from ignored local webui-alt instead of webui",
     )
     return parser
 

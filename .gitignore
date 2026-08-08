@@ -10,4 +10,4 @@ __pycache__/
 .hil-reports/
 backups/
 binaries/
-alt-webui/*
+webui-alt/*

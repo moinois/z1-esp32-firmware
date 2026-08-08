@@ -69,8 +69,8 @@ class BuildFirmwareTests(unittest.TestCase):
             root = Path(directory)
             (root / "webui").mkdir()
             (root / "webui" / "index.html").write_text("public", encoding="utf-8")
-            (root / "webui-makera").mkdir()
-            (root / "webui-makera" / "index.html").write_text(
+            (root / "webui-alt").mkdir()
+            (root / "webui-alt" / "index.html").write_text(
                 "local", encoding="utf-8"
             )
 
@@ -78,7 +78,7 @@ class BuildFirmwareTests(unittest.TestCase):
                 select_webui_source(root, False), (root / "webui").resolve()
             )
             self.assertEqual(
-                select_webui_source(root, True), (root / "webui-makera").resolve()
+                select_webui_source(root, True), (root / "webui-alt").resolve()
             )
 
     def test_rejects_missing_or_empty_alternate_webui_source(self) -> None:
@@ -87,7 +87,7 @@ class BuildFirmwareTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "does not exist"):
                 select_webui_source(root, True)
 
-            (root / "webui-makera").mkdir()
+            (root / "webui-alt").mkdir()
             with self.assertRaisesRegex(ValueError, "contains no files"):
                 select_webui_source(root, True)
 

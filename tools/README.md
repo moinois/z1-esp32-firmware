@@ -74,7 +74,7 @@ The normal `idf.py build` path remains governed by `sdkconfig.defaults`, where
 all mocks are disabled.
 
 `--alt_webui` (also accepted as `--alt-webui`) explicitly builds the SPIFFS
-partition from the local, ignored `webui-makera` directory. The command fails
+partition from the local, ignored `webui-alt` directory. The command fails
 if that directory is missing or empty; it never silently falls back to the
 public `webui` tree. The selected directory name is recorded in
 `hardware-selection.json`, while its files remain ignored and are not copied
