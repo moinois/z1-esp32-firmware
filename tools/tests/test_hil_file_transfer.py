@@ -22,17 +22,23 @@ class ScriptedClient:
     """Returns scripted frames while recording every host request."""
 
     def __init__(self, responses: list[list[ReceivedFrame]]) -> None:
+        """Copies the ordered responses consumed by subsequent exchanges."""
+
         self.responses = list(responses)
         self.requests: list[tuple[int, bytes]] = []
 
     def exchange(
         self, frame_type: int, payload: bytes, timeout_seconds: float = 3.0
     ) -> list[ReceivedFrame]:
+        """Records the request and returns the next scripted response batch."""
+
         self.requests.append((frame_type, payload))
         return self.responses.pop(0)
 
 
 class HilFileTransferTests(unittest.TestCase):
+    """Verifies transport-independent upload/download sequencing and retries."""
+
     def test_upload_sends_md5_geometry_and_requested_blocks(self) -> None:
         data = b"abcdef"
         client = ScriptedClient(

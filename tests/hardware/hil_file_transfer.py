@@ -21,7 +21,10 @@ class FileTransferClient(Protocol):
 
     def exchange(
         self, frame_type: int, payload: bytes, timeout_seconds: float = 3.0
-    ) -> List[ReceivedFrame]: ...
+    ) -> List[ReceivedFrame]:
+        """Sends one framed phase packet and returns decoded target responses."""
+
+        ...
 
 
 class FileTransferError(RuntimeError):

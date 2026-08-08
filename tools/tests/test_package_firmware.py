@@ -16,6 +16,8 @@ from tools.package_firmware import (
 
 
 class PackageFirmwareTests(unittest.TestCase):
+    """Verifies aggregate package layouts and command-line validation variants."""
+
     def test_mainboard_only_header_and_payload_are_exact(self) -> None:
         image = b"\xE9\x02\x03\x04"
 

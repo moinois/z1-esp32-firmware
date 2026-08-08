@@ -8,6 +8,8 @@ from tools.host_coverage import coverage_badge_svg, coverage_color, line_coverag
 
 
 class HostCoverageTests(unittest.TestCase):
+    """Verifies coverage parsing, badge thresholds, and SVG generation."""
+
     def test_extracts_line_percentage_from_llvm_export(self) -> None:
         exported = {
             "data": [{"totals": {"lines": {"percent": 92.50987166831194}}}]

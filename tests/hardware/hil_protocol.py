@@ -32,6 +32,8 @@ class UsbProtocolClient:
     """Sends bounded request frames over the native USB vendor interface."""
 
     def __init__(self, device: Any, timeout_ms: int = DEFAULT_TIMEOUT_MS) -> None:
+        """Claims vendor bulk endpoints from an already discovered USB device."""
+
         self.device = device
         self.timeout_ms = timeout_ms
         self.output, self.input = _find_endpoints(device)
@@ -39,6 +41,8 @@ class UsbProtocolClient:
     def exchange(
         self, frame_type: int, payload: bytes, timeout_seconds: float = 3.0
     ) -> List[ReceivedFrame]:
+        """Sends one request and collects complete responses until quiescence."""
+
         self.send(frame_type, payload)
         return self.receive(timeout_seconds)
 
@@ -83,12 +87,16 @@ class TcpProtocolClient:
     """Sends one request through the target's framed TCP control service."""
 
     def __init__(self, host: str, port: int = 2222) -> None:
+        """Retains the control endpoint used for a fresh connection per exchange."""
+
         self.host = host
         self.port = port
 
     def exchange(
         self, frame_type: int, payload: bytes, timeout_seconds: float = 3.0
     ) -> List[ReceivedFrame]:
+        """Opens a connection, sends one frame, and preserves terminal replies."""
+
         remainder = b""
         received: List[ReceivedFrame] = []
         deadline = time.monotonic() + timeout_seconds

@@ -17,6 +17,16 @@ MAINBOARD_PRESENT = 0x01
 CONTROLLER_PRESENT = 0x02
 ESP_IMAGE_MAGIC = 0xE9
 MAX_U32 = 0xFFFFFFFF
+MAGIC_OFFSET = 0x00
+FORMAT_VERSION_OFFSET = 0x04
+HEADER_LENGTH_OFFSET = 0x05
+FLAGS_OFFSET = 0x06
+MAINBOARD_SIZE_OFFSET = 0x08
+CONTROLLER_SIZE_OFFSET = 0x0C
+MAINBOARD_VERSION_OFFSET = 0x10
+CONTROLLER_VERSION_OFFSET = 0x14
+HEADER_CRC_OFFSET = 0x18
+FILE_CRC_OFFSET = 0x1C
 
 
 def _crc32(data: bytes) -> int:
@@ -52,22 +62,24 @@ def build_firmware_package(
         raise ValueError("controller version requires a controller image")
 
     header = bytearray(HEADER_SIZE)
-    struct.pack_into("<I", header, 0x00, PACKAGE_MAGIC)
-    header[0x04] = PACKAGE_VERSION
-    header[0x05] = HEADER_SIZE
-    header[0x06] = (MAINBOARD_PRESENT if mainboard_image else 0) | (
+    struct.pack_into("<I", header, MAGIC_OFFSET, PACKAGE_MAGIC)
+    header[FORMAT_VERSION_OFFSET] = PACKAGE_VERSION
+    header[HEADER_LENGTH_OFFSET] = HEADER_SIZE
+    header[FLAGS_OFFSET] = (MAINBOARD_PRESENT if mainboard_image else 0) | (
         CONTROLLER_PRESENT if controller_image else 0
     )
-    struct.pack_into("<I", header, 0x08, len(mainboard_image))
-    struct.pack_into("<I", header, 0x0C, len(controller_image))
-    struct.pack_into("<I", header, 0x10, mainboard_version)
-    struct.pack_into("<I", header, 0x14, controller_version)
-    struct.pack_into("<I", header, 0x18, _crc32(bytes(header[:0x18])))
+    struct.pack_into("<I", header, MAINBOARD_SIZE_OFFSET, len(mainboard_image))
+    struct.pack_into("<I", header, CONTROLLER_SIZE_OFFSET, len(controller_image))
+    struct.pack_into("<I", header, MAINBOARD_VERSION_OFFSET, mainboard_version)
+    struct.pack_into("<I", header, CONTROLLER_VERSION_OFFSET, controller_version)
+    struct.pack_into(
+        "<I", header, HEADER_CRC_OFFSET, _crc32(bytes(header[:HEADER_CRC_OFFSET]))
+    )
 
     # UPD-012 excludes the stored file-CRC field without restarting the CRC.
     payload = mainboard_image + controller_image
-    file_crc_input = bytes(header[:0x1C]) + payload
-    struct.pack_into("<I", header, 0x1C, _crc32(file_crc_input))
+    file_crc_input = bytes(header[:FILE_CRC_OFFSET]) + payload
+    struct.pack_into("<I", header, FILE_CRC_OFFSET, _crc32(file_crc_input))
     return bytes(header) + payload
 
 
@@ -84,6 +96,8 @@ def build_mainboard_package(
 
 
 def _unsigned_u32(value: str) -> int:
+    """Parses decimal or prefixed integer text constrained to a uint32 field."""
+
     parsed = int(value, 0)
     if not 0 <= parsed <= MAX_U32:
         raise argparse.ArgumentTypeError("value must fit an unsigned 32-bit field")
@@ -91,6 +105,8 @@ def _unsigned_u32(value: str) -> int:
 
 
 def _parser() -> argparse.ArgumentParser:
+    """Creates the command-line contract without consuming process arguments."""
+
     parser = argparse.ArgumentParser(
         description="Package mainboard and/or controller firmware for /sd/firmware.bin"
     )
@@ -127,6 +143,8 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Validates image arguments and atomically writes one aggregate package."""
+
     args = _parser().parse_args(argv)
     try:
         if args.mainboard is None and args.controller is None:

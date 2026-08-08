@@ -66,6 +66,8 @@ def coverage_badge_svg(percent: float) -> str:
 
 
 def run(command: Sequence[str], *, env: dict[str, str] | None = None) -> None:
+    """Runs one repository-root command and fails immediately on nonzero exit."""
+
     print("+", " ".join(command), flush=True)
     subprocess.run(command, cwd=ROOT, env=env, check=True)
 
@@ -145,6 +147,8 @@ def find_llvm_toolchain() -> tuple[str, str, str]:
 
 
 def main() -> int:
+    """Builds instrumented tests and writes HTML, JSON, and SVG reports."""
+
     try:
         if shutil.which("cmake") is None:
             raise RuntimeError(

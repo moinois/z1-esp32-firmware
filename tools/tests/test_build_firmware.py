@@ -17,6 +17,8 @@ from tools.build_firmware import (
 
 
 class BuildFirmwareTests(unittest.TestCase):
+    """Verifies build-mode parsing and generated ESP-IDF command selection."""
+
     def test_discovers_every_specific_hardware_switch(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             kconfig = Path(directory) / "Kconfig.projbuild"

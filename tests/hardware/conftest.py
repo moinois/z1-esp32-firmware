@@ -18,6 +18,8 @@ from tests.hardware.hil_protocol import (
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
+    """Registers the optional requirement-level JSON evidence destination."""
+
     group = parser.getgroup("Makera Z1 hardware")
     group.addoption(
         "--hil-report",
@@ -27,10 +29,14 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 
 def pytest_configure(config: pytest.Config) -> None:
+    """Initializes per-session storage for hardware requirement outcomes."""
+
     config._z1_hil_results = []  # type: ignore[attr-defined]
 
 
 def pytest_collection_modifyitems(items: List[pytest.Item]) -> None:
+    """Applies explicit environment gates to mutating and destructive cases."""
+
     allow_mutation = os.getenv("Z1_ALLOW_MUTATION") == "1"
     allow_destructive = os.getenv("Z1_ALLOW_DESTRUCTIVE") == "1"
     for item in items:
@@ -46,6 +52,8 @@ def pytest_collection_modifyitems(items: List[pytest.Item]) -> None:
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[Any]) -> Iterator[None]:
+    """Collects terminal hardware outcomes together with requirement markers."""
+
     outcome = yield
     report = outcome.get_result()
     if not item.get_closest_marker("hardware"):
@@ -69,6 +77,8 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[Any]) -> 
 
 
 def pytest_sessionfinish(session: pytest.Session) -> None:
+    """Writes the optional deterministic JSON evidence report after all tests."""
+
     destination = session.config.getoption("--hil-report")
     if not destination:
         return
@@ -99,6 +109,8 @@ def usb_device() -> Iterator[Any]:
 
 @pytest.fixture
 def usb_client(usb_device: Any) -> UsbProtocolClient:
+    """Wraps the current native USB handle or skips when it cannot be claimed."""
+
     try:
         return UsbProtocolClient(usb_device)
     except Exception as error:
@@ -107,6 +119,8 @@ def usb_client(usb_device: Any) -> UsbProtocolClient:
 
 @pytest.fixture(scope="session")
 def sd_fixture() -> None:
+    """Requires an explicitly declared physical or mock SD capability."""
+
     if os.getenv("Z1_HIL_SD") != "1" and os.getenv("Z1_HIL_MOCK_SD") != "1":
         pytest.skip(
             "SD storage not declared with Z1_HIL_SD=1 or Z1_HIL_MOCK_SD=1"
@@ -128,11 +142,15 @@ def sd_client(request: pytest.FixtureRequest, tcp_host: str) -> Any:
 
 @pytest.fixture(scope="session")
 def tcp_host() -> str:
+    """Returns the explicitly configured target or its provisioning-AP address."""
+
     return os.getenv("Z1_HIL_HOST", "192.168.4.1")
 
 
 @pytest.fixture(scope="session")
 def tcp_client(tcp_host: str) -> TcpProtocolClient:
+    """Creates a fresh framed TCP client for one test function."""
+
     return TcpProtocolClient(tcp_host)
 
 
