@@ -60,6 +60,15 @@ def _expect(
     return expected
 
 
+def _clear_stale_tcp_transfer(tcp_host: str) -> None:
+    """Cancels a slot-owned transfer left by an interrupted prior HIL process."""
+    with socket.create_connection((tcp_host, 2222), timeout=3.0) as connection:
+        connection.settimeout(1.0)
+        connection.sendall(encode_frame(FILE_CANCEL, b""))
+        receive_tcp_frames(connection, 1.0)
+    time.sleep(0.5)
+
+
 @pytest.mark.hardware
 @pytest.mark.mutating
 @pytest.mark.tcp
@@ -72,6 +81,7 @@ def test_tcp_upload_retries_after_temporary_network_silence(
 ) -> None:
     """Continues one upload after a six-second host/network pause."""
 
+    _clear_stale_tcp_transfer(tcp_host)
     path = "/NETPAUSE.BIN"
     # This case isolates the timing policy; large multi-block recovery is
     # covered separately so Wi-Fi throughput cannot consume the timeout margin.
@@ -105,6 +115,8 @@ def test_tcp_upload_retries_after_temporary_network_silence(
 
         connection.sendall(encode_frame(GENERAL_COMMAND, f"rm {path}".encode()))
         _expect(connection, 0x84)
+        connection.sendall(encode_frame(FILE_CANCEL, b""))
+        receive_tcp_frames(connection, 1.0)
 
 
 @pytest.mark.hardware
@@ -130,6 +142,7 @@ def test_tcp_download_inactivity_aborts_and_releases_owner(
         # its connection closes. Wait without issuing competing commands so
         # this case starts from an observable idle-owner boundary.
         time.sleep(10.5)
+        usb_client.receive(1.0)
         upload_file(usb_client, path, content)
         with socket.create_connection((tcp_host, 2222), timeout=3.0) as connection:
             connection.settimeout(12.0)
