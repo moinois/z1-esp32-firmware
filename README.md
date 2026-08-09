@@ -305,8 +305,11 @@ The first core-to-periphery development slice contains:
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 627 tests. The firmware also builds successfully as
-an ESP32-S3 application using ESP-IDF 5.4.1. Detailed requirement state is kept
+The current host suite has 731 C++ tests, and the Python tooling suite has 34
+tests. The latest portable coverage report is 96.69% lines, 99.01% functions,
+and 86.83% branches; regenerate it with `python3 tools/host_coverage.py`.
+The firmware also builds successfully as an ESP32-S3 application using ESP-IDF
+5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
 Optional physical verification is provided by the
@@ -494,6 +497,10 @@ as conformance. Install their host-only dependencies and run:
 python3 -m pip install -r requirements-hil.txt
 python3 -m pytest tests/hardware
 ```
+
+The HIL configuration applies a ten-minute per-test timeout so a disconnected
+fixture cannot leave a run indefinitely blocked. Unavailable fixtures are
+reported as `SKIP`, not as conformance passes.
 
 Read-only tests run when their device is detected. Recoverable mutation and
 destructive update tests require separate opt-in environment flags. See
