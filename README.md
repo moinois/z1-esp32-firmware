@@ -314,6 +314,7 @@ in [`docs/requirements.md`](docs/requirements.md). Material design choices are
 recorded in the [`Architecture Decision Log`](docs/architecture-decisions.md).
 The source layout and API-comment organization are mapped in the
 [`Code documentation tree`](docs/code-documentation.md).
+Generate the local Doxygen site with `doxygen docs/Doxyfile`.
 Optional physical verification is provided by the
 [`hardware-in-the-loop suite`](docs/hardware-testing.md).
 

@@ -1,0 +1,33 @@
+# Generated API documentation configuration for the portable and target APIs.
+PROJECT_NAME           = "Makera Z1 firmware"
+PROJECT_BRIEF          = "ESP32-S3 CNC firmware API"
+OUTPUT_DIRECTORY       = build/doxygen
+CREATE_SUBDIRS         = NO
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+GENERATE_LATEX         = NO
+QUIET                  = NO
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_AS_ERROR          = NO
+JAVADOC_AUTOBRIEF      = YES
+EXTRACT_ALL            = NO
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = NO
+SHOW_INCLUDE_FILES     = YES
+REFERENCED_BY_RELATION = YES
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+FULL_PATH_NAMES        = NO
+STRIP_FROM_PATH        = .
+INPUT                  = components/core/include \
+                         components/application/include \
+                         main
+FILE_PATTERNS          = *.h *.hpp
+RECURSIVE              = YES
+EXCLUDE                = build \
+                         managed_components
+EXCLUDE_PATTERNS       = */build/* */managed_components/*
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+SEARCHENGINE           = YES

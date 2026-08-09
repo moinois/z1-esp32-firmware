@@ -83,3 +83,14 @@ portable APIs from ESP-IDF adapters.
 
 Generated documentation is an artifact and should remain outside source
 control, alongside other build output under `build/`.
+
+The repository includes `docs/Doxyfile`. Generate the local site with:
+
+```bash
+doxygen docs/Doxyfile
+open build/doxygen/html/index.html
+```
+
+Doxygen currently reports a small number of undocumented aggregate-result
+members in the CAN SDO and update-package headers; these are candidates for a
+later comment-only cleanup.
