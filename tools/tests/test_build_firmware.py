@@ -55,6 +55,8 @@ class BuildFirmwareTests(unittest.TestCase):
                 "# CONFIG_COMPILER_OPTIMIZATION_SIZE is not set\n"
                 "# CONFIG_LOG_DEFAULT_LEVEL_WARN is not set\n"
                 "# CONFIG_LOG_DEFAULT_LEVEL is not set\n"
+                "# CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT is not set\n"
+                "# CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT is not set\n"
                 "# CONFIG_Z1_MOCK_ALL_HARDWARE is not set\n"
                 "# CONFIG_Z1_MOCK_CAMERA_HARDWARE is not set\n"
                 "CONFIG_Z1_MOCK_SD_HARDWARE=y\n",
@@ -66,6 +68,7 @@ class BuildFirmwareTests(unittest.TestCase):
                     "mock_all": False,
                     "selected_mocks": ["sd"],
                     "release": False,
+                    "compact": False,
                     "webui_source": "webui",
                 },
             )
@@ -127,6 +130,19 @@ class BuildFirmwareTests(unittest.TestCase):
             self.assertTrue(json.loads(manifest.read_text())["release"])
             with self.assertRaisesRegex(ValueError, "requires --live"):
                 write_build_selection(output, adapters, {"sd"}, mock_all=False, release=True)
+
+    def test_compact_release_enables_silent_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            config, manifest = write_build_selection(
+                output, {}, set(), mock_all=False, release=True, compact=True
+            )
+            text = config.read_text(encoding="utf-8")
+            self.assertIn("CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y", text)
+            self.assertIn("CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT=y", text)
+            self.assertTrue(json.loads(manifest.read_text())["compact"])
+            with self.assertRaisesRegex(ValueError, "requires --release"):
+                write_build_selection(output, {}, set(), mock_all=False, compact=True)
 
     def test_project_kconfig_exposes_all_implemented_mocks(self) -> None:
         root = Path(__file__).resolve().parents[2]
