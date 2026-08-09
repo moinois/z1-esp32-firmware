@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import time
 from typing import List, Protocol
 
 from tests.hardware.hil_protocol import ReceivedFrame
@@ -105,9 +106,22 @@ def upload_file(
     if not blocks:
         blocks = [b""]
 
-    responses = client.exchange(
-        FILE_COMMAND, f"upload {path}".encode("utf-8"), timeout_seconds
-    )
+    command = f"upload {path}".encode("utf-8")
+    responses = client.exchange(FILE_COMMAND, command, timeout_seconds)
+    for _ in range(4):
+        if any(response.frame_type == FILE_MD5 for response in responses):
+            break
+        cancellation = next(
+            (response for response in responses if response.frame_type == FILE_CANCEL),
+            None,
+        )
+        if cancellation is None:
+            break
+        # A previous interrupted owner may flush its terminal cancellation on
+        # the next exchange, and completion ownership is released
+        # asynchronously. Reissue the command for a bounded settling window.
+        time.sleep(0.5)
+        responses = client.exchange(FILE_COMMAND, command, timeout_seconds)
     _prompt(responses, FILE_MD5)
     responses = client.exchange(
         FILE_MD5, hashlib.md5(data).hexdigest().encode("ascii"), timeout_seconds

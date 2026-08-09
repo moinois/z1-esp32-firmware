@@ -126,6 +126,10 @@ def test_tcp_download_inactivity_aborts_and_releases_owner(
     content = bytes((index * 29 + 11) & 0xFF for index in range(1300))
     next_content = b"transfer-after-download-timeout"
     try:
+        # A preceding TCP owner is released by the target's worker poll after
+        # its connection closes. Wait without issuing competing commands so
+        # this case starts from an observable idle-owner boundary.
+        time.sleep(10.5)
         upload_file(usb_client, path, content)
         with socket.create_connection((tcp_host, 2222), timeout=3.0) as connection:
             connection.settimeout(12.0)

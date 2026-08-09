@@ -512,13 +512,17 @@ public:
                                                   firmware::application::file_owner_limit_message))});
                 return;
             }
+            owns_file_transfer_ = true;
             bool started = false;
             if (start->direction == firmware::core::FileTransferDirection::upload) {
                 started = upload_.start(session_->identity(), start->path, now, upload_port_);
             } else {
                 started = download_.start(session_->identity(), start->path, now, download_port_);
             }
-            if (!started) router_.ownership().release_file();
+            if (!started) {
+                router_.ownership().release_file();
+                owns_file_transfer_ = false;
+            }
             return;
         }
         if (upload_.active()) upload_.handle(frame, now, upload_port_);
@@ -544,10 +548,9 @@ public:
 
 private:
     void release_if_finished() {
-        if (!upload_.active() && !download_.active() &&
-            session_ != nullptr &&
-            router_.ownership().is_file_owner(session_->identity())) {
+        if (!upload_.active() && !download_.active() && owns_file_transfer_) {
             router_.ownership().release_file();
+            owns_file_transfer_ = false;
         }
     }
 
@@ -557,6 +560,7 @@ private:
     TcpFileDownloadAdapter download_port_;
     firmware::application::FileUpload upload_;
     firmware::application::FileDownload download_;
+    bool owns_file_transfer_ = false;
 };
 
 TcpFileTransferRuntime& transfer_runtime_for_slot(std::uint8_t slot) {
