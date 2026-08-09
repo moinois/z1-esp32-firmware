@@ -10,9 +10,9 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 GROUPS = (
-    ("readonly", ("-m", "not mutating and not destructive")),
-    ("mutating", ("-m", "mutating")),
-    ("destructive", ("-m", "destructive")),
+    ("readonly", ("-m", "not mutating and not destructive and not ble")),
+    ("mutating", ("-m", "mutating and not ble")),
+    ("destructive", ("-m", "destructive and not ble")),
 )
 # A group may contain deliberate protocol timeouts, but must not hold the
 # transport hostage for the ten-minute per-test pytest limit.  The runner's
@@ -54,6 +54,25 @@ def main() -> int:
         result = run_group(name, marker_args)
         if result:
             return result
+    # CoreBluetooth on macOS can retain a scan session after disconnect. Run
+    # every BLE case in its own process so that backend state cannot leak to
+    # the next case. The marker filters still preserve the safety gates.
+    for marker in ("readonly", "mutating", "destructive"):
+        collect = subprocess.run(
+            [sys.executable, "-m", "pytest", "tests/hardware/test_ble_blufi.py",
+             "--collect-only", "-q", "-m", marker],
+            cwd=ROOT, env=os.environ.copy(), text=True, capture_output=True,
+            check=False,
+        )
+        if collect.returncode:
+            return collect.returncode
+        nodes = [line.strip() for line in collect.stdout.splitlines()
+                 if "::" in line and line.strip().startswith("tests/")]
+        for node in nodes:
+            result = run_group(f"ble:{marker}:{node.rsplit('::', 1)[-1]}",
+                               (node,))
+            if result:
+                return result
     print("\nAll HIL groups completed.", flush=True)
     return 0
 

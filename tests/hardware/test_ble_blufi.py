@@ -84,7 +84,13 @@ async def _find_blufi():
 
 
 async def _require_blufi():
-    found = await _find_blufi()
+    # CoreBluetooth can occasionally leave a scan future pending after a
+    # disconnect.  Bound the complete operation, not just Bleak's requested
+    # scan duration, so one fixture cannot stall the HIL process.
+    try:
+        found = await asyncio.wait_for(_find_blufi(), timeout=15.0)
+    except asyncio.TimeoutError as error:
+        raise AssertionError("BLUFI scan did not complete within 15 seconds") from error
     expected = _expected_blufi_name() or f"{BLUFI_NAME_PREFIX}<machine-name>"
     assert found is not None, f"{expected} was not advertised within 10 seconds"
     return found
@@ -340,7 +346,7 @@ def test_blufi_exposes_standard_gatt_schema_and_fixed_read() -> None:
             assert writable.max_write_without_response_size >= 20
             assert bytes(await client.read_gatt_char(outgoing)) == b"\x00"
 
-    asyncio.run(validate())
+    asyncio.run(asyncio.wait_for(validate(), timeout=45.0))
 
 
 @pytest.mark.hardware
@@ -360,11 +366,11 @@ def test_blufi_resumes_advertising_after_disconnect() -> None:
         await client.disconnect()
         assert not client.is_connected
         await asyncio.sleep(0.5)
-        assert await _find_blufi() is not None, (
+        assert await asyncio.wait_for(_find_blufi(), timeout=15.0) is not None, (
             "the machine-named BLUFI device did not resume advertising after disconnect"
         )
 
-    asyncio.run(validate())
+    asyncio.run(asyncio.wait_for(validate(), timeout=45.0))
 
 
 @pytest.mark.hardware
@@ -760,7 +766,7 @@ def test_blufi_recovers_advertising_after_target_reset() -> None:
             if client.is_connected:
                 await client.disconnect()
         await asyncio.sleep(6.0)
-        assert await _find_blufi() is not None, (
+        assert await asyncio.wait_for(_find_blufi(), timeout=15.0) is not None, (
             "the machine-named BLUFI device did not advertise after target reset"
         )
 
