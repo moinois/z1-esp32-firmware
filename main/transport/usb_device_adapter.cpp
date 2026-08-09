@@ -14,7 +14,7 @@
 #include "application/usb/usb_protocol_state.hpp"
 #include "application/usb/usb_transmit_drain.hpp"
 #include "application/web/recording_commands.hpp"
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NETWORK_CONTROL_ENABLED
 #include "mock_network_fault_adapter.hpp"
 #endif
 #if Z1_MOCK_CONTROL_ENABLED
@@ -1189,11 +1189,13 @@ void usb_local_command_task(void* /* unused */) {
             static_cast<void>(usb_frame_sink.send_frame(
                 {firmware::core::protocol::text_response,
                  {response.begin(), response.end()}}));
+#if Z1_MOCK_NETWORK_CONTROL_ENABLED
         } else if (match.kind == firmware::core::CommandKind::mock_network_control) {
             const std::string response = handle_mock_network_control(command);
             static_cast<void>(usb_frame_sink.send_frame(
                 {firmware::core::protocol::text_response,
                  {response.begin(), response.end()}}));
+#endif
 #endif
         } else if (match.kind == firmware::core::CommandKind::version) {
             const auto response = shared_controller_snapshots().version_reply();
@@ -1541,10 +1543,12 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                 static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
+#if Z1_MOCK_NETWORK_CONTROL_ENABLED
             if (match.kind == firmware::core::CommandKind::mock_network_control) {
                 static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
+#endif
 #endif
             if (match.kind == firmware::core::CommandKind::version) {
                 static_cast<void>(enqueue_usb_local_command(frame));

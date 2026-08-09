@@ -6,7 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "tcp_control_adapter.hpp"
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NETWORK_CONTROL_ENABLED
 #include "mock_network_fault_adapter.hpp"
 #endif
 
@@ -26,7 +26,7 @@ class EspDiscoveryPort final : public firmware::application::DiscoveryPort {
 public:
     bool open_long_lived_socket() override {
         if (long_socket_ >= 0) return true;
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NETWORK_CONTROL_ENABLED
         if (consume_network_fault(
                 firmware::application::NetworkFault::discovery_open)) {
             return false;
@@ -82,7 +82,7 @@ private:
     static void send_datagram(int socket_fd, std::string_view destination,
                               std::uint16_t port, std::string_view payload) {
         if (socket_fd < 0) return;
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NETWORK_CONTROL_ENABLED
         if (consume_network_fault(
                 firmware::application::NetworkFault::discovery_send)) {
             return;

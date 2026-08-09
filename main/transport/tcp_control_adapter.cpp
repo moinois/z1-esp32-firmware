@@ -31,8 +31,10 @@
 #include "tcp_wlan_station_adapter.hpp"
 #include "tcp_wlan_connection_adapter.hpp"
 #include "tcp_discovery_adapter.hpp"
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NETWORK_CONTROL_ENABLED
 #include "mock_network_fault_adapter.hpp"
+#endif
+#if Z1_MOCK_CONTROL_ENABLED
 #include "mock_sd_card_adapter.hpp"
 #include "mock_nvs_fault_adapter.hpp"
 #endif
@@ -415,11 +417,13 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             static_cast<void>(session.queue_frame(
                 {firmware::core::protocol::text_response,
                  {response.begin(), response.end()}}));
+#if Z1_MOCK_NETWORK_CONTROL_ENABLED
         } else if (match.kind == firmware::core::CommandKind::mock_network_control) {
             const std::string response = handle_mock_network_control(command);
             static_cast<void>(session.queue_frame(
                 {firmware::core::protocol::text_response,
                  {response.begin(), response.end()}}));
+#endif
 #endif
         } else if (match.kind == firmware::core::CommandKind::diagnose ||
                    match.kind == firmware::core::CommandKind::version) {
@@ -569,12 +573,14 @@ struct TcpClientContext {
 bool send_tcp_bytes(int client, firmware::core::BytesView bytes) {
     firmware::application::TcpFrameSender sender;
     return sender.send(bytes, [client](firmware::core::BytesView remaining) {
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NETWORK_CONTROL_ENABLED
         if (consume_network_fault(
                 firmware::application::NetworkFault::tcp_temporary_send)) {
             return firmware::application::TcpSendResult{
                 firmware::application::TcpSendStatus::temporary_failure, 0U};
         }
+#endif
+#if Z1_MOCK_NETWORK_CONTROL_ENABLED
         if (consume_network_fault(
                 firmware::application::NetworkFault::tcp_permanent_send)) {
             return firmware::application::TcpSendResult{
