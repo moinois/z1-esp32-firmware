@@ -209,6 +209,49 @@ TEST_CASE(od_031_rpdo_routes_little_endian_mapping_into_dictionary) {
     REQUIRE_EQ(read_value(dictionary, 0x6001U, 1U), 0x12345678U);
 }
 
+TEST_CASE(od_031_rpdo_requires_exact_identifier_and_payload_extent) {
+    CanopenObjectDictionary dictionary;
+    REQUIRE_EQ(dictionary.write(0x1400U, 1U, le(0x00000200U, 4U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1600U, 1U, le(0x60010120U, 4U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1600U, 0U, le(1U, 1U)).abort,
+               SdoAbort::none);
+    CanopenReceivePdoRouter router(dictionary);
+
+    firmware::core::CanFrame mismatch;
+    mismatch.identifier = 0x201U;
+    mismatch.size = 4U;
+    REQUIRE(!router.receive(mismatch));
+    REQUIRE_EQ(read_value(dictionary, 0x6001U, 1U), 0U);
+
+    firmware::core::CanFrame short_payload;
+    short_payload.identifier = 0x200U;
+    short_payload.size = 3U;
+    REQUIRE(!router.receive(short_payload));
+
+    firmware::core::CanFrame trailing_payload;
+    trailing_payload.identifier = 0x200U;
+    trailing_payload.size = 5U;
+    REQUIRE(!router.receive(trailing_payload));
+    REQUIRE_EQ(read_value(dictionary, 0x6001U, 1U), 0U);
+}
+
+TEST_CASE(od_031_enabled_empty_rpdo_accepts_only_an_empty_frame) {
+    CanopenObjectDictionary dictionary;
+    REQUIRE_EQ(dictionary.write(0x1400U, 1U, le(0x00000200U, 4U)).abort,
+               SdoAbort::none);
+    CanopenReceivePdoRouter router(dictionary);
+
+    firmware::core::CanFrame empty;
+    empty.identifier = 0x200U;
+    empty.size = 0U;
+    REQUIRE(router.receive(empty));
+
+    empty.size = 1U;
+    REQUIRE(!router.receive(empty));
+}
+
 TEST_CASE(od_041_tpdo_emits_mapped_value_after_event_timer) {
     CanopenObjectDictionary dictionary;
     REQUIRE_EQ(dictionary.write(0x1800U, 1U, le(0x00000180U, 4U)).abort,
@@ -245,6 +288,47 @@ TEST_CASE(od_040_tpdo_accepts_zero_event_driven_transmission_type) {
 
     CanopenTransmitPdoScheduler scheduler(dictionary);
     REQUIRE(scheduler.process_cycle().has_value());
+}
+
+TEST_CASE(od_041_tpdo_zero_timer_stays_silent_and_empty_mapping_is_valid) {
+    CanopenObjectDictionary dictionary;
+    REQUIRE_EQ(dictionary.write(0x1800U, 1U, le(0x00000180U, 4U)).abort,
+               SdoAbort::none);
+    CanopenTransmitPdoScheduler silent(dictionary);
+    for (std::size_t cycle = 0U; cycle < 20U; ++cycle) {
+        REQUIRE(!silent.process_cycle().has_value());
+    }
+
+    REQUIRE_EQ(dictionary.write(0x1800U, 5U, le(10U, 2U)).abort,
+               SdoAbort::none);
+    CanopenTransmitPdoScheduler empty(dictionary);
+    const auto frame = empty.process_cycle();
+    REQUIRE(frame.has_value());
+    REQUIRE_EQ(frame->identifier, 0x180U);
+    REQUIRE_EQ(frame->size, 0U);
+}
+
+TEST_CASE(od_041_tpdo_timer_restarts_and_later_pdo_can_win_cycle) {
+    CanopenObjectDictionary dictionary;
+    REQUIRE_EQ(dictionary.write(0x1801U, 1U, le(0x00000281U, 4U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1801U, 5U, le(20U, 2U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1a01U, 0U, le(1U, 1U)).abort,
+               SdoAbort::none);
+    REQUIRE_EQ(dictionary.write(0x1a01U, 1U, le(0x60000120U, 4U)).abort,
+               SdoAbort::none);
+
+    CanopenTransmitPdoScheduler scheduler(dictionary);
+    REQUIRE(!scheduler.process_cycle().has_value());
+    const auto first = scheduler.process_cycle();
+    REQUIRE(first.has_value());
+    REQUIRE_EQ(first->identifier, 0x281U);
+    REQUIRE_EQ(first->size, 4U);
+    REQUIRE(!scheduler.process_cycle().has_value());
+    const auto second = scheduler.process_cycle();
+    REQUIRE(second.has_value());
+    REQUIRE_EQ(second->identifier, 0x281U);
 }
 
 TEST_CASE(od_010_mutable_communication_objects_retain_written_values) {
