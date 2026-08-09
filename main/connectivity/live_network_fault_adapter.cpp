@@ -1,5 +1,5 @@
 /** @file @brief No-op network fault boundary used by live and release builds. */
-#include "mock_network_fault_adapter.hpp"
+#include "network_fault_port.hpp"
 
 namespace firmware::target {
 

@@ -31,7 +31,10 @@
 #include "tcp_wlan_station_adapter.hpp"
 #include "tcp_wlan_connection_adapter.hpp"
 #include "tcp_discovery_adapter.hpp"
+#include "network_fault_port.hpp"
+#if Z1_MOCK_CONTROL_ENABLED
 #include "mock_network_fault_adapter.hpp"
+#endif
 #if Z1_MOCK_CONTROL_ENABLED
 #include "mock_sd_card_adapter.hpp"
 #include "mock_nvs_fault_adapter.hpp"

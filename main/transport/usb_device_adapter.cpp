@@ -14,7 +14,9 @@
 #include "application/usb/usb_protocol_state.hpp"
 #include "application/usb/usb_transmit_drain.hpp"
 #include "application/web/recording_commands.hpp"
+#if Z1_MOCK_CONTROL_ENABLED
 #include "mock_network_fault_adapter.hpp"
+#endif
 #if Z1_MOCK_CONTROL_ENABLED
 #include "mock_sd_card_adapter.hpp"
 #include "mock_nvs_fault_adapter.hpp"

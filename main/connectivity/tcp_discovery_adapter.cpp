@@ -6,7 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "tcp_control_adapter.hpp"
-#include "mock_network_fault_adapter.hpp"
+#include "network_fault_port.hpp"
 
 #include <arpa/inet.h>
 #include <cerrno>
