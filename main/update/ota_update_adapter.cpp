@@ -1,6 +1,8 @@
 /** @file @brief Implements bounded ESP-IDF OTA writes and staged controller-image effects. */
 #include "ota_update_adapter.hpp"
 
+#include "usb_device_adapter.hpp"
+
 #include "esp_log.h"
 #include "esp_system.h"
 
@@ -101,6 +103,7 @@ void OtaUpdateAdapter::send_controller_reset() {
 
 void OtaUpdateAdapter::restart_mainboard() {
     ESP_LOGW(tag, "restart requested after OTA update");
+    firmware::target::prepare_usb_for_restart();
     esp_restart();
 }
 

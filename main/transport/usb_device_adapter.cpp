@@ -84,6 +84,12 @@
 #include "freertos/task.h"
 
 namespace firmware::target {
+
+namespace {
+constexpr TickType_t usb_disconnect_settle_ticks = pdMS_TO_TICKS(100U);
+std::atomic_bool usb_started{false};
+std::atomic_bool usb_restart_prepared{false};
+}
 namespace {
 
 constexpr char tag[] = "usb";
@@ -1616,6 +1622,7 @@ bool UsbDeviceAdapter::start() {
         ESP_LOGW(tag, "TinyUSB installation failed: %s", esp_err_to_name(result));
         return false;
     }
+    usb_started.store(true, std::memory_order_release);
     usb_file_mutex = xSemaphoreCreateMutex();
     if (usb_file_mutex == nullptr) {
         ESP_LOGW(tag, "USB file-transfer mutex allocation failed");
@@ -1673,6 +1680,16 @@ bool UsbDeviceAdapter::start() {
         return false;
     }
     return true;
+}
+
+void prepare_usb_for_restart() {
+    if (!usb_started.load(std::memory_order_acquire) ||
+        usb_restart_prepared.exchange(true, std::memory_order_acq_rel)) {
+        return;
+    }
+    ESP_LOGI(tag, "announcing intentional USB disconnect before restart");
+    tud_disconnect();
+    vTaskDelay(usb_disconnect_settle_ticks);
 }
 
 bool queue_usb_frame(const firmware::core::Frame& frame) {

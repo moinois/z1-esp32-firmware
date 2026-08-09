@@ -40,4 +40,12 @@ public:
 ///         `false` when encoding failed or the queue rejected the frame.
 bool queue_usb_frame(const firmware::core::Frame& frame);
 
+/// Announces an intentional USB detach before a firmware-triggered restart.
+///
+/// The device pull-up is disabled through TinyUSB, allowing the host to close
+/// its handle and schedule a fresh enumeration instead of observing an
+/// unexplained transport loss. The operation is safe to call more than once
+/// and is a no-op when USB was never started.
+void prepare_usb_for_restart();
+
 }  // namespace firmware::target

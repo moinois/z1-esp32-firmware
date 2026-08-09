@@ -10,6 +10,26 @@ import time
 import pytest
 
 from tests.hardware.hil_ota import multipart_upload
+from tests.hardware.hil_protocol import GENERAL_COMMAND, UsbProtocolClient, find_native_usb_device
+
+
+def _wait_for_usb_reenumeration(timeout_seconds: float = 20.0) -> None:
+    """Waits for the intentional USB detach to be followed by a usable handle."""
+
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        device, _ = find_native_usb_device()
+        if device is not None:
+            try:
+                client = UsbProtocolClient(device)
+                if client.exchange(GENERAL_COMMAND, b"sn-get", 1.0):
+                    return
+            except Exception:
+                # macOS may expose descriptors before libusb can claim the
+                # interface; continue polling until enumeration settles.
+                pass
+        time.sleep(0.25)
+    pytest.fail("native USB did not re-enumerate after OTA restart")
 
 
 @pytest.mark.hardware
@@ -104,3 +124,5 @@ def test_ota_survives_receive_timeout(tcp_host: str) -> None:
     assert response.endswith(
         b"Firmware upgrade finished. The system will reboot in 2 seconds..."
     )
+    if os.getenv("Z1_HIL_VERIFY_USB_REENUMERATION") == "1":
+        _wait_for_usb_reenumeration()

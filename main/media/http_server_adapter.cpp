@@ -1,6 +1,8 @@
 /** @file @brief Implements exact ESP-IDF HTTP listener configuration and nonfatal startup. */
 #include "http_server_adapter.hpp"
 
+#include "usb_device_adapter.hpp"
+
 #include "esp_err.h"
 #include "esp_http_server.h"
 #include "esp_partition.h"
@@ -295,6 +297,7 @@ public:
     // Reboots the controller after a successful direct update.
     void restart() override {
         ESP_LOGW(tag, "restart requested after direct application update");
+        firmware::target::prepare_usb_for_restart();
         esp_restart();
     }
 
@@ -352,6 +355,7 @@ public:
     // Reboots after a successful web-volume replacement.
     void restart() override {
         ESP_LOGW(tag, "restart requested after web-volume update");
+        firmware::target::prepare_usb_for_restart();
         esp_restart();
     }
 
