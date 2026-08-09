@@ -278,14 +278,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"hardware selection: {manifest}")
     if args.configure_only:
         return 0
-    if shutil.which("idf.py") is None:
-        print(
-            "idf.py is unavailable.\n\n"
-            "Before running this command, activate the ESP-IDF environment:\n\n"
-            "    source ~/esp/esp-idf/export.sh\n",
-            file=sys.stderr,
-        )
-        return 2
+    idf_export = next(
+        (candidate for candidate in (
+            Path.home() / "esp/esp-idf/export.sh",
+            Path("/opt/esp/esp-idf/export.sh"),
+        ) if candidate.exists()),
+        None,
+    )
     if args.port and not args.flash:
         print("--port requires --flash", file=sys.stderr)
         return 2
@@ -313,6 +312,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     command.append("flash" if args.flash else "build")
 
+    if shutil.which("idf.py") is None and idf_export is not None:
+        command = ["bash", "-lc", f"source {idf_export} >/dev/null && exec \"$@\"", "build_firmware", *command]
+    elif shutil.which("idf.py") is None:
+        print("idf.py is unavailable and no ESP-IDF export.sh was found.", file=sys.stderr)
+        return 2
     build_result = subprocess.run(command, cwd=root, check=False)
     if build_result.returncode != 0:
         return build_result.returncode
