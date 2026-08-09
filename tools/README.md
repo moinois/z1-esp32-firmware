@@ -107,9 +107,23 @@ supplies the aggregate package metadata and requires `--release`; it does not
 change the ESP-IDF application version.
 
 `--compact` requires `--release` and enables the experimental compact profile:
-assertions remain active but omit verbose failure text, and ESP-IDF check
-macros omit their diagnostic strings. The normal release profile remains the
-recommended default until the compact image has been validated on hardware.
+assertions remain active but omit verbose failure text, ESP-IDF check macros
+omit their diagnostic strings, Bluedroid stack logging is disabled, and the
+bootloader keeps warnings/errors but omits informational messages. The exact
+generated symbols are:
+
+```text
+CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y
+CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT=y
+CONFIG_BT_STACK_NO_LOG=y
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
+```
+
+To restore any of these behaviors, build without `--compact`; the normal
+`--release` profile leaves them at their defaults. The generated
+`hardware-selection.json` records whether `compact` was selected. The normal
+release profile remains the recommended default until the compact image has
+been validated on hardware.
 
 Use `idf.py size-components` and `idf.py size-files` on the release build before
 publishing it. The generated `hardware-selection.json` records that the build
