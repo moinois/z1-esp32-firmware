@@ -42,6 +42,28 @@ def _matches_blufi_name(name: str | None) -> bool:
     return name == expected if expected is not None else name.startswith(BLUFI_NAME_PREFIX)
 
 
+def _wait_for_diagnostic_port(previous: str, timeout: float = 20.0) -> str:
+    """Returns the re-enumerated serial port after a target reset.
+
+    USB CDC device names are not stable across an ESP32 reset.  Waiting for
+    the old path to disappear and selecting the newly enumerated port avoids
+    sending subsequent diagnostics to a stale file descriptor.
+    """
+    from serial.tools import list_ports
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        candidates = [
+            port.device
+            for port in list_ports.comports()
+            if port.device != previous and port.vid == 0x1A86 and port.pid == 0x55F3
+        ]
+        if len(candidates) == 1:
+            return candidates[0]
+        time.sleep(0.25)
+    raise AssertionError("firmware diagnostic USB port did not re-enumerate")
+
+
 async def _find_blufi():
     from bleak import BleakScanner
     from bleak.exc import BleakError
@@ -732,6 +754,7 @@ def test_blufi_recovers_advertising_after_target_reset() -> None:
         try:
             await _assert_gatt_healthy(client)
             await asyncio.to_thread(pulse_reset)
+            await asyncio.to_thread(_wait_for_diagnostic_port, serial_port)
             await asyncio.wait_for(disconnected.wait(), timeout=10.0)
         finally:
             if client.is_connected:
