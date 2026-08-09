@@ -89,6 +89,11 @@ must be invoked with `--live --release`. This enables size optimization and
 compile-time live selection; mock implementations remain available for HIL
 builds without becoming part of the release configuration.
 
+Fault-injection boundaries follow the same rule: live builds link no-op NVS
+and network hook implementations, while the stateful mock hook sources are
+added only when their Kconfig mock is selected. This keeps test controls out of
+the release image without duplicating the production adapters.
+
 The repository includes `docs/Doxyfile`. Generate the local site with:
 
 ```bash

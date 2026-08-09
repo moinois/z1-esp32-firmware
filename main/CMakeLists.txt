@@ -23,6 +23,7 @@ idf_component_register(
         "diagnostics/diagnostic_capture_adapter.cpp"
         "diagnostics/serial_log_mirror_adapter.cpp"
         "runtime/nvs_key_value_adapter.cpp"
+        "runtime/live_nvs_fault_adapter.cpp"
         "runtime/mock_nvs_fault_adapter.cpp"
         "runtime/nvs_command_ports.cpp"
         "runtime/nvs_runtime_counter_adapter.cpp"
@@ -52,7 +53,7 @@ idf_component_register(
         "connectivity/tcp_wlan_station_adapter.cpp"
         "connectivity/tcp_wlan_connection_adapter.cpp"
         "connectivity/tcp_discovery_adapter.cpp"
-        "connectivity/mock_network_fault_adapter.cpp"
+        "connectivity/live_network_fault_adapter.cpp"
         "connectivity/wlan_event_adapter.cpp"
         "connectivity/wifi_diagnostic_log.cpp"
         "connectivity/connectivity_startup_adapter.cpp"
@@ -110,6 +111,15 @@ idf_component_register(
         "$ENV{IDF_PATH}/components/bt/host/bluedroid/api/include/api"
         "$ENV{IDF_PATH}/components/bt/include/esp32c3/include"
 )
+
+if(CONFIG_Z1_MOCK_NVS_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
+    target_sources(${COMPONENT_LIB} PRIVATE "runtime/mock_nvs_fault_adapter.cpp")
+    set_source_files_properties(runtime/live_nvs_fault_adapter.cpp PROPERTIES HEADER_FILE_ONLY TRUE)
+endif()
+if(CONFIG_Z1_MOCK_NETWORK_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
+    target_sources(${COMPONENT_LIB} PRIVATE "connectivity/mock_network_fault_adapter.cpp")
+    set_source_files_properties(connectivity/live_network_fault_adapter.cpp PROPERTIES HEADER_FILE_ONLY TRUE)
+endif()
 
 # Used only by the destructive HIL rollback test. A normal build never defines
 # this and marks the new OTA image valid after critical startup completes.
