@@ -585,8 +585,11 @@ internal files. The firmware has one intended user storage root: `/sd`.
 
 Every path supplied by a user through USB, TCP, HTTP, playback, preview, or
 controller-originated file commands is normalized and resolved beneath `/sd`.
-The `/sd` mount point is defined centrally. Logical response paths may omit the
-physical prefix, but this presentation rule never expands the accessible root.
+The `/sd` mount point is defined centrally. Response formatting is a separate
+concern: responses that the specification defines with a resolved path retain
+the `/sd/` prefix (for example configuration-copy and MD5 errors). A logical
+user-facing form may omit that prefix only where the enclosing protocol
+explicitly defines such a presentation.
 Internal target code may use physical paths directly only through the shared
 path helpers.
 
