@@ -43,6 +43,16 @@ def _expect(
     expected = next(
         (frame for frame in frames if frame.frame_type == frame_type), None
     )
+    if expected is None and allow_prior_cancel and any(
+        frame.frame_type == 0xB5 for frame in frames
+    ):
+        # The worker may flush the previous owner's terminal timeout before it
+        # emits the response for the newly admitted command on the same slot.
+        following = receive_tcp_frames(connection, timeout)
+        frames.extend(following)
+        expected = next(
+            (frame for frame in following if frame.frame_type == frame_type), None
+        )
     assert expected is not None, (
         f"expected 0x{frame_type:02x}, received "
         + ", ".join(f"0x{frame.frame_type:02x}" for frame in frames)
