@@ -159,7 +159,9 @@ def test_parent_traversal_remains_sandboxed_to_sd_root(sd_client, sd_fixture) ->
             5.0,
         )
         message = b"".join(frame.payload for frame in created)
-        assert f"created directory /{name}".encode("ascii") in message
+        # Command resolution remains sandboxed to SD, while the normative
+        # response exposes the resolved physical path required by FILE-020.
+        assert f"created directory /sd/{name}".encode("ascii") in message
         listed = sd_client.exchange(GENERAL_COMMAND, b"ls /", 5.0)
         assert name.encode("ascii") + b"/" in b"".join(
             frame.payload for frame in listed
