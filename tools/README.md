@@ -97,7 +97,8 @@ public `webui` directory unless this local-only option is explicitly supplied.
 
 `--release` additionally creates `firmware.bin` in the selected build
 directory. Release mode requires `--live`, enables ESP-IDF size optimization,
-and rejects mock adapter selections. The shared factory remains in the source
+and rejects mock adapter selections. It also defaults release logging to
+warnings, retaining errors while removing informational log strings. The shared factory remains in the source
 tree, but compile-time `if constexpr` selection plus linker garbage collection
 removes unreferenced mock paths from the live image. `--mainboard-version`
 supplies the aggregate package metadata and requires `--release`; it does not

@@ -106,6 +106,10 @@ def write_build_selection(
     if release and (mock_all or selected):
         raise ValueError("--release requires --live; mock adapters are development-only")
     lines.append("CONFIG_COMPILER_OPTIMIZATION_SIZE=y" if release else "# CONFIG_COMPILER_OPTIMIZATION_SIZE is not set")
+    # Release images keep warnings and errors, but omit informational log
+    # strings and their call sites from components that honor ESP-IDF logging.
+    lines.append("CONFIG_LOG_DEFAULT_LEVEL_WARN=y" if release else "# CONFIG_LOG_DEFAULT_LEVEL_WARN is not set")
+    lines.append("CONFIG_LOG_DEFAULT_LEVEL=2" if release else "# CONFIG_LOG_DEFAULT_LEVEL is not set")
     lines.append(
         f"{GLOBAL_MOCK_CONFIG}=y"
         if mock_all
