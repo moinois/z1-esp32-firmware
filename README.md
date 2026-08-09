@@ -451,6 +451,13 @@ xtensa-esp32s3-elf-g++ --version
 
 ## Running host tests
 
+When using the ESP-IDF tool installation, load its toolchain environment first
+so CMake and Ninja are available in `PATH`:
+
+```sh
+source /Users/moinois/esp/esp-idf/export.sh
+```
+
 From this repository:
 
 ```sh
