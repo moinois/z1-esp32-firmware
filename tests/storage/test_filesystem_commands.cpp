@@ -181,3 +181,35 @@ TEST_CASE(file_026_ftype_always_reports_nc) {
     REQUIRE_EQ(port.sent[0].type, 0x90U);
     REQUIRE_EQ(text(port.sent[0].payload), std::string("ftype = nc\r\n"));
 }
+
+TEST_CASE(file_020_to_025_invalid_arguments_are_silent) {
+    FakeFilesystemCommandPort port;
+
+    FilesystemCommands::make_directory(bytes("   "), port);
+    FilesystemCommands::remove(bytes(" -R   "), port);
+    FilesystemCommands::move(bytes(" only-one-path"), port);
+
+    REQUIRE(port.created_paths.empty());
+    REQUIRE(port.removed_paths.empty());
+    REQUIRE(port.renames.empty());
+    REQUIRE(port.sent.empty());
+}
+
+TEST_CASE(file_021_and_023_ordinary_paths_apply_only_available_cache_mapping) {
+    FakeFilesystemCommandPort create_port;
+    FilesystemCommands::make_directory(bytes(" /sd/jobs"), create_port);
+    REQUIRE_EQ(create_port.created_paths,
+               std::vector<std::string>({"/sd/jobs", "/sd/.md5/jobs"}));
+
+    FakeFilesystemCommandPort remove_port;
+    FilesystemCommands::remove(bytes(" /sd/jobs"), remove_port);
+    REQUIRE_EQ(remove_port.removed_paths,
+               std::vector<std::string>({"/sd/jobs", "/sd/.md5/jobs"}));
+
+    FakeFilesystemCommandPort move_port;
+    FilesystemCommands::move(bytes(" /sd/old /sd/new"), move_port);
+    REQUIRE_EQ(move_port.renames.size(), 2U);
+    REQUIRE_EQ(move_port.renames[1],
+               std::make_pair(std::string("/sd/.md5/old"),
+                              std::string("/sd/.md5/new")));
+}
