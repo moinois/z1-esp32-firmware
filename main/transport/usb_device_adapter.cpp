@@ -14,9 +14,11 @@
 #include "application/usb/usb_protocol_state.hpp"
 #include "application/usb/usb_transmit_drain.hpp"
 #include "application/web/recording_commands.hpp"
+#include "mock_network_fault_adapter.hpp"
+#if Z1_MOCK_CONTROL_ENABLED
 #include "mock_sd_card_adapter.hpp"
 #include "mock_nvs_fault_adapter.hpp"
-#include "mock_network_fault_adapter.hpp"
+#endif
 #include "application/runtime/serial_number.hpp"
 #include "application/runtime/runtime_commands.hpp"
 #include "application/runtime/local_command_queue.hpp"
@@ -1174,6 +1176,7 @@ void usb_local_command_task(void* /* unused */) {
                          {payload.begin() + static_cast<std::ptrdiff_t>(offset),
                           payload.begin() + static_cast<std::ptrdiff_t>(offset + count)}})));
             }
+#if Z1_MOCK_CONTROL_ENABLED
         } else if (match.kind == firmware::core::CommandKind::mock_sd_control) {
             const std::string response = handle_mock_sd_control(command);
             static_cast<void>(usb_frame_sink.send_frame(
@@ -1189,6 +1192,7 @@ void usb_local_command_task(void* /* unused */) {
             static_cast<void>(usb_frame_sink.send_frame(
                 {firmware::core::protocol::text_response,
                  {response.begin(), response.end()}}));
+#endif
         } else if (match.kind == firmware::core::CommandKind::version) {
             const auto response = shared_controller_snapshots().version_reply();
             static_cast<void>(protocol_state.transmit_queue().enqueue(
@@ -1526,6 +1530,7 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                 static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
+#if Z1_MOCK_CONTROL_ENABLED
             if (match.kind == firmware::core::CommandKind::mock_sd_control) {
                 static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
@@ -1538,6 +1543,7 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                 static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
+#endif
             if (match.kind == firmware::core::CommandKind::version) {
                 static_cast<void>(enqueue_usb_local_command(frame));
                 continue;

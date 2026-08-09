@@ -4,27 +4,24 @@ idf_component_register(
         "can/can_twai_adapter.cpp"
         "can/canopen_target_service.cpp"
         "controller/controller_uart_adapter.cpp"
-        "controller/mock_controller_channel_adapter.cpp"
         "main.cpp"
         "hardware_adapter_factory.cpp"
         "configuration/configuration_file_store.cpp"
         "media/http_server_adapter.cpp"
         "media/camera_adapter.cpp"
         "media/camera_settings_adapter.cpp"
-        "media/mock_camera_adapter.cpp"
         "media/recording_file_adapter.cpp"
         "media/recording_task_adapter.cpp"
         "media/web_volume_adapter.cpp"
         "media/storage_retention_adapter.cpp"
         "storage/sd_card_adapter.cpp"
-        "storage/mock_sd_card_adapter.cpp"
+        "storage/live_sd_fault_adapter.cpp"
         "storage/sd_access_diagnostics.cpp"
         "storage/posix_file.cpp"
         "diagnostics/diagnostic_capture_adapter.cpp"
         "diagnostics/serial_log_mirror_adapter.cpp"
         "runtime/nvs_key_value_adapter.cpp"
         "runtime/live_nvs_fault_adapter.cpp"
-        "runtime/mock_nvs_fault_adapter.cpp"
         "runtime/nvs_command_ports.cpp"
         "runtime/nvs_runtime_counter_adapter.cpp"
         "runtime/runtime_counter_task.cpp"
@@ -112,9 +109,26 @@ idf_component_register(
         "$ENV{IDF_PATH}/components/bt/include/esp32c3/include"
 )
 
+if(CONFIG_Z1_MOCK_ALL_HARDWARE OR CONFIG_Z1_MOCK_SD_HARDWARE OR
+   CONFIG_Z1_MOCK_NVS_HARDWARE OR CONFIG_Z1_MOCK_NETWORK_HARDWARE)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE Z1_MOCK_CONTROL_ENABLED=1)
+else()
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE Z1_MOCK_CONTROL_ENABLED=0)
+endif()
+
 if(CONFIG_Z1_MOCK_NVS_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
     target_sources(${COMPONENT_LIB} PRIVATE "runtime/mock_nvs_fault_adapter.cpp")
     set_source_files_properties(runtime/live_nvs_fault_adapter.cpp PROPERTIES HEADER_FILE_ONLY TRUE)
+endif()
+if(CONFIG_Z1_MOCK_CONTROLLER_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
+    target_sources(${COMPONENT_LIB} PRIVATE "controller/mock_controller_channel_adapter.cpp")
+endif()
+if(CONFIG_Z1_MOCK_CAMERA_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
+    target_sources(${COMPONENT_LIB} PRIVATE "media/mock_camera_adapter.cpp")
+endif()
+if(CONFIG_Z1_MOCK_SD_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
+    target_sources(${COMPONENT_LIB} PRIVATE "storage/mock_sd_card_adapter.cpp")
+    set_source_files_properties(storage/live_sd_fault_adapter.cpp PROPERTIES HEADER_FILE_ONLY TRUE)
 endif()
 if(CONFIG_Z1_MOCK_NETWORK_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
     target_sources(${COMPONENT_LIB} PRIVATE "connectivity/mock_network_fault_adapter.cpp")
