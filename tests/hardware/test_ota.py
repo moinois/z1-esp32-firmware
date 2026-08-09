@@ -13,6 +13,25 @@ from tests.hardware.hil_ota import multipart_upload
 from tests.hardware.hil_protocol import GENERAL_COMMAND, UsbProtocolClient, find_native_usb_device
 
 
+def _wait_for_http_after_reboot(
+    host: str, timeout_seconds: float = 30.0
+) -> None:
+    """Waits until a scheduled update reboot has restored the HTTP service."""
+
+    # Both update endpoints acknowledge the request before their two-second
+    # reboot timer expires. Do not let a following destructive test connect to
+    # the old boot and then lose its socket when that pending reboot fires.
+    time.sleep(3.0)
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection((host, 80), timeout=1.0):
+                return
+        except OSError:
+            time.sleep(0.25)
+    pytest.fail("target HTTP service did not recover after update reboot")
+
+
 def _wait_for_usb_reenumeration(timeout_seconds: float = 20.0) -> None:
     """Waits for the intentional USB detach to be followed by a usable handle."""
 
@@ -49,6 +68,7 @@ def test_web_volume_image_can_be_installed(tcp_host: str) -> None:
     )
     assert status == 200
     assert body == b"UI upgrade finished. The system will reboot in 2 seconds..."
+    _wait_for_http_after_reboot(tcp_host)
 
 
 @pytest.mark.hardware
