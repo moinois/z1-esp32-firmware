@@ -785,10 +785,12 @@ served the complete local asset in 10.71 seconds; the report is
 into larger transport writes transferred only 11,214 of 106,343 bytes in 15
 seconds, so that unproven implementation was removed before commit.
 
-Portable coverage was regenerated on 2026-08-09 after the USB HIL harness and
-stress coverage were completed. All host tests passed with 95.99 percent line
-(7825/8152), 99.01 percent function (800/808), and 84.99 percent branch
-(3187/3750) coverage. USB production
+Portable coverage was regenerated on 2026-08-09 after focused AVI preview,
+file-transfer, CAN PDO/TPDO, filesystem-command, and storage-retention tests
+were added. All 731 host tests passed with 96.69 percent line (7882/8152),
+99.01 percent function (800/808), and 86.83 percent branch (3256/3750)
+coverage. This reduced uncovered production lines from 327 to 270 and uncovered
+branches from 563 to 494. USB production
 policy has 100 percent line coverage for protocol state, receive staging,
 transmit drain, and timeout tracking; the remaining USB limitation is physical
 TinyUSB endpoint control, not an uncovered portable branch. CANopen timing was
@@ -798,10 +800,13 @@ the absolute deadline. The generated report remains local under
 `build/host-coverage/coverage/`; release automation publishes the equivalent
 report and badge.
 
-The next coverage-focused host priorities are AVI preview parsing (26 uncovered
-lines), upload/download failure paths (33 combined), CAN PDO/TPDO composition,
-and filesystem/storage-retention error branches. These can be improved with
-portable fixtures in the current repository. They are separate from the
+The next coverage-focused host priorities are play-controller failures,
+discovery-policy boundary cases, BLUFI wire/fragment errors, and diagnostic-log
+writer recovery. AVI parsing is down from 26 to 10 uncovered lines; its
+remaining branches are mostly defensive bounds that the public parser's earlier
+invariants make unreachable. PDO/TPDO retains similar dictionary-corruption
+guards that cannot be produced through the validated public write API. These
+coverage limits are separate from the
 remaining conformance limits: physical SD media, controller UART, CAN bus,
 camera behavior, RF-loss endurance, and forced TinyUSB endpoint stalls still
 require their corresponding hardware fixtures or lower-level instrumentation.
