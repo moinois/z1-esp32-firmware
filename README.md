@@ -307,7 +307,7 @@ The first core-to-periphery development slice contains:
 
 The current host suite has 731 C++ tests, and the Python tooling suite has 34
 tests. The latest portable coverage report is 96.69% lines, 99.01% functions,
-and 86.83% branches; regenerate it with `python3 tools/host_coverage.py`.
+and 86.85% branches; regenerate it with `python3 tools/host_coverage.py`.
 The firmware also builds successfully as an ESP32-S3 application using ESP-IDF
 5.4.1. Detailed requirement state is kept
 in [`docs/requirements.md`](docs/requirements.md). Material design choices are

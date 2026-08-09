@@ -788,7 +788,7 @@ seconds, so that unproven implementation was removed before commit.
 Portable coverage was regenerated on 2026-08-09 after focused AVI preview,
 file-transfer, CAN PDO/TPDO, filesystem-command, and storage-retention tests
 were added. All 731 host tests passed with 96.69 percent line (7882/8152),
-99.01 percent function (800/808), and 86.83 percent branch (3256/3750)
+99.01 percent function (800/808), and 86.85 percent branch (3257/3750)
 coverage. This reduced uncovered production lines from 327 to 270 and uncovered
 branches from 563 to 494. USB production
 policy has 100 percent line coverage for protocol state, receive staging,

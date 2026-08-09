@@ -27,7 +27,7 @@ tests. The focused suites cover malformed AVI preview inputs, transfer setup,
 retry, timeout, sequence, and path failures, CANopen RPDO/TPDO boundary
 behavior, filesystem-command failures, and storage-retention failure paths.
 The corresponding coverage report is 96.69% lines (7882/8152), 99.01%
-functions (800/808), and 86.83% branches (3256/3750). These figures are
+functions (800/808), and 86.85% branches (3257/3750). These figures are
 portable-test evidence only; they do not replace physical SD, camera, CAN,
 controller, or endpoint fault-injection fixtures.
 
