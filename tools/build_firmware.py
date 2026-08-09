@@ -115,6 +115,8 @@ def write_build_selection(
     lines.append("CONFIG_LOG_DEFAULT_LEVEL=2" if release else "# CONFIG_LOG_DEFAULT_LEVEL is not set")
     lines.append("CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y" if compact else "# CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT is not set")
     lines.append("CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT=y" if compact else "# CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT is not set")
+    lines.append("CONFIG_BT_STACK_NO_LOG=y" if compact else "# CONFIG_BT_STACK_NO_LOG is not set")
+    lines.append("CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y" if compact else "# CONFIG_BOOTLOADER_LOG_LEVEL_WARN is not set")
     lines.append(
         f"{GLOBAL_MOCK_CONFIG}=y"
         if mock_all

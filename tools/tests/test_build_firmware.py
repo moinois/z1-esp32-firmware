@@ -57,6 +57,8 @@ class BuildFirmwareTests(unittest.TestCase):
                 "# CONFIG_LOG_DEFAULT_LEVEL is not set\n"
                 "# CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT is not set\n"
                 "# CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT is not set\n"
+                "# CONFIG_BT_STACK_NO_LOG is not set\n"
+                "# CONFIG_BOOTLOADER_LOG_LEVEL_WARN is not set\n"
                 "# CONFIG_Z1_MOCK_ALL_HARDWARE is not set\n"
                 "# CONFIG_Z1_MOCK_CAMERA_HARDWARE is not set\n"
                 "CONFIG_Z1_MOCK_SD_HARDWARE=y\n",
@@ -140,6 +142,8 @@ class BuildFirmwareTests(unittest.TestCase):
             text = config.read_text(encoding="utf-8")
             self.assertIn("CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y", text)
             self.assertIn("CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT=y", text)
+            self.assertIn("CONFIG_BT_STACK_NO_LOG=y", text)
+            self.assertIn("CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y", text)
             self.assertTrue(json.loads(manifest.read_text())["compact"])
             with self.assertRaisesRegex(ValueError, "requires --release"):
                 write_build_selection(output, {}, set(), mock_all=False, compact=True)
