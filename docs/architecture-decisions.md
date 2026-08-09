@@ -567,3 +567,40 @@ from the persisted file.
 - Anyone with network access to the device can change configuration; deployments
   requiring a stronger boundary must isolate the machine network until an
   authenticated protocol is specified.
+
+<a id="adr-016"></a>
+## ADR-016: Sandbox all user file paths below the SD mount point
+
+- **Status:** Accepted
+- **Date:** 2026-08-09
+
+### Context
+
+The specification describes several logical path forms, including absolute
+paths and compatibility aliases. Treating those forms as unrestricted host
+filesystem paths would allow a user command to address unrelated VFS mounts or
+internal files. The firmware has one intended user storage root: `/sd`.
+
+### Decision
+
+Every path supplied by a user through USB, TCP, HTTP, playback, preview, or
+controller-originated file commands is normalized and resolved beneath `/sd`.
+The `/sd` mount point is defined centrally. Logical response paths may omit the
+physical prefix, but this presentation rule never expands the accessible root.
+Internal target code may use physical paths directly only through the shared
+path helpers.
+
+This is a deliberate security and interoperability clarification. If a literal
+reading of an upstream path rule appears to allow access outside `/sd`, the
+sandbox takes precedence; the implementation does not expose other VFS names
+or permit traversal. The upstream specification remains unchanged.
+
+### Consequences
+
+- All user-controlled file operations share one traversal boundary.
+- USB, TCP, HTTP, preview, playback, and controller paths cannot diverge in
+  their filesystem authority.
+- Internal paths remain explicit and reviewable through the central mount-point
+  helpers.
+- Requirements evidence must distinguish this local security decision from
+  normative upstream conformance.

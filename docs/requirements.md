@@ -47,6 +47,12 @@ noted controller command-family gaps. CANopen heartbeat/error diagnostics and
 the configuration web interface are now implemented; most other open items are
 physical, fault-injection, visual-browser, or endurance verification.
 
+User-controlled filesystem paths are intentionally sandboxed below `/sd` as
+documented in [ADR-016](architecture-decisions.md#adr-016). This is a local
+security/design decision and must not be mistaken for an upstream specification
+change; conformance claims for path syntax are recorded separately from the
+authority boundary.
+
 ## Current backlog summary
 
 | Area | Current state | Remaining evidence or implementation |
