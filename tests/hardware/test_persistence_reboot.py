@@ -6,13 +6,12 @@ import json
 import os
 from pathlib import Path
 import re
-import socket
 import time
 import urllib.request
 
 import pytest
 
-from tests.hardware.hil_ota import multipart_upload
+from tests.hardware.hil_ota import multipart_upload, wait_for_tcp_service_restart
 from tests.hardware.hil_protocol import (
     GENERAL_COMMAND,
     UsbProtocolClient,
@@ -41,19 +40,6 @@ def _runtime(client) -> tuple[bytes, int, int]:
     match = _runtime_pattern.search(payload)
     assert match is not None, payload
     return match.group(1), int(match.group(2)), int(match.group(3))
-
-
-def _wait_for_tcp(host: str, timeout_seconds: float = 30.0) -> None:
-    """Waits until station persistence has restored the TCP service."""
-
-    deadline = time.monotonic() + timeout_seconds
-    while time.monotonic() < deadline:
-        try:
-            with socket.create_connection((host, 2222), timeout=1.0):
-                return
-        except OSError:
-            time.sleep(0.25)
-    pytest.fail("target did not restore its station TCP service after reboot")
 
 
 def _wait_for_usb(timeout_seconds: float = 20.0) -> UsbProtocolClient:
@@ -125,8 +111,7 @@ def test_runtime_identity_and_wifi_persist_across_ota_reboot(tcp_host: str) -> N
     )
     assert status == 200
     assert body == b"Firmware upgrade finished. The system will reboot in 2 seconds..."
-    time.sleep(3.0)
-    _wait_for_tcp(tcp_host)
+    wait_for_tcp_service_restart(tcp_host, 2222)
 
     restored = _wait_for_usb()
     after = _runtime(restored)

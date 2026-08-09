@@ -477,6 +477,12 @@ destructive cases passed. These results are mock-adapter and real ESP32-S3
 transport/flash evidence; they do not claim a physical SD card, controller,
 camera, or CAN bus.
 
+The destructive update fixtures no longer assume that the scheduled reboot is
+complete after a fixed three-second delay. They observe the selected TCP
+service become unavailable and then return before a subsequent test may start.
+This closes the old-boot race and verifies an actual reboot edge; delayed OTA
+additionally requires a responsive newly enumerated native-USB endpoint.
+
 The first 20-cycle USB/mock-SD endurance run failed after approximately eight
 minutes with macOS/libusb `errno=5` on one bulk write. The device remained
 enumerated and immediately answered `version` through a fresh handle. A clean
@@ -486,6 +492,13 @@ reports the failed operation, backend codes, stale-handle candidacy, and exact
 cycle/file/block context. It also uses a 100 ms post-frame quiescence window
 while retaining the full initial response deadline; the unchanged 20-cycle
 test passed in 3:09.
+
+File-transfer phases now bypass that general quiescence window once their
+protocol-defined terminal frame has been decoded. Unstructured command replies
+retain the 100 ms window. On the same 2026-08-09 fixture, the unchanged
+20-cycle endurance case fell from 191.45 to 156.73 seconds, and one unchanged
+large-frame round fell from 83.05 to 66.00 seconds. The remaining time is
+dominated by actual framed USB/file-worker traffic rather than fixed sleeps.
 
 Extended USB stress then passed three rounds of upload/download for 63, 511,
 2048, and 8192-byte blocks with files up to 64 KiB. Three separate 12 KiB,

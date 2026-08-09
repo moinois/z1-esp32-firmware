@@ -81,6 +81,18 @@ class UsbProtocolClient:
         self.send(frame_type, payload)
         return self.receive(timeout_seconds)
 
+    def exchange_until(
+        self,
+        frame_type: int,
+        payload: bytes,
+        terminal_types: frozenset[int],
+        timeout_seconds: float = 3.0,
+    ) -> List[ReceivedFrame]:
+        """Sends a request and returns as soon as a terminal frame is decoded."""
+
+        self.send(frame_type, payload)
+        return self.receive(timeout_seconds, terminal_types=terminal_types)
+
     def send(self, frame_type: int, payload: bytes) -> None:
         """Writes one encoded frame without waiting for a target response."""
 
@@ -99,8 +111,13 @@ class UsbProtocolClient:
         except usb.core.USBError as error:
             raise UsbTransferError("bulk write", error) from error
 
-    def receive(self, timeout_seconds: float = 3.0) -> List[ReceivedFrame]:
-        """Receives all complete response frames available before the deadline."""
+    def receive(
+        self,
+        timeout_seconds: float = 3.0,
+        *,
+        terminal_types: frozenset[int] | None = None,
+    ) -> List[ReceivedFrame]:
+        """Receives frames until a terminal type, quiescence, or the deadline."""
 
         usb = _load_usb()
         deadline = time.monotonic() + timeout_seconds
@@ -115,13 +132,17 @@ class UsbProtocolClient:
                     self.input.read(self.input.wMaxPacketSize, timeout=read_timeout_ms)
                 )
             except usb.core.USBTimeoutError:
-                if received:
+                if received and terminal_types is None:
                     break
                 continue
             except usb.core.USBError as error:
                 raise UsbTransferError("bulk read", error) from error
             frames, remainder = decode_frames(remainder + chunk)
             received.extend(ReceivedFrame(kind, body) for kind, body in frames)
+            if terminal_types is not None and any(
+                frame.frame_type in terminal_types for frame in received
+            ):
+                break
         return received
 
     def close(self) -> None:
@@ -170,6 +191,46 @@ class TcpProtocolClient:
                         break
                     frames, remainder = decode_frames(remainder + chunk)
                     received.extend(ReceivedFrame(kind, body) for kind, body in frames)
+            finally:
+                try:
+                    connection.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+        return received
+
+    def exchange_until(
+        self,
+        frame_type: int,
+        payload: bytes,
+        terminal_types: frozenset[int],
+        timeout_seconds: float = 3.0,
+    ) -> List[ReceivedFrame]:
+        """Returns once a known terminal response makes quiescence unnecessary."""
+
+        remainder = b""
+        received: List[ReceivedFrame] = []
+        deadline = time.monotonic() + timeout_seconds
+        with socket.create_connection(
+            (self.host, self.port), timeout=timeout_seconds
+        ) as connection:
+            try:
+                connection.settimeout(0.25)
+                connection.sendall(encode_frame(frame_type, payload))
+                while time.monotonic() < deadline:
+                    try:
+                        chunk = connection.recv(8192)
+                    except socket.timeout:
+                        continue
+                    if not chunk:
+                        break
+                    frames, remainder = decode_frames(remainder + chunk)
+                    received.extend(
+                        ReceivedFrame(kind, body) for kind, body in frames
+                    )
+                    if any(
+                        frame.frame_type in terminal_types for frame in received
+                    ):
+                        break
             finally:
                 try:
                     connection.shutdown(socket.SHUT_RDWR)

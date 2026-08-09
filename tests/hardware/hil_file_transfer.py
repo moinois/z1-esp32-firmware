@@ -32,6 +32,26 @@ class FileTransferError(RuntimeError):
     """Reports an invalid or rejected target transfer response."""
 
 
+def _exchange_until(
+    client: FileTransferClient,
+    frame_type: int,
+    payload: bytes,
+    expected_types: frozenset[int],
+    timeout_seconds: float,
+) -> List[ReceivedFrame]:
+    """Uses terminal-aware transports while retaining simple test doubles."""
+
+    exchange_until = getattr(client, "exchange_until", None)
+    if callable(exchange_until):
+        return exchange_until(
+            frame_type,
+            payload,
+            expected_types | frozenset({FILE_CANCEL, FILE_RETRY}),
+            timeout_seconds,
+        )
+    return client.exchange(frame_type, payload, timeout_seconds)
+
+
 def _frame(frames: List[ReceivedFrame], expected_type: int) -> ReceivedFrame:
     """Returns the expected response or raises with the target's best error."""
 
@@ -78,7 +98,13 @@ def _send_data_with_timed_retry(
     """
 
     for _ in range(maximum_attempts):
-        responses = client.exchange(FILE_DATA, payload, timeout_seconds)
+        responses = _exchange_until(
+            client,
+            FILE_DATA,
+            payload,
+            frozenset({expected_type}),
+            timeout_seconds,
+        )
         prompt = _prompt(responses, expected_type)
         if prompt is not None:
             return prompt
@@ -107,7 +133,9 @@ def upload_file(
         blocks = [b""]
 
     command = f"upload {path}".encode("utf-8")
-    responses = client.exchange(FILE_COMMAND, command, timeout_seconds)
+    responses = _exchange_until(
+        client, FILE_COMMAND, command, frozenset({FILE_MD5}), timeout_seconds
+    )
     for _ in range(4):
         if any(response.frame_type == FILE_MD5 for response in responses):
             break
@@ -121,14 +149,24 @@ def upload_file(
         # the next exchange, and completion ownership is released
         # asynchronously. Reissue the command for a bounded settling window.
         time.sleep(0.5)
-        responses = client.exchange(FILE_COMMAND, command, timeout_seconds)
+        responses = _exchange_until(
+            client, FILE_COMMAND, command, frozenset({FILE_MD5}), timeout_seconds
+        )
     _prompt(responses, FILE_MD5)
-    responses = client.exchange(
-        FILE_MD5, hashlib.md5(data).hexdigest().encode("ascii"), timeout_seconds
+    responses = _exchange_until(
+        client,
+        FILE_MD5,
+        hashlib.md5(data).hexdigest().encode("ascii"),
+        frozenset({FILE_GEOMETRY}),
+        timeout_seconds,
     )
     _prompt(responses, FILE_GEOMETRY)
-    responses = client.exchange(
-        FILE_GEOMETRY, len(blocks).to_bytes(4, "big"), timeout_seconds
+    responses = _exchange_until(
+        client,
+        FILE_GEOMETRY,
+        len(blocks).to_bytes(4, "big"),
+        frozenset({FILE_DATA}),
+        timeout_seconds,
     )
 
     for expected_sequence, block in enumerate(blocks, start=1):
@@ -163,11 +201,21 @@ def download_file(
 ) -> bytes:
     """Downloads every announced block and verifies its advertised MD5."""
 
-    responses = client.exchange(
-        FILE_COMMAND, f"download {path}".encode("utf-8"), timeout_seconds
+    responses = _exchange_until(
+        client,
+        FILE_COMMAND,
+        f"download {path}".encode("utf-8"),
+        frozenset({FILE_MD5}),
+        timeout_seconds,
     )
     advertised_md5 = _frame(responses, FILE_MD5).payload.decode("ascii").lower()
-    responses = client.exchange(FILE_GEOMETRY, b"", timeout_seconds)
+    responses = _exchange_until(
+        client,
+        FILE_GEOMETRY,
+        b"",
+        frozenset({FILE_GEOMETRY}),
+        timeout_seconds,
+    )
     geometry = _frame(responses, FILE_GEOMETRY).payload
     if len(geometry) != 6:
         raise FileTransferError("target returned invalid download geometry")
@@ -178,8 +226,12 @@ def download_file(
 
     content = bytearray()
     for sequence in range(1, block_count + 1):
-        responses = client.exchange(
-            FILE_DATA, sequence.to_bytes(4, "big"), timeout_seconds
+        responses = _exchange_until(
+            client,
+            FILE_DATA,
+            sequence.to_bytes(4, "big"),
+            frozenset({FILE_DATA}),
+            timeout_seconds,
         )
         packet = _frame(responses, FILE_DATA).payload
         if len(packet) < 4 or int.from_bytes(packet[:4], "big") != sequence:
@@ -189,7 +241,13 @@ def download_file(
             raise FileTransferError(f"target exceeded announced block size at {sequence}")
         content.extend(block)
 
-    responses = client.exchange(FILE_COMPLETE, b"", timeout_seconds)
+    responses = _exchange_until(
+        client,
+        FILE_COMPLETE,
+        b"",
+        frozenset({FILE_COMPLETE}),
+        timeout_seconds,
+    )
     _frame(responses, FILE_COMPLETE)
     calculated_md5 = hashlib.md5(content).hexdigest()
     if verify_md5 and calculated_md5 != advertised_md5:

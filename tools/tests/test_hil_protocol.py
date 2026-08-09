@@ -106,6 +106,35 @@ class HilProtocolTests(unittest.TestCase):
         self.assertEqual(endpoint.timeouts, [1000, 1000, 100])
 
     @patch("tests.hardware.hil_protocol._load_usb", return_value=_FakeUsb)
+    def test_receive_returns_immediately_for_terminal_frame(self, _load) -> None:
+        endpoint = _InputEndpoint([encode_frame(GENERAL_COMMAND, b"done")])
+        frames = _client(endpoint, _OutputEndpoint()).receive(
+            3.0, terminal_types=frozenset({GENERAL_COMMAND})
+        )
+
+        self.assertEqual([frame.payload for frame in frames], [b"done"])
+        self.assertEqual(endpoint.timeouts, [1000])
+
+    @patch("tests.hardware.hil_protocol._load_usb", return_value=_FakeUsb)
+    def test_receive_ignores_quiet_gap_after_nonterminal_frame(self, _load) -> None:
+        endpoint = _InputEndpoint(
+            [
+                encode_frame(0x90, b"previous operation completed"),
+                _UsbTimeoutError("quiet between responses"),
+                encode_frame(GENERAL_COMMAND, b"current response"),
+            ]
+        )
+        frames = _client(endpoint, _OutputEndpoint()).receive(
+            3.0, terminal_types=frozenset({GENERAL_COMMAND})
+        )
+
+        self.assertEqual(
+            [frame.payload for frame in frames],
+            [b"previous operation completed", b"current response"],
+        )
+        self.assertEqual(endpoint.timeouts, [1000, 100, 100])
+
+    @patch("tests.hardware.hil_protocol._load_usb", return_value=_FakeUsb)
     def test_write_io_error_is_classified_as_stale_handle_candidate(self, _load) -> None:
         client = _client(
             _InputEndpoint([]),
