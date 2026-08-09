@@ -91,8 +91,16 @@ Ordinary builds and release builds continue to package the repository's
 public `webui` directory unless this local-only option is explicitly supplied.
 
 `--release` additionally creates `firmware.bin` in the selected build
-directory. `--mainboard-version` supplies the aggregate package metadata and
-requires `--release`; it does not change the ESP-IDF application version.
+directory. Release mode requires `--live`, enables ESP-IDF size optimization,
+and rejects mock adapter selections. The shared factory remains in the source
+tree, but compile-time `if constexpr` selection plus linker garbage collection
+removes unreferenced mock paths from the live image. `--mainboard-version`
+supplies the aggregate package metadata and requires `--release`; it does not
+change the ESP-IDF application version.
+
+Use `idf.py size-components` and `idf.py size-files` on the release build before
+publishing it. The generated `hardware-selection.json` records that the build
+was a release and that no mocks were selected.
 
 ## Package mainboard firmware
 

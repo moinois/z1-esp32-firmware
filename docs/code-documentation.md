@@ -84,6 +84,11 @@ portable APIs from ESP-IDF adapters.
 Generated documentation is an artifact and should remain outside source
 control, alongside other build output under `build/`.
 
+Release builds use the same factory and interfaces as development builds, but
+must be invoked with `--live --release`. This enables size optimization and
+compile-time live selection; mock implementations remain available for HIL
+builds without becoming part of the release configuration.
+
 The repository includes `docs/Doxyfile`. Generate the local site with:
 
 ```bash
