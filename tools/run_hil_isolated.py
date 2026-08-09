@@ -14,7 +14,10 @@ GROUPS = (
     ("mutating", ("-m", "mutating")),
     ("destructive", ("-m", "destructive")),
 )
-GROUP_TIMEOUT_SECONDS = 900
+# A group may contain deliberate protocol timeouts, but must not hold the
+# transport hostage for the ten-minute per-test pytest limit.  The runner's
+# shorter bound makes a stuck reset/disconnect group fail closed.
+GROUP_TIMEOUT_SECONDS = 120
 
 
 def run_group(name: str, marker_args: tuple[str, ...]) -> int:
