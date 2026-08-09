@@ -55,6 +55,8 @@ python3 tools/build_firmware.py --mock-all
 python3 tools/build_firmware.py --live --alt_webui
 python3 tools/build_firmware.py --live --release \
   --mainboard-version 0x00010203
+python3 tools/build_firmware.py --live --release --compact \
+  --mainboard-version 0x00010203
 ```
 
 As more adapters are implemented, combinations such as `--mock sd,camera`
@@ -103,6 +105,11 @@ tree, but compile-time `if constexpr` selection plus linker garbage collection
 removes unreferenced mock paths from the live image. `--mainboard-version`
 supplies the aggregate package metadata and requires `--release`; it does not
 change the ESP-IDF application version.
+
+`--compact` requires `--release` and enables the experimental compact profile:
+assertions remain active but omit verbose failure text, and ESP-IDF check
+macros omit their diagnostic strings. The normal release profile remains the
+recommended default until the compact image has been validated on hardware.
 
 Use `idf.py size-components` and `idf.py size-files` on the release build before
 publishing it. The generated `hardware-selection.json` records that the build
