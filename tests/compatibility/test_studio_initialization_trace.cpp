@@ -210,7 +210,7 @@ TEST_CASE(compat_studio_trace_keeps_normative_missing_storage_terminals) {
     REQUIRE_EQ(download_port.sent.size(), 1U);
     REQUIRE_EQ(download_port.sent[0].type, 0xB5U);
     REQUIRE_EQ(text(download_port.sent[0].payload),
-               std::string("Error: failed to get MD5 for [/config.txt]!"));
+               std::string("Error: failed to get MD5 for [/sd/config.txt]!"));
 
     TraceDirectoryPort directory_port;
     directory_port.storage_available = false;

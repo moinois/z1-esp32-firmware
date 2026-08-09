@@ -56,7 +56,8 @@ bool FileDownload::start(const HostIdentity& owner, std::string path,
                          std::uint64_t now_milliseconds, FileDownloadPort& port) {
     owner_ = owner;
     resolved_path_ = std::move(path);
-    path_ = core::logical_sd_path(resolved_path_);
+    // Transfer errors report the resolved path, including /sd.
+    path_ = resolved_path_;
     const core::FileCachePaths cache_paths = core::map_file_cache_paths(resolved_path_);
     port.prepare_cache_paths(cache_paths);
 

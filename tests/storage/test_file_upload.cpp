@@ -164,7 +164,7 @@ TEST_CASE(hftu_001_two_file_open_failure_closes_and_removes_only_primary) {
     REQUIRE_EQ(port.removed_paths.size(), 1U);
     REQUIRE_EQ(port.removed_paths.front(), std::string("/sd/file.bin"));
     REQUIRE_EQ(text(port.sent.back().payload),
-               std::string("Error: failed to open file [/file.bin]!"));
+               std::string("Error: failed to open file [/sd/file.bin]!"));
 }
 
 TEST_CASE(hftu_001_parent_and_primary_open_failures_release_without_false_cleanup) {
@@ -294,7 +294,7 @@ TEST_CASE(hftu_008_firmware_rename_failure_occurs_after_ack_and_removes_partial)
     REQUIRE_EQ(port.sent[port.sent.size() - 2U].type, 0xB4U);
     REQUIRE_EQ(port.sent.back().type, 0xB5U);
     REQUIRE_EQ(text(port.sent.back().payload),
-               std::string("Error: failed to finalize firmware upload [/firmware.bin]."));
+               std::string("Error: failed to finalize firmware upload [/sd/firmware.bin]."));
 }
 
 TEST_CASE(hftu_010_cancel_removes_target_and_md5_then_releases) {

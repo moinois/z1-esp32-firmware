@@ -63,7 +63,8 @@ void FilesystemCommands::make_directory(core::BytesView argument,
     if (!path.has_value()) {
         return;
     }
-    const std::string displayed = core::logical_sd_path(*path);
+    // FILE-020 requires the resolved physical path, including the /sd root.
+    const std::string displayed = *path;
     if (!port.create_directory(*path, directory_mode)) {
         port.send(text_frame(core::protocol::operation_failure,
                              "could not create directory " + displayed + "\r\n"));
@@ -83,7 +84,8 @@ void FilesystemCommands::remove(core::BytesView argument,
     if (!path.has_value()) {
         return;
     }
-    const std::string displayed = core::logical_sd_path(*path);
+    // FILE-023 likewise reports the resolved physical path.
+    const std::string displayed = *path;
     port.remove_recursively(*path);
     if (port.path_exists(*path)) {
         port.send(text_frame(core::protocol::operation_failure,
@@ -102,9 +104,9 @@ void FilesystemCommands::move(core::BytesView argument,
     if (!paths.has_value()) {
         return;
     }
-    const std::string displayed_source = core::logical_sd_path(paths->source);
-    const std::string displayed_destination =
-        core::logical_sd_path(paths->destination);
+    // FILE-025 requires both resolved paths, including the /sd root.
+    const std::string displayed_source = paths->source;
+    const std::string displayed_destination = paths->destination;
     if (!port.rename_path(paths->source, paths->destination)) {
         port.send(text_frame(core::protocol::operation_failure,
                              "Could not rename " + displayed_source + " to " +

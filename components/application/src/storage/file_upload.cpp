@@ -48,7 +48,8 @@ std::uint32_t decode_u32(core::BytesView bytes) {
            static_cast<std::uint32_t>(bytes[3]);
 }
 
-// Builds an upload console message containing the retained logical path.
+// Builds an upload console message containing the resolved path required by
+// the file-transfer error responses.
 core::ByteVector path_message(std::string_view prefix, std::string_view path,
                               std::string_view suffix) {
     core::ByteVector result(prefix.begin(), prefix.end());
@@ -63,7 +64,7 @@ bool FileUpload::start(const HostIdentity& owner, std::string path,
                        std::uint64_t now_milliseconds, FileUploadPort& port) {
     owner_ = owner;
     resolved_path_ = std::move(path);
-    logical_path_ = core::logical_sd_path(resolved_path_);
+    logical_path_ = resolved_path_;
     const core::FileCachePaths cache_paths = core::map_file_cache_paths(resolved_path_);
     port.prepare_cache_paths(cache_paths);
     if (!cache_paths.md5_path.has_value()) {

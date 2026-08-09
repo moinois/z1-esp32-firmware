@@ -51,7 +51,8 @@ void FileHashCommand::execute(core::BytesView argument, FileHashPort& port) {
         send_console(std::string(missing_argument_message), port);
         return;
     }
-    const std::string displayed = core::logical_sd_path(*path);
+    // FILE-028/029 require the resolved path in the response.
+    const std::string displayed = *path;
 
     switch (port.inspect_path(*path)) {
         case FileHashPathState::resolution_failure:

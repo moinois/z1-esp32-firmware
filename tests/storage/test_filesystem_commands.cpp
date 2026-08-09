@@ -93,7 +93,7 @@ TEST_CASE(file_020_and_021_mkdir_succeeds_then_attempts_both_cache_directories) 
     REQUIRE_EQ(text(port.sent[0].payload), std::string("ok\r\n"));
     REQUIRE_EQ(port.sent[1].type, 0x90U);
     REQUIRE_EQ(text(port.sent[1].payload),
-               std::string("created directory /gcodes/jobs\r\n"));
+               std::string("created directory /sd/gcodes/jobs\r\n"));
 }
 
 TEST_CASE(file_020_mkdir_failure_sends_only_the_exact_failure) {
@@ -133,7 +133,7 @@ TEST_CASE(file_023_remove_failure_depends_only_on_the_requested_root_remaining) 
     REQUIRE_EQ(port.sent.size(), 1U);
     REQUIRE_EQ(port.sent[0].type, 0x85U);
     REQUIRE_EQ(text(port.sent[0].payload),
-               std::string("Could not delete /jobs \r\n"));
+               std::string("Could not delete /sd/jobs \r\n"));
 }
 
 TEST_CASE(file_024_and_025_move_succeeds_then_attempts_equivalent_cache_renames) {
@@ -156,7 +156,7 @@ TEST_CASE(file_024_and_025_move_succeeds_then_attempts_equivalent_cache_renames)
     REQUIRE_EQ(text(port.sent[0].payload), std::string("ok\r\n"));
     REQUIRE_EQ(port.sent[1].type, 0x90U);
     REQUIRE_EQ(text(port.sent[1].payload),
-               std::string("renamed /gcodes/old to /gcodes/new\r\n"));
+               std::string("renamed /sd/gcodes/old to /sd/gcodes/new\r\n"));
 }
 
 TEST_CASE(file_025_move_failure_sends_only_the_exact_failure) {
@@ -169,7 +169,7 @@ TEST_CASE(file_025_move_failure_sends_only_the_exact_failure) {
     REQUIRE_EQ(port.sent.size(), 1U);
     REQUIRE_EQ(port.sent[0].type, 0x85U);
     REQUIRE_EQ(text(port.sent[0].payload),
-               std::string("Could not rename /old to /new\r\n"));
+               std::string("Could not rename /sd/old to /sd/new\r\n"));
 }
 
 TEST_CASE(file_026_ftype_always_reports_nc) {
