@@ -16,6 +16,8 @@ BLUFI_NAME_PREFIX = "MK_"
 BLUFI_SERVICE = "0000ffff-0000-1000-8000-00805f9b34fb"
 BLUFI_WRITE = "0000ff01-0000-1000-8000-00805f9b34fb"
 BLUFI_NOTIFY = "0000ff02-0000-1000-8000-00805f9b34fb"
+DIAGNOSTIC_UART_VID = 0x1A86
+DIAGNOSTIC_UART_PID = 0x55D3
 BLUFI_SALT = bytes.fromhex(
     "5a315f424c5546495f53414c545f32303235aab1a30688453667908721701182"
 )
@@ -43,25 +45,33 @@ def _matches_blufi_name(name: str | None) -> bool:
 
 
 def _wait_for_diagnostic_port(previous: str, timeout: float = 20.0) -> str:
-    """Returns the re-enumerated serial port after a target reset.
+    """Returns the usable diagnostic serial port after a target reset.
 
-    USB CDC device names are not stable across an ESP32 reset.  Waiting for
-    the old path to disappear and selecting the newly enumerated port avoids
-    sending subsequent diagnostics to a stale file descriptor.
+    Native USB CDC paths can change across an ESP32 reset, while an external
+    USB-to-UART adapter remains enumerated as the ESP32 resets behind it.  The
+    fixture therefore accepts either a replacement path or the settled,
+    persistent adapter path before reconnecting diagnostics.
     """
     from serial.tools import list_ports
 
-    deadline = time.monotonic() + timeout
+    started = time.monotonic()
+    deadline = started + timeout
     while time.monotonic() < deadline:
         candidates = [
             port.device
             for port in list_ports.comports()
-            if port.device != previous and port.vid == 0x1A86 and port.pid == 0x55F3
+            if port.vid == DIAGNOSTIC_UART_VID
+            and port.pid == DIAGNOSTIC_UART_PID
         ]
-        if len(candidates) == 1:
+        if len(candidates) == 1 and candidates[0] != previous:
             return candidates[0]
+        # The external USB-to-UART adapter remains enumerated while it resets
+        # the ESP32 behind it. In that topology the stable path is the correct
+        # rediscovery result once the reset pulse has had time to settle.
+        if candidates == [previous] and time.monotonic() - started >= 1.0:
+            return previous
         time.sleep(0.25)
-    raise AssertionError("firmware diagnostic USB port did not re-enumerate")
+    raise AssertionError("firmware diagnostic serial port was not available after reset")
 
 
 async def _find_blufi():
