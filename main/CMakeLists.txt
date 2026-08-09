@@ -49,7 +49,6 @@ idf_component_register(
         "connectivity/tcp_wlan_station_adapter.cpp"
         "connectivity/tcp_wlan_connection_adapter.cpp"
         "connectivity/tcp_discovery_adapter.cpp"
-        "connectivity/live_network_fault_adapter.cpp"
         "connectivity/wlan_event_adapter.cpp"
         "connectivity/wifi_diagnostic_log.cpp"
         "connectivity/connectivity_startup_adapter.cpp"
@@ -130,7 +129,6 @@ if(CONFIG_Z1_MOCK_SD_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
 endif()
 if(CONFIG_Z1_MOCK_NETWORK_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
     target_sources(${COMPONENT_LIB} PRIVATE "connectivity/mock_network_fault_adapter.cpp")
-    set_source_files_properties(connectivity/live_network_fault_adapter.cpp PROPERTIES HEADER_FILE_ONLY TRUE)
 endif()
 
 # Used only by the destructive HIL rollback test. A normal build never defines

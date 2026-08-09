@@ -31,11 +31,8 @@
 #include "tcp_wlan_station_adapter.hpp"
 #include "tcp_wlan_connection_adapter.hpp"
 #include "tcp_discovery_adapter.hpp"
-#include "network_fault_port.hpp"
 #if Z1_MOCK_CONTROL_ENABLED
 #include "mock_network_fault_adapter.hpp"
-#endif
-#if Z1_MOCK_CONTROL_ENABLED
 #include "mock_sd_card_adapter.hpp"
 #include "mock_nvs_fault_adapter.hpp"
 #endif
@@ -572,6 +569,7 @@ struct TcpClientContext {
 bool send_tcp_bytes(int client, firmware::core::BytesView bytes) {
     firmware::application::TcpFrameSender sender;
     return sender.send(bytes, [client](firmware::core::BytesView remaining) {
+#if Z1_MOCK_CONTROL_ENABLED
         if (consume_network_fault(
                 firmware::application::NetworkFault::tcp_temporary_send)) {
             return firmware::application::TcpSendResult{
@@ -582,6 +580,7 @@ bool send_tcp_bytes(int client, firmware::core::BytesView bytes) {
             return firmware::application::TcpSendResult{
                 firmware::application::TcpSendStatus::permanent_failure, 0U};
         }
+#endif
         const ssize_t result = send(client, remaining.data(), remaining.size(), 0);
         if (result > 0) {
             return firmware::application::TcpSendResult{
