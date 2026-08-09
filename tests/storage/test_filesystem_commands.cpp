@@ -106,7 +106,7 @@ TEST_CASE(file_020_mkdir_failure_sends_only_the_exact_failure) {
     REQUIRE_EQ(port.sent.size(), 1U);
     REQUIRE_EQ(port.sent[0].type, 0x85U);
     REQUIRE_EQ(text(port.sent[0].payload),
-               std::string("could not create directory /jobs\r\n"));
+               std::string("could not create directory /sd/jobs\r\n"));
 }
 
 TEST_CASE(file_022_and_023_remove_is_recursive_and_cleans_caches_after_success) {

@@ -314,7 +314,7 @@ TEST_CASE(hftd_009_completion_sends_ack_releases_and_reports_success) {
 
     REQUIRE_EQ(port.sent.size(), 2U);
     REQUIRE_EQ(port.sent[0], Frame({0xB4U, {'o', 'k', '\r', '\n'}}));
-    REQUIRE_EQ(text(port.sent[1].payload), std::string("Info: download success: /job."));
+    REQUIRE_EQ(text(port.sent[1].payload), std::string("Info: download success: /sd/job."));
     REQUIRE_EQ(port.close_count, 1U);
     REQUIRE_EQ(port.release_count, 1U);
 }

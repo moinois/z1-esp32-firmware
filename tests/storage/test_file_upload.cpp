@@ -275,7 +275,7 @@ TEST_CASE(hftu_007_ack_precedes_flush_and_success_release) {
     REQUIRE_EQ(port.sent[port.sent.size() - 2U].type, 0xB4U);
     REQUIRE_EQ(port.flush_close_count, 1U);
     REQUIRE_EQ(port.sent.back().type, 0x90U);
-    REQUIRE_EQ(text(port.sent.back().payload), std::string("Info: upload success: /file.bin."));
+    REQUIRE_EQ(text(port.sent.back().payload), std::string("Info: upload success: /sd/file.bin."));
     REQUIRE_EQ(port.release_count, 1U);
 }
 
