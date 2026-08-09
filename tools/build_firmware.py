@@ -136,7 +136,7 @@ def write_build_selection(
         enabled = (
             symbol in (compact_camera_symbols if compact else release_camera_symbols)
             if release
-            else symbol in all_camera_symbols
+            else True  # Development builds intentionally enable every listed sensor.
         )
         lines.append(
             f"CONFIG_{symbol}=y" if enabled else f"# CONFIG_{symbol} is not set"
