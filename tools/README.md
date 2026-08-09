@@ -124,6 +124,8 @@ CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y
 CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT=y
 CONFIG_BT_STACK_NO_LOG=y
 CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
+# Compact camera builds keep OV3660_SUPPORT enabled and disable the other
+# esp32-camera sensor support symbols because the attached sensor is OV3660.
 ```
 
 To restore any of these behaviors, build without `--compact`; the normal

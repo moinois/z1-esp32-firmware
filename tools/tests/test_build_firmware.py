@@ -60,6 +60,20 @@ class BuildFirmwareTests(unittest.TestCase):
                 "# CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT is not set\n"
                 "# CONFIG_BT_STACK_NO_LOG is not set\n"
                 "# CONFIG_BOOTLOADER_LOG_LEVEL_WARN is not set\n"
+                "CONFIG_OV7670_SUPPORT=y\n"
+                "CONFIG_OV7725_SUPPORT=y\n"
+                "CONFIG_NT99141_SUPPORT=y\n"
+                "CONFIG_OV2640_SUPPORT=y\n"
+                "CONFIG_OV5640_SUPPORT=y\n"
+                "CONFIG_GC2145_SUPPORT=y\n"
+                "CONFIG_GC032A_SUPPORT=y\n"
+                "CONFIG_GC0308_SUPPORT=y\n"
+                "CONFIG_BF3005_SUPPORT=y\n"
+                "CONFIG_BF20A6_SUPPORT=y\n"
+                "CONFIG_SC030IOT_SUPPORT=y\n"
+                "CONFIG_HM1055_SUPPORT=y\n"
+                "CONFIG_HM0360_SUPPORT=y\n"
+                "CONFIG_MEGA_CCM_SUPPORT=y\n"
                 "# CONFIG_Z1_MOCK_ALL_HARDWARE is not set\n"
                 "# CONFIG_Z1_MOCK_CAMERA_HARDWARE is not set\n"
                 "CONFIG_Z1_MOCK_SD_HARDWARE=y\n",
@@ -149,6 +163,8 @@ class BuildFirmwareTests(unittest.TestCase):
             self.assertIn("CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT=y", text)
             self.assertIn("CONFIG_BT_STACK_NO_LOG=y", text)
             self.assertIn("CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y", text)
+            self.assertIn("# CONFIG_OV5640_SUPPORT is not set", text)
+            self.assertNotIn("# CONFIG_OV3660_SUPPORT is not set", text)
             self.assertTrue(json.loads(manifest.read_text())["compact"])
             with self.assertRaisesRegex(ValueError, "requires --release"):
                 write_build_selection(output, {}, set(), mock_all=False, compact=True)
