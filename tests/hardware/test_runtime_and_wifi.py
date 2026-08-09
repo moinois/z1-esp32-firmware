@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 import json
+import signal
 import socket
 import time
 import urllib.request
@@ -35,6 +36,19 @@ def test_usb_runtime_and_serial_reads(usb_client) -> None:
 @pytest.mark.wifi
 @pytest.mark.requirement("NET-030")
 def test_usb_wifi_scan_returns_bounded_response(usb_client, tcp_host: str) -> None:
+    def abort_if_stuck(_signum, _frame):
+        raise TimeoutError("USB WLAN scan exceeded its 30-second budget")
+
+    previous_handler = signal.signal(signal.SIGALRM, abort_if_stuck)
+    signal.setitimer(signal.ITIMER_REAL, 30.0)
+    try:
+        _test_usb_wifi_scan_returns_bounded_response(usb_client, tcp_host)
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+
+
+def _test_usb_wifi_scan_returns_bounded_response(usb_client, tcp_host: str) -> None:
     frames = usb_client.exchange(GENERAL_COMMAND, b"wlan", 15.0)
     assert frames
     assert sum(len(frame.payload) for frame in frames) <= 1024
