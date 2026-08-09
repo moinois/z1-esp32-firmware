@@ -1,8 +1,8 @@
 // Tests the independent periodic controller query schedules.
 #include "test.hpp"
 
-#include "firmware/application/controller_query.hpp"
-#include "firmware/application/controller_command_frames.hpp"
+#include "application/controller/controller_query.hpp"
+#include "application/controller/controller_command_frames.hpp"
 
 using firmware::application::ControllerQueryScheduler;
 

@@ -1,7 +1,7 @@
 /** @file @brief Declares the POSIX file and UART port used by streamed-play controller logic. */
 #pragma once
 
-#include "firmware/application/play_controller.hpp"
+#include "application/playback/play_controller.hpp"
 #include "posix_file.hpp"
 #include <string>
 

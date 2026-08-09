@@ -1,7 +1,7 @@
 /** @file @brief Declares the controller UART receive and command-dispatch task. */
 #pragma once
 
-#include "firmware/core/frame.hpp"
+#include "core/protocol/frame.hpp"
 
 namespace firmware::target {
 

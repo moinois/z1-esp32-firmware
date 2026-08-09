@@ -1,6 +1,6 @@
 // Verifies deterministic NVS failure selection without an ESP-IDF dependency.
 #include "test.hpp"
-#include "firmware/application/nvs_fault_injection.hpp"
+#include "application/runtime/nvs_fault_injection.hpp"
 
 TEST_CASE(nvs_fault_injection_starts_clear_and_selects_one_boundary) {
     firmware::application::NvsFaultInjection faults;

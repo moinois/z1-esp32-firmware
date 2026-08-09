@@ -1,7 +1,7 @@
 // Verifies bounded diagnostic printing, queueing, ANSI removal, and timestamps.
 #include "test.hpp"
 
-#include "firmware/application/diagnostic_capture.hpp"
+#include "application/diagnostics/diagnostic_capture.hpp"
 
 #include <optional>
 #include <string>

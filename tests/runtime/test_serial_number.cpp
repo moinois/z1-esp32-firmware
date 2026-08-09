@@ -1,7 +1,7 @@
 // Verifies serial-number syntax, capacity, persistence, and exact responses.
 #include "test.hpp"
 
-#include "firmware/application/serial_number.hpp"
+#include "application/runtime/serial_number.hpp"
 
 #include <cstdint>
 #include <string>

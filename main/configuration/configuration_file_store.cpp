@@ -1,8 +1,8 @@
 /** @file @brief Implements fresh SD reads and atomic config.txt updates. */
 #include "configuration_file_store.hpp"
 
-#include "firmware/application/configuration_tags.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "application/configuration/configuration_tags.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 #include <cstdio>
 #include <mutex>

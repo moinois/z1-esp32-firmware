@@ -1,10 +1,10 @@
 /** @file @brief Implements config-set source selection, atomic replacement steps, and replies. */
-#include "firmware/application/configuration_set.hpp"
-#include "firmware/application/configuration_sources.hpp"
-#include "firmware/application/configuration_tags.hpp"
+#include "application/configuration/configuration_set.hpp"
+#include "application/configuration/configuration_sources.hpp"
+#include "application/configuration/configuration_tags.hpp"
 
-#include "firmware/core/configuration_syntax.hpp"
-#include "firmware/core/protocol_constants.hpp"
+#include "core/configuration/configuration_syntax.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <string>
 #include <vector>

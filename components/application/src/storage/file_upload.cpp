@@ -1,9 +1,9 @@
 /** @file @brief Implements host upload sequencing, file lifecycle, retries, and timeout. */
-#include "firmware/application/file_upload.hpp"
+#include "application/storage/file_upload.hpp"
 
-#include "firmware/core/protocol_constants.hpp"
-#include "firmware/core/file_transfer_limits.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "core/protocol/protocol_constants.hpp"
+#include "core/filesystem/file_transfer_limits.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 #include <algorithm>
 #include <cctype>

@@ -1,6 +1,6 @@
 // Verifies recording naming validation and segment interval accounting.
 #include "test.hpp"
-#include "firmware/application/recording_policy.hpp"
+#include "application/web/recording_policy.hpp"
 
 TEST_CASE(rec_003_and_004_segment_path_uses_utc_and_base_name) {
     const auto path = firmware::application::recording_segment_path(

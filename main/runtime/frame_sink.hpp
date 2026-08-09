@@ -1,7 +1,7 @@
 /** @file @brief Declares transport-specific delivery behind a shared target frame sink. */
 #pragma once
 
-#include "firmware/core/frame.hpp"
+#include "core/protocol/frame.hpp"
 
 namespace firmware::target {
 

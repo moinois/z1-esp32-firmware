@@ -2,8 +2,8 @@
 #pragma once
 
 #include "frame_sink.hpp"
-#include "firmware/application/runtime_commands.hpp"
-#include "firmware/application/serial_number.hpp"
+#include "application/runtime/runtime_commands.hpp"
+#include "application/runtime/serial_number.hpp"
 
 namespace firmware::target {
 

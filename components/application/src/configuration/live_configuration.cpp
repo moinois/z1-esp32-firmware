@@ -1,5 +1,5 @@
 /** @file @brief Implements bounded lazy configuration loading and first-match update semantics. */
-#include "firmware/application/live_configuration.hpp"
+#include "application/configuration/live_configuration.hpp"
 
 #include <algorithm>
 #include <string>

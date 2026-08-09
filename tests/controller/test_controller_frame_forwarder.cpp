@@ -1,6 +1,6 @@
 // Verifies controller forwarding preserves framing and output spacing policy.
 #include "test.hpp"
-#include "firmware/application/controller_frame_forwarder.hpp"
+#include "application/controller/controller_frame_forwarder.hpp"
 
 TEST_CASE(controller_forwarder_encodes_and_queues_frames) {
     firmware::application::ControllerFrameForwarder forwarder;

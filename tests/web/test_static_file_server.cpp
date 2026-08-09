@@ -1,7 +1,7 @@
 // Verifies static-file lookup and 256-byte chunked response behavior.
 #include "test.hpp"
 
-#include "firmware/application/static_file_server.hpp"
+#include "application/web/static_file_server.hpp"
 
 #include <optional>
 #include <string>

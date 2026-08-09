@@ -1,6 +1,6 @@
 // Verifies WebSocket text-only and empty-message admission.
 #include "test.hpp"
-#include "firmware/application/preview_socket_input.hpp"
+#include "application/playback/preview_socket_input.hpp"
 
 TEST_CASE(prev_001_and_006_socket_input_accepts_text_only) {
     const auto request = firmware::application::accept_preview_socket_message(

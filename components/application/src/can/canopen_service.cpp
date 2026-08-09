@@ -1,5 +1,5 @@
 /** @file @brief Composes CANopen state machines and delegates only physical effects outward. */
-#include "firmware/application/canopen_service.hpp"
+#include "application/can/canopen_service.hpp"
 
 #include <cstdint>
 

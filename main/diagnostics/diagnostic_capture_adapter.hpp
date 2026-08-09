@@ -1,8 +1,8 @@
 /** @file @brief Declares the ESP-IDF log-hook adapter for bounded diagnostic capture. */
 #pragma once
 
-#include "firmware/core/bytes.hpp"
-#include "firmware/application/diagnostic_capture.hpp"
+#include "core/protocol/bytes.hpp"
+#include "application/diagnostics/diagnostic_capture.hpp"
 
 #include <optional>
 

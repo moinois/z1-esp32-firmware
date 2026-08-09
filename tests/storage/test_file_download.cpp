@@ -1,7 +1,7 @@
 // Verifies the host download protocol through a deterministic fake I/O port.
 #include "test.hpp"
 
-#include "firmware/application/file_download.hpp"
+#include "application/storage/file_download.hpp"
 
 #include <optional>
 #include <string>

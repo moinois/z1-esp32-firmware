@@ -1,7 +1,7 @@
 /** @file @brief Implements bytewise configuration copies and exact command result mapping. */
-#include "firmware/application/configuration_files.hpp"
+#include "application/configuration/configuration_files.hpp"
 
-#include "firmware/core/protocol_constants.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <string>
 

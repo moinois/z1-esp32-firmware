@@ -1,6 +1,6 @@
 // Verifies storage thresholds, candidate filtering, ordering, and persistence cadence.
 #include "test.hpp"
-#include "firmware/application/storage_retention.hpp"
+#include "application/storage/storage_retention.hpp"
 
 TEST_CASE(rec_020_to_024_retention_filters_and_sorts_video_candidates) {
     std::vector<firmware::application::RetentionCandidate> entries{

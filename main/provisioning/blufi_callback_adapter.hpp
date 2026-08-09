@@ -3,9 +3,9 @@
 
 #include "esp_blufi_api.h"
 
-#include "firmware/application/ble_provisioning.hpp"
+#include "application/provisioning/ble_provisioning.hpp"
 #include "blufi_crypto_adapter.hpp"
-#include "firmware/application/blufi_security.hpp"
+#include "application/provisioning/blufi_security.hpp"
 
 namespace firmware::target {
 

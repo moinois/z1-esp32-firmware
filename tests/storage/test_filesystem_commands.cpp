@@ -1,7 +1,7 @@
 // Verifies filesystem mutations, cache side effects, and exact responses.
 #include "test.hpp"
 
-#include "firmware/application/filesystem_commands.hpp"
+#include "application/storage/filesystem_commands.hpp"
 
 #include <string>
 #include <string_view>

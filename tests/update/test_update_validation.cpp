@@ -1,9 +1,9 @@
 // Verifies aggregate loading failures, validation order, and image delegation.
 #include "test.hpp"
 
-#include "firmware/application/update_validation.hpp"
-#include "firmware/core/crc.hpp"
-#include "firmware/core/update_package.hpp"
+#include "application/update/update_validation.hpp"
+#include "core/protocol/crc.hpp"
+#include "core/update/update_package.hpp"
 
 #include <algorithm>
 #include <cstddef>

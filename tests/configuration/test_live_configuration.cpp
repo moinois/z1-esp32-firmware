@@ -1,7 +1,7 @@
 // Verifies bounded lazy loading, lookup, duplicate, and update semantics.
 #include "test.hpp"
 
-#include "firmware/application/live_configuration.hpp"
+#include "application/configuration/live_configuration.hpp"
 
 #include <optional>
 #include <string>

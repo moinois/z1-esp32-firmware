@@ -1,8 +1,8 @@
 /** @file @brief Declares target dispatch of recognized wall-clock command frames. */
 #pragma once
 
-#include "firmware/application/wall_clock.hpp"
-#include "firmware/core/frame.hpp"
+#include "application/runtime/wall_clock.hpp"
+#include "core/protocol/frame.hpp"
 
 namespace firmware::target {
 

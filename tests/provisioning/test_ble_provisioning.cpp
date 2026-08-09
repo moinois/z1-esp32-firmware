@@ -1,7 +1,7 @@
 // Verifies BLE provisioning lifecycle, security gates, and Wi-Fi commands.
 #include "test.hpp"
 
-#include "firmware/application/ble_provisioning.hpp"
+#include "application/provisioning/ble_provisioning.hpp"
 
 #include <array>
 #include <cstdint>

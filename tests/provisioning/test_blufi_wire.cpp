@@ -1,7 +1,7 @@
 // Verifies BLUFI envelopes, sequences, security flags, checksums, and ACKs.
 #include "test.hpp"
 
-#include "firmware/application/blufi_wire.hpp"
+#include "application/provisioning/blufi_wire.hpp"
 
 #include <cstddef>
 #include <cstdint>

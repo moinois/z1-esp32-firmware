@@ -1,7 +1,7 @@
 // Verifies BLUFI GATT reads, writes, prepared aggregation, and retry policy.
 #include "test.hpp"
 
-#include "firmware/application/blufi_gatt.hpp"
+#include "application/provisioning/blufi_gatt.hpp"
 
 #include <cstddef>
 #include <cstdint>

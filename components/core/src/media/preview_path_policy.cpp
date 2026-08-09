@@ -1,7 +1,7 @@
 /** @file @brief Implements preview path root matching and literal traversal rejection. */
-#include "firmware/core/preview_path_policy.hpp"
+#include "core/media/preview_path_policy.hpp"
 
-#include "firmware/core/sd_user_path.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 namespace firmware::core {
 

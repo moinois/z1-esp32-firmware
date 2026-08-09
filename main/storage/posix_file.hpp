@@ -1,7 +1,7 @@
 /** @file @brief Declares reusable ownership and operations for the mounted POSIX VFS. */
 #pragma once
 
-#include "firmware/core/bytes.hpp"
+#include "core/protocol/bytes.hpp"
 
 #include <cstdio>
 #include <cstdint>

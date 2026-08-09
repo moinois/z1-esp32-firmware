@@ -1,7 +1,7 @@
 // Verifies direct SPIFFS update erase/write/restart policy.
 #include "test.hpp"
 
-#include "firmware/application/direct_web_volume_update.hpp"
+#include "application/update/direct_web_volume_update.hpp"
 
 #include <string_view>
 #include <vector>

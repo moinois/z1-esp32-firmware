@@ -1,7 +1,7 @@
 // Verifies USB receive capacity and all-or-nothing block staging.
 #include "test.hpp"
 
-#include "firmware/application/usb_receive_staging.hpp"
+#include "application/usb/usb_receive_staging.hpp"
 
 using firmware::application::UsbReceiveStaging;
 using firmware::core::ByteVector;

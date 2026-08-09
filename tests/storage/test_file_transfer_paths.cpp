@@ -1,7 +1,7 @@
 // Verifies host file-transfer start parsing, cache mapping, and MD5 extraction.
 #include "test.hpp"
 
-#include "firmware/core/file_transfer_paths.hpp"
+#include "core/filesystem/file_transfer_paths.hpp"
 
 #include <string>
 #include <string_view>

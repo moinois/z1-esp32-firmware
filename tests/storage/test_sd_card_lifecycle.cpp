@@ -1,7 +1,7 @@
 // Verifies SD-card startup, debounce, transition, logging, and capacity policy.
 #include "test.hpp"
 
-#include "firmware/application/sd_card_lifecycle.hpp"
+#include "application/storage/sd_card_lifecycle.hpp"
 
 #include <optional>
 #include <string>

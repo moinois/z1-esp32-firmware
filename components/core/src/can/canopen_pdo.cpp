@@ -1,5 +1,5 @@
 /** @file @brief Implements deterministic enabled-RPDO mapping and dictionary writes. */
-#include "firmware/core/canopen_pdo.hpp"
+#include "core/can/canopen_pdo.hpp"
 
 #include <array>
 #include <cstddef>

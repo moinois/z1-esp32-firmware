@@ -11,9 +11,9 @@
 #include "driver/sdmmc_host.h"
 #include "driver/sdmmc_default_configs.h"
 
-#include "firmware/application/sd_card_lifecycle.hpp"
-#include "firmware/application/diagnostic_log_writer.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "application/storage/sd_card_lifecycle.hpp"
+#include "application/diagnostics/diagnostic_log_writer.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 #include "diagnostic_capture_adapter.hpp"
 #include "serial_log_mirror_adapter.hpp"
 

@@ -1,7 +1,7 @@
 /** @file @brief Declares the common byte channel used by live and mock controllers. */
 #pragma once
 
-#include "firmware/core/bytes.hpp"
+#include "core/protocol/bytes.hpp"
 
 #include <cstddef>
 #include <cstdint>

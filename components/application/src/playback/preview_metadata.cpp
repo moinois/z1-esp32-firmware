@@ -1,5 +1,5 @@
 /** @file @brief Implements compact, ordered preview open/meta JSON serialization. */
-#include "firmware/application/preview_metadata.hpp"
+#include "application/playback/preview_metadata.hpp"
 
 #include <string>
 

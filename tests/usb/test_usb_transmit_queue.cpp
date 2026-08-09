@@ -1,9 +1,9 @@
 // Verifies USB transmit capacity, bounds, and completion-driven FIFO removal.
 #include "test.hpp"
 
-#include "firmware/application/usb_transmit_queue.hpp"
-#include "firmware/core/file_transfer_limits.hpp"
-#include "firmware/core/protocol_constants.hpp"
+#include "application/usb/usb_transmit_queue.hpp"
+#include "core/filesystem/file_transfer_limits.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <atomic>
 #include <thread>

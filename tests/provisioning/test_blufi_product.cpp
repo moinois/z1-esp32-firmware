@@ -1,7 +1,7 @@
 // Verifies BLUFI subtype dispatch and exact product report byte encoding.
 #include "test.hpp"
 
-#include "firmware/application/blufi_product.hpp"
+#include "application/provisioning/blufi_product.hpp"
 
 #include <array>
 #include <cstdint>

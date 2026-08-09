@@ -1,6 +1,6 @@
 // Tests common escaping, path normalization, and first-match command recognition.
 #include "test.hpp"
-#include "firmware/core/text.hpp"
+#include "core/protocol/text.hpp"
 
 using firmware::core::ByteVector;
 

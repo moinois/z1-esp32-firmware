@@ -1,6 +1,6 @@
 // Verifies M951/M952 recording state transitions and exact response frames.
 #include "test.hpp"
-#include "firmware/application/recording_commands.hpp"
+#include "application/web/recording_commands.hpp"
 
 TEST_CASE(rec_001_recording_commands_return_general_ok) {
     auto start = firmware::application::handle_recording_command(

@@ -1,11 +1,11 @@
 /** @file @brief Implements streamed-play path preparation, identity, and status behavior. */
-#include "firmware/application/play_session.hpp"
+#include "application/playback/play_session.hpp"
 
-#include "firmware/core/crc.hpp"
-#include "firmware/core/file_transfer_limits.hpp"
-#include "firmware/core/protocol_constants.hpp"
-#include "firmware/core/sd_user_path.hpp"
-#include "firmware/core/text.hpp"
+#include "core/protocol/crc.hpp"
+#include "core/filesystem/file_transfer_limits.hpp"
+#include "core/protocol/protocol_constants.hpp"
+#include "core/filesystem/sd_user_path.hpp"
+#include "core/protocol/text.hpp"
 
 #include <algorithm>
 #include <cctype>

@@ -1,7 +1,7 @@
 /** @file @brief Declares the replaceable FAT/POSIX writer for finalized AVI segments. */
 #pragma once
 
-#include "firmware/core/bytes.hpp"
+#include "core/protocol/bytes.hpp"
 
 #include <string_view>
 

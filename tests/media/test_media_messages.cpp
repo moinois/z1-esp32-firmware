@@ -1,7 +1,7 @@
 // Verifies compact, ordered media preemption JSON responses.
 #include "test.hpp"
 
-#include "firmware/core/media_messages.hpp"
+#include "core/media/media_messages.hpp"
 
 #include <string_view>
 

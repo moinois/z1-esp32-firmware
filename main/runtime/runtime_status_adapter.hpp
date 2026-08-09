@@ -1,8 +1,8 @@
 /** @file @brief Declares target runtime status sources and shared controller snapshots. */
 #pragma once
 
-#include "firmware/application/controller_snapshots.hpp"
-#include "firmware/application/runtime_status.hpp"
+#include "application/controller/controller_snapshots.hpp"
+#include "application/runtime/runtime_status.hpp"
 
 namespace firmware::application {
 class Router;

@@ -1,7 +1,7 @@
 // Verifies static-path, MIME, and firmware-identity rules without a web server.
 #include "test.hpp"
 
-#include "firmware/core/web_static.hpp"
+#include "core/web/web_static.hpp"
 
 #include <string>
 #include <string_view>

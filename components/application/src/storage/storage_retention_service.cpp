@@ -1,5 +1,5 @@
 /** @file @brief Implements periodic retention checks and deletion/refresh sequencing. */
-#include "firmware/application/storage_retention_service.hpp"
+#include "application/storage/storage_retention_service.hpp"
 
 namespace firmware::application {
 

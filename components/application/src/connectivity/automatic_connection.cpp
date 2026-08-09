@@ -1,5 +1,5 @@
 /** @file @brief Implements persistent station credential loading and automatic retry policy. */
-#include "firmware/application/automatic_connection.hpp"
+#include "application/connectivity/automatic_connection.hpp"
 
 #include <cstddef>
 #include <string>

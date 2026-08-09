@@ -1,7 +1,7 @@
 /** @file @brief Declares the ESP-IDF implementation of the application connectivity port. */
 #pragma once
 
-#include "firmware/application/connectivity_startup.hpp"
+#include "application/connectivity/connectivity_startup.hpp"
 
 namespace firmware::target {
 

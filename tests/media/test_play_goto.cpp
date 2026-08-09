@@ -1,7 +1,7 @@
 // Verifies streamed-play goto validation, scanning, progress, and failures.
 #include "test.hpp"
 
-#include "firmware/application/play_controller.hpp"
+#include "application/playback/play_controller.hpp"
 
 #include <deque>
 #include <optional>

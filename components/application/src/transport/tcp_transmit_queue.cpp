@@ -1,6 +1,6 @@
 /** @file @brief Implements the fixed-capacity, whole-frame TCP transmit queue. */
-#include "firmware/application/tcp_transmit_queue.hpp"
-#include "firmware/core/protocol_constants.hpp"
+#include "application/transport/tcp_transmit_queue.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 namespace firmware::application {
 

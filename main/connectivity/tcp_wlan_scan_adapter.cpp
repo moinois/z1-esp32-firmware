@@ -7,7 +7,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "firmware/application/tcp_client_session.hpp"
+#include "application/transport/tcp_client_session.hpp"
 
 #include <cstring>
 #include <string>

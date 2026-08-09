@@ -1,7 +1,7 @@
 // Verifies exact expedited SDO client requests and response filtering.
 #include "test.hpp"
 
-#include "firmware/core/canopen_sdo_client.hpp"
+#include "core/can/canopen_sdo_client.hpp"
 
 using firmware::core::CanFrame;
 

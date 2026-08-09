@@ -1,7 +1,7 @@
 // Verifies update phase recovery, publication, reporting, and progress policy.
 #include "test.hpp"
 
-#include "firmware/application/update_phase.hpp"
+#include "application/update/update_phase.hpp"
 
 #include <cstdint>
 #include <string>

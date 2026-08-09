@@ -1,7 +1,7 @@
 /** @file @brief Implements wall-clock command selection at the target routing boundary. */
 #include "wall_clock_command_dispatcher.hpp"
 
-#include "firmware/core/protocol_constants.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 namespace firmware::target {
 

@@ -1,8 +1,8 @@
 /** @file @brief Implements exact user Wi-Fi scan sequencing and host response framing. */
-#include "firmware/application/wlan_command.hpp"
+#include "application/connectivity/wlan_command.hpp"
 
-#include "firmware/application/connectivity_defaults.hpp"
-#include "firmware/core/protocol_constants.hpp"
+#include "application/connectivity/connectivity_defaults.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <algorithm>
 #include <string>

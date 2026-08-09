@@ -1,7 +1,7 @@
 // Verifies first-part multipart extraction across arbitrary transport blocks.
 #include "test.hpp"
 
-#include "firmware/core/multipart_extractor.hpp"
+#include "core/web/multipart_extractor.hpp"
 
 #include <string_view>
 

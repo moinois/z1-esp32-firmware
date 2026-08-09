@@ -1,7 +1,7 @@
 // Verifies first-boot, power-on, and streamed-play runtime counter policy.
 #include "test.hpp"
 
-#include "firmware/application/runtime_counters.hpp"
+#include "application/runtime/runtime_counters.hpp"
 
 #include <cstdint>
 #include <optional>

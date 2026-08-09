@@ -1,8 +1,8 @@
 // Tests deterministic CANopen identity, NMT, heartbeat, and error transitions.
 #include "test.hpp"
 
-#include "firmware/core/canopen_node.hpp"
-#include "firmware/core/can_error_policy.hpp"
+#include "core/can/canopen_node.hpp"
+#include "core/can/can_error_policy.hpp"
 
 using firmware::core::CanFrame;
 using firmware::core::CanopenNode;

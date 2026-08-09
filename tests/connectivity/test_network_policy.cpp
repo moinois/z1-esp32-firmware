@@ -1,7 +1,7 @@
 // Verifies machine-name derivation and congestion-based AP channel selection.
 #include "test.hpp"
 
-#include "firmware/core/network_policy.hpp"
+#include "core/network/network_policy.hpp"
 
 #include <array>
 #include <string>

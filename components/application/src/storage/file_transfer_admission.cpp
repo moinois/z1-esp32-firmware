@@ -1,5 +1,5 @@
 /** @file @brief Implements bounded start serialization and latest-value packet replacement. */
-#include "firmware/application/file_transfer_admission.hpp"
+#include "application/storage/file_transfer_admission.hpp"
 
 #include <utility>
 

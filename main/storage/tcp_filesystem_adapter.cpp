@@ -2,7 +2,7 @@
 #include "tcp_filesystem_adapter.hpp"
 #include "sd_access_diagnostics.hpp"
 
-#include "firmware/application/tcp_client_session.hpp"
+#include "application/transport/tcp_client_session.hpp"
 
 #include <cerrno>
 #include <cstdio>

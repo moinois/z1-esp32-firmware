@@ -1,6 +1,6 @@
 // Verifies deletion sequencing, usage refresh, failures, and persistence requests.
 #include "test.hpp"
-#include "firmware/application/storage_retention_service.hpp"
+#include "application/storage/storage_retention_service.hpp"
 
 namespace {
 class FakeRetentionPort final : public firmware::application::StorageRetentionPort {

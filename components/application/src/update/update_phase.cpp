@@ -1,6 +1,6 @@
 /** @file @brief Implements update recovery, bounded phase publication, and visible progress. */
-#include "firmware/application/update_phase.hpp"
-#include "firmware/core/protocol_constants.hpp"
+#include "application/update/update_phase.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <algorithm>
 #include <cstddef>

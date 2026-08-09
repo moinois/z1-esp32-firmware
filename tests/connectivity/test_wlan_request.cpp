@@ -1,6 +1,6 @@
 // Verifies WLAN command shape, option precedence, and escaped tokens.
 #include "test.hpp"
-#include "firmware/application/wlan_request.hpp"
+#include "application/connectivity/wlan_request.hpp"
 
 TEST_CASE(wlan_request_defaults_to_scan) {
     REQUIRE_EQ(firmware::application::parse_wlan_request("wlan").kind,

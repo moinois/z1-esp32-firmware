@@ -1,7 +1,7 @@
 // Verifies aggregate update boot ordering, command prefixes, and coalescing.
 #include "test.hpp"
 
-#include "firmware/application/update_trigger.hpp"
+#include "application/update/update_trigger.hpp"
 
 #include <string>
 #include <string_view>

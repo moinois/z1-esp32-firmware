@@ -3,7 +3,7 @@
 
 #include "configuration_file_store.hpp"
 
-#include "firmware/application/tcp_client_session.hpp"
+#include "application/transport/tcp_client_session.hpp"
 
 #include <algorithm>
 #include <string>

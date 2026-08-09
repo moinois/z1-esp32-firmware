@@ -1,10 +1,10 @@
 /** @file @brief Implements primary filesystem mutations, best-effort cache effects, and replies. */
-#include "firmware/application/filesystem_commands.hpp"
+#include "application/storage/filesystem_commands.hpp"
 
-#include "firmware/core/file_transfer_paths.hpp"
-#include "firmware/core/filesystem_syntax.hpp"
-#include "firmware/core/protocol_constants.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "core/filesystem/file_transfer_paths.hpp"
+#include "core/filesystem/filesystem_syntax.hpp"
+#include "core/protocol/protocol_constants.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 #include <optional>
 #include <string>

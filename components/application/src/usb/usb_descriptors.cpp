@@ -1,5 +1,5 @@
 /** @file @brief Implements the fixed USB descriptors required by the firmware specification. */
-#include "firmware/application/usb_descriptors.hpp"
+#include "application/usb/usb_descriptors.hpp"
 
 #include <string_view>
 

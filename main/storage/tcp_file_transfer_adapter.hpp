@@ -1,8 +1,8 @@
 /** @file @brief Declares POSIX file-transfer ports bound to one TCP client session. */
 #pragma once
 
-#include "firmware/application/file_download.hpp"
-#include "firmware/application/file_upload.hpp"
+#include "application/storage/file_download.hpp"
+#include "application/storage/file_upload.hpp"
 #include "posix_file.hpp"
 
 #include <cstdio>

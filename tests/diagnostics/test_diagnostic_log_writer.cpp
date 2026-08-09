@@ -1,7 +1,7 @@
 // Verifies diagnostic log sessions, flushing, rotation, writes, and shutdown.
 #include "test.hpp"
 
-#include "firmware/application/diagnostic_log_writer.hpp"
+#include "application/diagnostics/diagnostic_log_writer.hpp"
 
 #include <optional>
 #include <string>

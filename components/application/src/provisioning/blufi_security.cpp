@@ -1,5 +1,5 @@
 /** @file @brief Implements BLUFI DH negotiation, salted key derivation, and AES-CFB policy. */
-#include "firmware/application/blufi_security.hpp"
+#include "application/provisioning/blufi_security.hpp"
 
 #include <algorithm>
 #include <array>

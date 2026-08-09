@@ -1,6 +1,6 @@
 // Verifies ordered preview metadata fields, filename extraction, and timing.
 #include "test.hpp"
-#include "firmware/application/preview_metadata.hpp"
+#include "application/playback/preview_metadata.hpp"
 
 TEST_CASE(prev_013_and_014_metadata_contains_avi_fields) {
     firmware::core::AviPreview avi;

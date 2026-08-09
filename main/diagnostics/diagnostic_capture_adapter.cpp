@@ -4,7 +4,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 
-#include "firmware/application/diagnostic_capture.hpp"
+#include "application/diagnostics/diagnostic_capture.hpp"
 
 #include <cstdarg>
 #include <cstdint>

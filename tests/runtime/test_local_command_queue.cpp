@@ -1,7 +1,7 @@
 // Verifies bounded FIFO admission and ordering for local command frames.
 #include "test.hpp"
 
-#include "firmware/application/local_command_queue.hpp"
+#include "application/runtime/local_command_queue.hpp"
 
 using firmware::application::LocalCommandQueue;
 using firmware::core::Frame;

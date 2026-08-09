@@ -1,7 +1,7 @@
 /** @file @brief Declares TCP-origin WLAN connection responses and discovery timing. */
 #pragma once
 
-#include "firmware/application/wlan_command.hpp"
+#include "application/connectivity/wlan_command.hpp"
 
 namespace firmware::application {
 class TcpClientSession;

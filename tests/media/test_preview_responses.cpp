@@ -1,6 +1,6 @@
 // Verifies exact preview response fields, optional values, and conflict text.
 #include "test.hpp"
-#include "firmware/application/preview_responses.hpp"
+#include "application/playback/preview_responses.hpp"
 
 TEST_CASE(prev_020_basic_response_is_ordered_and_compact) {
     const auto response = firmware::application::format_preview_response(

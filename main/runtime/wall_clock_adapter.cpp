@@ -6,7 +6,7 @@
 #include "runtime_counter_task.hpp"
 #include "controller_channel_adapter.hpp"
 
-#include "firmware/core/frame.hpp"
+#include "core/protocol/frame.hpp"
 
 #include <ctime>
 #include <sys/time.h>

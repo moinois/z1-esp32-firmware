@@ -1,7 +1,7 @@
 // Verifies direct OTA update ordering and exact HTTP outcomes.
 #include "test.hpp"
 
-#include "firmware/application/direct_application_update.hpp"
+#include "application/update/direct_application_update.hpp"
 
 #include <string>
 #include <string_view>

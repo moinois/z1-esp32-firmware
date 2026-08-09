@@ -321,6 +321,13 @@ The design follows a ports-and-adapters structure. Deterministic product rules
 remain independent from ESP-IDF, while hardware and operating-system behavior
 is implemented at the outer edge.
 
+Public headers mirror their implementation domains. The two component include
+roots are exported separately, so application code includes
+`application/<domain>/<header>.hpp` and portable core code includes
+`core/<domain>/<header>.hpp`; the former receives the latter through the public
+`core` component dependency. There is deliberately no additional umbrella
+`firmware/` include namespace.
+
 ```text
 Host/Controller protocols
           |

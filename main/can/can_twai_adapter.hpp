@@ -1,7 +1,7 @@
 /** @file @brief Declares the ESP-IDF TWAI adapter for portable classic-CAN frames. */
 #pragma once
 
-#include "firmware/core/canopen_node.hpp"
+#include "core/can/canopen_node.hpp"
 
 namespace firmware::target {
 

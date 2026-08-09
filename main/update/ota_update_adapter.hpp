@@ -1,7 +1,7 @@
 /** @file @brief Declares ESP-IDF OTA and staged-controller operations for update application. */
 #pragma once
 
-#include "firmware/application/update_application.hpp"
+#include "application/update/update_application.hpp"
 
 #include "esp_ota_ops.h"
 

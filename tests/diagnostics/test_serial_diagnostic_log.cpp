@@ -1,7 +1,7 @@
 // Verifies opt-in serial.log mirroring, its hard size limit, and reactivation.
 #include "test.hpp"
 
-#include "firmware/application/serial_diagnostic_log.hpp"
+#include "application/diagnostics/serial_diagnostic_log.hpp"
 
 #include <optional>
 #include <string>

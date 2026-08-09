@@ -1,5 +1,5 @@
 /** @file @brief Implements bounded frame delivery, tick-rounded delay, and clean EOS handling. */
-#include "firmware/application/preview_frame_step.hpp"
+#include "application/playback/preview_frame_step.hpp"
 
 namespace firmware::application {
 

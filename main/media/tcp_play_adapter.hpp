@@ -1,7 +1,7 @@
 /** @file @brief Declares TCP-origin file preparation for the shared streamed-play session. */
 #pragma once
 
-#include "firmware/application/play_session.hpp"
+#include "application/playback/play_session.hpp"
 #include "posix_file.hpp"
 
 namespace firmware::application {

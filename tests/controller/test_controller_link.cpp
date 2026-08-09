@@ -1,7 +1,7 @@
 // Verifies controller UART activity monitoring and bounded output scheduling.
 #include "test.hpp"
 
-#include "firmware/application/controller_link.hpp"
+#include "application/controller/controller_link.hpp"
 
 using firmware::application::ControllerActivityMonitor;
 using firmware::application::ControllerOutputQueue;

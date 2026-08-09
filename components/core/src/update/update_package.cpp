@@ -1,5 +1,5 @@
 /** @file @brief Implements overflow-safe aggregate header and checksum validation. */
-#include "firmware/core/update_package.hpp"
+#include "core/update/update_package.hpp"
 
 namespace firmware::core {
 namespace {

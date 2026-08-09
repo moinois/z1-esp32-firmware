@@ -1,7 +1,7 @@
 // Tests the shared parsing rules for path-oriented filesystem commands.
 #include "test.hpp"
 
-#include "firmware/core/filesystem_syntax.hpp"
+#include "core/filesystem/filesystem_syntax.hpp"
 
 using firmware::core::ByteVector;
 

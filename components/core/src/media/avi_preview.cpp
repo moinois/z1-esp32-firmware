@@ -1,5 +1,5 @@
 /** @file @brief Implements bounded RIFF chunk scanning, idx1 retention, and JPEG frame reads. */
-#include "firmware/core/avi_preview.hpp"
+#include "core/media/avi_preview.hpp"
 
 #include <algorithm>
 #include <string_view>

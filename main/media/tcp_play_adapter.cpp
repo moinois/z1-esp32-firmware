@@ -1,8 +1,8 @@
 /** @file @brief Implements TCP-origin play preparation over the mounted POSIX VFS. */
 #include "tcp_play_adapter.hpp"
 
-#include "firmware/application/tcp_client_session.hpp"
-#include "firmware/core/file_transfer_paths.hpp"
+#include "application/transport/tcp_client_session.hpp"
+#include "core/filesystem/file_transfer_paths.hpp"
 
 #include <cstdio>
 

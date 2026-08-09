@@ -1,7 +1,7 @@
 // Verifies saved station credentials, delayed connection, and retry policy.
 #include "test.hpp"
 
-#include "firmware/application/automatic_connection.hpp"
+#include "application/connectivity/automatic_connection.hpp"
 
 #include <cstdint>
 #include <string>

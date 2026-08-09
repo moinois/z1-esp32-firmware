@@ -7,8 +7,8 @@
 #include "tcp_control_adapter.hpp"
 
 #include "esp_timer.h"
-#include "firmware/core/file_transfer_paths.hpp"
-#include "firmware/core/frame.hpp"
+#include "core/filesystem/file_transfer_paths.hpp"
+#include "core/protocol/frame.hpp"
 
 #include <cstring>
 #include <sys/stat.h>

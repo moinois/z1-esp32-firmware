@@ -1,8 +1,8 @@
 /** @file @brief Implements common path cleanup and bounded directory-list option parsing. */
-#include "firmware/core/filesystem_syntax.hpp"
+#include "core/filesystem/filesystem_syntax.hpp"
 
-#include "firmware/core/sd_user_path.hpp"
-#include "firmware/core/text.hpp"
+#include "core/filesystem/sd_user_path.hpp"
+#include "core/protocol/text.hpp"
 
 #include <string_view>
 #include <utility>

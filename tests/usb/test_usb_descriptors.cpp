@@ -1,7 +1,7 @@
 // Verifies USB descriptor identity, endpoint geometry, and required strings.
 #include "test.hpp"
 
-#include "firmware/application/usb_descriptors.hpp"
+#include "application/usb/usb_descriptors.hpp"
 
 using firmware::application::UsbDescriptors;
 

@@ -1,7 +1,7 @@
 // Tests one-shot camera setting loading, normalization, and frame dimensions.
 #include "test.hpp"
 
-#include "firmware/application/camera_settings.hpp"
+#include "application/camera/camera_settings.hpp"
 
 #include <optional>
 #include <string>

@@ -1,7 +1,7 @@
 // Verifies target-neutral config parsing, namespace isolation, and serialization.
 #include "test.hpp"
 
-#include "firmware/application/configuration_document.hpp"
+#include "application/configuration/configuration_document.hpp"
 
 using firmware::application::ConfigurationDocument;
 using firmware::application::ConfigurationNamespace;

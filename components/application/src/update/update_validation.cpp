@@ -1,7 +1,7 @@
 /** @file @brief Implements aggregate cleanup, read-failure classification, and validation. */
-#include "firmware/application/update_validation.hpp"
-#include "firmware/core/sd_user_path.hpp"
-#include "firmware/core/protocol_constants.hpp"
+#include "application/update/update_validation.hpp"
+#include "core/filesystem/sd_user_path.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <array>
 #include <cstddef>

@@ -1,7 +1,7 @@
 /** @file @brief Declares the ESP-IDF NVS backend for runtime counters. */
 #pragma once
 
-#include "firmware/application/runtime_counters.hpp"
+#include "application/runtime/runtime_counters.hpp"
 #include "nvs_key_value_adapter.hpp"
 
 namespace firmware::target {

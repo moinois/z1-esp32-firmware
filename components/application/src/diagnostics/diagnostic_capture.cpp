@@ -1,5 +1,5 @@
 /** @file @brief Implements bounded output, ANSI removal, timestamps, and nonblocking queueing. */
-#include "firmware/application/diagnostic_capture.hpp"
+#include "application/diagnostics/diagnostic_capture.hpp"
 
 #include <algorithm>
 #include <cstdio>

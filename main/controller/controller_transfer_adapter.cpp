@@ -7,7 +7,7 @@
 #include "runtime_status_adapter.hpp"
 #include "firmware_update_adapter.hpp"
 
-#include "firmware/core/frame.hpp"
+#include "core/protocol/frame.hpp"
 #include "esp_timer.h"
 
 #include <cstdio>

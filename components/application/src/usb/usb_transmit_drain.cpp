@@ -1,5 +1,5 @@
 /** @file @brief Implements partial USB writes, disconnect retention, and no-progress expiry. */
-#include "firmware/application/usb_transmit_drain.hpp"
+#include "application/usb/usb_transmit_drain.hpp"
 
 #include <algorithm>
 #include <cstddef>

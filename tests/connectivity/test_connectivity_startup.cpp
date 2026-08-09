@@ -1,7 +1,7 @@
 // Verifies access-point/station startup settings, ordering, and failures.
 #include "test.hpp"
 
-#include "firmware/application/connectivity_startup.hpp"
+#include "application/connectivity/connectivity_startup.hpp"
 
 #include <string>
 #include <vector>

@@ -1,9 +1,9 @@
 /** @file @brief Implements factory-data record selection and lifecycle behavior. */
-#include "firmware/application/controller_factory_transfer.hpp"
+#include "application/controller/controller_factory_transfer.hpp"
 
-#include "firmware/application/controller_transfer.hpp"
-#include "firmware/core/protocol_constants.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "application/controller/controller_transfer.hpp"
+#include "core/protocol/protocol_constants.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 #include <utility>
 

@@ -1,7 +1,7 @@
 // Verifies the common wire parsing and inbox policy for controller transfers.
 #include "test.hpp"
 
-#include "firmware/application/controller_transfer.hpp"
+#include "application/controller/controller_transfer.hpp"
 
 using firmware::application::ControllerTransferInbox;
 using firmware::application::TransferOperation;

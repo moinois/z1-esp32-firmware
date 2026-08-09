@@ -1,5 +1,5 @@
 /** @file @brief Implements BLUFI subtype routing and exact product report byte layouts. */
-#include "firmware/application/blufi_product.hpp"
+#include "application/provisioning/blufi_product.hpp"
 
 #include <array>
 #include <cstddef>

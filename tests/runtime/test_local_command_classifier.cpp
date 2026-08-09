@@ -1,6 +1,6 @@
 // Verifies local command families remain independent from transport code.
 #include "test.hpp"
-#include "firmware/application/local_command_classifier.hpp"
+#include "application/runtime/local_command_classifier.hpp"
 
 #include <array>
 

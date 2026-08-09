@@ -1,13 +1,13 @@
 // Verifies a sanitized desktop-client initialization trace against production policies.
 #include "test.hpp"
 
-#include "firmware/application/controller_snapshots.hpp"
-#include "firmware/application/directory_listing.hpp"
-#include "firmware/application/file_download.hpp"
-#include "firmware/application/filesystem_commands.hpp"
-#include "firmware/core/frame.hpp"
-#include "firmware/core/file_transfer_paths.hpp"
-#include "firmware/core/protocol_constants.hpp"
+#include "application/controller/controller_snapshots.hpp"
+#include "application/storage/directory_listing.hpp"
+#include "application/storage/file_download.hpp"
+#include "application/storage/filesystem_commands.hpp"
+#include "core/protocol/frame.hpp"
+#include "core/filesystem/file_transfer_paths.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <algorithm>
 #include <cstdint>

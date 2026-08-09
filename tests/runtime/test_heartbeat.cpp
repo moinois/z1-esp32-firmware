@@ -1,7 +1,7 @@
 // Tests GPIO-independent heartbeat startup, timing, and failure isolation.
 #include "test.hpp"
 
-#include "firmware/application/heartbeat.hpp"
+#include "application/runtime/heartbeat.hpp"
 
 #include <cstddef>
 #include <cstdint>

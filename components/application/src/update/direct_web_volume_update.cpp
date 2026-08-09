@@ -1,5 +1,5 @@
 /** @file @brief Implements raw web-volume update ordering and empty-image success behavior. */
-#include "firmware/application/direct_web_volume_update.hpp"
+#include "application/update/direct_web_volume_update.hpp"
 
 namespace firmware::application {
 namespace {

@@ -1,6 +1,6 @@
 // Tests aggregate firmware header decoding and validation before any flash operation.
 #include "test.hpp"
-#include "firmware/core/update_package.hpp"
+#include "core/update/update_package.hpp"
 
 using firmware::core::ByteVector;
 

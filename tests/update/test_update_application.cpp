@@ -1,7 +1,7 @@
 // Verifies validated package staging, OTA failure handling, and final actions.
 #include "test.hpp"
 
-#include "firmware/application/update_application.hpp"
+#include "application/update/update_application.hpp"
 
 #include <algorithm>
 #include <cstdint>

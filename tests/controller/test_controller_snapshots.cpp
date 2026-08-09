@@ -1,7 +1,7 @@
 // Tests bounded controller snapshots and their local host response formats.
 #include "test.hpp"
 
-#include "firmware/application/controller_snapshots.hpp"
+#include "application/controller/controller_snapshots.hpp"
 
 #include <string>
 

@@ -1,7 +1,7 @@
 /** @file @brief Implements bounded FIFO admission for serialized local commands. */
-#include "firmware/application/local_command_queue.hpp"
+#include "application/runtime/local_command_queue.hpp"
 
-#include "firmware/core/frame.hpp"
+#include "core/protocol/frame.hpp"
 
 namespace firmware::application {
 

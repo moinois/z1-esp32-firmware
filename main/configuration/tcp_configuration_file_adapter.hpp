@@ -1,7 +1,7 @@
 /** @file @brief Declares TCP-origin bytewise configuration-copy file operations. */
 #pragma once
 
-#include "firmware/application/configuration_files.hpp"
+#include "application/configuration/configuration_files.hpp"
 
 namespace firmware::application {
 class TcpClientSession;

@@ -1,5 +1,5 @@
 /** @file @brief Implements bounded discovery formatting and dependency-free IPv4 parsing. */
-#include "firmware/core/discovery_policy.hpp"
+#include "core/network/discovery_policy.hpp"
 
 #include <algorithm>
 #include <array>

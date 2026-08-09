@@ -1,7 +1,7 @@
 // Verifies bounded JSON-prefix parsing and case-insensitive object lookup.
 #include "test.hpp"
 
-#include "firmware/core/json_input.hpp"
+#include "core/configuration/json_input.hpp"
 
 #include <string_view>
 #include <array>

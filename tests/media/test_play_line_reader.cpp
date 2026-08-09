@@ -1,7 +1,7 @@
 // Verifies streamed-play logical-line reading and wire-size transformation.
 #include "test.hpp"
 
-#include "firmware/application/play_line_reader.hpp"
+#include "application/playback/play_line_reader.hpp"
 
 #include <deque>
 #include <optional>

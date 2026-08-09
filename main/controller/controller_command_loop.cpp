@@ -13,11 +13,11 @@
 #include "serial_number_adapter.hpp"
 #include "controller_runtime_command_adapter.hpp"
 #include "firmware_update_adapter.hpp"
-#include "firmware/application/serial_number.hpp"
-#include "firmware/application/recording_commands.hpp"
+#include "application/runtime/serial_number.hpp"
+#include "application/web/recording_commands.hpp"
 #include "recording_request_state.hpp"
-#include "firmware/core/text.hpp"
-#include "firmware/core/frame.hpp"
+#include "core/protocol/text.hpp"
+#include "core/protocol/frame.hpp"
 
 #include <string_view>
 
@@ -27,15 +27,15 @@
 #include "esp_timer.h"
 #include "esp_log.h"
 
-#include "firmware/application/controller_frame_forwarder.hpp"
-#include "firmware/application/controller_query.hpp"
-#include "firmware/application/controller_link.hpp"
-#include "firmware/application/controller_firmware_transfer.hpp"
-#include "firmware/application/controller_config_transfer.hpp"
-#include "firmware/application/controller_factory_transfer.hpp"
-#include "firmware/application/local_command_queue.hpp"
-#include "firmware/application/play_controller.hpp"
-#include "firmware/core/protocol_constants.hpp"
+#include "application/controller/controller_frame_forwarder.hpp"
+#include "application/controller/controller_query.hpp"
+#include "application/controller/controller_link.hpp"
+#include "application/controller/controller_firmware_transfer.hpp"
+#include "application/controller/controller_config_transfer.hpp"
+#include "application/controller/controller_factory_transfer.hpp"
+#include "application/runtime/local_command_queue.hpp"
+#include "application/playback/play_controller.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <cstdint>
 #include <optional>

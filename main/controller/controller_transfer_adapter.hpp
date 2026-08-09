@@ -1,9 +1,9 @@
 /** @file @brief Declares POSIX-backed controller transfer ports using one serialized UART. */
 #pragma once
 
-#include "firmware/application/controller_config_transfer.hpp"
-#include "firmware/application/controller_factory_transfer.hpp"
-#include "firmware/application/controller_firmware_transfer.hpp"
+#include "application/controller/controller_config_transfer.hpp"
+#include "application/controller/controller_factory_transfer.hpp"
+#include "application/controller/controller_firmware_transfer.hpp"
 
 namespace firmware::target {
 class ControllerChannelAdapter;

@@ -1,7 +1,7 @@
 // Verifies stable and safely escaped Wi-Fi diagnostic JSON.
 #include "test.hpp"
 
-#include "firmware/core/wifi_statistics.hpp"
+#include "core/connectivity/wifi_statistics.hpp"
 
 TEST_CASE(wifi_diagnostics_formats_current_state_counters_and_events) {
     firmware::core::WifiStatistics statistics;

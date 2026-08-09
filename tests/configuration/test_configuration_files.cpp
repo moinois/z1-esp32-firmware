@@ -1,7 +1,7 @@
 // Verifies configuration restore/default copying and exact result responses.
 #include "test.hpp"
 
-#include "firmware/application/configuration_files.hpp"
+#include "application/configuration/configuration_files.hpp"
 
 #include <string>
 #include <string_view>

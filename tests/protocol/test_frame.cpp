@@ -1,6 +1,6 @@
 // Tests the common binary envelope and transport-specific stream recovery.
 #include "test.hpp"
-#include "firmware/core/frame.hpp"
+#include "core/protocol/frame.hpp"
 using firmware::core::ByteVector;
 using firmware::core::Frame;
 using firmware::core::StreamDecoder;

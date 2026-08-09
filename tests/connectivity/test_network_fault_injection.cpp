@@ -1,6 +1,6 @@
 // Verifies one-shot network failures remain bound to their selected adapter.
 #include "test.hpp"
-#include "firmware/application/network_fault_injection.hpp"
+#include "application/connectivity/network_fault_injection.hpp"
 
 using firmware::application::NetworkFault;
 using firmware::application::NetworkFaultInjection;

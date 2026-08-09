@@ -1,5 +1,5 @@
 /** @file @brief Implements stable JSON formatting for a Wi-Fi diagnostic snapshot. */
-#include "firmware/core/wifi_statistics.hpp"
+#include "core/connectivity/wifi_statistics.hpp"
 
 #include <cstdio>
 #include <string_view>

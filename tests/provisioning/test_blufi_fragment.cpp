@@ -1,7 +1,7 @@
 // Verifies BLUFI fragment sizing, prefixes, reassembly, and retained failures.
 #include "test.hpp"
 
-#include "firmware/application/blufi_fragment.hpp"
+#include "application/provisioning/blufi_fragment.hpp"
 
 #include <cstddef>
 #include <cstdint>

@@ -1,7 +1,7 @@
 /** @file @brief Declares a POSIX filesystem port whose responses target one TCP session. */
 #pragma once
 
-#include "firmware/application/filesystem_commands.hpp"
+#include "application/storage/filesystem_commands.hpp"
 
 namespace firmware::application {
 class TcpClientSession;

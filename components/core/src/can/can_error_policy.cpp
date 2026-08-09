@@ -1,5 +1,5 @@
 /** @file @brief Implements the physical-CAN-to-CANopen error-register mapping. */
-#include "firmware/core/can_error_policy.hpp"
+#include "core/can/can_error_policy.hpp"
 
 namespace firmware::core {
 

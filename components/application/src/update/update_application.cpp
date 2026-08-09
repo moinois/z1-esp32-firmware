@@ -1,8 +1,8 @@
 /** @file @brief Implements controller staging and mainboard OTA application state ordering. */
-#include "firmware/application/update_application.hpp"
-#include "firmware/application/update_phase.hpp"
-#include "firmware/core/sd_user_path.hpp"
-#include "firmware/core/update_package.hpp"
+#include "application/update/update_application.hpp"
+#include "application/update/update_phase.hpp"
+#include "core/filesystem/sd_user_path.hpp"
+#include "core/update/update_package.hpp"
 
 #include <cstddef>
 #include <cstdint>

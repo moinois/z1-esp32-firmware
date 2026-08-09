@@ -2,8 +2,8 @@
 #include "tcp_configuration_file_adapter.hpp"
 #include "configuration_file_store.hpp"
 
-#include "firmware/application/tcp_client_session.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "application/transport/tcp_client_session.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 #include <cstdio>
 #include <string>

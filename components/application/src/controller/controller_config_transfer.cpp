@@ -1,8 +1,8 @@
 /** @file @brief Implements configuration record selection and aggregation for the controller. */
-#include "firmware/application/controller_config_transfer.hpp"
+#include "application/controller/controller_config_transfer.hpp"
 
-#include "firmware/application/controller_transfer.hpp"
-#include "firmware/core/protocol_constants.hpp"
+#include "application/controller/controller_transfer.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <algorithm>
 #include <utility>

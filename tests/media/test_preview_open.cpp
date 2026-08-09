@@ -1,6 +1,6 @@
 // Verifies preview open admission, bounded allocation, and session formatting.
 #include "test.hpp"
-#include "firmware/application/preview_open.hpp"
+#include "application/playback/preview_open.hpp"
 
 TEST_CASE(prev_010_to_012_open_admission_and_session_id) {
     firmware::core::AviPreview avi;

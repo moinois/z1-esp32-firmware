@@ -1,7 +1,7 @@
 // Verifies the byte-exact BLE-002 name and BWF-002 conditional AD layout.
 #include "test.hpp"
 
-#include "firmware/application/blufi_advertising.hpp"
+#include "application/provisioning/blufi_advertising.hpp"
 
 #include <string>
 

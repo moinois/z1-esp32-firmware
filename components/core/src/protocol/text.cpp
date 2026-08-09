@@ -1,5 +1,5 @@
 /** @file @brief Implements shared byte escaping, normalized paths, and ordered prefix matching. */
-#include "firmware/core/text.hpp"
+#include "core/protocol/text.hpp"
 #include <algorithm>
 #include <array>
 #include <string_view>

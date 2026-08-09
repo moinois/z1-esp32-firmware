@@ -2,7 +2,7 @@
 /// Declares the ESP-IDF TinyUSB vendor-interface lifecycle adapter.
 #pragma once
 
-#include "firmware/core/frame.hpp"
+#include "core/protocol/frame.hpp"
 
 namespace firmware::target {
 

@@ -7,10 +7,10 @@
 #include "esp_vfs_fat.h"
 #include "esp_wifi.h"
 #include "esp_timer.h"
-#include "firmware/application/router.hpp"
-#include "firmware/application/update_phase.hpp"
-#include "firmware/application/recording_policy.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "application/runtime/router.hpp"
+#include "application/update/update_phase.hpp"
+#include "application/web/recording_policy.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 #include <atomic>
 

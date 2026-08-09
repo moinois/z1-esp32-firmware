@@ -12,11 +12,11 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "firmware/application/update_application.hpp"
-#include "firmware/application/update_controller.hpp"
-#include "firmware/application/update_deletion.hpp"
-#include "firmware/application/update_validation.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "application/update/update_application.hpp"
+#include "application/update/update_controller.hpp"
+#include "application/update/update_deletion.hpp"
+#include "application/update/update_validation.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 #include <cstdio>
 #include <cstring>

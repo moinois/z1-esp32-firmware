@@ -1,7 +1,7 @@
 // Verifies the portable contract used by the ESP-IDF TWAI adapter.
 #include "test.hpp"
 
-#include "firmware/application/can_twai_config.hpp"
+#include "application/can/can_twai_config.hpp"
 
 using firmware::application::can_twai;
 

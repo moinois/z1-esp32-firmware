@@ -1,7 +1,7 @@
 /** @file @brief Implements BLUFI envelopes, sequence consumption, checksum, crypto, and ACKs. */
-#include "firmware/application/blufi_wire.hpp"
+#include "application/provisioning/blufi_wire.hpp"
 
-#include "firmware/core/crc.hpp"
+#include "core/protocol/crc.hpp"
 
 #include <cstddef>
 #include <cstdint>

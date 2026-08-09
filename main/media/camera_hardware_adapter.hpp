@@ -1,9 +1,9 @@
 /** @file @brief Declares the common lifecycle and capture surface for live and mock cameras. */
 #pragma once
 
-#include "firmware/application/camera_resolution_endpoint.hpp"
-#include "firmware/application/camera_settings.hpp"
-#include "firmware/core/bytes.hpp"
+#include "application/camera/camera_resolution_endpoint.hpp"
+#include "application/camera/camera_settings.hpp"
+#include "core/protocol/bytes.hpp"
 
 #include <optional>
 

@@ -1,8 +1,8 @@
 // Tests packet routing and independent host ownership at the application boundary.
 #include "test.hpp"
 
-#include "firmware/application/ownership.hpp"
-#include "firmware/application/router.hpp"
+#include "application/runtime/ownership.hpp"
+#include "application/runtime/router.hpp"
 
 using firmware::application::ControllerFamily;
 using firmware::application::HostIdentity;

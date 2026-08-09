@@ -1,9 +1,9 @@
 // Verifies cached, SD, live, and unknown config-get source behavior.
 #include "test.hpp"
 
-#include "firmware/application/configuration_get.hpp"
-#include "firmware/application/configuration_tags.hpp"
-#include "firmware/application/camera_settings.hpp"
+#include "application/configuration/configuration_get.hpp"
+#include "application/configuration/configuration_tags.hpp"
+#include "application/camera/camera_settings.hpp"
 
 #include <optional>
 #include <string>

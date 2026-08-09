@@ -1,7 +1,7 @@
 // Tests byte-exact expedited CANopen SDO server requests and responses.
 #include "test.hpp"
 
-#include "firmware/core/canopen_sdo.hpp"
+#include "core/can/canopen_sdo.hpp"
 
 using firmware::core::CanFrame;
 using firmware::core::CanopenObjectDictionary;

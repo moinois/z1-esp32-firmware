@@ -1,7 +1,7 @@
 /** @file @brief Declares the ESP-IDF system-clock implementation of WallClockPort. */
 #pragma once
 
-#include "firmware/application/wall_clock.hpp"
+#include "application/runtime/wall_clock.hpp"
 
 namespace firmware::target {
 

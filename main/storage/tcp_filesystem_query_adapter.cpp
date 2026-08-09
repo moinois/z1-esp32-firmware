@@ -3,7 +3,7 @@
 #include "posix_file.hpp"
 #include "sd_access_diagnostics.hpp"
 
-#include "firmware/application/tcp_client_session.hpp"
+#include "application/transport/tcp_client_session.hpp"
 
 #include "esp_log.h"
 

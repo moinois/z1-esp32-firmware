@@ -10,10 +10,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "firmware/application/camera_settings.hpp"
-#include "firmware/application/recording_policy.hpp"
-#include "firmware/core/avi_writer.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "application/camera/camera_settings.hpp"
+#include "application/web/recording_policy.hpp"
+#include "core/media/avi_writer.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 #include <ctime>
 #include <cstdint>

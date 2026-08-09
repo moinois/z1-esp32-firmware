@@ -3,7 +3,7 @@
 #include "sd_access_diagnostics.hpp"
 
 #include "esp_heap_caps.h"
-#include "firmware/application/tcp_client_session.hpp"
+#include "application/transport/tcp_client_session.hpp"
 
 #include <cstdio>
 #include <cerrno>

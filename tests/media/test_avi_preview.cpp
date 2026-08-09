@@ -1,7 +1,7 @@
 // Verifies AVI preview acceptance, metadata retention, index parsing, and frame reads.
 #include "test.hpp"
 
-#include "firmware/core/avi_preview.hpp"
+#include "core/media/avi_preview.hpp"
 
 #include <algorithm>
 #include <cstdint>

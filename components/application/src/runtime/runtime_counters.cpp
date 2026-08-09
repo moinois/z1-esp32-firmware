@@ -1,6 +1,6 @@
 /** @file @brief Implements whole-second runtime accounting and silent persistence failures. */
-#include "firmware/application/runtime_counters.hpp"
-#include "firmware/application/runtime_persistence.hpp"
+#include "application/runtime/runtime_counters.hpp"
+#include "application/runtime/runtime_persistence.hpp"
 
 #include <cstdint>
 #include <optional>

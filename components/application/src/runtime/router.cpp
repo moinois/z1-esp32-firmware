@@ -1,8 +1,8 @@
 /** @file @brief Implements routing precedence without performing queue or transport operations. */
-#include "firmware/application/router.hpp"
+#include "application/runtime/router.hpp"
 
-#include "firmware/core/protocol_constants.hpp"
-#include "firmware/core/text.hpp"
+#include "core/protocol/protocol_constants.hpp"
+#include "core/protocol/text.hpp"
 
 #include <algorithm>
 #include <string_view>

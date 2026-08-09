@@ -1,7 +1,7 @@
 // Verifies SD configuration lines and literal-space command tokenization.
 #include "test.hpp"
 
-#include "firmware/core/configuration_syntax.hpp"
+#include "core/configuration/configuration_syntax.hpp"
 
 #include <string>
 #include <vector>

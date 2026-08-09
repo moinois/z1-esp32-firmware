@@ -2,7 +2,7 @@
 #pragma once
 
 #include "controller_channel_adapter.hpp"
-#include "firmware/core/frame.hpp"
+#include "core/protocol/frame.hpp"
 
 #include <cstdint>
 #include <deque>

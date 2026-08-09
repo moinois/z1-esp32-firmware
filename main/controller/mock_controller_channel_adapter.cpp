@@ -1,7 +1,7 @@
 /** @file @brief Implements deterministic controller responses over the production framing codec. */
 #include "mock_controller_channel_adapter.hpp"
 
-#include "firmware/core/protocol_constants.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include "esp_log.h"
 #include "esp_timer.h"

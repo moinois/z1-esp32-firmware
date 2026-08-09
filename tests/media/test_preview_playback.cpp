@@ -1,6 +1,6 @@
 // Verifies preview playback command transitions and clamped seeking.
 #include "test.hpp"
-#include "firmware/application/preview_playback.hpp"
+#include "application/playback/preview_playback.hpp"
 
 TEST_CASE(prev_023_to_027_playback_transitions) {
     firmware::application::PreviewRequest request{};

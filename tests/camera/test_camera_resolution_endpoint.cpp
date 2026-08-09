@@ -1,7 +1,7 @@
 // Verifies the camera-resolution HTTP endpoint through a replaceable sensor port.
 #include "test.hpp"
 
-#include "firmware/application/camera_resolution_endpoint.hpp"
+#include "application/camera/camera_resolution_endpoint.hpp"
 
 #include <string_view>
 

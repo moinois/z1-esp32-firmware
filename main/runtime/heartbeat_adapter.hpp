@@ -1,7 +1,7 @@
 /** @file @brief Declares the ESP-IDF GPIO and FreeRTOS heartbeat port. */
 #pragma once
 
-#include "firmware/application/heartbeat.hpp"
+#include "application/runtime/heartbeat.hpp"
 
 namespace firmware::target {
 

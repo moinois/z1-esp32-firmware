@@ -1,7 +1,7 @@
 // Verifies USB enumeration, protocol activation, and disconnect behavior.
 #include "test.hpp"
 
-#include "firmware/application/usb_protocol_state.hpp"
+#include "application/usb/usb_protocol_state.hpp"
 
 using firmware::application::UsbProtocolState;
 using firmware::core::ByteVector;

@@ -1,7 +1,7 @@
 /** @file @brief Declares the process-wide streamed-play session shared by host and controller tasks. */
 #pragma once
 
-#include "firmware/application/play_session.hpp"
+#include "application/playback/play_session.hpp"
 
 namespace firmware::target {
 

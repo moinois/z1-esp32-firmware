@@ -1,7 +1,7 @@
 /** @file @brief Declares shared ESP-IDF Wi-Fi scan operations for every response transport. */
 #pragma once
 
-#include "firmware/application/wlan_command.hpp"
+#include "application/connectivity/wlan_command.hpp"
 
 namespace firmware::target {
 

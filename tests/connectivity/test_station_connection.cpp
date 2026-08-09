@@ -1,8 +1,8 @@
 // Verifies runtime station state and manual connect/disconnect policy.
 #include "test.hpp"
 
-#include "firmware/application/station_connection.hpp"
-#include "firmware/application/wlan_command.hpp"
+#include "application/connectivity/station_connection.hpp"
+#include "application/connectivity/wlan_command.hpp"
 
 #include <cstdint>
 #include <string>

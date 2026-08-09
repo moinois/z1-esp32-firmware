@@ -1,10 +1,10 @@
 // Tests the complete local CANopen object dictionary and access policy.
 #include "test.hpp"
 
-#include "firmware/core/canopen_dictionary.hpp"
-#include "firmware/core/canopen_node.hpp"
-#include "firmware/core/canopen_pdo.hpp"
-#include "firmware/core/canopen_tpdo.hpp"
+#include "core/can/canopen_dictionary.hpp"
+#include "core/can/canopen_node.hpp"
+#include "core/can/canopen_pdo.hpp"
+#include "core/can/canopen_tpdo.hpp"
 
 #include <cstdint>
 

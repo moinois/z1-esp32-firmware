@@ -1,7 +1,7 @@
 // Verifies the production USB drain through an instrumented endpoint port.
 #include "test.hpp"
 
-#include "firmware/application/usb_transmit_drain.hpp"
+#include "application/usb/usb_transmit_drain.hpp"
 
 #include <algorithm>
 #include <cstddef>

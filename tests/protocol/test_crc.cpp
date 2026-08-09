@@ -1,6 +1,6 @@
 // Tests the checksums shared by transport, path identity, BLUFI, and OTA.
 #include "test.hpp"
-#include "firmware/core/crc.hpp"
+#include "core/protocol/crc.hpp"
 
 #include <string_view>
 #include <vector>

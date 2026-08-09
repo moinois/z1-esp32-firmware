@@ -1,7 +1,7 @@
 /** @file @brief Declares the ESP-IDF adapter for saved-credential station startup. */
 #pragma once
 
-#include "firmware/application/automatic_connection.hpp"
+#include "application/connectivity/automatic_connection.hpp"
 
 #include <atomic>
 

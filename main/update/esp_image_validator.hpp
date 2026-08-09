@@ -1,7 +1,7 @@
 /** @file @brief Declares structural ESP32 application-image validation for update policy. */
 #pragma once
 
-#include "firmware/core/bytes.hpp"
+#include "core/protocol/bytes.hpp"
 
 namespace firmware::target {
 

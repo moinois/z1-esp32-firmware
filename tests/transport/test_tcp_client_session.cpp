@@ -1,6 +1,6 @@
 // Verifies per-client identity, incremental decoding, and transmit composition.
 #include "test.hpp"
-#include "firmware/application/tcp_client_session.hpp"
+#include "application/transport/tcp_client_session.hpp"
 
 TEST_CASE(tcp_session_delivers_complete_frames_with_identity) {
     const firmware::application::HostIdentity identity{

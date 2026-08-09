@@ -1,9 +1,9 @@
 /** @file @brief Implements host download protocol sequencing, retries, errors, and timeout. */
-#include "firmware/application/file_download.hpp"
+#include "application/storage/file_download.hpp"
 
-#include "firmware/core/protocol_constants.hpp"
-#include "firmware/core/file_transfer_limits.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "core/protocol/protocol_constants.hpp"
+#include "core/filesystem/file_transfer_limits.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 #include <algorithm>
 #include <utility>

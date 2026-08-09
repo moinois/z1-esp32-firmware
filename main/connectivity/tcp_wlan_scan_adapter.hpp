@@ -1,7 +1,7 @@
 /** @file @brief Declares an ESP-IDF scan port with responses routed to one TCP session. */
 #pragma once
 
-#include "firmware/application/wlan_command.hpp"
+#include "application/connectivity/wlan_command.hpp"
 
 namespace firmware::application {
 class TcpClientSession;

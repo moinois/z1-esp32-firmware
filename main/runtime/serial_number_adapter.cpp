@@ -2,7 +2,7 @@
 #include "serial_number_adapter.hpp"
 #include "controller_channel_adapter.hpp"
 #include "esp_log.h"
-#include "firmware/core/frame.hpp"
+#include "core/protocol/frame.hpp"
 
 namespace firmware::target {
 

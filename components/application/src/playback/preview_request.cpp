@@ -1,8 +1,8 @@
 /** @file @brief Implements preview JSON validation, command matching, and numeric normalization. */
-#include "firmware/application/preview_request.hpp"
-#include "firmware/core/file_transfer_limits.hpp"
+#include "application/playback/preview_request.hpp"
+#include "core/filesystem/file_transfer_limits.hpp"
 
-#include "firmware/core/json_input.hpp"
+#include "core/configuration/json_input.hpp"
 
 #include <cmath>
 #include <limits>

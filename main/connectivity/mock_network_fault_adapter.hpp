@@ -1,7 +1,7 @@
 /** @file @brief Declares build-gated one-shot failures for production socket adapters. */
 #pragma once
 
-#include "firmware/application/network_fault_injection.hpp"
+#include "application/connectivity/network_fault_injection.hpp"
 
 #include <string>
 #include <string_view>

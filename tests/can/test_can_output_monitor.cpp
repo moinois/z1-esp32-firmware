@@ -1,7 +1,7 @@
 // Tests sampled CAN digital-output diagnostics and change collapsing.
 #include "test.hpp"
 
-#include "firmware/application/can_output_monitor.hpp"
+#include "application/can/can_output_monitor.hpp"
 
 #include <string>
 #include <utility>

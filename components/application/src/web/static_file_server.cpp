@@ -1,7 +1,7 @@
 /** @file @brief Implements static-file lookup, MIME selection, chunking, and close handling. */
-#include "firmware/application/static_file_server.hpp"
+#include "application/web/static_file_server.hpp"
 
-#include "firmware/core/web_static.hpp"
+#include "core/web/web_static.hpp"
 
 namespace firmware::application {
 

@@ -1,8 +1,8 @@
 // Verifies discovery formatting, socket lifecycle, ordering, and bursts.
 #include "test.hpp"
 
-#include "firmware/application/discovery_service.hpp"
-#include "firmware/core/discovery_policy.hpp"
+#include "application/connectivity/discovery_service.hpp"
+#include "core/network/discovery_policy.hpp"
 
 #include <cstddef>
 #include <cstdint>

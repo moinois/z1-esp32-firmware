@@ -1,7 +1,7 @@
 // Verifies controller configuration transfer filtering and aggregation.
 #include "test.hpp"
 
-#include "firmware/application/controller_config_transfer.hpp"
+#include "application/controller/controller_config_transfer.hpp"
 
 #include <optional>
 #include <string_view>

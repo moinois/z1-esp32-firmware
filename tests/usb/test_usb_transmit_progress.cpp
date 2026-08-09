@@ -1,7 +1,7 @@
 // Verifies USB no-progress timeout boundaries and reset behavior.
 #include "test.hpp"
 
-#include "firmware/application/usb_transmit_progress.hpp"
+#include "application/usb/usb_transmit_progress.hpp"
 
 using firmware::application::UsbTransmitProgress;
 

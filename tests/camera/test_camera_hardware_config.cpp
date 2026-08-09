@@ -1,7 +1,7 @@
 // Verifies the target-neutral camera electrical and capture configuration.
 #include "test.hpp"
 
-#include "firmware/application/camera_hardware_config.hpp"
+#include "application/camera/camera_hardware_config.hpp"
 
 using firmware::application::camera_hardware;
 

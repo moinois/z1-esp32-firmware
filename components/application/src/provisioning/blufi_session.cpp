@@ -1,5 +1,5 @@
 /** @file @brief Composes the portable BLUFI wire, fragment, security, and product stages. */
-#include "firmware/application/blufi_session.hpp"
+#include "application/provisioning/blufi_session.hpp"
 
 #include <cstddef>
 #include <cstdint>

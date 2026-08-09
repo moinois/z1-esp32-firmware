@@ -1,8 +1,8 @@
 // Verifies streamed-play preparation, identity, error limiting, and status.
 #include "test.hpp"
 
-#include "firmware/application/play_session.hpp"
-#include "firmware/core/crc.hpp"
+#include "application/playback/play_session.hpp"
+#include "core/protocol/crc.hpp"
 
 #include <optional>
 #include <string>

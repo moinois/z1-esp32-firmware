@@ -2,7 +2,7 @@
 #include "mock_nvs_fault_adapter.hpp"
 
 #include "hardware_adapter_factory.hpp"
-#include "firmware/application/nvs_fault_injection.hpp"
+#include "application/runtime/nvs_fault_injection.hpp"
 
 namespace firmware::target {
 namespace {

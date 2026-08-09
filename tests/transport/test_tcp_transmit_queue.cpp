@@ -1,6 +1,6 @@
 // Verifies TCP transmit bounds, FIFO ordering, and whole-frame removal.
 #include "test.hpp"
-#include "firmware/application/tcp_transmit_queue.hpp"
+#include "application/transport/tcp_transmit_queue.hpp"
 
 TEST_CASE(tcp_006_queue_rejects_empty_oversized_and_thirty_third_frame) {
     firmware::application::TcpTransmitQueue queue;

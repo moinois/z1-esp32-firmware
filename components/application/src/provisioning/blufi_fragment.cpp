@@ -1,5 +1,5 @@
 /** @file @brief Implements BLUFI MTU sizing, remaining prefixes, and retained reassembly. */
-#include "firmware/application/blufi_fragment.hpp"
+#include "application/provisioning/blufi_fragment.hpp"
 
 #include <algorithm>
 #include <cstddef>

@@ -1,5 +1,5 @@
 /** @file @brief Implements strict signed-decimal camera configuration and dimension policy. */
-#include "firmware/application/camera_settings.hpp"
+#include "application/camera/camera_settings.hpp"
 
 #include <array>
 #include <charconv>

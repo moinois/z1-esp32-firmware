@@ -1,7 +1,7 @@
 // Verifies update-file deletion retries, permission recovery, and reporting.
 #include "test.hpp"
 
-#include "firmware/application/update_deletion.hpp"
+#include "application/update/update_deletion.hpp"
 
 #include <cstdint>
 #include <string>

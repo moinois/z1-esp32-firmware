@@ -1,5 +1,5 @@
 /** @file @brief Implements serial-number syntax, immutable persistence, and exact responses. */
-#include "firmware/application/serial_number.hpp"
+#include "application/runtime/serial_number.hpp"
 
 #include <algorithm>
 #include <cstddef>

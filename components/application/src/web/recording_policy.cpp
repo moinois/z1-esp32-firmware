@@ -1,6 +1,6 @@
 /** @file @brief Implements recording path validation, UTC naming, and interval accounting. */
-#include "firmware/application/recording_policy.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "application/web/recording_policy.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 #include <ctime>
 #include <iomanip>

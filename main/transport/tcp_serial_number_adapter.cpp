@@ -1,6 +1,6 @@
 /** @file @brief Routes shared NVS serial-number behavior to one TCP session. */
 #include "tcp_serial_number_adapter.hpp"
-#include "firmware/application/tcp_client_session.hpp"
+#include "application/transport/tcp_client_session.hpp"
 
 namespace firmware::target {
 

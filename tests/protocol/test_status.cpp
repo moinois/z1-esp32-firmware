@@ -1,6 +1,6 @@
 // Tests controller snapshot validation and the generated machine-status extension.
 #include "test.hpp"
-#include "firmware/core/status.hpp"
+#include "core/protocol/status.hpp"
 
 TEST_CASE(stat_005_status_extension_replaces_first_closing_bracket) {
     firmware::core::StatusExtension extension{};

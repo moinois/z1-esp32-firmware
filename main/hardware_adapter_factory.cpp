@@ -3,7 +3,7 @@
 
 #include "sdkconfig.h"
 #include "esp_log.h"
-#include "firmware/application/hardware_adapter_selection.hpp"
+#include "application/runtime/hardware_adapter_selection.hpp"
 #include "mock_sd_card_adapter.hpp"
 #include "sd_card_adapter.hpp"
 #include "camera_adapter.hpp"

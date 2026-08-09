@@ -1,7 +1,7 @@
 // Verifies controller-update reset monitoring, failures, and completion.
 #include "test.hpp"
 
-#include "firmware/application/update_controller.hpp"
+#include "application/update/update_controller.hpp"
 
 #include <cstdint>
 #include <string>

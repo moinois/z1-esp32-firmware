@@ -1,7 +1,7 @@
 // Verifies preview JSON namespace, command, sequence, path, and selector rules.
 #include "test.hpp"
 
-#include "firmware/application/preview_request.hpp"
+#include "application/playback/preview_request.hpp"
 
 #include <string_view>
 

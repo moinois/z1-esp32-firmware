@@ -1,7 +1,7 @@
 // Verifies the controller firmware-transfer state machine through a fake port.
 #include "test.hpp"
 
-#include "firmware/application/controller_firmware_transfer.hpp"
+#include "application/controller/controller_firmware_transfer.hpp"
 
 #include <optional>
 #include <limits>

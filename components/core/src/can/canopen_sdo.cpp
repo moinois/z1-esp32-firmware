@@ -1,5 +1,5 @@
 /** @file @brief Implements byte-exact expedited SDO request decoding and response encoding. */
-#include "firmware/core/canopen_sdo.hpp"
+#include "core/can/canopen_sdo.hpp"
 
 #include <algorithm>
 #include <cstddef>

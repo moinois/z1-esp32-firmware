@@ -1,7 +1,7 @@
 // Verifies BLUFI negotiation, key derivation, readiness, and AES-IV policy.
 #include "test.hpp"
 
-#include "firmware/application/blufi_security.hpp"
+#include "application/provisioning/blufi_security.hpp"
 
 #include <array>
 #include <cstddef>

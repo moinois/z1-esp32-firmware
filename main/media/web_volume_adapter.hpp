@@ -1,7 +1,7 @@
 /** @file @brief Declares the ESP-IDF SPIFFS adapter for the portable web-volume startup policy. */
 #pragma once
 
-#include "firmware/application/web_volume_startup.hpp"
+#include "application/web/web_volume_startup.hpp"
 
 namespace firmware::target {
 

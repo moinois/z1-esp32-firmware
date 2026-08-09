@@ -1,5 +1,5 @@
 /** @file @brief Implements the WebSocket message-type and empty-payload boundary. */
-#include "firmware/application/preview_socket_input.hpp"
+#include "application/playback/preview_socket_input.hpp"
 
 namespace firmware::application {
 

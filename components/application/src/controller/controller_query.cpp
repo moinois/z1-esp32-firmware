@@ -1,9 +1,9 @@
 /** @file @brief Implements drift-free, non-deferred controller query scheduling. */
-#include "firmware/application/controller_query.hpp"
+#include "application/controller/controller_query.hpp"
 
-#include "firmware/application/controller_command_frames.hpp"
+#include "application/controller/controller_command_frames.hpp"
 
-#include "firmware/core/protocol_constants.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 namespace firmware::application {
 namespace {

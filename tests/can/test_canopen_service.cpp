@@ -1,7 +1,7 @@
 // Tests composition of CANopen NMT, dictionary, SDO, output, and restart effects.
 #include "test.hpp"
 
-#include "firmware/application/canopen_service.hpp"
+#include "application/can/canopen_service.hpp"
 
 #include <string>
 #include <vector>

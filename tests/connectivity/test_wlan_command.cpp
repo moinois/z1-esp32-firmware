@@ -1,7 +1,7 @@
 // Verifies wlan parsing and the host-visible user scan exchange.
 #include "test.hpp"
 
-#include "firmware/application/wlan_command.hpp"
+#include "application/connectivity/wlan_command.hpp"
 
 #include <string>
 #include <string_view>

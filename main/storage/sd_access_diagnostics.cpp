@@ -2,7 +2,7 @@
 #include "sd_access_diagnostics.hpp"
 
 #include "esp_log.h"
-#include "firmware/core/sd_access_diagnostic.hpp"
+#include "core/filesystem/sd_access_diagnostic.hpp"
 
 #include <atomic>
 

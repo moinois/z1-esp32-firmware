@@ -1,5 +1,5 @@
 /** @file @brief Composes independent runtime observations into host-visible status fields. */
-#include "firmware/application/runtime_status.hpp"
+#include "application/runtime/runtime_status.hpp"
 
 #include <algorithm>
 #include <cstdint>

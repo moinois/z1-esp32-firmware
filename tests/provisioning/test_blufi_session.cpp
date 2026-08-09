@@ -1,7 +1,7 @@
 // Verifies complete BLUFI wire, fragment, security, and product composition.
 #include "test.hpp"
 
-#include "firmware/application/blufi_session.hpp"
+#include "application/provisioning/blufi_session.hpp"
 
 #include <cstddef>
 #include <cstdint>

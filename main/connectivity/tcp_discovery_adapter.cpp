@@ -1,8 +1,8 @@
 /** @file @brief Implements UDP broadcast sockets behind the portable discovery service. */
 #include "tcp_discovery_adapter.hpp"
 
-#include "firmware/application/discovery_service.hpp"
-#include "firmware/application/connectivity_defaults.hpp"
+#include "application/connectivity/discovery_service.hpp"
+#include "application/connectivity/connectivity_defaults.hpp"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "tcp_control_adapter.hpp"

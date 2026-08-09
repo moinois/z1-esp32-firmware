@@ -3,9 +3,9 @@
 
 #include "can_twai_adapter.hpp"
 
-#include "firmware/application/can_output_monitor.hpp"
-#include "firmware/application/canopen_service.hpp"
-#include "firmware/core/canopen_sdo_mailbox.hpp"
+#include "application/can/can_output_monitor.hpp"
+#include "application/can/canopen_service.hpp"
+#include "core/can/canopen_sdo_mailbox.hpp"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"

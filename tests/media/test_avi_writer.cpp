@@ -1,6 +1,6 @@
 // Verifies recorded AVI header fields, padding, and indexed frame layout.
 #include "test.hpp"
-#include "firmware/core/avi_writer.hpp"
+#include "core/media/avi_writer.hpp"
 
 TEST_CASE(avi_010_to_013_writer_emits_header_frames_and_index) {
     firmware::core::AviWriter writer(640U, 480U);

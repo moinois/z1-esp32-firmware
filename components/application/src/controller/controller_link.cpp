@@ -1,7 +1,7 @@
 /** @file @brief Implements controller UART activity alarms and bounded output scheduling. */
-#include "firmware/application/controller_link.hpp"
+#include "application/controller/controller_link.hpp"
 
-#include "firmware/core/protocol_constants.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <utility>
 

@@ -1,7 +1,7 @@
 // Verifies wall-clock command parsing, protocol silence, and diagnostics.
 #include "test.hpp"
 
-#include "firmware/application/wall_clock.hpp"
+#include "application/runtime/wall_clock.hpp"
 
 #include <cstdint>
 #include <optional>

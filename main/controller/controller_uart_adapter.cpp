@@ -1,7 +1,7 @@
 /** @file @brief Implements controller UART access using the ESP-IDF UART driver. */
 #include "controller_uart_adapter.hpp"
 
-#include "firmware/application/controller_uart_config.hpp"
+#include "application/controller/controller_uart_config.hpp"
 
 #include "driver/uart.h"
 #include "freertos/FreeRTOS.h"

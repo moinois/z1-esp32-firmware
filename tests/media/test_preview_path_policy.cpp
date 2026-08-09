@@ -1,7 +1,7 @@
 // Verifies the exact allowed preview directory and traversal rejection.
 #include "test.hpp"
 
-#include "firmware/core/preview_path_policy.hpp"
+#include "core/media/preview_path_policy.hpp"
 
 using firmware::core::preview_path_allowed;
 

@@ -1,8 +1,8 @@
 /** @file @brief Implements discovery socket lifecycle, periodic sends, and temporary bursts. */
-#include "firmware/application/discovery_service.hpp"
+#include "application/connectivity/discovery_service.hpp"
 
-#include "firmware/application/connectivity_defaults.hpp"
-#include "firmware/core/discovery_policy.hpp"
+#include "application/connectivity/connectivity_defaults.hpp"
+#include "core/network/discovery_policy.hpp"
 
 #include <cstddef>
 #include <cstdint>

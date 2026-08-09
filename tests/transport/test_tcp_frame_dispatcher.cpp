@@ -1,6 +1,6 @@
 // Verifies that TCP routing decisions reach only their selected service sinks.
 #include "test.hpp"
-#include "firmware/application/tcp_frame_dispatcher.hpp"
+#include "application/transport/tcp_frame_dispatcher.hpp"
 
 TEST_CASE(tcp_dispatcher_routes_local_and_controller_targets) {
     firmware::application::Router router;

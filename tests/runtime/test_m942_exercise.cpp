@@ -1,7 +1,7 @@
 // Tests M942 routing, scheduling, digital-I/O pattern, retries, and deadlines.
 #include "test.hpp"
 
-#include "firmware/application/m942_exercise.hpp"
+#include "application/runtime/m942_exercise.hpp"
 
 #include <algorithm>
 #include <optional>

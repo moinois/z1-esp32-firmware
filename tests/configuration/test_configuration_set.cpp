@@ -1,8 +1,8 @@
 // Verifies SD rewrite mechanics, live updates, and exact config-set replies.
 #include "test.hpp"
 
-#include "firmware/application/configuration_set.hpp"
-#include "firmware/core/configuration_syntax.hpp"
+#include "application/configuration/configuration_set.hpp"
+#include "core/configuration/configuration_syntax.hpp"
 
 #include <optional>
 #include <string>

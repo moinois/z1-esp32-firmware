@@ -1,5 +1,5 @@
 /** @file @brief Implements direct application OTA ordering, abort behavior, and restart handoff. */
-#include "firmware/application/direct_application_update.hpp"
+#include "application/update/direct_application_update.hpp"
 
 namespace firmware::application {
 namespace {

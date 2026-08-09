@@ -35,9 +35,9 @@
 #include "recording_task_adapter.hpp"
 #include "configuration_file_store.hpp"
 
-#include "firmware/application/web_volume_startup.hpp"
-#include "firmware/application/connectivity_startup.hpp"
-#include "firmware/core/network_policy.hpp"
+#include "application/web/web_volume_startup.hpp"
+#include "application/connectivity/connectivity_startup.hpp"
+#include "core/network/network_policy.hpp"
 
 #include <array>
 #include <cstdint>

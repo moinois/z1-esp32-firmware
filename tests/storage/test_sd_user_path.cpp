@@ -1,7 +1,7 @@
 // Verifies that every user-controlled path remains inside the physical SD root.
 #include "test.hpp"
 
-#include "firmware/core/sd_user_path.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 #include <string>
 

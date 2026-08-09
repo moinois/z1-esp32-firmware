@@ -1,7 +1,7 @@
 /** @file @brief Declares ESP-IDF Wi-Fi and BLUFI operations for provisioning policy. */
 #pragma once
 
-#include "firmware/application/ble_provisioning.hpp"
+#include "application/provisioning/ble_provisioning.hpp"
 
 namespace firmware::target {
 

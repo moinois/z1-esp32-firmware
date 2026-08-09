@@ -6,8 +6,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "firmware/application/storage_retention_service.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "application/storage/storage_retention_service.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 #include "runtime_counter_task.hpp"
 
 #include <dirent.h>

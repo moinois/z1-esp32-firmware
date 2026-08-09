@@ -1,7 +1,7 @@
 /** @file @brief Implements WLAN command tokenization without any target or transport dependency. */
-#include "firmware/application/wlan_request.hpp"
+#include "application/connectivity/wlan_request.hpp"
 
-#include "firmware/core/text.hpp"
+#include "core/protocol/text.hpp"
 
 #include <cctype>
 #include <cstdint>

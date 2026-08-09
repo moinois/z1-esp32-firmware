@@ -1,7 +1,7 @@
 // Verifies exact main/video URI route selection before HTTP adapter wiring.
 #include "test.hpp"
 
-#include "firmware/core/web_routes.hpp"
+#include "core/web/web_routes.hpp"
 
 using firmware::core::HttpRoute;
 using firmware::core::select_main_http_route;

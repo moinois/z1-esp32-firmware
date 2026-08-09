@@ -1,7 +1,7 @@
 /** @file @brief Implements machine-name lookup/fallback and wrapping channel congestion counts. */
-#include "firmware/core/network_policy.hpp"
+#include "core/network/network_policy.hpp"
 
-#include "firmware/core/configuration_syntax.hpp"
+#include "core/configuration/configuration_syntax.hpp"
 
 #include <array>
 #include <algorithm>

@@ -1,5 +1,5 @@
 /** @file @brief Implements compact table-free checksums to avoid permanent lookup-table cost. */
-#include "firmware/core/crc.hpp"
+#include "core/protocol/crc.hpp"
 
 namespace firmware::core {
 namespace {

@@ -1,7 +1,7 @@
 /** @file @brief Declares ESP-IDF station operations for a TCP-origin WLAN command. */
 #pragma once
 
-#include "firmware/application/station_connection.hpp"
+#include "application/connectivity/station_connection.hpp"
 
 namespace firmware::target {
 

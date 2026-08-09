@@ -1,7 +1,7 @@
 // Verifies MD5 command validation, hashing policy, and exact response text.
 #include "test.hpp"
 
-#include "firmware/application/file_hash_command.hpp"
+#include "application/storage/file_hash_command.hpp"
 
 #include <optional>
 #include <string>

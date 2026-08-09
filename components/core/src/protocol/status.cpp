@@ -1,7 +1,7 @@
 /** @file @brief Implements bounded generation of the host-visible machine-status extension. */
-#include "firmware/core/status.hpp"
+#include "core/protocol/status.hpp"
 
-#include "firmware/core/protocol_constants.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <cinttypes>
 #include <cstdio>

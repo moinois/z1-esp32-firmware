@@ -1,7 +1,7 @@
 // Verifies streamed-play controller start and terminal lifecycle behavior.
 #include "test.hpp"
 
-#include "firmware/application/play_controller.hpp"
+#include "application/playback/play_controller.hpp"
 
 #include <optional>
 #include <string>

@@ -10,7 +10,7 @@
 #include "freertos/task.h"
 #include "sdkconfig.h"
 
-#include "firmware/core/sd_user_path.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 #include "diagnostic_capture_adapter.hpp"
 #include "serial_log_mirror_adapter.hpp"
 #include "sd_access_diagnostics.hpp"

@@ -1,7 +1,7 @@
 /** @file @brief Implements persisted runtime reporting and first_boot-only clearing. */
-#include "firmware/application/runtime_commands.hpp"
-#include "firmware/application/runtime_persistence.hpp"
-#include "firmware/core/protocol_constants.hpp"
+#include "application/runtime/runtime_commands.hpp"
+#include "application/runtime/runtime_persistence.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <algorithm>
 #include <cstdint>

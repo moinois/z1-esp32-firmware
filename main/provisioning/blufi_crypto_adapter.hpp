@@ -1,7 +1,7 @@
 /** @file @brief Declares the mbedTLS implementation of portable BLUFI security operations. */
 #pragma once
 
-#include "firmware/application/blufi_security.hpp"
+#include "application/provisioning/blufi_security.hpp"
 
 #include "mbedtls/aes.h"
 #include "mbedtls/dhm.h"

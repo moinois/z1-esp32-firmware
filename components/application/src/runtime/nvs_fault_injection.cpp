@@ -1,5 +1,5 @@
 /** @file @brief Implements thread-safe NVS boundary failure selection. */
-#include "firmware/application/nvs_fault_injection.hpp"
+#include "application/runtime/nvs_fault_injection.hpp"
 
 namespace firmware::application {
 

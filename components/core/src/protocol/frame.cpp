@@ -1,7 +1,7 @@
 /** @file @brief Implements byte-exact common framing without exceptions or target dependencies. */
-#include "firmware/core/frame.hpp"
+#include "core/protocol/frame.hpp"
 
-#include "firmware/core/crc.hpp"
+#include "core/protocol/crc.hpp"
 
 #include <algorithm>
 #include <array>

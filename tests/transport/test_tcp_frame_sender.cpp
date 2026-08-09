@@ -1,6 +1,6 @@
 // Verifies complete-frame writes and TCP retry behavior.
 #include "test.hpp"
-#include "firmware/application/tcp_frame_sender.hpp"
+#include "application/transport/tcp_frame_sender.hpp"
 
 TEST_CASE(tcp_007_sender_drains_short_writes) {
     firmware::application::TcpFrameSender sender;

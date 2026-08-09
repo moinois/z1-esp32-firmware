@@ -1,8 +1,8 @@
 /** @file @brief Declares POSIX directory and MD5 query ports for one TCP client session. */
 #pragma once
 
-#include "firmware/application/directory_listing.hpp"
-#include "firmware/application/file_hash_command.hpp"
+#include "application/storage/directory_listing.hpp"
+#include "application/storage/file_hash_command.hpp"
 
 namespace firmware::application {
 class TcpClientSession;

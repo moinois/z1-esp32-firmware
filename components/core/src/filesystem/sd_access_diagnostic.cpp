@@ -1,5 +1,5 @@
 /** @file @brief Implements stable human-readable SD access failure classification. */
-#include "firmware/core/sd_access_diagnostic.hpp"
+#include "core/filesystem/sd_access_diagnostic.hpp"
 
 #include <cerrno>
 

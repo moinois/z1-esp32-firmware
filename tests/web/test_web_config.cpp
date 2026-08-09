@@ -1,7 +1,7 @@
 // Verifies HTTP server and SPIFFS mount constants before target composition.
 #include "test.hpp"
 
-#include "firmware/application/web_config.hpp"
+#include "application/web/web_config.hpp"
 
 using firmware::application::main_http_server;
 using firmware::application::video_http_server;

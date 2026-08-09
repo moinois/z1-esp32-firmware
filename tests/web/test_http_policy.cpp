@@ -1,7 +1,7 @@
 // Verifies HTTP response and request-selection policy independently of ESP-IDF.
 #include "test.hpp"
 
-#include "firmware/core/http_policy.hpp"
+#include "core/web/http_policy.hpp"
 
 #include <string_view>
 

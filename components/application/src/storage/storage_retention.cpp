@@ -1,5 +1,5 @@
 /** @file @brief Implements bounded storage checks, case-insensitive video suffix filtering, and pruning order. */
-#include "firmware/application/storage_retention.hpp"
+#include "application/storage/storage_retention.hpp"
 
 #include <algorithm>
 

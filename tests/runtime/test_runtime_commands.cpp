@@ -1,7 +1,7 @@
 // Verifies persisted runtime queries and first-boot clearing commands.
 #include "test.hpp"
 
-#include "firmware/application/runtime_commands.hpp"
+#include "application/runtime/runtime_commands.hpp"
 
 #include <cstdint>
 #include <optional>

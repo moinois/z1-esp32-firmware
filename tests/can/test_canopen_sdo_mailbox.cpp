@@ -1,7 +1,7 @@
 // Verifies one-operation SDO mailbox admission, matching, and deadlines.
 #include "test.hpp"
 
-#include "firmware/core/canopen_sdo_mailbox.hpp"
+#include "core/can/canopen_sdo_mailbox.hpp"
 
 TEST_CASE(sdo_mailbox_rejects_second_operation_until_response) {
     firmware::core::CanopenSdoMailbox mailbox;

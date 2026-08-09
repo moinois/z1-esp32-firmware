@@ -1,6 +1,6 @@
 /** @file @brief Implements log session markers, tracked writes, rotation, and bounded shutdown. */
-#include "firmware/application/diagnostic_log_writer.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "application/diagnostics/diagnostic_log_writer.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 #include <string>
 

@@ -1,7 +1,7 @@
 /** @file @brief Declares the nonlogging target file port for optional serial.log mirroring. */
 #pragma once
 
-#include "firmware/application/serial_diagnostic_log.hpp"
+#include "application/diagnostics/serial_diagnostic_log.hpp"
 
 #include <cstdio>
 

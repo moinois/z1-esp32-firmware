@@ -1,7 +1,7 @@
 // Verifies host file-transfer start admission and latest-value packet delivery.
 #include "test.hpp"
 
-#include "firmware/application/file_transfer_admission.hpp"
+#include "application/storage/file_transfer_admission.hpp"
 
 using firmware::application::FileTransferAdmission;
 using firmware::application::FileTransferMailbox;

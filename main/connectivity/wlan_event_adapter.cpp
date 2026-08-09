@@ -8,7 +8,7 @@
 #include "tcp_discovery_adapter.hpp"
 #include "tcp_control_adapter.hpp"
 #include "automatic_connection_adapter.hpp"
-#include "firmware/application/ble_provisioning.hpp"
+#include "application/provisioning/ble_provisioning.hpp"
 #include "wifi_diagnostic_log.hpp"
 
 #include <lwip/inet.h>

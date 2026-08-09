@@ -1,5 +1,5 @@
 /** @file @brief Implements exact time queries, positive decimal parsing, and clock logs. */
-#include "firmware/application/wall_clock.hpp"
+#include "application/runtime/wall_clock.hpp"
 
 #include <charconv>
 #include <cstddef>

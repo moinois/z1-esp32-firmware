@@ -1,7 +1,7 @@
 /** @file @brief Implements streamed-play controller acceptance and terminal cleanup. */
-#include "firmware/application/play_controller.hpp"
+#include "application/playback/play_controller.hpp"
 
-#include "firmware/core/protocol_constants.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <string_view>
 #include <utility>

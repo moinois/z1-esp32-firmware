@@ -1,7 +1,7 @@
 /** @file @brief Implements preview path, file, AVI, buffer, and session admission rules. */
-#include "firmware/application/preview_open.hpp"
+#include "application/playback/preview_open.hpp"
 
-#include "firmware/core/preview_path_policy.hpp"
+#include "core/media/preview_path_policy.hpp"
 
 #include <iomanip>
 #include <sstream>

@@ -1,7 +1,7 @@
 // Verifies nonfatal web-volume mount and format-on-failure sequencing.
 #include "test.hpp"
 
-#include "firmware/application/web_volume_startup.hpp"
+#include "application/web/web_volume_startup.hpp"
 
 using firmware::application::WebVolumePort;
 using firmware::application::WebVolumeStartup;

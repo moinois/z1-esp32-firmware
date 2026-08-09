@@ -1,7 +1,7 @@
 // Verifies the controller UART hardware and receive-loop configuration.
 #include "test.hpp"
 
-#include "firmware/application/controller_uart_config.hpp"
+#include "application/controller/controller_uart_config.hpp"
 
 using firmware::application::controller_uart;
 

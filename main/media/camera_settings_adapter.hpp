@@ -1,7 +1,7 @@
 /** @file @brief Declares target configuration loading shared by live and mock cameras. */
 #pragma once
 
-#include "firmware/application/camera_settings.hpp"
+#include "application/camera/camera_settings.hpp"
 
 namespace firmware::target {
 

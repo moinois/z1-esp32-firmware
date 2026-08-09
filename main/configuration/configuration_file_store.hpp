@@ -1,7 +1,7 @@
 /** @file @brief Declares the target-owned store for the active SD configuration document. */
 #pragma once
 
-#include "firmware/application/configuration_document.hpp"
+#include "application/configuration/configuration_document.hpp"
 
 #include <optional>
 #include <string>

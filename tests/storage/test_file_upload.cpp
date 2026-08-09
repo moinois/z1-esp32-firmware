@@ -1,7 +1,7 @@
 // Verifies the host upload protocol through a deterministic fake I/O port.
 #include "test.hpp"
 
-#include "firmware/application/file_upload.hpp"
+#include "application/storage/file_upload.hpp"
 
 #include <string>
 #include <string_view>

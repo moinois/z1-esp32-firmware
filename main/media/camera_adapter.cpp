@@ -4,8 +4,8 @@
 #include "esp_camera.h"
 #include "esp_log.h"
 
-#include "firmware/application/camera_hardware_config.hpp"
-#include "firmware/application/camera_settings.hpp"
+#include "application/camera/camera_hardware_config.hpp"
+#include "application/camera/camera_settings.hpp"
 #include "camera_settings_adapter.hpp"
 
 #include <array>

@@ -1,10 +1,10 @@
 /** @file @brief Implements MD5 path validation, lowercase formatting, and exact errors. */
-#include "firmware/application/file_hash_command.hpp"
+#include "application/storage/file_hash_command.hpp"
 
-#include "firmware/core/filesystem_syntax.hpp"
-#include "firmware/core/file_transfer_limits.hpp"
-#include "firmware/core/protocol_constants.hpp"
-#include "firmware/core/sd_user_path.hpp"
+#include "core/filesystem/filesystem_syntax.hpp"
+#include "core/filesystem/file_transfer_limits.hpp"
+#include "core/protocol/protocol_constants.hpp"
+#include "core/filesystem/sd_user_path.hpp"
 
 #include <algorithm>
 #include <cctype>

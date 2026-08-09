@@ -1,7 +1,7 @@
 /** @file @brief Implements ASCII trimming, SD line parsing, and pre-decode token splitting. */
-#include "firmware/core/configuration_syntax.hpp"
+#include "core/configuration/configuration_syntax.hpp"
 
-#include "firmware/core/text.hpp"
+#include "core/protocol/text.hpp"
 
 namespace firmware::core {
 namespace {

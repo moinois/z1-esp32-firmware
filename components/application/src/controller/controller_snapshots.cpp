@@ -1,7 +1,7 @@
 /** @file @brief Implements bounded snapshot retention and byte-exact local response formatting. */
-#include "firmware/application/controller_snapshots.hpp"
+#include "application/controller/controller_snapshots.hpp"
 
-#include "firmware/core/protocol_constants.hpp"
+#include "core/protocol/protocol_constants.hpp"
 
 #include <algorithm>
 #include <cstdio>

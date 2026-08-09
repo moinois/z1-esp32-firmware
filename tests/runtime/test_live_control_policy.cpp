@@ -1,7 +1,7 @@
 // Verifies live-video command matching, ownership, and preemption policy.
 #include "test.hpp"
 
-#include "firmware/application/live_control_policy.hpp"
+#include "application/runtime/live_control_policy.hpp"
 
 #include <string_view>
 #include <vector>

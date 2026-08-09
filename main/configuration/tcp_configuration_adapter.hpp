@@ -1,8 +1,8 @@
 /** @file @brief Declares TCP-origin live configuration and SD persistence operations. */
 #pragma once
 
-#include "firmware/application/configuration_get.hpp"
-#include "firmware/application/configuration_set.hpp"
+#include "application/configuration/configuration_get.hpp"
+#include "application/configuration/configuration_set.hpp"
 
 #include <cstdio>
 

@@ -4,7 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "firmware/application/runtime_counters.hpp"
+#include "application/runtime/runtime_counters.hpp"
 #include "nvs_runtime_counter_adapter.hpp"
 
 #include <ctime>

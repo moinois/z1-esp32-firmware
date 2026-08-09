@@ -8,8 +8,8 @@
 #include "nvs_key_value_adapter.hpp"
 #include "runtime_status_adapter.hpp"
 
-#include "firmware/core/bytes.hpp"
-#include "firmware/application/controller_command_frames.hpp"
+#include "core/protocol/bytes.hpp"
+#include "application/controller/controller_command_frames.hpp"
 
 #include <cstdio>
 #include <string>

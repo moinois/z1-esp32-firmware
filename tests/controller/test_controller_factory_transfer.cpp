@@ -1,7 +1,7 @@
 // Verifies controller factory-data selection, limits, and completion cleanup.
 #include "test.hpp"
 
-#include "firmware/application/controller_factory_transfer.hpp"
+#include "application/controller/controller_factory_transfer.hpp"
 
 #include <optional>
 #include <string_view>

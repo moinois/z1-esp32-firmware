@@ -1,7 +1,7 @@
 // Verifies the centralized compile-time hardware adapter selection policy.
 #include "test.hpp"
 
-#include "firmware/application/hardware_adapter_selection.hpp"
+#include "application/runtime/hardware_adapter_selection.hpp"
 
 using firmware::application::HardwareAdapterSelection;
 

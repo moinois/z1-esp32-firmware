@@ -1,7 +1,7 @@
 // Verifies directory-list formatting, filtering, chunking, and completion.
 #include "test.hpp"
 
-#include "firmware/application/directory_listing.hpp"
+#include "application/storage/directory_listing.hpp"
 
 #include <optional>
 #include <string>

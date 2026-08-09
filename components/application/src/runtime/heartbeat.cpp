@@ -1,5 +1,5 @@
 /** @file @brief Implements the portable GPIO heartbeat state and timing policy. */
-#include "firmware/application/heartbeat.hpp"
+#include "application/runtime/heartbeat.hpp"
 
 namespace firmware::application {
 
