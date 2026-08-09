@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import http.client
 import os
+import socket
 from pathlib import Path
 from typing import Any, Dict, Iterator, List
 
@@ -142,9 +143,20 @@ def sd_client(request: pytest.FixtureRequest, tcp_host: str) -> Any:
 
 @pytest.fixture(scope="session")
 def tcp_host() -> str:
-    """Returns the explicitly configured target or its provisioning-AP address."""
+    """Returns a reachable target, or skips instead of probing a dead default."""
 
-    return os.getenv("Z1_HIL_HOST", "192.168.4.1")
+    configured = os.getenv("Z1_HIL_HOST")
+    if configured:
+        return configured
+
+    provisioning_ap = "192.168.4.1"
+    try:
+        with socket.create_connection((provisioning_ap, 80), timeout=0.25):
+            return provisioning_ap
+    except OSError:
+        pytest.skip(
+            "TCP/HTTP target not detected; set Z1_HIL_HOST to an explicit target"
+        )
 
 
 @pytest.fixture(scope="session")
