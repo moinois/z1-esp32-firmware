@@ -64,6 +64,7 @@ class BuildFirmwareTests(unittest.TestCase):
                 "CONFIG_OV7725_SUPPORT=y\n"
                 "CONFIG_NT99141_SUPPORT=y\n"
                 "CONFIG_OV2640_SUPPORT=y\n"
+                "CONFIG_OV3660_SUPPORT=y\n"
                 "CONFIG_OV5640_SUPPORT=y\n"
                 "CONFIG_GC2145_SUPPORT=y\n"
                 "CONFIG_GC032A_SUPPORT=y\n"
@@ -145,6 +146,9 @@ class BuildFirmwareTests(unittest.TestCase):
                 output, adapters, set(), mock_all=False, release=True
             )
             self.assertIn("CONFIG_COMPILER_OPTIMIZATION_SIZE=y", config.read_text())
+            release_text = config.read_text()
+            self.assertIn("CONFIG_OV3660_SUPPORT=y", release_text)
+            self.assertIn("# CONFIG_OV5640_SUPPORT is not set", release_text)
             self.assertTrue(json.loads(manifest.read_text())["release"])
             self.assertEqual(
                 json.loads(manifest.read_text())["partition_table"], "partitions.csv"

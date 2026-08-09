@@ -123,15 +123,23 @@ def write_build_selection(
     lines.append("CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y" if compact else "# CONFIG_BOOTLOADER_LOG_LEVEL_WARN is not set")
     # The attached sensor is identified as OV3660. Keep its driver and omit
     # unrelated esp32-camera sensor implementations from compact images.
-    compact_camera_symbols = (
+    all_camera_symbols = (
         "OV7670_SUPPORT", "OV7725_SUPPORT", "NT99141_SUPPORT", "OV2640_SUPPORT",
+        "OV3660_SUPPORT",
         "OV5640_SUPPORT", "GC2145_SUPPORT", "GC032A_SUPPORT", "GC0308_SUPPORT",
         "BF3005_SUPPORT", "BF20A6_SUPPORT", "SC030IOT_SUPPORT", "HM1055_SUPPORT",
         "HM0360_SUPPORT", "MEGA_CCM_SUPPORT",
     )
-    for symbol in compact_camera_symbols:
+    compact_camera_symbols = {"OV3660_SUPPORT"}
+    release_camera_symbols = {"OV3660_SUPPORT"}
+    for symbol in all_camera_symbols:
+        enabled = (
+            symbol in (compact_camera_symbols if compact else release_camera_symbols)
+            if release
+            else symbol in all_camera_symbols
+        )
         lines.append(
-            f"# CONFIG_{symbol} is not set" if compact else f"CONFIG_{symbol}=y"
+            f"CONFIG_{symbol}=y" if enabled else f"# CONFIG_{symbol} is not set"
         )
     lines.append(
         f"{GLOBAL_MOCK_CONFIG}=y"
