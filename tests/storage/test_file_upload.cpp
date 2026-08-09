@@ -167,6 +167,24 @@ TEST_CASE(hftu_001_two_file_open_failure_closes_and_removes_only_primary) {
                std::string("Error: failed to open file [/file.bin]!"));
 }
 
+TEST_CASE(hftu_001_parent_and_primary_open_failures_release_without_false_cleanup) {
+    FileUpload parent_failure;
+    FakeUploadPort parent_port;
+    parent_port.parents_created = false;
+    REQUIRE(!parent_failure.start(owner, "/sd/file.bin", 0U, parent_port));
+    REQUIRE_EQ(parent_port.release_count, 1U);
+    REQUIRE_EQ(parent_port.close_count, 0U);
+    REQUIRE(parent_port.removed_paths.empty());
+
+    FileUpload primary_failure;
+    FakeUploadPort primary_port;
+    primary_port.primary_opened = false;
+    REQUIRE(!primary_failure.start(owner, "/sd/file.bin", 0U, primary_port));
+    REQUIRE_EQ(primary_port.release_count, 1U);
+    REQUIRE_EQ(primary_port.close_count, 0U);
+    REQUIRE(primary_port.removed_paths.empty());
+}
+
 TEST_CASE(hftu_002_firmware_upload_uses_partial_path_case_insensitively) {
     FileUpload upload;
     FakeUploadPort port;
@@ -309,6 +327,23 @@ TEST_CASE(hft_022_timed_retry_occurs_at_5010_ms_and_input_restarts_schedule) {
     REQUIRE_EQ(port.sent.back().type, 0xB6U);
 }
 
+TEST_CASE(hft_020_inactive_operations_are_ignored_and_expired_resume_aborts) {
+    FileUpload inactive;
+    FakeUploadPort inactive_port;
+    inactive.handle({0xB1U, ByteVector(32U, 'a')}, 1U, inactive_port);
+    inactive.poll(10000U, inactive_port);
+    inactive.resume(10000U, inactive_port);
+    REQUIRE(inactive_port.sent.empty());
+
+    FileUpload expired;
+    FakeUploadPort expired_port;
+    REQUIRE(expired.start(owner, "/sd/file.bin", 0U, expired_port));
+    expired.resume(9001U, expired_port);
+    REQUIRE(!expired.active());
+    REQUIRE_EQ(text(expired_port.sent.back().payload),
+               std::string("Info: Machine receive file time out!"));
+}
+
 TEST_CASE(own_008_reconnected_upload_repeats_the_unverified_sequence) {
     FileUpload upload;
     FakeUploadPort first_connection;
@@ -352,4 +387,25 @@ TEST_CASE(hft_024_fifty_one_wrong_packets_repeat_current_request) {
 
     REQUIRE(upload.active());
     REQUIRE_EQ(port.sent.back(), Frame({0xB1U, {}}));
+}
+
+TEST_CASE(hft_024_wrong_packets_repeat_geometry_and_abort_after_maximum_cycles) {
+    FileUpload geometry;
+    FakeUploadPort geometry_port;
+    REQUIRE(geometry.start(owner, "/sd/file.bin", 0U, geometry_port));
+    accept_md5(geometry, geometry_port);
+    for (std::size_t count = 0U; count < 51U; ++count) {
+        geometry.handle({0xBFU, {}}, count + 2U, geometry_port);
+    }
+    REQUIRE_EQ(geometry_port.sent.back(), Frame({0xB2U, {}}));
+
+    FileUpload excessive;
+    FakeUploadPort excessive_port;
+    REQUIRE(excessive.start(owner, "/sd/file.bin", 0U, excessive_port));
+    for (std::size_t count = 0U; count < 51U * 51U; ++count) {
+        excessive.handle({0xBFU, {}}, count + 1U, excessive_port);
+    }
+    REQUIRE(!excessive.active());
+    REQUIRE_EQ(text(excessive_port.sent.back().payload),
+               std::string("Info: Machine receive file too many retry error!"));
 }

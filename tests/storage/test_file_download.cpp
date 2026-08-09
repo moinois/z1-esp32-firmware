@@ -173,6 +173,13 @@ TEST_CASE(hftd_003_open_and_md5_failures_send_exact_errors_and_release) {
     REQUIRE(!md5_failure.start(owner, "/sd/config.txt", 0U, md5_port));
     REQUIRE_EQ(text(md5_port.sent.back().payload),
                std::string("Error: failed to get MD5 for [/config.txt]!"));
+
+    FileDownload invalid_md5;
+    FakeDownloadPort invalid_md5_port;
+    invalid_md5_port.calculated_md5 = std::string("short");
+    REQUIRE(!invalid_md5.start(owner, "config.txt", 0U, invalid_md5_port));
+    REQUIRE(text(invalid_md5_port.sent.back().payload).find(
+                "Error: failed to get MD5 for [") == 0U);
 }
 
 TEST_CASE(hftd_004_successful_open_immediately_sends_md5_to_original_identity) {
@@ -231,6 +238,44 @@ TEST_CASE(hftd_007_empty_block_and_workspace_failure_abort_with_exact_errors) {
                std::string("Error: download_command Memory allocation failed!"));
 }
 
+TEST_CASE(hftd_006_invalid_sequences_reads_and_oversized_blocks_are_bounded) {
+    FileDownload short_request;
+    FakeDownloadPort short_port;
+    REQUIRE(short_request.start(owner, "/sd/job", 0U, short_port));
+    const std::size_t sent_before = short_port.sent.size();
+    short_request.handle({0xB3U, {0U, 0U, 0U}}, 1U, short_port);
+    REQUIRE(short_request.active());
+    REQUIRE_EQ(short_port.sent.size(), sent_before);
+
+    FileDownload zero_sequence;
+    FakeDownloadPort zero_port;
+    REQUIRE(zero_sequence.start(owner, "/sd/job", 0U, zero_port));
+    zero_sequence.handle({0xB3U, {0U, 0U, 0U, 0U}}, 1U, zero_port);
+    REQUIRE(!zero_sequence.active());
+
+    FileDownload beyond_end;
+    FakeDownloadPort beyond_port;
+    beyond_port.opened_size = 1U;
+    REQUIRE(beyond_end.start(owner, "/sd/job", 0U, beyond_port));
+    beyond_end.handle({0xB3U, {0U, 0U, 0U, 2U}}, 1U, beyond_port);
+    REQUIRE(!beyond_end.active());
+
+    FileDownload read_failure;
+    FakeDownloadPort read_port;
+    read_port.read_content = std::nullopt;
+    REQUIRE(read_failure.start(owner, "/sd/job", 0U, read_port));
+    read_failure.handle({0xB3U, {0U, 0U, 0U, 1U}}, 1U, read_port);
+    REQUIRE(!read_failure.active());
+
+    FileDownload oversized;
+    FakeDownloadPort oversized_port;
+    oversized_port.opened_size = 9000U;
+    oversized_port.read_content = ByteVector(9000U, 0x5AU);
+    REQUIRE(oversized.start(owner, "/sd/job", 0U, oversized_port));
+    oversized.handle({0xB3U, {0U, 0U, 0U, 1U}}, 1U, oversized_port);
+    REQUIRE_EQ(oversized_port.sent.back().payload.size(), 8196U);
+}
+
 TEST_CASE(hftd_008_retry_rereads_the_last_data_sequence) {
     FileDownload download;
     FakeDownloadPort port;
@@ -243,6 +288,20 @@ TEST_CASE(hftd_008_retry_rereads_the_last_data_sequence) {
     REQUIRE_EQ(port.read_count, 2U);
     REQUIRE_EQ(port.read_offset, 8192U);
     REQUIRE_EQ(port.sent.back().payload, ByteVector({0U, 0U, 0U, 2U, 9U}));
+}
+
+TEST_CASE(hftd_008_retry_replays_retained_md5_and_geometry_responses) {
+    FileDownload download;
+    FakeDownloadPort port;
+    REQUIRE(download.start(owner, "/sd/job", 0U, port));
+    const Frame md5 = port.sent.back();
+    download.handle({0xB6U, {}}, 1U, port);
+    REQUIRE_EQ(port.sent.back(), md5);
+
+    download.handle({0xB2U, {}}, 2U, port);
+    const Frame geometry = port.sent.back();
+    download.handle({0xB6U, {}}, 3U, port);
+    REQUIRE_EQ(port.sent.back(), geometry);
 }
 
 TEST_CASE(hftd_009_completion_sends_ack_releases_and_reports_success) {
@@ -284,6 +343,38 @@ TEST_CASE(hft_020_and_hft_021_any_frame_restarts_strict_nine_second_timeout) {
     REQUIRE(!download.active());
     REQUIRE_EQ(text(port.sent.back().payload),
                std::string("Error: Machine received cmd timeout!"));
+}
+
+TEST_CASE(hft_020_inactive_operations_are_ignored_and_expired_resume_aborts) {
+    FileDownload inactive;
+    FakeDownloadPort inactive_port;
+    inactive.handle({0xB2U, {}}, 1U, inactive_port);
+    inactive.resume(10000U, inactive_port);
+    inactive.poll(10000U, inactive_port);
+    REQUIRE(inactive_port.sent.empty());
+
+    FileDownload expired;
+    FakeDownloadPort expired_port;
+    REQUIRE(expired.start(owner, "/sd/job", 0U, expired_port));
+    expired.resume(9001U, expired_port);
+    REQUIRE(!expired.active());
+    REQUIRE_EQ(text(expired_port.sent.back().payload),
+               std::string("Error: Machine received cmd timeout!"));
+}
+
+TEST_CASE(hftd_003_error_paths_are_limited_to_240_logical_bytes) {
+    FileDownload download;
+    FakeDownloadPort port;
+    port.opened_size = std::nullopt;
+    const std::string path = "/sd/" + std::string(300U, 'x');
+
+    REQUIRE(!download.start(owner, path, 0U, port));
+
+    const std::string message = text(port.sent.back().payload);
+    REQUIRE_EQ(message.substr(0U, 28U),
+               std::string("Error: failed to open file ["));
+    REQUIRE_EQ(message.size(), 28U + 240U + 2U);
+    REQUIRE_EQ(message.substr(message.size() - 2U), std::string("]!"));
 }
 
 TEST_CASE(own_008_reconnected_download_repeats_the_last_verified_block) {
