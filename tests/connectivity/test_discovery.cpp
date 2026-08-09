@@ -117,6 +117,10 @@ TEST_CASE(disc_004_station_broadcast_uses_ipv4_and_netmask) {
                std::optional<std::string>("10.2.3.255"));
     REQUIRE(!firmware::core::ipv4_broadcast_address("bad", "255.255.255.0")
                  .has_value());
+    REQUIRE(!firmware::core::ipv4_broadcast_address("10.2.3.4", "255.255.256.0")
+                 .has_value());
+    REQUIRE(!firmware::core::ipv4_broadcast_address("10.2.3.4", "255.255.255.0x")
+                 .has_value());
 }
 
 TEST_CASE(disc_004_periodic_cycle_sends_station_before_access_point) {

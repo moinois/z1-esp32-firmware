@@ -22,12 +22,12 @@ LOG or DIAG behavior. No physical result is claimed merely because a test exists
 
 ## Current portable verification snapshot
 
-As of 2026-08-09, the dependency-free C++ host suite contains 728 passing
+As of 2026-08-09, the dependency-free C++ host suite contains 730 passing
 tests. The focused suites cover malformed AVI preview inputs, transfer setup,
 retry, timeout, sequence, and path failures, CANopen RPDO/TPDO boundary
 behavior, filesystem-command failures, and storage-retention failure paths.
-The corresponding coverage report is 96.69% lines (7881/8151), 99.01%
-functions (800/808), and 86.85% branches (3257/3750). These figures are
+The corresponding coverage report is 96.74% lines (7885/8151), 99.01%
+functions (800/808), and 86.93% branches (3260/3750). These figures are
 portable-test evidence only; they do not replace physical SD, camera, CAN,
 controller, or endpoint fault-injection fixtures.
 

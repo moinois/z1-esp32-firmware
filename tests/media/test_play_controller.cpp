@@ -62,7 +62,7 @@ public:
 
     // Reports successful rewind for lifecycle-only tests.
     bool rewind_file() override {
-        return true;
+        return rewind_succeeds;
     }
 
     // Reports no readable data for lifecycle-only tests.
@@ -76,6 +76,7 @@ public:
     }
 
     bool send_succeeds = true;
+    bool rewind_succeeds = true;
     std::optional<std::uint64_t> open_size = 0x01020304U;
     std::string opened_path;
     std::size_t close_count = 0U;
@@ -185,4 +186,22 @@ TEST_CASE(play_018_incoming_f2_and_f7_are_ignored) {
     REQUIRE(port.sent.empty());
     REQUIRE(port.broadcasts.empty());
     REQUIRE(port.state_changes.empty());
+}
+
+TEST_CASE(play_023_goto_rewind_failure_sends_cancel_without_leaking_state) {
+    PlaySession session;
+    PlayController controller(session);
+    FakePlayControllerPort port;
+    port.rewind_succeeds = false;
+    REQUIRE(session.prepare(bytes("play /job"), 0U, port));
+    const auto identifier = session.path_identifier();
+
+    controller.handle({0xF6U,
+                       {static_cast<std::uint8_t>(identifier >> 8U),
+                        static_cast<std::uint8_t>(identifier), 0U, 0U, 0U, 1U}},
+                      1U, port);
+
+    REQUIRE_EQ(port.sent.back(), Frame({0xF5U, {}}));
+    REQUIRE(session.file_open());
+    REQUIRE(!session.running());
 }
