@@ -10,6 +10,7 @@ from pathlib import Path
 from tools.build_firmware import (
     application_binary,
     discover_mock_adapters,
+    load_camera_profiles,
     release_package_command,
     select_webui_source,
     write_build_selection,
@@ -37,6 +38,13 @@ class BuildFirmwareTests(unittest.TestCase):
                 },
             )
 
+    def test_camera_profiles_use_short_names_and_validate_membership(self) -> None:
+        profiles = load_camera_profiles(
+            Path(__file__).resolve().parents[1] / "camera_profiles.json"
+        )
+        self.assertEqual(profiles["compact"], {"OV3660"})
+        self.assertTrue(profiles["release"] <= profiles["all"])
+
     def test_selected_mock_explicitly_disables_every_other_adapter(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)
@@ -60,21 +68,21 @@ class BuildFirmwareTests(unittest.TestCase):
                 "# CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT is not set\n"
                 "# CONFIG_BT_STACK_NO_LOG is not set\n"
                 "# CONFIG_BOOTLOADER_LOG_LEVEL_WARN is not set\n"
-                "CONFIG_OV7670_SUPPORT=y\n"
-                "CONFIG_OV7725_SUPPORT=y\n"
+                "CONFIG_BF20A6_SUPPORT=y\n"
+                "CONFIG_BF3005_SUPPORT=y\n"
+                "CONFIG_GC0308_SUPPORT=y\n"
+                "CONFIG_GC032A_SUPPORT=y\n"
+                "CONFIG_GC2145_SUPPORT=y\n"
+                "CONFIG_HM0360_SUPPORT=y\n"
+                "CONFIG_HM1055_SUPPORT=y\n"
+                "CONFIG_MEGA_CCM_SUPPORT=y\n"
                 "CONFIG_NT99141_SUPPORT=y\n"
                 "CONFIG_OV2640_SUPPORT=y\n"
                 "CONFIG_OV3660_SUPPORT=y\n"
                 "CONFIG_OV5640_SUPPORT=y\n"
-                "CONFIG_GC2145_SUPPORT=y\n"
-                "CONFIG_GC032A_SUPPORT=y\n"
-                "CONFIG_GC0308_SUPPORT=y\n"
-                "CONFIG_BF3005_SUPPORT=y\n"
-                "CONFIG_BF20A6_SUPPORT=y\n"
+                "CONFIG_OV7670_SUPPORT=y\n"
+                "CONFIG_OV7725_SUPPORT=y\n"
                 "CONFIG_SC030IOT_SUPPORT=y\n"
-                "CONFIG_HM1055_SUPPORT=y\n"
-                "CONFIG_HM0360_SUPPORT=y\n"
-                "CONFIG_MEGA_CCM_SUPPORT=y\n"
                 "# CONFIG_Z1_MOCK_ALL_HARDWARE is not set\n"
                 "# CONFIG_Z1_MOCK_CAMERA_HARDWARE is not set\n"
                 "CONFIG_Z1_MOCK_SD_HARDWARE=y\n",

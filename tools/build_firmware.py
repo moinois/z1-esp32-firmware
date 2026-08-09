@@ -67,6 +67,25 @@ def discover_mock_adapters(kconfig_path: Path) -> dict[str, str]:
     return dict(sorted(discovered.items()))
 
 
+def load_camera_profiles(path: Path) -> dict[str, set[str]]:
+    """Loads and validates short camera names used by each build profile."""
+
+    profiles = json.loads(path.read_text(encoding="utf-8"))
+    all_names = set(profiles["all"])
+    if not all_names or any(not isinstance(name, str) for name in all_names):
+        raise ValueError("camera profile 'all' must contain sensor names")
+    result = {name: set(profiles[name]) for name in ("compact", "release")}
+    for profile, names in result.items():
+        unknown = names - all_names
+        if unknown:
+            raise ValueError(
+                f"camera profile '{profile}' contains unknown sensors: "
+                + ", ".join(sorted(unknown))
+            )
+    result["all"] = all_names
+    return result
+
+
 def select_webui_source(root: Path, alternate: bool) -> Path:
     """Returns a non-empty public or explicitly selected local Web UI tree."""
 
@@ -123,18 +142,17 @@ def write_build_selection(
     lines.append("CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y" if compact else "# CONFIG_BOOTLOADER_LOG_LEVEL_WARN is not set")
     # The attached sensor is identified as OV3660. Keep its driver and omit
     # unrelated esp32-camera sensor implementations from compact images.
-    all_camera_symbols = (
-        "OV7670_SUPPORT", "OV7725_SUPPORT", "NT99141_SUPPORT", "OV2640_SUPPORT",
-        "OV3660_SUPPORT",
-        "OV5640_SUPPORT", "GC2145_SUPPORT", "GC032A_SUPPORT", "GC0308_SUPPORT",
-        "BF3005_SUPPORT", "BF20A6_SUPPORT", "SC030IOT_SUPPORT", "HM1055_SUPPORT",
-        "HM0360_SUPPORT", "MEGA_CCM_SUPPORT",
+    camera_profiles = load_camera_profiles(
+        Path(__file__).resolve().with_name("camera_profiles.json")
     )
-    compact_camera_symbols = {"OV3660_SUPPORT"}
-    release_camera_symbols = {"OV3660_SUPPORT"}
-    for symbol in all_camera_symbols:
+    all_camera_names = camera_profiles["all"]
+    selected_camera_names = (
+        camera_profiles["compact"] if compact else camera_profiles["release"]
+    ) if release else all_camera_names
+    for name in sorted(all_camera_names):
+        symbol = f"{name}_SUPPORT"
         enabled = (
-            symbol in (compact_camera_symbols if compact else release_camera_symbols)
+            name in selected_camera_names
             if release
             else True  # Development builds intentionally enable every listed sensor.
         )
