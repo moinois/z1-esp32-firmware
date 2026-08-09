@@ -1,5 +1,5 @@
 /** @file @brief No-op NVS fault boundary used by live and release builds. */
-#include "mock_nvs_fault_adapter.hpp"
+#include "nvs_fault_port.hpp"
 
 namespace firmware::target {
 
