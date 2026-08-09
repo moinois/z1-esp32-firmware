@@ -16,6 +16,8 @@ MOCK_CONFIG_PATTERN = re.compile(r"^config Z1_MOCK_([A-Z0-9_]+)_HARDWARE$", re.M
 GLOBAL_MOCK_CONFIG = "CONFIG_Z1_MOCK_ALL_HARDWARE"
 DEFAULT_WEBUI_DIRECTORY = "webui"
 ALTERNATE_WEBUI_DIRECTORY = "webui-alt"
+SPEC_PARTITION_TABLE = "partitions.csv"
+DEVELOPMENT_PARTITION_TABLE = "partitions-dev.csv"
 
 
 def application_binary(build_directory: Path) -> Path:
@@ -96,6 +98,7 @@ def write_build_selection(
     release: bool = False,
     compact: bool = False,
     webui_source: str = DEFAULT_WEBUI_DIRECTORY,
+    partition_table: str = SPEC_PARTITION_TABLE,
 ) -> Tuple[Path, Path]:
     """Writes complete Kconfig selection and audit manifest into a build tree."""
 
@@ -113,6 +116,7 @@ def write_build_selection(
     # strings and their call sites from components that honor ESP-IDF logging.
     lines.append("CONFIG_LOG_DEFAULT_LEVEL_WARN=y" if release else "# CONFIG_LOG_DEFAULT_LEVEL_WARN is not set")
     lines.append("CONFIG_LOG_DEFAULT_LEVEL=2" if release else "# CONFIG_LOG_DEFAULT_LEVEL is not set")
+    lines.append(f'CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="{partition_table}"')
     lines.append("CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y" if compact else "# CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT is not set")
     lines.append("CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT=y" if compact else "# CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT is not set")
     lines.append("CONFIG_BT_STACK_NO_LOG=y" if compact else "# CONFIG_BT_STACK_NO_LOG is not set")
@@ -135,6 +139,7 @@ def write_build_selection(
         "webui_source": webui_source,
         "release": release,
         "compact": compact,
+        "partition_table": partition_table,
     }
     _atomic_text(manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     return config_path, manifest_path
@@ -225,6 +230,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             release=args.release,
             compact=args.compact,
             webui_source=webui_source.name,
+            partition_table=SPEC_PARTITION_TABLE if args.release else DEVELOPMENT_PARTITION_TABLE,
         )
     except ValueError as error:
         print(error, file=sys.stderr)

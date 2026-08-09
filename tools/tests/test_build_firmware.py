@@ -55,6 +55,7 @@ class BuildFirmwareTests(unittest.TestCase):
                 "# CONFIG_COMPILER_OPTIMIZATION_SIZE is not set\n"
                 "# CONFIG_LOG_DEFAULT_LEVEL_WARN is not set\n"
                 "# CONFIG_LOG_DEFAULT_LEVEL is not set\n"
+                'CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"\n'
                 "# CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT is not set\n"
                 "# CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT is not set\n"
                 "# CONFIG_BT_STACK_NO_LOG is not set\n"
@@ -71,6 +72,7 @@ class BuildFirmwareTests(unittest.TestCase):
                     "selected_mocks": ["sd"],
                     "release": False,
                     "compact": False,
+                    "partition_table": "partitions.csv",
                     "webui_source": "webui",
                 },
             )
@@ -130,6 +132,9 @@ class BuildFirmwareTests(unittest.TestCase):
             )
             self.assertIn("CONFIG_COMPILER_OPTIMIZATION_SIZE=y", config.read_text())
             self.assertTrue(json.loads(manifest.read_text())["release"])
+            self.assertEqual(
+                json.loads(manifest.read_text())["partition_table"], "partitions.csv"
+            )
             with self.assertRaisesRegex(ValueError, "requires --live"):
                 write_build_selection(output, adapters, {"sd"}, mock_all=False, release=True)
 

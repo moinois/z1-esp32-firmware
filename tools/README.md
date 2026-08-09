@@ -106,6 +106,13 @@ removes unreferenced mock paths from the live image. `--mainboard-version`
 supplies the aggregate package metadata and requires `--release`; it does not
 change the ESP-IDF application version.
 
+Non-release development builds use `partitions-dev.csv`, which preserves the
+larger 2 MiB OTA slots and 1 MiB SPIFFS volume used before the specification
+layout was restored. Release builds always use the specification table in
+`partitions.csv`. The selected table is recorded in
+`hardware-selection.json` and printed by the build command, so a USB flash
+operation can be audited before it changes the device layout.
+
 `--compact` requires `--release` and enables the experimental compact profile:
 assertions remain active but omit verbose failure text, ESP-IDF check macros
 omit their diagnostic strings, Bluedroid stack logging is disabled, and the
