@@ -17,8 +17,10 @@
 #if Z1_MOCK_NETWORK_CONTROL_ENABLED
 #include "mock_network_fault_adapter.hpp"
 #endif
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_SD_ENABLED
 #include "mock_sd_card_adapter.hpp"
+#endif
+#if Z1_MOCK_NVS_ENABLED
 #include "mock_nvs_fault_adapter.hpp"
 #endif
 #include "application/runtime/serial_number.hpp"
@@ -1178,24 +1180,26 @@ void usb_local_command_task(void* /* unused */) {
                          {payload.begin() + static_cast<std::ptrdiff_t>(offset),
                           payload.begin() + static_cast<std::ptrdiff_t>(offset + count)}})));
             }
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_SD_ENABLED
         } else if (match.kind == firmware::core::CommandKind::mock_sd_control) {
             const std::string response = handle_mock_sd_control(command);
             static_cast<void>(usb_frame_sink.send_frame(
                 {firmware::core::protocol::text_response,
                  {response.begin(), response.end()}}));
+#endif
+#if Z1_MOCK_NVS_ENABLED
         } else if (match.kind == firmware::core::CommandKind::mock_nvs_control) {
             const std::string response = handle_mock_nvs_control(command);
             static_cast<void>(usb_frame_sink.send_frame(
                 {firmware::core::protocol::text_response,
                  {response.begin(), response.end()}}));
+#endif
 #if Z1_MOCK_NETWORK_CONTROL_ENABLED
         } else if (match.kind == firmware::core::CommandKind::mock_network_control) {
             const std::string response = handle_mock_network_control(command);
             static_cast<void>(usb_frame_sink.send_frame(
                 {firmware::core::protocol::text_response,
                  {response.begin(), response.end()}}));
-#endif
 #endif
         } else if (match.kind == firmware::core::CommandKind::version) {
             const auto response = shared_controller_snapshots().version_reply();

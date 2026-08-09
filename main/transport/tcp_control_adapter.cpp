@@ -34,8 +34,10 @@
 #if Z1_MOCK_NETWORK_CONTROL_ENABLED
 #include "mock_network_fault_adapter.hpp"
 #endif
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_SD_ENABLED
 #include "mock_sd_card_adapter.hpp"
+#endif
+#if Z1_MOCK_NVS_ENABLED
 #include "mock_nvs_fault_adapter.hpp"
 #endif
 #include "firmware_update_adapter.hpp"
@@ -406,24 +408,26 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
                 firmware::application::ConfigurationSet::execute(
                     argument, tcp_live_configuration, configuration_port);
             }
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_SD_ENABLED
         } else if (match.kind == firmware::core::CommandKind::mock_sd_control) {
             const std::string response = handle_mock_sd_control(command);
             static_cast<void>(session.queue_frame(
                 {firmware::core::protocol::text_response,
                  {response.begin(), response.end()}}));
+#endif
+#if Z1_MOCK_NVS_ENABLED
         } else if (match.kind == firmware::core::CommandKind::mock_nvs_control) {
             const std::string response = handle_mock_nvs_control(command);
             static_cast<void>(session.queue_frame(
                 {firmware::core::protocol::text_response,
                  {response.begin(), response.end()}}));
+#endif
 #if Z1_MOCK_NETWORK_CONTROL_ENABLED
         } else if (match.kind == firmware::core::CommandKind::mock_network_control) {
             const std::string response = handle_mock_network_control(command);
             static_cast<void>(session.queue_frame(
                 {firmware::core::protocol::text_response,
                  {response.begin(), response.end()}}));
-#endif
 #endif
         } else if (match.kind == firmware::core::CommandKind::diagnose ||
                    match.kind == firmware::core::CommandKind::version) {

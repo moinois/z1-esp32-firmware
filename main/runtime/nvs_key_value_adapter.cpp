@@ -1,6 +1,6 @@
 /** @file @brief Implements typed NVS access with explicit missing-key and commit handling. */
 #include "nvs_key_value_adapter.hpp"
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NVS_ENABLED
 #include "mock_nvs_fault_adapter.hpp"
 #endif
 
@@ -16,7 +16,7 @@ constexpr nvs_open_mode_t read_write = NVS_READWRITE;
 
 bool open_namespace(std::string_view name_space, nvs_open_mode_t mode,
                     nvs_handle_t& handle) {
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NVS_ENABLED
     if (nvs_open_fault_active()) return false;
 #endif
     return nvs_open(std::string(name_space).c_str(), mode, &handle) == ESP_OK;
@@ -25,7 +25,7 @@ bool open_namespace(std::string_view name_space, nvs_open_mode_t mode,
 // Commits one successful mutation unless the test boundary rejects it.
 esp_err_t commit_mutation(nvs_handle_t handle, esp_err_t mutation_result) {
     if (mutation_result != ESP_OK) return mutation_result;
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NVS_ENABLED
     if (nvs_commit_fault_active()) return ESP_FAIL;
 #endif
     return nvs_commit(handle);
@@ -35,7 +35,7 @@ esp_err_t commit_mutation(nvs_handle_t handle, esp_err_t mutation_result) {
 
 NvsStringRead NvsKeyValueAdapter::read_string(std::string_view name_space,
                                                std::string_view key) const {
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NVS_ENABLED
     if (nvs_open_fault_active()) return {};
 #endif
     nvs_handle_t handle = 0;
@@ -109,7 +109,7 @@ bool NvsKeyValueAdapter::write_string(std::string_view name_space,
     // ESP-IDF keeps uncommitted mutations in a shared in-memory NVS cache;
     // closing the handle does not roll them back. Inject before nvs_set_* so a
     // simulated commit failure cannot become visible to subsequent reads.
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NVS_ENABLED
     if (nvs_commit_fault_active()) {
         nvs_close(handle);
         return false;
@@ -126,7 +126,7 @@ bool NvsKeyValueAdapter::write_u64(std::string_view name_space,
                                    std::uint64_t value) const {
     nvs_handle_t handle = 0;
     if (!open_namespace(name_space, read_write, handle)) return false;
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NVS_ENABLED
     if (nvs_commit_fault_active()) {
         nvs_close(handle);
         return false;
@@ -144,7 +144,7 @@ bool NvsKeyValueAdapter::write_u8(std::string_view name_space,
     if (!open_namespace(name_space, read_write, handle)) {
         return false;
     }
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NVS_ENABLED
     if (nvs_commit_fault_active()) {
         nvs_close(handle);
         return false;
@@ -164,7 +164,7 @@ bool NvsKeyValueAdapter::write_i64(std::string_view name_space,
 
 NvsReadState NvsKeyValueAdapter::erase_key(std::string_view name_space,
                                            std::string_view key) const {
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NVS_ENABLED
     if (nvs_open_fault_active()) {
         return NvsReadState::failure;
     }
@@ -175,7 +175,7 @@ NvsReadState NvsKeyValueAdapter::erase_key(std::string_view name_space,
     if (open_result != ESP_OK) {
         return NvsReadState::failure;
     }
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NVS_ENABLED
     if (nvs_commit_fault_active()) {
         nvs_close(handle);
         return NvsReadState::failure;
@@ -188,7 +188,7 @@ NvsReadState NvsKeyValueAdapter::erase_key(std::string_view name_space,
         return NvsReadState::missing;
     }
     if (erase_result != ESP_OK
-#if Z1_MOCK_CONTROL_ENABLED
+#if Z1_MOCK_NVS_ENABLED
         || nvs_commit_fault_active()
 #endif
         || nvs_commit(handle) != ESP_OK) {
