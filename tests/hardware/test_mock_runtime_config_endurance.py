@@ -83,7 +83,6 @@ def test_runtime_mutation_is_shared_across_usb_tcp_and_controller(
 
 @pytest.mark.hardware
 @pytest.mark.mutating
-@pytest.mark.timeout(360)
 @pytest.mark.sd
 @pytest.mark.usb
 @pytest.mark.tcp
@@ -137,6 +136,7 @@ def test_configuration_errors_and_concurrent_updates_preserve_document(
 
 @pytest.mark.hardware
 @pytest.mark.mutating
+@pytest.mark.timeout(360)
 @pytest.mark.sd
 @pytest.mark.usb
 @pytest.mark.requirement("HFTU-001")
