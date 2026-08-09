@@ -90,7 +90,7 @@ compile-time live selection; mock implementations remain available for HIL
 builds without becoming part of the release configuration.
 
 Fault-injection boundaries follow the same rule: live builds link no-op NVS
-and network hook implementations, while the stateful mock hook sources are
+and network fault-state implementations, while the stateful mock hook sources are
 added only when their Kconfig mock is selected. This keeps test controls out of
 the release image without duplicating the production adapters.
 
@@ -98,6 +98,9 @@ The same conditional source selection now applies to SD, camera, and
 controller mock implementations. Their public adapter contracts remain shared,
 but their test-only object files are present only in mock-selected target
 builds.
+
+Mock command handlers are compile-time excluded from live and release
+transports, so no live stub is needed for an SD mock command.
 
 The repository includes `docs/Doxyfile`. Generate the local site with:
 

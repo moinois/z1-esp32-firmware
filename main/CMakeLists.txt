@@ -15,7 +15,6 @@ idf_component_register(
         "media/web_volume_adapter.cpp"
         "media/storage_retention_adapter.cpp"
         "storage/sd_card_adapter.cpp"
-        "storage/live_sd_fault_adapter.cpp"
         "storage/sd_access_diagnostics.cpp"
         "storage/posix_file.cpp"
         "diagnostics/diagnostic_capture_adapter.cpp"
@@ -128,7 +127,6 @@ if(CONFIG_Z1_MOCK_CAMERA_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
 endif()
 if(CONFIG_Z1_MOCK_SD_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
     target_sources(${COMPONENT_LIB} PRIVATE "storage/mock_sd_card_adapter.cpp")
-    set_source_files_properties(storage/live_sd_fault_adapter.cpp PROPERTIES HEADER_FILE_ONLY TRUE)
 endif()
 if(CONFIG_Z1_MOCK_NETWORK_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
     target_sources(${COMPONENT_LIB} PRIVATE "connectivity/mock_network_fault_adapter.cpp")

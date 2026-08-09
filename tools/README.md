@@ -74,9 +74,9 @@ The normal `idf.py build` path remains governed by `sdkconfig.defaults`, where
 all mocks are disabled.
 
 Mock adapter source files are conditionally added to the target component only
-when their corresponding mock switch is enabled. Live and release builds use
-small no-op control boundaries where the shared transport code needs to parse
-test-only commands; the stateful mock implementations are not linked.
+when their corresponding mock switch is enabled. Live and release builds retain
+only the small no-op fault-state boundaries needed by production code; mock
+command handlers and stateful mock implementations are compile-time excluded.
 
 `--alt_webui` (also accepted as `--alt-webui`) explicitly builds the SPIFFS
 partition from the local, ignored `webui-alt` directory. The command fails
