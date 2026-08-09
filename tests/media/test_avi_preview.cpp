@@ -3,6 +3,7 @@
 
 #include "firmware/core/avi_preview.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <string_view>
 
@@ -17,6 +18,22 @@ void append_u32(ByteVector& bytes, std::uint32_t value) {
     bytes.push_back(static_cast<std::uint8_t>(value >> 8U));
     bytes.push_back(static_cast<std::uint8_t>(value >> 16U));
     bytes.push_back(static_cast<std::uint8_t>(value >> 24U));
+}
+
+void write_u32(ByteVector& bytes, std::size_t offset, std::uint32_t value) {
+    bytes[offset] = static_cast<std::uint8_t>(value);
+    bytes[offset + 1U] = static_cast<std::uint8_t>(value >> 8U);
+    bytes[offset + 2U] = static_cast<std::uint8_t>(value >> 16U);
+    bytes[offset + 3U] = static_cast<std::uint8_t>(value >> 24U);
+}
+
+std::size_t find_id(const ByteVector& bytes, std::string_view id) {
+    for (std::size_t offset = 0U; offset + id.size() <= bytes.size(); ++offset) {
+        if (std::equal(id.begin(), id.end(), bytes.begin() + offset)) {
+            return offset;
+        }
+    }
+    return bytes.size();
 }
 
 void append_text(ByteVector& bytes, std::string_view text) {
@@ -115,6 +132,68 @@ TEST_CASE(avi_003_invalid_index_is_rejected_without_fallback) {
     REQUIRE(!AviPreview::parse(file).has_value());
 }
 
+TEST_CASE(avi_001_to_003_structurally_truncated_chunks_are_rejected) {
+    auto oversized_riff = make_avi();
+    write_u32(oversized_riff, 4U,
+              static_cast<std::uint32_t>(oversized_riff.size()));
+    REQUIRE(!AviPreview::parse(oversized_riff).has_value());
+
+    ByteVector short_top(32U, 0U);
+    short_top[0] = 'R';
+    short_top[1] = 'I';
+    short_top[2] = 'F';
+    short_top[3] = 'F';
+    short_top[4] = 8U;
+    short_top[8] = 'A';
+    short_top[9] = 'V';
+    short_top[10] = 'I';
+    short_top[11] = ' ';
+    REQUIRE(!AviPreview::parse(short_top).has_value());
+
+    auto oversized_top_chunk = make_avi();
+    write_u32(oversized_top_chunk, 16U, 0xFFFFFFFFU);
+    REQUIRE(!AviPreview::parse(oversized_top_chunk).has_value());
+
+    ByteVector missing_odd_padding;
+    append_text(missing_odd_padding, "RIFF");
+    append_u32(missing_odd_padding, 25U);
+    append_text(missing_odd_padding, "AVI ");
+    append_text(missing_odd_padding, "JUNK");
+    append_u32(missing_odd_padding, 13U);
+    missing_odd_padding.resize(33U, 0U);
+    REQUIRE(!AviPreview::parse(missing_odd_padding).has_value());
+}
+
+TEST_CASE(avi_001_to_003_invalid_header_list_and_required_chunks_are_rejected) {
+    auto malformed_header = make_avi();
+    const auto avih = find_id(malformed_header, "avih");
+    REQUIRE(avih < malformed_header.size());
+    write_u32(malformed_header, avih + 4U, 0xFFFFFFFFU);
+    REQUIRE(!AviPreview::parse(malformed_header).has_value());
+
+    auto no_movi = make_avi();
+    const auto movi = find_id(no_movi, "movi");
+    REQUIRE(movi < no_movi.size());
+    no_movi[movi] = 'X';
+    REQUIRE(!AviPreview::parse(no_movi).has_value());
+
+    auto no_index = make_avi();
+    const auto index = find_id(no_index, "idx1");
+    REQUIRE(index < no_index.size());
+    no_index[index] = 'X';
+    REQUIRE(!AviPreview::parse(no_index).has_value());
+}
+
+TEST_CASE(avi_002_zero_frame_period_uses_required_default) {
+    auto file = make_avi();
+    const auto avih = find_id(file, "avih");
+    REQUIRE(avih < file.size());
+    write_u32(file, avih + 8U, 0U);
+    const auto parsed = AviPreview::parse(file);
+    REQUIRE(parsed.has_value());
+    REQUIRE_EQ(parsed->frame_period_us, 100000U);
+}
+
 TEST_CASE(avi_004_frame_read_rejects_invalid_index_extents_and_chunk_metadata) {
     auto file = make_avi();
     const auto parsed = AviPreview::parse(file);
@@ -150,4 +229,9 @@ TEST_CASE(avi_004_frame_read_rejects_invalid_index_extents_and_chunk_metadata) {
     auto oversized = file;
     oversized[seek + 4U] = 17U;
     REQUIRE(!read_avi_frame(oversized, *parsed, 0U, 16U).has_value());
+
+    auto truncated_payload = file;
+    write_u32(truncated_payload, seek + 4U, 4U);
+    truncated_payload.resize(seek + 8U + 3U);
+    REQUIRE(!read_avi_frame(truncated_payload, *parsed, 0U, 16U).has_value());
 }
