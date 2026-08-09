@@ -6,6 +6,7 @@ import json
 import http.client
 import os
 import socket
+import time
 from pathlib import Path
 from typing import Any, Dict, Iterator, List
 
@@ -143,20 +144,39 @@ def sd_client(request: pytest.FixtureRequest, tcp_host: str) -> Any:
 
 @pytest.fixture(scope="session")
 def tcp_host() -> str:
-    """Returns a reachable target, or skips instead of probing a dead default."""
+    """Discovers the station address or uses an explicitly configured target."""
 
     configured = os.getenv("Z1_HIL_HOST")
     if configured:
         return configured
 
-    provisioning_ap = "192.168.4.1"
+    discovery_port = 3333
+    listener = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(("", discovery_port))
+    listener.settimeout(0.25)
     try:
-        with socket.create_connection((provisioning_ap, 80), timeout=0.25):
-            return provisioning_ap
-    except OSError:
-        pytest.skip(
-            "TCP/HTTP target not detected; set Z1_HIL_HOST to an explicit target"
-        )
+        deadline = time.monotonic() + 4.0
+        while time.monotonic() < deadline:
+            try:
+                payload, _ = listener.recvfrom(128)
+            except socket.timeout:
+                continue
+            fields = payload.decode("utf-8", errors="strict").split(",")
+            if len(fields) != 5 or fields[2] != "2222":
+                continue
+            candidate = fields[1]
+            try:
+                socket.inet_aton(candidate)
+                with socket.create_connection((candidate, 2222), timeout=0.25):
+                    return candidate
+            except (OSError, UnicodeError):
+                continue
+    finally:
+        listener.close()
+    pytest.skip(
+        "TCP/HTTP target not discovered; set Z1_HIL_HOST to override discovery"
+    )
 
 
 @pytest.fixture(scope="session")

@@ -37,7 +37,7 @@ USB handle or fixture deadlock from blocking an unattended HIL run forever.
 
 | Variable | Meaning | Default |
 |---|---|---|
-| `Z1_HIL_HOST` | Target IPv4 address for TCP/HTTP tests; when unset, the provisioning address is probed once and TCP/HTTP cases skip immediately if it is unreachable | unset (provisioning address probe) |
+| `Z1_HIL_HOST` | Target IPv4 address for TCP/HTTP tests; when unset, the station address is read from UDP discovery on port 3333 | unset (automatic discovery) |
 | `Z1_HIL_SERIAL` | Diagnostic serial device | uniquely detected USB modem |
 | `Z1_HIL_SD` | Declares that a physical SD reader and card are installed | disabled |
 | `Z1_HIL_MOCK_SD` | Declares that the flashed firmware uses the mock SD profile | disabled |
