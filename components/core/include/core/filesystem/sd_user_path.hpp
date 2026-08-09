@@ -27,7 +27,12 @@ std::string physical_sd_path(std::string_view logical_path);
  */
 std::string resolve_sd_user_path(std::string_view path);
 
-/** Removes the private mount prefix from a response path.
+/** Removes the private mount prefix from a user-friendly response path.
+ *  This is presentation-only: callers must first resolve and access the
+ *  physical path with @ref resolve_sd_user_path. Normative protocol responses
+ *  that require a resolved path (for example FILE-020, FILE-028, or FILE-029)
+ *  must return the physical value directly instead. A future UI-oriented
+ *  response can call this helper after the operation has completed.
  *  @param physical_path Path returned by an internal SD operation.
  *  @return Path in the user-visible namespace rooted at `/`.
  */
