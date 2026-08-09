@@ -83,6 +83,7 @@ def test_runtime_mutation_is_shared_across_usb_tcp_and_controller(
 
 @pytest.mark.hardware
 @pytest.mark.mutating
+@pytest.mark.timeout(360)
 @pytest.mark.sd
 @pytest.mark.usb
 @pytest.mark.tcp
