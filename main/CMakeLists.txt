@@ -20,7 +20,6 @@ idf_component_register(
         "diagnostics/diagnostic_capture_adapter.cpp"
         "diagnostics/serial_log_mirror_adapter.cpp"
         "runtime/nvs_key_value_adapter.cpp"
-        "runtime/live_nvs_fault_adapter.cpp"
         "runtime/nvs_command_ports.cpp"
         "runtime/nvs_runtime_counter_adapter.cpp"
         "runtime/runtime_counter_task.cpp"
@@ -116,7 +115,6 @@ endif()
 
 if(CONFIG_Z1_MOCK_NVS_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
     target_sources(${COMPONENT_LIB} PRIVATE "runtime/mock_nvs_fault_adapter.cpp")
-    set_source_files_properties(runtime/live_nvs_fault_adapter.cpp PROPERTIES HEADER_FILE_ONLY TRUE)
 endif()
 if(CONFIG_Z1_MOCK_CONTROLLER_HARDWARE OR CONFIG_Z1_MOCK_ALL_HARDWARE)
     target_sources(${COMPONENT_LIB} PRIVATE "controller/mock_controller_channel_adapter.cpp")
