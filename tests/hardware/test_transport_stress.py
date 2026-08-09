@@ -84,6 +84,7 @@ def test_tcp_fifth_connection_receives_capacity_response(tcp_host: str) -> None:
     try:
         for _ in range(4):
             connection = socket.create_connection((tcp_host, 2222), timeout=3.0)
+            connection.settimeout(0.25)
             connections.append(connection)
             connection.sendall(encode_frame(GENERAL_COMMAND, b"ftype /"))
             try:
@@ -95,6 +96,7 @@ def test_tcp_fifth_connection_receives_capacity_response(tcp_host: str) -> None:
             accepted_count += 1
         if accepted_count == 4:
             with socket.create_connection((tcp_host, 2222), timeout=3.0) as rejected:
+                rejected.settimeout(0.25)
                 try:
                     rejected_frames = receive_tcp_frames(rejected, 3.0)
                 finally:
