@@ -51,7 +51,8 @@ void FileHashCommand::execute(core::BytesView argument, FileHashPort& port) {
         send_console(std::string(missing_argument_message), port);
         return;
     }
-    // FILE-028/029 require the resolved path in the response.
+    // FILE-028/029 require the resolved path in the response. Resolution has
+    // already enforced the /sd authority boundary; this is only formatting.
     const std::string displayed = *path;
 
     switch (port.inspect_path(*path)) {

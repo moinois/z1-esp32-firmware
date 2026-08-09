@@ -64,6 +64,7 @@ void FilesystemCommands::make_directory(core::BytesView argument,
         return;
     }
     // FILE-020 requires the resolved physical path, including the /sd root.
+    // The path was sandboxed by parse_filesystem_path before this formatting.
     const std::string displayed = *path;
     if (!port.create_directory(*path, directory_mode)) {
         port.send(text_frame(core::protocol::operation_failure,
@@ -84,7 +85,8 @@ void FilesystemCommands::remove(core::BytesView argument,
     if (!path.has_value()) {
         return;
     }
-    // FILE-023 likewise reports the resolved physical path.
+    // FILE-023 likewise reports the resolved physical path. No user text is
+    // re-resolved here, so the response cannot widen the operation's scope.
     const std::string displayed = *path;
     port.remove_recursively(*path);
     if (port.path_exists(*path)) {
@@ -104,7 +106,8 @@ void FilesystemCommands::move(core::BytesView argument,
     if (!paths.has_value()) {
         return;
     }
-    // FILE-025 requires both resolved paths, including the /sd root.
+    // FILE-025 requires both resolved paths, including the /sd root. Both
+    // values have passed the same shared normalization and sandbox policy.
     const std::string displayed_source = paths->source;
     const std::string displayed_destination = paths->destination;
     if (!port.rename_path(paths->source, paths->destination)) {

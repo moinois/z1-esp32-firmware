@@ -56,7 +56,9 @@ bool FileDownload::start(const HostIdentity& owner, std::string path,
                          std::uint64_t now_milliseconds, FileDownloadPort& port) {
     owner_ = owner;
     resolved_path_ = std::move(path);
-    // Transfer errors report the resolved path, including /sd.
+    // Transfer errors report the resolved path, including /sd. This keeps the
+    // response normative while path resolution itself still confines access
+    // to the SD mount before this state machine is entered.
     path_ = resolved_path_;
     const core::FileCachePaths cache_paths = core::map_file_cache_paths(resolved_path_);
     port.prepare_cache_paths(cache_paths);

@@ -49,7 +49,8 @@ std::uint32_t decode_u32(core::BytesView bytes) {
 }
 
 // Builds an upload console message containing the resolved path required by
-// the file-transfer error responses.
+// the file-transfer error responses. The caller cannot use this presentation
+// choice to escape the sandbox because `resolved_path_` was normalized first.
 core::ByteVector path_message(std::string_view prefix, std::string_view path,
                               std::string_view suffix) {
     core::ByteVector result(prefix.begin(), prefix.end());
