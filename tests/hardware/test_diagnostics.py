@@ -17,11 +17,13 @@ def _diagnostic_port() -> str | None:
         from serial.tools import list_ports  # type: ignore[import-not-found]
     except ImportError:
         return None
+    # The ESP ROM USB-JTAG port (303a:4001) is a bootloader transport, not an
+    # application diagnostics stream. Prefer the firmware CDC port (303a:4002)
+    # and never toggle reset lines on the bootloader-only port here.
     candidates = [
         port.device
         for port in list_ports.comports()
-        if "usbmodem" in port.device.lower()
-        or "esp32" in (port.description or "").lower()
+        if port.vid == 0x303A and port.pid == 0x4002
     ]
     return candidates[0] if len(candidates) == 1 else None
 
