@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 import socket
+import signal
 import time
 
 import pytest
@@ -27,7 +28,10 @@ def _close_tcp_connection(connection: socket.socket) -> None:
 
 def _wait_for_tcp_cleanup() -> None:
     """Waits beyond the target receive timeout without altering target state."""
-    time.sleep(10.5)
+    # The firmware closes idle workers after the receive timeout and then
+    # releases their slots on the worker task boundary.  Allow two scheduler
+    # intervals so capacity tests never inherit stale sessions.
+    time.sleep(25.0)
 
 
 @pytest.mark.hardware
@@ -77,6 +81,19 @@ def test_tcp_accepts_one_frame_split_across_writes(tcp_host: str) -> None:
 @pytest.mark.requirement("TCP-001")
 @pytest.mark.requirement("TCP-010")
 def test_tcp_fifth_connection_receives_capacity_response(tcp_host: str) -> None:
+    def abort_if_stuck(_signum, _frame):
+        raise TimeoutError("TCP capacity test exceeded its 60-second budget")
+
+    previous_handler = signal.signal(signal.SIGALRM, abort_if_stuck)
+    signal.setitimer(signal.ITIMER_REAL, 60.0)
+    try:
+        _test_tcp_fifth_connection_receives_capacity_response(tcp_host)
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+
+
+def _test_tcp_fifth_connection_receives_capacity_response(tcp_host: str) -> None:
     _wait_for_tcp_cleanup()
     accepted_count = 0
     connections: list[socket.socket] = []
