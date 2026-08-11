@@ -106,6 +106,21 @@ bool ConfigurationFileStore::set(std::string_view tag, std::string_view key,
     return true;
 }
 
+bool ConfigurationFileStore::set_raw_key(std::string_view key,
+                                         std::string_view value) const {
+    std::lock_guard<std::mutex> lock(configuration_file_mutex);
+    auto document = read_document();
+    document.set(key, value);
+    document.uppercase_keys();
+    if (!write_file(temporary_path, document.serialize())) return false;
+    static_cast<void>(std::remove(active_path.c_str()));
+    if (std::rename(temporary_path.c_str(), active_path.c_str()) != 0) {
+        std::remove(temporary_path.c_str());
+        return false;
+    }
+    return true;
+}
+
 std::vector<std::string> ConfigurationFileStore::read_lines() const {
     std::lock_guard<std::mutex> lock(configuration_file_mutex);
     return read_document().lines();

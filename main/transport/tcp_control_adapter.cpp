@@ -31,6 +31,7 @@
 #include "tcp_wlan_station_adapter.hpp"
 #include "tcp_wlan_connection_adapter.hpp"
 #include "tcp_discovery_adapter.hpp"
+#include "access_point_command_adapter.hpp"
 #if Z1_MOCK_NETWORK_CONTROL_ENABLED
 #include "mock_network_fault_adapter.hpp"
 #endif
@@ -322,6 +323,9 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             && match.kind != firmware::core::CommandKind::system_time
             && match.kind != firmware::core::CommandKind::clear_first_time
             && match.kind != firmware::core::CommandKind::wlan
+            && match.kind != firmware::core::CommandKind::access_point
+            && match.kind != firmware::core::CommandKind::station_parameter_query
+            && match.kind != firmware::core::CommandKind::access_point_parameter_query
             && match.kind != firmware::core::CommandKind::make_directory
             && match.kind != firmware::core::CommandKind::remove
             && match.kind != firmware::core::CommandKind::move
@@ -385,6 +389,14 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
                         active_tcp_client_count());
                     send_tcp_discovery_burst(active_tcp_client_count());
                 }
+            }
+        } else if (match.kind == firmware::core::CommandKind::access_point ||
+                   match.kind == firmware::core::CommandKind::station_parameter_query ||
+                   match.kind == firmware::core::CommandKind::access_point_parameter_query) {
+            const auto response = execute_access_point_command(match.kind,
+                                                               frame.payload);
+            if (response.has_value()) {
+                static_cast<void>(session.queue_frame(*response));
             }
         } else if (match.kind == firmware::core::CommandKind::config_restore ||
                    match.kind == firmware::core::CommandKind::config_default) {

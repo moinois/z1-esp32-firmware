@@ -51,6 +51,7 @@ idf_component_register(
         "connectivity/wlan_event_adapter.cpp"
         "connectivity/wifi_diagnostic_log.cpp"
         "connectivity/connectivity_startup_adapter.cpp"
+        "connectivity/access_point_command_adapter.cpp"
         "connectivity/automatic_connection_adapter.cpp"
         "provisioning/blufi_lifecycle_adapter.cpp"
         "provisioning/blufi_crypto_adapter.cpp"

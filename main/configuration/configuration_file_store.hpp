@@ -29,6 +29,9 @@ public:
     bool set(std::string_view tag, std::string_view key,
              std::string_view value) const;
 
+    /// Updates one complete key without adding a configuration namespace.
+    bool set_raw_key(std::string_view key, std::string_view value) const;
+
     /// Returns complete source lines for protocols that require raw records.
     std::vector<std::string> read_lines() const;
 

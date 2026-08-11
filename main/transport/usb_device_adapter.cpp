@@ -61,6 +61,7 @@
 #include "configuration_file_store.hpp"
 #include "wlan_event_adapter.hpp"
 #include "wifi_diagnostic_log.hpp"
+#include "access_point_command_adapter.hpp"
 #include "sd_access_diagnostics.hpp"
 #include "posix_file.hpp"
 #include "esp_wifi_scanner.hpp"
@@ -1137,6 +1138,15 @@ void usb_local_command_task(void* /* unused */) {
             }
             static_cast<void>(firmware::target::wifi_diagnostic_log().append(
                 "wlan.command.finish"));
+        } else if (match.kind == firmware::core::CommandKind::access_point ||
+                   match.kind == firmware::core::CommandKind::station_parameter_query ||
+                   match.kind == firmware::core::CommandKind::access_point_parameter_query) {
+            const auto response = execute_access_point_command(
+                match.kind, command_frame->payload);
+            if (response.has_value()) {
+                static_cast<void>(protocol_state.transmit_queue().enqueue(
+                    firmware::core::encode_frame(*response)));
+            }
         } else if (match.kind == firmware::core::CommandKind::config_restore ||
                    match.kind == firmware::core::CommandKind::config_default) {
             if (match.kind == firmware::core::CommandKind::config_restore) {
@@ -1516,6 +1526,12 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                 continue;
             }
             if (match.kind == firmware::core::CommandKind::wlan) {
+                static_cast<void>(enqueue_usb_local_command(frame));
+                continue;
+            }
+            if (match.kind == firmware::core::CommandKind::access_point ||
+                match.kind == firmware::core::CommandKind::station_parameter_query ||
+                match.kind == firmware::core::CommandKind::access_point_parameter_query) {
                 static_cast<void>(enqueue_usb_local_command(frame));
                 continue;
             }
