@@ -31,18 +31,18 @@ TEST_CASE(lpc_003_initial_status_contains_four_spaces_before_feed_rate) {
     REQUIRE(text(reply->payload).find("|    F:0.0,3000.0,100.0|") != std::string::npos);
 }
 
-TEST_CASE(stat_001_all_controller_snapshots_are_truncated_to_528_bytes) {
+TEST_CASE(stat_001_status_uses_519_while_text_snapshots_retain_528_bytes) {
     ControllerSnapshots snapshots;
     snapshots.update_status(bytes("<" + std::string(600, 's') + ">"));
     snapshots.update_diagnostic(ByteVector(600, 'd'));
     snapshots.update_version(ByteVector(600, 'v'));
 
-    REQUIRE_EQ(snapshots.latest_status_size(), 528U);
+    REQUIRE_EQ(snapshots.latest_status_size(), 519U);
     REQUIRE_EQ(snapshots.diagnostic_size(), 528U);
     REQUIRE_EQ(snapshots.version_size(), 528U);
 }
 
-TEST_CASE(stat_002_empty_status_is_ignored_but_other_empty_snapshots_replace) {
+TEST_CASE(stat_002_empty_status_diagnostic_and_version_updates_are_ignored) {
     ControllerSnapshots snapshots;
     snapshots.update_status(bytes("<Run>"));
     snapshots.update_diagnostic(bytes("{old}"));
@@ -53,8 +53,19 @@ TEST_CASE(stat_002_empty_status_is_ignored_but_other_empty_snapshots_replace) {
     snapshots.update_version({});
 
     REQUIRE(text(snapshots.status_reply({})->payload).find("<Run|") == 0U);
-    REQUIRE(!snapshots.diagnostic_reply(-20).has_value());
-    REQUIRE_EQ(text(snapshots.version_reply().payload), std::string("version = .0.1.13\n"));
+    REQUIRE_EQ(text(snapshots.diagnostic_reply(-20)->payload),
+               std::string("{old|RSSI:-20}\n"));
+    REQUIRE_EQ(text(snapshots.version_reply().payload),
+               std::string("version = old.0.1.13\n"));
+}
+
+TEST_CASE(stat_001_short_version_update_preserves_the_existing_suffix) {
+    ControllerSnapshots snapshots;
+    snapshots.update_version(ByteVector{'a', 'b', 'c', 'd', 'e', 'f', 0U});
+    snapshots.update_version(ByteVector{'x', 'y'});
+
+    REQUIRE_EQ(text(snapshots.version_reply().payload),
+               std::string("version = xycdef.0.1.13\n"));
 }
 
 TEST_CASE(stat_003_only_three_newest_pending_statuses_are_retained) {
@@ -121,7 +132,7 @@ TEST_CASE(stat_007_diagnostic_requires_opening_and_closing_braces) {
     REQUIRE(!snapshots.diagnostic_reply(0).has_value());
 }
 
-TEST_CASE(stat_008_oversized_rssi_result_returns_original_through_one_following_byte) {
+TEST_CASE(stat_008_oversized_rssi_result_returns_all_original_text_unchanged) {
     ControllerSnapshots snapshots;
     const std::string diagnostic = "{" + std::string(520, 'x') + "}Ztail";
     snapshots.update_diagnostic(bytes(diagnostic));
@@ -129,7 +140,8 @@ TEST_CASE(stat_008_oversized_rssi_result_returns_original_through_one_following_
     const auto reply = snapshots.diagnostic_reply(-100);
 
     REQUIRE(reply.has_value());
-    REQUIRE_EQ(reply->payload.size(), 523U);
+    REQUIRE_EQ(reply->payload.size(), diagnostic.size());
+    REQUIRE_EQ(text(reply->payload), diagnostic);
     REQUIRE_EQ(reply->payload[521], static_cast<std::uint8_t>('}'));
     REQUIRE_EQ(reply->payload[522], static_cast<std::uint8_t>('Z'));
 }

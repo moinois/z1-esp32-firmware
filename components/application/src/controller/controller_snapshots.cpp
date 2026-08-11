@@ -11,8 +11,9 @@
 namespace firmware::application {
 namespace {
 
-constexpr std::size_t maximum_snapshot_size =
+constexpr std::size_t retained_text_size =
     core::protocol::controller_maximum_frame_size;
+constexpr std::size_t maximum_status_size = 519U;
 constexpr std::size_t maximum_pending_statuses = 3U;
 constexpr std::size_t maximum_controller_version_prefix = 63U;
 
@@ -39,18 +40,28 @@ bool usable_status(std::string_view status) {
 }  // namespace
 
 ControllerSnapshots::ControllerSnapshots()
-    : latest_status_(initial_status.begin(), initial_status.end()) {}
+    : latest_status_(initial_status.begin(), initial_status.end()),
+      diagnostic_(retained_text_size, 0U), version_(retained_text_size, 0U) {}
 
-core::ByteVector ControllerSnapshots::bounded_copy(core::BytesView payload) {
-    const std::size_t size = std::min(payload.size(), maximum_snapshot_size);
+core::ByteVector ControllerSnapshots::bounded_status_copy(core::BytesView payload) {
+    const std::size_t size = std::min(payload.size(), maximum_status_size);
     return {payload.begin(), payload.begin() + static_cast<std::ptrdiff_t>(size)};
+}
+
+void ControllerSnapshots::replace_text_prefix(core::ByteVector& retained,
+                                              core::BytesView payload) {
+    if (payload.size() == 0U) {
+        return;
+    }
+    const std::size_t size = std::min(payload.size(), retained.size());
+    std::copy_n(payload.begin(), size, retained.begin());
 }
 
 void ControllerSnapshots::update_status(core::BytesView payload) {
     if (payload.size() == 0U) {
         return;
     }
-    latest_status_ = bounded_copy(payload);
+    latest_status_ = bounded_status_copy(payload);
     if (pending_statuses_.size() == maximum_pending_statuses) {
         pending_statuses_.pop_front();
     }
@@ -58,11 +69,11 @@ void ControllerSnapshots::update_status(core::BytesView payload) {
 }
 
 void ControllerSnapshots::update_diagnostic(core::BytesView payload) {
-    diagnostic_ = bounded_copy(payload);
+    replace_text_prefix(diagnostic_, payload);
 }
 
 void ControllerSnapshots::update_version(core::BytesView payload) {
-    version_ = bounded_copy(payload);
+    replace_text_prefix(version_, payload);
 }
 
 std::optional<core::Frame> ControllerSnapshots::status_reply(const core::StatusExtension& extension) {
@@ -85,7 +96,10 @@ std::optional<core::Frame> ControllerSnapshots::status_reply(const core::StatusE
 }
 
 std::optional<core::Frame> ControllerSnapshots::diagnostic_reply(std::int32_t rssi) const {
-    const std::string_view diagnostic = as_text(diagnostic_);
+    const auto nul = std::find(diagnostic_.begin(), diagnostic_.end(), 0U);
+    const std::string_view diagnostic(
+        reinterpret_cast<const char*>(diagnostic_.data()),
+        static_cast<std::size_t>(nul - diagnostic_.begin()));
     if (diagnostic.empty() || diagnostic.front() != '{') {
         return std::nullopt;
     }
@@ -98,12 +112,10 @@ std::optional<core::Frame> ControllerSnapshots::diagnostic_reply(std::int32_t rs
     const int insertion_length = std::snprintf(insertion, sizeof(insertion), "|RSSI:%ld", static_cast<long>(rssi));
     const std::size_t complete_size = closing + static_cast<std::size_t>(insertion_length) + 2U;
     if (insertion_length < 0 || static_cast<std::size_t>(insertion_length) >= sizeof(insertion) ||
-        complete_size > maximum_snapshot_size) {
-        const std::size_t fallback_size = std::min(diagnostic.size(), closing + 2U);
+        diagnostic.size() + static_cast<std::size_t>(insertion_length) >= retained_text_size) {
         return core::Frame{
             core::protocol::diagnostic_data,
-            {diagnostic_.begin(),
-             diagnostic_.begin() + static_cast<std::ptrdiff_t>(fallback_size)}};
+            {diagnostic_.begin(), nul}};
     }
 
     core::ByteVector payload;

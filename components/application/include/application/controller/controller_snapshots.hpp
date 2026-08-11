@@ -20,10 +20,10 @@ public:
     /// Replaces the latest nonempty status and queues it for one pending request.
     void update_status(core::BytesView payload);
 
-    /// Replaces diagnostic data, including with an empty payload.
+    /// Replaces a nonempty diagnostic prefix while retaining the older suffix.
     void update_diagnostic(core::BytesView payload);
 
-    /// Replaces controller version data, including with an empty payload.
+    /// Replaces a nonempty version prefix while retaining the older suffix.
     void update_version(core::BytesView payload);
 
     /// Consumes pending status state and creates the extended status response.
@@ -42,7 +42,9 @@ public:
     std::size_t pending_status_count() const;
 
 private:
-    static core::ByteVector bounded_copy(core::BytesView payload);
+    static core::ByteVector bounded_status_copy(core::BytesView payload);
+    static void replace_text_prefix(core::ByteVector& retained,
+                                    core::BytesView payload);
 
     core::ByteVector latest_status_;
     std::deque<core::ByteVector> pending_statuses_;
