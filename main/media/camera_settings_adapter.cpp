@@ -3,29 +3,68 @@
 
 #include "configuration_file_store.hpp"
 
+#include "esp_log.h"
+
+#include <algorithm>
+#include <array>
+#include <cstdio>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace firmware::target {
 namespace {
+
+constexpr char diagnostic_tag[] = "WEBSERVER";
+constexpr std::size_t configuration_chunk_size = 255U;
 
 // Exposes the SD configuration file through the portable camera source port.
 class SdCameraConfigSource final
     : public firmware::application::CameraConfigSource {
 public:
-    // Finds one camera key while retaining returned string-view storage.
+    // Replays the camera's 255-byte chunk scan and returns its first value token.
     std::optional<std::string_view> find(std::string_view key) const override {
-        const auto value = ConfigurationFileStore{}.get(
-            firmware::application::camera_configuration_tag, key);
-        if (!value.has_value()) return std::nullopt;
-        values_.emplace_back(*value);
-        return values_.back();
+        std::FILE* file = std::fopen(
+            std::string(active_configuration_path()).c_str(), "rb");
+        if (file == nullptr) return std::nullopt;
+        std::array<char, configuration_chunk_size + 1U> chunk{};
+        while (std::fgets(chunk.data(), static_cast<int>(chunk.size()), file) != nullptr) {
+            std::string_view line(chunk.data());
+            const auto token =
+                firmware::application::camera_value_token_from_chunk(line, key);
+            if (!token.has_value()) continue;
+            value_.assign(*token);
+            std::fclose(file);
+            return value_;
+        }
+        std::fclose(file);
+        return std::nullopt;
+    }
+
+    void report_conversion_diagnostic(
+        firmware::application::CameraConversionDiagnostic diagnostic,
+        std::string_view suffix) const override {
+        using Diagnostic = firmware::application::CameraConversionDiagnostic;
+        switch (diagnostic) {
+            case Diagnostic::value_has_no_digits:
+                ESP_LOGE(diagnostic_tag, "错误：没有数字被转换。");
+                break;
+            case Diagnostic::value_has_suffix:
+                ESP_LOGE(diagnostic_tag, "警告：部分转换，非数字字符为：%.*s",
+                         static_cast<int>(suffix.size()), suffix.data());
+                break;
+            case Diagnostic::frames_has_no_digits:
+                ESP_LOGE(diagnostic_tag, "错误：没有数字被转换");
+                break;
+            case Diagnostic::frames_has_suffix:
+                ESP_LOGW(diagnostic_tag, "警告：部分转换，非数字字符为：'%.*s'",
+                         static_cast<int>(suffix.size()), suffix.data());
+                break;
+        }
     }
 
 private:
-    mutable std::vector<std::string> values_;
+    mutable std::string value_;
 };
 
 }  // namespace

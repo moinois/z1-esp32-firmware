@@ -160,8 +160,9 @@ The first core-to-periphery development slice contains:
   reporting, change collapsing, lowercase hexadecimal, and DO2 extraction;
 - optional target CAN startup with an immediate boot-up cycle, drift-free
   10 ms receive/service processing, 50 ms output sampling, and nonfatal setup;
-- one-shot camera setting loading with strict signed decimals, field-specific
-  normalization, all 15 frame-size mappings, and UXGA dimension fallback;
+- one-shot camera setting loading from literal `*mainboard.` records with
+  31-byte signed-32 parsing, overflow saturation, field-specific normalization,
+  DIAG-022 conversion records, all 15 mappings, and UXGA fallback;
 - exact camera DVP/SCCB/XCLK pins, JPEG/PSRAM/buffer policy, UXGA startup,
   sensor orientation, stream-size application, and capture timeout contract;
 - exact main/video HTTP listener limits and web-volume mount/SPIFFS format
