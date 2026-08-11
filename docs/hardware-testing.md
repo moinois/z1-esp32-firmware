@@ -295,12 +295,13 @@ closed both sockets and admitted a successor stream. The report is retained as
 physical sensor conformance.
 
 Recording cannot yet be positively exercised even with both mocks enabled.
-REC-001 currently generates `/sd/videos/session-YYYYMMDD_HHMMSS.avi`, while
-SD-009 disables long-file-name support; the generated base name therefore
-cannot be represented by the mandated 8.3 FAT policy. The recording task also
-does not create `/videos`. This is tracked as a normative conflict rather than
-silently changing either filename or filesystem semantics in the
-implementation.
+At the time of this historical run, REC-001 generated
+`/sd/videos/session-YYYYMMDD_HHMMSS.avi` while the then-current SD-009 disabled
+long-file-name support. The updated SD-009 now requires names through 255
+characters and removes that specification conflict. The recording task also
+did not create `/videos`. That run remains historical evidence; the former
+normative filename conflict is no longer a current blocker and the recording
+case should be rerun against a firmware built from the revised defaults.
 
 The camera mock follows the same initialization, configuration, resolution,
 capture, recording, WebSocket streaming, and OTA-deinitialization surface as
@@ -710,10 +711,10 @@ argument slice. After OTA installation, USB and TCP mutations observed the same
 configuration bytes; TCP mkdir/move/remove effects were independently verified
 through USB; and an active USB upload rejected TCP before cancel released the
 owner for a successful persistent-socket TCP upload. Three cases passed. The
-fourth is an explicit XFAIL: SD-009 requires short 8.3 names with LFN disabled,
+fourth was an explicit XFAIL under the former SD-009 short-name policy,
 while CFG-001 requires `/sd/config.default`, whose seven-character extension
-cannot be created by that FAT policy. No implementation policy was changed to
-hide this normative conflict. The report is
+could not be created by that FAT policy. No implementation policy was changed
+to hide the conflict in that historical run. The report is
 `build/hil-mock-cross-transport-final.json`.
 
 The inverse ownership case passed separately: a persistent TCP upload retained

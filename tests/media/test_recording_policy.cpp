@@ -4,7 +4,7 @@
 
 TEST_CASE(rec_003_and_004_segment_path_uses_utc_and_base_name) {
     const auto path = firmware::application::recording_segment_path(
-        "/sd/play/ride.v1.avi", 0);
+        "/sd/job.v1/archive/ride.v2.avi", 0);
     REQUIRE(path.has_value());
     REQUIRE_EQ(*path, std::string("/sd/videos/ride-19700101_000000.avi"));
     REQUIRE(!firmware::application::recording_segment_path("ride.avi", 0).has_value());
