@@ -5,6 +5,8 @@
 #include "controller_channel_adapter.hpp"
 #include "runtime_play_observer.hpp"
 #include "tcp_control_adapter.hpp"
+#include "usb_device_adapter.hpp"
+#include "controller_command_loop.hpp"
 #include "play_runtime_state.hpp"
 #include "posix_file.hpp"
 
@@ -42,7 +44,10 @@ std::optional<std::string> ControllerPlayAdapter::cached_md5(
 }
 
 void ControllerPlayAdapter::broadcast(firmware::core::Frame frame) {
-    static_cast<void>(send(std::move(frame)));
+    // Play errors are host broadcasts, not controller responses. Preserve the
+    // normative USB-before-TCP destination order used by shared host output.
+    static_cast<void>(queue_usb_frame(frame));
+    broadcast_tcp_frame(frame);
 }
 
 void ControllerPlayAdapter::diagnose(
@@ -57,15 +62,22 @@ void ControllerPlayAdapter::diagnose(
 }
 
 bool ControllerPlayAdapter::send(firmware::core::Frame frame) {
-    const auto encoded = firmware::core::encode_controller_frame(frame);
-    if (encoded.empty()) {
+    constexpr std::size_t encoded_overhead =
+        firmware::core::protocol::common_frame_overhead;
+    if (!response_memory_available(frame.payload.size() + encoded_overhead)) {
         diagnose(firmware::application::playback_diagnostic(
             firmware::application::PlaybackDiagnosticEvent::frame_allocation_failed));
         return false;
     }
-    const int written = channel_.write(encoded);
-    if (written != static_cast<int>(encoded.size())) {
-        ESP_LOGE("uart_task", "UART send failed");
+    const auto result = enqueue_play_controller_frame(frame);
+    if (result == PlayControllerEnqueueResult::capacity_full) {
+        diagnose(firmware::application::playback_diagnostic(
+            firmware::application::PlaybackDiagnosticEvent::output_full));
+        return false;
+    }
+    if (result != PlayControllerEnqueueResult::accepted) {
+        diagnose(firmware::application::playback_diagnostic(
+            firmware::application::PlaybackDiagnosticEvent::frame_allocation_failed));
         return false;
     }
     return true;

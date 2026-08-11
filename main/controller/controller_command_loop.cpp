@@ -258,6 +258,20 @@ bool enqueue_generated_controller_frame(const firmware::core::Frame& frame) {
     return enqueue_controller_frame_impl(frame, true);
 }
 
+PlayControllerEnqueueResult enqueue_play_controller_frame(
+    const firmware::core::Frame& frame) {
+    if (controller_forwarder_mutex == nullptr ||
+        xSemaphoreTake(controller_forwarder_mutex, portMAX_DELAY) != pdTRUE) {
+        return PlayControllerEnqueueResult::unavailable;
+    }
+    const bool capacity_full = controller_forwarder.full();
+    const bool queued = controller_forwarder.forward(frame);
+    xSemaphoreGive(controller_forwarder_mutex);
+    if (queued) return PlayControllerEnqueueResult::accepted;
+    return capacity_full ? PlayControllerEnqueueResult::capacity_full
+                         : PlayControllerEnqueueResult::unavailable;
+}
+
 bool controller_firmware_transfer_active() {
     return active_firmware != nullptr && active_firmware->active();
 }

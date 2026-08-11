@@ -113,7 +113,8 @@ The first core-to-periphery development slice contains:
 - streamed-play preparation with escaped normalized paths, CRC identity,
   bounded file size, rate-limited console errors, and local status replies;
 - streamed-play controller start validation, big-endian acceptance response,
-  observer notification, retry-preserving rejection, and terminal cleanup;
+  observer notification, retry-preserving rejection, terminal cleanup, queued
+  controller output, and USB-then-TCP host error broadcasts;
 - streamed-play logical-line reading with 129-byte source chunks, embedded-NUL
   behavior, long-line collapse, 64-byte wire limiting, and distinct EOF/failure;
 - streamed-play data requests with bounded line aggregation, position-aware

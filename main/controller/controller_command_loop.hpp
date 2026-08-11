@@ -20,6 +20,18 @@ bool enqueue_controller_frame(const firmware::core::Frame& frame);
  *  uses enqueue_controller_frame() because ROUTE-018 requires silent drops. */
 bool enqueue_generated_controller_frame(const firmware::core::Frame& frame);
 
+/// Outcome of admitting a generated streamed-play response to controller output.
+enum class PlayControllerEnqueueResult {
+    accepted,
+    capacity_full,
+    unavailable,
+};
+
+/** Queues a streamed-play response while preserving its family-specific
+ *  capacity diagnostic in the play adapter. */
+PlayControllerEnqueueResult enqueue_play_controller_frame(
+    const firmware::core::Frame& frame);
+
 /// Reports whether a controller transfer family currently suppresses traffic.
 bool controller_firmware_transfer_active();
 bool controller_configuration_transfer_active();
