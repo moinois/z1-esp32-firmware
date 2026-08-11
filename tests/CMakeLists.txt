@@ -34,6 +34,7 @@ add_executable(
     diagnostics/test_diagnostic_log_writer.cpp
     diagnostics/test_serial_diagnostic_log.cpp
     diagnostics/test_blufi_custom_diagnostics.cpp
+    diagnostics/test_file_transfer_diagnostics.cpp
     connectivity/test_discovery.cpp
     connectivity/test_network_fault_injection.cpp
     protocol/test_frame.cpp

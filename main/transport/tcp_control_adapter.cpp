@@ -46,6 +46,7 @@
 #include "application/storage/filesystem_commands.hpp"
 #include "application/storage/file_upload.hpp"
 #include "application/storage/file_download.hpp"
+#include "application/diagnostics/file_transfer_diagnostics.hpp"
 #include "application/storage/directory_listing.hpp"
 #include "application/storage/file_hash_command.hpp"
 #include "application/configuration/configuration_files.hpp"
@@ -517,8 +518,17 @@ public:
         if (frame.type == firmware::core::protocol::file_command) {
             const auto start = firmware::core::parse_file_transfer_start(frame.payload);
             if (!start.has_value()) return;
+            const bool another_host_owns =
+                router_.ownership().has_file_owner() &&
+                !router_.ownership().is_file_owner(session_->identity());
             if (upload_.active() || download_.active() ||
                 !router_.ownership().claim_file(session_->identity())) {
+                if (another_host_owns) {
+                    const auto diagnostic =
+                        firmware::application::file_transfer_busy_message(
+                            session_->identity());
+                    ESP_LOGI("WIFI", "%s", diagnostic.c_str());
+                }
                 session_->queue_frame({firmware::core::protocol::file_cancel,
                                       firmware::core::ByteVector(
                                           firmware::application::file_owner_limit_message,

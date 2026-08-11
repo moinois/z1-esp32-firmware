@@ -57,6 +57,7 @@
 #include "core/filesystem/sd_user_path.hpp"
 #include "application/storage/file_upload.hpp"
 #include "application/storage/file_download.hpp"
+#include "application/diagnostics/file_transfer_diagnostics.hpp"
 #include "application/runtime/m942_exercise.hpp"
 #include "configuration_file_store.hpp"
 #include "wlan_event_adapter.hpp"
@@ -1300,6 +1301,13 @@ void handle_usb_file_transfer(const firmware::core::Frame& frame) {
             (owned_by_usb ||
              shared_host_router().ownership().claim_file(usb_host_identity));
         if (!capacity_available) {
+            if (!owned_by_usb &&
+                shared_host_router().ownership().has_file_owner()) {
+                const auto diagnostic =
+                    firmware::application::file_transfer_busy_message(
+                        usb_host_identity);
+                ESP_LOGI("WIFI", "%s", diagnostic.c_str());
+            }
             const std::string_view message =
                 firmware::application::file_owner_limit_message;
             const firmware::core::Frame rejection{
