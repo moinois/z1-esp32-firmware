@@ -5,6 +5,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <limits>
 
 namespace firmware::application {
 namespace {
@@ -25,11 +26,18 @@ core::HttpResponsePolicy error_response(std::uint16_t status,
 
 // Converts a valid integer-like JSON number to the CAM-001 frame-size range.
 std::uint8_t normalize_frame_size(double value) {
-    if (value < static_cast<double>(minimum_camera_frame_size) ||
-        value > static_cast<double>(maximum_camera_frame_size)) {
+    const double truncated = std::trunc(value);
+    const std::int32_t signed_value =
+        truncated <= static_cast<double>(std::numeric_limits<std::int32_t>::min())
+            ? std::numeric_limits<std::int32_t>::min()
+        : truncated >= static_cast<double>(std::numeric_limits<std::int32_t>::max())
+            ? std::numeric_limits<std::int32_t>::max()
+            : static_cast<std::int32_t>(truncated);
+    if (signed_value < minimum_camera_frame_size ||
+        signed_value > maximum_camera_frame_size) {
         return default_camera_frame_size;
     }
-    return static_cast<std::uint8_t>(value);
+    return static_cast<std::uint8_t>(signed_value);
 }
 
 }  // namespace
@@ -49,15 +57,14 @@ core::HttpResponsePolicy CameraResolutionEndpoint::handle(
         return error_response(500U, invalid_json_body);
     }
     const auto resolution = core::find_json_number(*document, "resolution");
-    if (!resolution.has_value() || !std::isfinite(*resolution) ||
-        std::floor(*resolution) != *resolution) {
+    if (!resolution.has_value()) {
         return error_response(500U, invalid_resolution_body);
     }
 
     const FrameDimensions dimensions = camera_dimensions(
         normalize_frame_size(*resolution));
     if (!camera.set_frame_dimensions(dimensions)) {
-        return error_response(500U, sensor_failure_body);
+        return error_response(400U, sensor_failure_body);
     }
     return {200U, "text/html", success_body, false, false};
 }

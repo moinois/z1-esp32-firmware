@@ -51,16 +51,24 @@ TEST_CASE(web_021_missing_or_nonnumeric_resolution_returns_exact_500) {
     REQUIRE_EQ(wrong_type.body, std::string_view("Missing or invalid 'resolution'"));
 }
 
-TEST_CASE(web_022_resolution_is_normalized_and_sensor_failures_are_500) {
+TEST_CASE(web_022_resolution_is_truncated_clamped_and_sensor_failures_are_400) {
     FakeCameraResolutionPort port;
     CameraResolutionEndpoint endpoint;
     const auto normalized = endpoint.handle("{\"resolution\":0}", port);
     REQUIRE_EQ(normalized.status_code, 200U);
     REQUIRE_EQ(port.last_dimensions, FrameDimensions({640U, 480U}));
 
+    const auto truncated = endpoint.handle("{\"resolution\":14.9}", port);
+    REQUIRE_EQ(truncated.status_code, 200U);
+    REQUIRE_EQ(port.last_dimensions, FrameDimensions({1280U, 1024U}));
+
+    const auto clamped = endpoint.handle("{\"resolution\":1e40}", port);
+    REQUIRE_EQ(clamped.status_code, 200U);
+    REQUIRE_EQ(port.last_dimensions, FrameDimensions({640U, 480U}));
+
     port.accepts = false;
     const auto failed = endpoint.handle("{\"resolution\":1}", port);
-    REQUIRE_EQ(failed.status_code, 500U);
+    REQUIRE_EQ(failed.status_code, 400U);
     REQUIRE_EQ(failed.body, std::string_view("Failed to set framesize"));
 }
 
