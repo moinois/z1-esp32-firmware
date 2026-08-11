@@ -2,7 +2,6 @@
 #pragma once
 
 #include "application/playback/play_controller.hpp"
-#include "posix_file.hpp"
 #include <string>
 
 namespace firmware::target {
@@ -31,7 +30,6 @@ public:
 
 private:
     ControllerChannelAdapter& channel_;
-    PosixFile file_;
 };
 
 }  // namespace firmware::target

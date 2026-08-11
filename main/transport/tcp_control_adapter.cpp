@@ -280,7 +280,7 @@ void handle_tcp_local_frame(firmware::application::TcpClientSession& session,
             frame.payload,
             static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL), play_port);
         if (prepared) {
-            static_cast<void>(session.queue_frame(play_session.status_reply()));
+            static_cast<void>(session.queue_frame(play_session.status_reply(play_port)));
         } else {
             tcp_router.ownership().release_play();
         }

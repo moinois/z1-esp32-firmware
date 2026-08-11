@@ -42,7 +42,7 @@ public:
                  PlayPreparationPort& port);
 
     /// Creates the local `0xB7` status response for the requesting host.
-    core::Frame status_reply() const;
+    core::Frame status_reply(PlayPreparationPort& port) const;
 
     /// Marks controller acceptance without resetting current playback position.
     void mark_running();
@@ -78,7 +78,6 @@ private:
     bool file_open_ = false;
     bool running_ = false;
     std::string path_;
-    std::string md5_;
     std::uint16_t path_identifier_ = 0U;
     std::uint32_t file_size_ = 0U;
     std::uint32_t current_line_ = 0U;

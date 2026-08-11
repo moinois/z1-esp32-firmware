@@ -26,7 +26,11 @@ struct PlayPathSelection {
 };
 
 PlayPathSelection resolve_play_path(core::BytesView payload) {
-    std::string decoded = core::decode_escaped(payload);
+    const core::BytesView argument = payload.size() >= play_prefix_size
+        ? core::BytesView(payload.data() + play_prefix_size,
+                          payload.size() - play_prefix_size)
+        : core::BytesView{};
+    std::string decoded = core::decode_escaped(argument);
     if (!decoded.empty() && decoded.back() == '\n') {
         decoded.pop_back();
     }
@@ -57,10 +61,6 @@ bool PlaySession::prepare(core::BytesView payload, std::uint64_t now_millisecond
                           PlayPreparationPort& port) {
     port.diagnose(playback_diagnostic(
         PlaybackDiagnosticEvent::preparation_recognized));
-    port.close_file();
-    clear_prepared_state();
-    ++generation_;
-
     const PlayPathSelection path = resolve_play_path(payload);
     port.diagnose(playback_diagnostic(
         PlaybackDiagnosticEvent::path_extracted, path.extracted));
@@ -70,35 +70,35 @@ bool PlaySession::prepare(core::BytesView payload, std::uint64_t now_millisecond
         return false;
     }
     const auto opened_size = port.open_file(resolved);
-    if (!opened_size.has_value() ||
-        *opened_size > std::numeric_limits<std::uint32_t>::max()) {
-        if (opened_size.has_value()) {
-            port.close_file();
-        }
+    if (!opened_size.has_value()) {
+        file_open_ = false;
         port.diagnose(playback_diagnostic(
             PlaybackDiagnosticEvent::open_failure, resolved));
         report_error(open_error, now_milliseconds, port);
         return false;
     }
 
-    path_ = core::logical_sd_path(resolved);
-    file_size_ = static_cast<std::uint32_t>(*opened_size);
+    path_ = resolved;
+    file_size_ = static_cast<std::uint32_t>(*opened_size & 0xffffffffULL);
     path_identifier_ = core::crc16_ccitt(std::string_view(path_));
-    const auto cached = port.cached_md5(resolved);
-    if (cached.has_value() && valid_md5(*cached)) {
-        md5_ = *cached;
-    }
     file_open_ = true;
+    current_line_ = 0U;
+    transmitted_bytes_ = 0U;
+    retained_data_.clear();
+    ++generation_;
     return true;
 }
 
-core::Frame PlaySession::status_reply() const {
-    if (!running_ || !file_open_) {
+core::Frame PlaySession::status_reply(PlayPreparationPort& port) const {
+    if (!running_ || path_.empty()) {
         return {core::protocol::play_status, {'|'}};
     }
+    std::string md5;
+    const auto cached = port.cached_md5(path_);
+    if (cached.has_value() && valid_md5(*cached)) md5 = *cached;
     core::ByteVector payload(path_.begin(), path_.end());
     payload.push_back('|');
-    payload.insert(payload.end(), md5_.begin(), md5_.end());
+    payload.insert(payload.end(), md5.begin(), md5.end());
     return {core::protocol::play_status, std::move(payload)};
 }
 
@@ -150,7 +150,6 @@ void PlaySession::report_error(std::string_view message,
 void PlaySession::clear_prepared_state() {
     file_open_ = false;
     path_.clear();
-    md5_.clear();
     path_identifier_ = 0U;
     file_size_ = 0U;
     current_line_ = 0U;

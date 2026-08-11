@@ -5,6 +5,8 @@
 #include "controller_channel_adapter.hpp"
 #include "runtime_play_observer.hpp"
 #include "tcp_control_adapter.hpp"
+#include "play_runtime_state.hpp"
+#include "posix_file.hpp"
 
 #include "esp_timer.h"
 #include "core/filesystem/file_transfer_paths.hpp"
@@ -21,13 +23,12 @@ ControllerPlayAdapter::ControllerPlayAdapter(ControllerChannelAdapter& channel)
 ControllerPlayAdapter::~ControllerPlayAdapter() = default;
 
 void ControllerPlayAdapter::close_file() {
-    file_.close();
+    close_shared_play_file();
 }
 
 std::optional<std::uint64_t> ControllerPlayAdapter::open_file(
     std::string_view path) {
-    if (!file_.open(path, "rb")) return std::nullopt;
-    return file_.size();
+    return open_shared_play_file(path);
 }
 
 std::optional<std::string> ControllerPlayAdapter::cached_md5(
@@ -75,7 +76,7 @@ void ControllerPlayAdapter::release_play_ownership() {
 }
 
 bool ControllerPlayAdapter::rewind_file() {
-    return file_.rewind();
+    return rewind_shared_play_file();
 }
 
 std::uint64_t ControllerPlayAdapter::now_milliseconds() const {
@@ -84,11 +85,8 @@ std::uint64_t ControllerPlayAdapter::now_milliseconds() const {
 
 std::optional<firmware::application::PlayLineChunk>
 ControllerPlayAdapter::read_chunk(std::size_t maximum_size) {
-    if (maximum_size == 0U || file_.get() == nullptr) return std::nullopt;
-    auto bytes = file_.read(maximum_size);
-    if (!bytes.has_value()) return std::nullopt;
-    const bool end = std::feof(file_.get()) != 0;
-    return firmware::application::PlayLineChunk{std::move(*bytes), end};
+    if (maximum_size == 0U) return std::nullopt;
+    return read_shared_play_chunk(maximum_size);
 }
 
 }  // namespace firmware::target

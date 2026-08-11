@@ -3,6 +3,8 @@
 
 #include "application/transport/tcp_client_session.hpp"
 #include "core/filesystem/file_transfer_paths.hpp"
+#include "play_runtime_state.hpp"
+#include "posix_file.hpp"
 #include "esp_log.h"
 
 #include <cstdio>
@@ -15,13 +17,12 @@ TcpPlayPreparationAdapter::TcpPlayPreparationAdapter(
 TcpPlayPreparationAdapter::~TcpPlayPreparationAdapter() = default;
 
 void TcpPlayPreparationAdapter::close_file() {
-    file_.close();
+    close_shared_play_file();
 }
 
 std::optional<std::uint64_t> TcpPlayPreparationAdapter::open_file(
     std::string_view path) {
-    if (!file_.open(path, "rb")) return std::nullopt;
-    return file_.size();
+    return open_shared_play_file(path);
 }
 
 std::optional<std::string> TcpPlayPreparationAdapter::cached_md5(

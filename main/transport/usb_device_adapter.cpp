@@ -499,28 +499,11 @@ public:
     }
 
     void close_file() override {
-        if (file_ != nullptr) std::fclose(file_);
-        file_ = nullptr;
+        close_shared_play_file();
     }
 
     std::optional<std::uint64_t> open_file(std::string_view path) override {
-        close_file();
-        file_ = std::fopen(std::string(path).c_str(), binary_read_mode);
-        if (file_ == nullptr) {
-            firmware::target::log_sd_access_failure("open play file", path, errno);
-            return std::nullopt;
-        }
-        if (std::fseek(file_, 0L, SEEK_END) != 0) {
-            firmware::target::log_sd_access_failure("seek play file", path, errno);
-            close_file();
-            return std::nullopt;
-        }
-        const long size = std::ftell(file_);
-        if (size < 0L || std::fseek(file_, 0L, SEEK_SET) != 0) {
-            close_file();
-            return std::nullopt;
-        }
-        return static_cast<std::uint64_t>(size);
+        return open_shared_play_file(path);
     }
 
     std::optional<std::string> cached_md5(std::string_view path) override {
@@ -551,8 +534,6 @@ public:
         }
     }
 
-private:
-    FILE* file_ = nullptr;
 };
 
 UsbPlayPreparationPort usb_play_port;
@@ -1430,7 +1411,7 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
             continue;
         }
         if (frame.type == firmware::core::protocol::play_status) {
-            const auto response = shared_play_session().status_reply();
+            const auto response = shared_play_session().status_reply(usb_play_port);
             const auto encoded = firmware::core::encode_frame(response);
             if (!encoded.empty()) {
                 static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
@@ -1451,7 +1432,7 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                             static_cast<std::uint64_t>(esp_timer_get_time() /
                                                        microseconds_per_millisecond),
                             usb_play_port)) {
-                        const auto response = play_session.status_reply();
+                        const auto response = play_session.status_reply(usb_play_port);
                         const auto encoded =
                             firmware::core::encode_frame(response);
                         if (!encoded.empty()) {
