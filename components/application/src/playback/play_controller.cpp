@@ -243,10 +243,11 @@ void PlayController::handle_start(core::BytesView payload,
 
     const core::ByteVector response =
         encode_start_response(session_.path_identifier(), session_.file_size());
-    if (port.send({play_start_response, response})) {
-        session_.mark_running();
-        port.play_state_changed(true);
-    }
+    // PLAY-023 makes controller-output admission observational only: the
+    // enclosing operation advances exactly as if the response was offered.
+    static_cast<void>(port.send({play_start_response, response}));
+    session_.mark_running();
+    port.play_state_changed(true);
 }
 
 void PlayController::handle_terminal(PlayControllerPort& port) {

@@ -156,6 +156,23 @@ TEST_CASE(play_011_repeated_valid_start_repeats_reply_and_notification) {
     REQUIRE_EQ(port.state_changes.size(), 2U);
 }
 
+TEST_CASE(play_023_dropped_start_reply_still_enters_running_state) {
+    PlaySession session;
+    PlayController controller(session);
+    FakePlayControllerPort port;
+    port.send_succeeds = false;
+    REQUIRE(session.prepare(bytes("play /job"), 0U, port));
+    const std::uint16_t identifier = session.path_identifier();
+
+    controller.handle({0xF1U,
+                       {static_cast<std::uint8_t>(identifier >> 8U),
+                        static_cast<std::uint8_t>(identifier)}},
+                      1U, port);
+
+    REQUIRE(session.running());
+    REQUIRE_EQ(port.state_changes, std::vector<bool>({true}));
+}
+
 TEST_CASE(play_018_f4_and_f5_cleanup_without_protocol_reply) {
     for (const std::uint8_t terminal_type : {0xF4U, 0xF5U}) {
         PlaySession session;
