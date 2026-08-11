@@ -11,6 +11,7 @@
 #include "core/protocol/frame.hpp"
 #include "application/transport/tcp_frame_sender.hpp"
 #include "application/transport/tcp_client_session.hpp"
+#include "application/transport/tcp_connection_capacity.hpp"
 #include "application/runtime/router.hpp"
 #include "application/transport/tcp_frame_dispatcher.hpp"
 #include "application/runtime/local_command_queue.hpp"
@@ -74,6 +75,7 @@
 #include <cstdint>
 #include <esp_timer.h>
 #include <memory>
+#include <new>
 #include <mutex>
 #include <optional>
 #include <string_view>
@@ -96,7 +98,8 @@ constexpr long send_timeout_seconds = 5L;
 // adapters on this task's stack. The previous 4096-byte allocation overflowed
 // on a physical `version` request after the complete target was composed.
 constexpr std::uint32_t client_task_stack_bytes = 8192U;
-constexpr std::size_t client_receive_buffer_size = 2048U;
+constexpr std::size_t client_transport_capacity =
+    firmware::application::tcp_connection_buffer_capacity;
 constexpr UBaseType_t client_task_priority = 4U;
 constexpr std::uint32_t m942_task_stack_size = 6144U;
 constexpr UBaseType_t m942_task_priority = 4U;
@@ -588,6 +591,11 @@ TcpFileTransferRuntime& transfer_runtime_for_slot(std::uint8_t slot) {
 struct TcpClientContext {
     int socket;
     firmware::application::HostIdentity identity;
+    // TCP-012 requires both complete reservations before the peer can enter the
+    // protocol. Keeping them for the connection lifetime prevents later memory
+    // pressure from creating a half-capable client.
+    std::unique_ptr<std::uint8_t[]> input_capacity;
+    std::unique_ptr<std::uint8_t[]> output_capacity;
 };
 
 bool send_tcp_bytes(int client, firmware::core::BytesView bytes) {
@@ -714,7 +722,6 @@ void serve_tcp_client(TcpClientContext* context) {
             },
             {}});
     configure_socket(client);
-    std::uint8_t input[client_receive_buffer_size];
     bool transport_healthy = drain_tcp_transmit_queue(client, session);
     while (transport_healthy) {
         fd_set readable;
@@ -736,7 +743,8 @@ void serve_tcp_client(TcpClientContext* context) {
             transport_healthy = drain_tcp_transmit_queue(client, session);
             continue;
         }
-        const int count = recv(client, input, sizeof(input), 0);
+        const int count = recv(client, context->input_capacity.get(),
+                               client_transport_capacity, 0);
         if (count <= 0) {
             if (count < 0 &&
                 (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
@@ -767,7 +775,8 @@ void serve_tcp_client(TcpClientContext* context) {
             controller_firmware_transfer_active() ||
             controller_configuration_transfer_active() ||
             controller_factory_transfer_active());
-        session.receive({input, static_cast<std::size_t>(count)},
+        session.receive({context->input_capacity.get(),
+                         static_cast<std::size_t>(count)},
             [&session, &dispatcher](const firmware::application::HostIdentity&,
                                      const firmware::core::Frame& frame) {
                                      dispatcher.dispatch(session, frame);
@@ -867,12 +876,28 @@ void tcp_accept_task(void*) {
             close(client);
             continue;
         }
+        auto input_capacity = std::unique_ptr<std::uint8_t[]>(
+            new (std::nothrow) std::uint8_t[client_transport_capacity]);
+        auto output_capacity = std::unique_ptr<std::uint8_t[]>(
+            new (std::nothrow) std::uint8_t[client_transport_capacity]);
+        if (!firmware::application::tcp_connection_capacity_available(
+                input_capacity.get(), output_capacity.get())) {
+            ESP_LOGW(log_tag,
+                     "client lacks 8300-byte input/output capacity fd=%d slot=%u",
+                     client, static_cast<unsigned>(*slot));
+            close(client);
+            std::lock_guard<std::mutex> lock(tcp_slot_mutex);
+            occupied_tcp_slots[*slot] = false;
+            continue;
+        }
         active_clients.fetch_add(1, std::memory_order_acq_rel);
         auto* context = new TcpClientContext{
             client,
             {firmware::application::HostTransport::tcp,
              *slot,
-             next_generation.fetch_add(1U, std::memory_order_relaxed)}};
+             next_generation.fetch_add(1U, std::memory_order_relaxed)},
+            std::move(input_capacity),
+            std::move(output_capacity)};
         if (tcp_client_slot_queues[*slot] == nullptr ||
             xQueueSend(tcp_client_slot_queues[*slot], &context, 0U) != pdTRUE) {
             ESP_LOGE(log_tag, "client slot dispatch failed fd=%d slot=%u active=%d",

@@ -64,6 +64,7 @@ set(APPLICATION_SOURCES
     src/transport/tcp_transmit_queue.cpp
     src/transport/tcp_frame_sender.cpp
     src/transport/tcp_client_session.cpp
+    src/transport/tcp_connection_capacity.cpp
     src/transport/tcp_frame_dispatcher.cpp
     src/controller/controller_frame_forwarder.cpp
     src/runtime/local_command_classifier.cpp

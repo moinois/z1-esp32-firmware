@@ -1,6 +1,19 @@
 // Verifies per-client identity, incremental decoding, and transmit composition.
 #include "test.hpp"
 #include "application/transport/tcp_client_session.hpp"
+#include "application/transport/tcp_connection_capacity.hpp"
+
+using firmware::application::tcp_connection_buffer_capacity;
+using firmware::application::tcp_connection_capacity_available;
+
+TEST_CASE(tcp_012_requires_both_full_connection_capacities) {
+    int input = 0;
+    int output = 0;
+    REQUIRE_EQ(tcp_connection_buffer_capacity, 8300U);
+    REQUIRE(tcp_connection_capacity_available(&input, &output));
+    REQUIRE(!tcp_connection_capacity_available(nullptr, &output));
+    REQUIRE(!tcp_connection_capacity_available(&input, nullptr));
+}
 
 TEST_CASE(tcp_session_delivers_complete_frames_with_identity) {
     const firmware::application::HostIdentity identity{
