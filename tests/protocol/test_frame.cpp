@@ -5,6 +5,7 @@ using firmware::core::ByteVector;
 using firmware::core::Frame;
 using firmware::core::StreamDecoder;
 using firmware::core::StreamPolicy;
+using firmware::core::UartCandidateCheckBudget;
 
 TEST_CASE(frm_001_encoder_produces_exact_common_envelope) {
     const Frame frame{0xA1, {'?'}};
@@ -170,4 +171,32 @@ TEST_CASE(usb_011_body_expires_after_more_than_ten_seconds_without_a_byte) {
 
     REQUIRE_EQ(decoder.push(later, 10001U),
                std::vector<Frame>({Frame{0x84U, {}}}));
+}
+
+TEST_CASE(uart_009_discards_one_extra_byte_after_5000_failed_candidates) {
+    UartCandidateCheckBudget budget;
+    for (std::size_t check = 1U;
+         check < UartCandidateCheckBudget::unsuccessful_check_limit; ++check) {
+        REQUIRE(!budget.rejected_candidate());
+    }
+    REQUIRE(budget.rejected_candidate());
+    REQUIRE(!budget.rejected_candidate());
+
+    budget.reset();
+    REQUIRE(!budget.rejected_candidate());
+}
+
+TEST_CASE(uart_009_reaching_2048_undecoded_bytes_discards_the_oldest_256) {
+    const auto oldest = firmware::core::encode_controller_frame(Frame{0x84U, {}});
+    ByteVector full = oldest;
+    full.resize(UartCandidateCheckBudget::undecoded_capacity, 0x00U);
+    StreamDecoder decoder(StreamPolicy::controller_uart());
+
+    REQUIRE(decoder.push(full).empty());
+
+    ByteVector with_later(UartCandidateCheckBudget::undecoded_capacity, 0x00U);
+    const auto later = firmware::core::encode_controller_frame(Frame{0x85U, {}});
+    std::copy(later.begin(), later.end(), with_later.end() - later.size());
+    REQUIRE_EQ(decoder.push(with_later),
+               std::vector<Frame>({Frame{0x85U, {}}}));
 }

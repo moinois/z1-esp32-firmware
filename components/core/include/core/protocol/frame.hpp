@@ -28,6 +28,25 @@ enum class RecoveryMode {
     discard_candidate
 };
 
+/// Tracks UART rejection work and requests the periodic extra-byte discard.
+class UartCandidateCheckBudget {
+public:
+    /// Maximum raw bytes retained when decoder servicing falls behind.
+    static constexpr std::size_t undecoded_capacity = 2048U;
+    /// Oldest bytes discarded each time receive retention reaches capacity.
+    static constexpr std::size_t overflow_discard_size = 256U;
+    static constexpr std::size_t unsuccessful_check_limit = 5000U;
+
+    /// Returns true after each complete group of 5000 unsuccessful checks.
+    bool rejected_candidate();
+
+    /// Starts a new consecutive sequence after a frame or incomplete candidate.
+    void reset();
+
+private:
+    std::size_t unsuccessful_checks_ = 0U;
+};
+
 /** Transport-dependent limits and recovery rules for one decoder instance. */
 struct StreamPolicy {
     /// Largest complete encoded frame accepted from this transport.
@@ -108,5 +127,6 @@ private:
     ByteVector buffer_;
     std::optional<std::uint64_t> header_started_milliseconds_;
     std::optional<std::uint64_t> last_body_byte_milliseconds_;
+    UartCandidateCheckBudget uart_candidate_budget_;
 };
 }  // namespace firmware::core

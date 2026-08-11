@@ -65,6 +65,19 @@ ByteVector encode_controller_frame(const Frame& frame) {
     return encode_with_crc(frame, true);
 }
 
+bool UartCandidateCheckBudget::rejected_candidate() {
+    ++unsuccessful_checks_;
+    if (unsuccessful_checks_ < unsuccessful_check_limit) {
+        return false;
+    }
+    unsuccessful_checks_ = 0U;
+    return true;
+}
+
+void UartCandidateCheckBudget::reset() {
+    unsuccessful_checks_ = 0U;
+}
+
 std::vector<Frame> StreamDecoder::push(BytesView input) {
     return push_internal(input, std::nullopt);
 }
@@ -96,6 +109,12 @@ std::vector<Frame> StreamDecoder::push_internal(
     }
 
     buffer_.insert(buffer_.end(), input.begin(), input.end());
+    if (policy_.controller_update_crc) {
+        while (buffer_.size() >= UartCandidateCheckBudget::undecoded_capacity) {
+            discard_prefix(buffer_,
+                           UartCandidateCheckBudget::overflow_discard_size);
+        }
+    }
     std::vector<Frame> result;
 
     for (;;) {
@@ -124,6 +143,10 @@ std::vector<Frame> StreamDecoder::push_internal(
                     ? frame_type_offset
                     : 1U;
             discard_prefix(buffer_, discard_size);
+            if (policy_.controller_update_crc &&
+                uart_candidate_budget_.rejected_candidate()) {
+                discard_prefix(buffer_, 1U);
+            }
             continue;
         }
         if (buffer_.size() < total_size) {
@@ -148,6 +171,10 @@ std::vector<Frame> StreamDecoder::push_internal(
             const std::size_t discard_size =
                 policy_.recovery == RecoveryMode::discard_candidate ? total_size : 1U;
             discard_prefix(buffer_, discard_size);
+            if (policy_.controller_update_crc &&
+                uart_candidate_budget_.rejected_candidate()) {
+                discard_prefix(buffer_, 1U);
+            }
             continue;
         }
 
@@ -155,6 +182,7 @@ std::vector<Frame> StreamDecoder::push_internal(
         result.push_back({buffer_[frame_type_offset],
                           ByteVector(buffer_.begin() + payload_offset, payload_end)});
         discard_prefix(buffer_, total_size);
+        uart_candidate_budget_.reset();
     }
     if (policy_.timed_usb_candidates && now_milliseconds.has_value()) {
         if (buffer_.size() >= sync_bytes.size() &&

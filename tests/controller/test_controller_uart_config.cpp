@@ -22,8 +22,8 @@ TEST_CASE(hw_021_controller_uart_uses_apb_and_has_no_flow_control_pins) {
     REQUIRE_EQ(controller_uart.cts_gpio, -1);
 }
 
-TEST_CASE(hw_022_controller_uart_driver_buffers_are_1024_bytes) {
-    REQUIRE_EQ(controller_uart.receive_buffer_size, 1024U);
+TEST_CASE(uart_009_controller_uart_can_retain_2048_undecoded_bytes) {
+    REQUIRE_EQ(controller_uart.receive_buffer_size, 2048U);
     REQUIRE_EQ(controller_uart.transmit_buffer_size, 1024U);
 }
 
