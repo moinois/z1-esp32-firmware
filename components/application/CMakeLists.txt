@@ -24,6 +24,7 @@ set(APPLICATION_SOURCES
     src/connectivity/access_point_command.cpp
     src/storage/directory_listing.cpp
     src/diagnostics/diagnostic_capture.cpp
+    src/diagnostics/blufi_custom_diagnostics.cpp
     src/update/direct_application_update.cpp
     src/update/direct_web_volume_update.cpp
     src/diagnostics/diagnostic_log_writer.cpp

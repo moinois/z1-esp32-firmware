@@ -1,6 +1,8 @@
 /** @file @brief Implements ESP-IDF provisioning actions behind the portable BLUFI policy. */
 #include "blufi_provisioning_adapter.hpp"
 
+#include "application/diagnostics/blufi_custom_diagnostics.hpp"
+
 #include "esp_blufi.h"
 #include "esp_blufi_api.h"
 #include "esp_log.h"
@@ -154,7 +156,17 @@ void BlufiProvisioningAdapter::send_wifi_list(
 }
 
 void BlufiProvisioningAdapter::log_custom_data(firmware::core::BytesView data) {
-    ESP_LOG_BUFFER_HEXDUMP(tag, data.data(), data.size(), ESP_LOG_INFO);
+    const std::string length =
+        firmware::application::blufi_custom_data_length_message(data.size());
+    ESP_LOGI("APP_BLUFI", "%s", length.c_str());
+    for (std::size_t offset = 0U;; offset += 16U) {
+        const auto message =
+            firmware::application::blufi_custom_data_hex_message(data, offset);
+        if (!message.has_value()) {
+            break;
+        }
+        ESP_LOGI("Custom Data", "%s", message->c_str());
+    }
 }
 
 }  // namespace firmware::target
