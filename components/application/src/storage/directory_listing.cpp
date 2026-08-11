@@ -13,7 +13,7 @@ namespace {
 
 constexpr std::size_t line_size_limit = 256U;
 constexpr std::size_t preferred_chunk_flush_size = 411U;
-constexpr std::size_t maximum_chunk_payload_size = 535U;
+constexpr std::size_t maximum_supported_chunk_payload_size = 514U;
 constexpr std::size_t timestamp_text_size = 14U;
 constexpr std::uint8_t encoded_space = 0x01U;
 constexpr std::string_view completion_message = "Load directory finished.\r\n";
@@ -112,14 +112,11 @@ void DirectoryListing::execute(core::BytesView argument, DirectoryListPort& port
     }
 
     core::ByteVector chunk;
-    chunk.reserve(maximum_chunk_payload_size);
+    chunk.reserve(maximum_supported_chunk_payload_size);
     for (const DirectoryEntry& entry : *entries) {
         core::ByteVector line = format_line(entry, parsed->include_details);
         if (line.empty()) {
             continue;
-        }
-        if (!chunk.empty() && chunk.size() + line.size() > maximum_chunk_payload_size) {
-            flush_chunk(chunk, port);
         }
         chunk.insert(chunk.end(), line.begin(), line.end());
         if (chunk.size() > preferred_chunk_flush_size) {

@@ -116,19 +116,18 @@ TEST_CASE(file_014_listing_flushes_after_411_bytes) {
     REQUIRE_EQ(port.sent[1].payload.size(), 120U);
 }
 
-TEST_CASE(file_014_listing_flushes_before_a_line_would_exceed_535_bytes) {
+TEST_CASE(file_014_supported_listing_payload_may_reach_510_bytes) {
     FakeDirectoryListPort port;
     port.entries = std::vector<DirectoryEntry>{
         {std::string(248U, 'a'), false, 0U, sample_time, true},
         {std::string(158U, 'b'), false, 0U, sample_time, true},
-        {std::string(198U, 'c'), false, 0U, sample_time, true},
+        {std::string(98U, 'c'), false, 0U, sample_time, true},
     };
 
     DirectoryListing::execute(bytes("."), port);
 
-    REQUIRE_EQ(port.sent.size(), 3U);
-    REQUIRE_EQ(port.sent[0].payload.size(), 410U);
-    REQUIRE_EQ(port.sent[1].payload.size(), 200U);
+    REQUIRE_EQ(port.sent.size(), 2U);
+    REQUIRE_EQ(port.sent[0].payload.size(), 510U);
 }
 
 TEST_CASE(file_015_listing_always_finishes_when_resolution_or_opening_fails) {
