@@ -56,6 +56,11 @@ TEST_CASE(diag_037_formats_all_fixed_playback_failure_records_exactly) {
     REQUIRE_EQ(overflow.tag, std::string_view("play_LPC1768"));
     REQUIRE_EQ(overflow.message,
                std::string("xRx2ControllerQueue full, drop 0x90 and reset queue"));
+    const auto cache_invalid = playback_diagnostic(
+        PlaybackDiagnosticEvent::retained_cache_invalid);
+    REQUIRE(cache_invalid.warning);
+    REQUIRE_EQ(cache_invalid.message,
+               std::string("FRAME_SEQ: req==last_req but cache invalid, fallback SEEK"));
 }
 
 TEST_CASE(diag_037_formats_sequence_and_data_sent_records_exactly) {
@@ -72,4 +77,13 @@ TEST_CASE(diag_037_formats_sequence_and_data_sent_records_exactly) {
                std::string("FRAME_SEQ[GOTO] reached target: currentlen=64 req=3 local=3"));
     REQUIRE_EQ(playback_data_sent_diagnostic(511U).message,
                std::string("Sent frame: type=0xF3, data_len=511"));
+}
+
+TEST_CASE(diag_037_formats_sequence_invariant_failure_exactly) {
+    const auto diagnostic = firmware::application::playback_invariant_diagnostic(
+        "SEEK", 12U, 15U, 14U, 3, 8U);
+    REQUIRE(diagnostic.warning);
+    REQUIRE_EQ(diagnostic.tag, std::string_view("play_LPC1768"));
+    REQUIRE_EQ(diagnostic.message,
+               std::string("INVARIANT_FAIL path=SEEK req=12 expect=15 actual=14 lines_sent=3 local_before=8"));
 }

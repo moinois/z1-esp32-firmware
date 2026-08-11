@@ -36,6 +36,7 @@ enum class PlaybackDiagnosticEvent {
     data_no_memory,
     goto_no_memory,
     host_broadcast_overflow,
+    retained_cache_invalid,
 };
 
 /// Formats one fixed or path-bearing DIAG-037 playback record.
@@ -57,5 +58,18 @@ PlaybackDiagnostic playback_sequence_diagnostic(std::string_view format,
 
 /// Formats the exact successful F3 encoding record.
 PlaybackDiagnostic playback_data_sent_diagnostic(std::size_t data_length);
+
+/** Formats a failed streamed-play line-position consistency check.
+ * @param path Selection path: `RETRANSMIT`, `SEEK`, or `SEQ_MATCH`.
+ * @param request Requested logical-line index.
+ * @param expected Expected current-line value after the operation.
+ * @param actual Observed current-line value after the operation.
+ * @param lines_sent Logical results consumed by this operation.
+ * @param local_before Current-line value before processing began.
+ */
+PlaybackDiagnostic playback_invariant_diagnostic(
+    std::string_view path, std::uint32_t request, std::uint32_t expected,
+    std::uint32_t actual, std::int32_t lines_sent,
+    std::uint32_t local_before);
 
 }  // namespace firmware::application

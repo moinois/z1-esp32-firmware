@@ -206,6 +206,7 @@ void PlayController::handle_data(core::BytesView payload,
     }
 
     const std::uint32_t requested_index = decode_u32(payload.data() + request_index_offset);
+    const std::uint32_t local_before = current_line_;
     std::uint16_t maximum_lines = default_maximum_lines;
     if (payload.size() >= request_with_line_limit_size) {
         maximum_lines = static_cast<std::uint16_t>(
@@ -217,15 +218,25 @@ void PlayController::handle_data(core::BytesView payload,
     } else {
         port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::data_missing_frame_max));
     }
-    if (retained_index_ == requested_index && requested_index != current_line_ &&
-        !retained_payload_.empty()) {
-        port.diagnose(playback_sequence_diagnostic(
-            retransmit_diagnostic, requested_index, current_line_));
-        static_cast<void>(port.send({play_data_response, retained_payload_}));
-        return;
+    const bool retained_request = retained_index_ == requested_index &&
+                                  requested_index != current_line_;
+    if (retained_request) {
+        if (!retained_payload_.empty()) {
+            port.diagnose(playback_sequence_diagnostic(
+                retransmit_diagnostic, requested_index, current_line_));
+            static_cast<void>(port.send({play_data_response, retained_payload_}));
+            if (current_line_ != local_before) {
+                port.diagnose(playback_invariant_diagnostic(
+                    "RETRANSMIT", requested_index, local_before, current_line_,
+                    0, local_before));
+            }
+            return;
+        }
+        port.diagnose(playback_diagnostic(
+            PlaybackDiagnosticEvent::retained_cache_invalid));
     }
     const bool repositioned = requested_index != current_line_;
-    if (repositioned) {
+    if (repositioned && !retained_request) {
         port.diagnose(playback_sequence_diagnostic(
             mismatch_diagnostic, requested_index, current_line_,
             retained_index_.value_or(0U), retained_index_.has_value() ? 1U : 0U));
@@ -242,6 +253,17 @@ void PlayController::handle_data(core::BytesView payload,
 
     core::ByteVector data;
     bool reached_eof = false;
+    std::int32_t lines_sent = 0;
+    const std::string_view invariant_path = repositioned ? "SEEK" : "SEQ_MATCH";
+    const auto diagnose_invariant = [&] {
+        const std::uint32_t expected = requested_index +
+            static_cast<std::uint32_t>(lines_sent);
+        if (current_line_ != expected) {
+            port.diagnose(playback_invariant_diagnostic(
+                invariant_path, requested_index, expected, current_line_,
+                lines_sent, local_before));
+        }
+    };
     for (std::uint16_t line_count = 0U; line_count < maximum_lines; ++line_count) {
         const PlayLineResult line = PlayLineReader::read(port);
         if (line.status == PlayLineStatus::failure) {
@@ -250,6 +272,7 @@ void PlayController::handle_data(core::BytesView payload,
                     no_data_diagnostic, requested_index, current_line_, maximum_lines));
             }
             static_cast<void>(port.send({play_complete_response, {}}));
+            diagnose_invariant();
             return;
         }
         if (line.status == PlayLineStatus::end_of_file) {
@@ -260,12 +283,14 @@ void PlayController::handle_data(core::BytesView payload,
             port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::long_line_replaced));
         }
         ++current_line_;
+        ++lines_sent;
         transmitted_bytes_ += line.data.size();
         if (line.data.empty()) {
             if (repositioned) {
                 port.diagnose(playback_sequence_diagnostic(
                     no_data_diagnostic, requested_index, current_line_, maximum_lines));
             }
+            diagnose_invariant();
             return;
         }
         data.insert(data.end(), line.data.begin(), line.data.end());
@@ -286,6 +311,7 @@ void PlayController::handle_data(core::BytesView payload,
         port.diagnose(playback_data_sent_diagnostic(data.size()));
         retain_response(requested_index, response);
     }
+    diagnose_invariant();
     if (reached_eof) {
         static_cast<void>(port.send({play_complete_response, {}}));
         handle_terminal(port);

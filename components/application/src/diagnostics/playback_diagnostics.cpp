@@ -56,6 +56,9 @@ PlaybackDiagnostic playback_diagnostic(PlaybackDiagnosticEvent event,
         case PlaybackDiagnosticEvent::host_broadcast_overflow:
             return {true, false, "play_LPC1768",
                     "xRx2ControllerQueue full, drop 0x90 and reset queue"};
+        case PlaybackDiagnosticEvent::retained_cache_invalid:
+            return {true, false, "play_LPC1768",
+                    "FRAME_SEQ: req==last_req but cache invalid, fallback SEEK"};
     }
     return {};
 }
@@ -80,6 +83,22 @@ PlaybackDiagnostic playback_data_sent_diagnostic(std::size_t data_length) {
     std::snprintf(message, sizeof(message), "Sent frame: type=0xF3, data_len=%ld",
                   static_cast<long>(data_length));
     return {false, false, "play_LPC1768", message};
+}
+
+PlaybackDiagnostic playback_invariant_diagnostic(
+    std::string_view path, std::uint32_t request, std::uint32_t expected,
+    std::uint32_t actual, std::int32_t lines_sent,
+    std::uint32_t local_before) {
+    char message[192]{};
+    std::snprintf(message, sizeof(message),
+                  "INVARIANT_FAIL path=%.*s req=%lu expect=%lu actual=%lu lines_sent=%ld local_before=%lu",
+                  static_cast<int>(path.size()), path.data(),
+                  static_cast<unsigned long>(request),
+                  static_cast<unsigned long>(expected),
+                  static_cast<unsigned long>(actual),
+                  static_cast<long>(lines_sent),
+                  static_cast<unsigned long>(local_before));
+    return {true, false, "play_LPC1768", message};
 }
 
 PlaybackDiagnostic playback_dequeue_diagnostic(std::uint64_t microseconds,
