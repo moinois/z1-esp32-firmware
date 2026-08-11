@@ -34,7 +34,7 @@ public:
 
     /** Performs one nonblocking poll at a supplied monotonic timestamp.
      *  A stalled front frame is discarded only after the no-progress deadline;
-     *  a disconnect resets progress tracking but preserves the queue itself.
+     *  a detected disconnect or expired stall discards every unsent response.
      */
     void process(bool can_send, std::uint64_t monotonic_milliseconds);
 

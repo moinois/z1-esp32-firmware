@@ -14,6 +14,7 @@ UsbTransmitDrain::UsbTransmitDrain(UsbTransmitQueue& queue,
 void UsbTransmitDrain::process(bool can_send,
                                std::uint64_t monotonic_milliseconds) {
     if (!can_send) {
+        queue_.clear();
         clear_tracking();
         return;
     }
@@ -53,7 +54,7 @@ void UsbTransmitDrain::process(bool can_send,
     }
 
     if (frame != nullptr && progress_.expired(monotonic_milliseconds)) {
-        queue_.pop_front();
+        queue_.clear();
         clear_tracking();
     }
 }

@@ -4,6 +4,7 @@
 namespace firmware::application {
 
 void UsbProtocolState::enumerated() {
+    transmit_queue_.reset_failure();
     physically_present_.store(true, std::memory_order_release);
     protocol_active_.store(false, std::memory_order_release);
 }
@@ -18,12 +19,13 @@ void UsbProtocolState::disconnected() {
     physically_present_.store(false, std::memory_order_release);
     protocol_active_.store(false, std::memory_order_release);
     receive_staging_.clear();
-    // The specification deliberately does not purge the transmit queue here.
+    transmit_queue_.clear();
 }
 
 bool UsbProtocolState::can_send() const {
     return physically_present_.load(std::memory_order_acquire) &&
-           protocol_active_.load(std::memory_order_acquire);
+           protocol_active_.load(std::memory_order_acquire) &&
+           !transmit_queue_.failed();
 }
 
 bool UsbProtocolState::physically_present() const {

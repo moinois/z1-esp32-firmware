@@ -54,7 +54,7 @@ TEST_CASE(usb_007_drain_continues_partial_writes_and_pops_only_after_completion)
     REQUIRE_EQ(queue.size(), 0U);
 }
 
-TEST_CASE(usb_008_drain_discards_one_stalled_frame_after_exact_timeout) {
+TEST_CASE(usb_008_drain_discards_all_stalled_output_after_exact_timeout) {
     UsbTransmitQueue queue;
     FakeEndpoint endpoint;
     endpoint.capacity = 0U;
@@ -66,15 +66,10 @@ TEST_CASE(usb_008_drain_discards_one_stalled_frame_after_exact_timeout) {
     drain.process(true, 1500U);
     REQUIRE_EQ(queue.size(), 2U);
     drain.process(true, 1501U);
-    REQUIRE_EQ(queue.size(), 1U);
-
-    endpoint.capacity = 1U;
-    drain.process(true, 1502U);
-    REQUIRE_EQ(endpoint.written, ByteVector({2U}));
     REQUIRE_EQ(queue.size(), 0U);
 }
 
-TEST_CASE(usb_005_disconnect_retains_queue_and_restarts_frame_from_its_boundary) {
+TEST_CASE(usb_008_detected_disconnect_discards_all_unsent_output) {
     UsbTransmitQueue queue;
     FakeEndpoint endpoint;
     endpoint.capacity = 2U;
@@ -84,11 +79,10 @@ TEST_CASE(usb_005_disconnect_retains_queue_and_restarts_frame_from_its_boundary)
     drain.process(true, 100U);
     REQUIRE_EQ(endpoint.written, ByteVector({1U, 2U}));
     drain.process(false, 200U);
-    REQUIRE_EQ(queue.size(), 1U);
+    REQUIRE_EQ(queue.size(), 0U);
     endpoint.written.clear();
     endpoint.capacity = 4U;
     drain.process(true, 300U);
-
-    REQUIRE_EQ(endpoint.written, ByteVector({1U, 2U, 3U, 4U}));
+    REQUIRE(endpoint.written.empty());
     REQUIRE_EQ(queue.size(), 0U);
 }

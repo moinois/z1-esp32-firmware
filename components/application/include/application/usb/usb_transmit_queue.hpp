@@ -5,6 +5,8 @@
 #include "core/protocol/protocol_constants.hpp"
 
 #include <cstddef>
+#include <chrono>
+#include <condition_variable>
 #include <deque>
 #include <mutex>
 
@@ -22,8 +24,13 @@ public:
     static constexpr std::size_t maximum_frame_size =
         core::protocol::host_maximum_frame_size;
 
-    /// Queues a non-empty complete frame when both limits permit it.
-    bool enqueue(core::BytesView frame);
+    /** Waits briefly for capacity and queues one complete response.
+     * A capacity timeout discards every unsent frame and latches destination
+     * failure until physical re-enumeration resets it.
+     */
+    bool enqueue(core::BytesView frame,
+                 std::chrono::milliseconds maximum_wait =
+                     std::chrono::milliseconds(100));
 
     /** Returns the oldest frame without removing it.
      *  The pointer remains valid until the next mutating queue operation.
@@ -33,13 +40,24 @@ public:
     /// Removes the oldest frame after complete transmission or timeout discard.
     void pop_front();
 
+    /// Discards every response not yet completely transmitted.
+    void clear();
+
+    /// Reports a queueing failure that suppresses USB response eligibility.
+    bool failed() const;
+
+    /// Restores queue admission after a detected disconnect and re-enumeration.
+    void reset_failure();
+
     /// Reports the number of queued complete frames.
     std::size_t size() const;
 
 private:
     /// Serializes producer callbacks and the single endpoint consumer.
     mutable std::mutex mutex_;
+    std::condition_variable capacity_changed_;
     std::deque<core::ByteVector> frames_;
+    bool failed_ = false;
 };
 
 }  // namespace firmware::application
