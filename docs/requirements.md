@@ -22,12 +22,13 @@ LOG or DIAG behavior. No physical result is claimed merely because a test exists
 
 ## Current portable verification snapshot
 
-As of 2026-08-11, the dependency-free C++ host suite contains 785 passing
+As of 2026-08-11, the dependency-free C++ host suite contains 844 passing
 tests. The focused suites cover malformed AVI preview inputs, transfer setup,
-retry, timeout, sequence, and path failures, CANopen RPDO/TPDO boundary
-behavior, filesystem-command failures, and storage-retention failure paths.
-The corresponding coverage report is 96.74% lines (7885/8151), 99.01%
-functions (800/808), and 86.93% branches (3260/3750). These figures are
+retry, timeout, sequence, and path failures, CANopen RPDO/TPDO boundaries,
+global host-output composition, streamed-play diagnostics and resource paths,
+filesystem-command failures, and storage-retention failure paths. The
+corresponding coverage report is 96.22% lines (9262/9626), 98.51% functions
+(924/938), and 86.72% branches (3840/4428). These figures are
 portable-test evidence only; they do not replace physical SD, camera, CAN,
 controller, or endpoint fault-injection fixtures.
 
@@ -42,10 +43,12 @@ Status vocabulary used below:
 - `Pending fixture`: implementation and automated logic exist, but the required
   physical equipment is unavailable.
 
-Current known production-integration gaps are concentrated in the explicitly
-noted controller command-family gaps. CANopen heartbeat/error diagnostics and
-the configuration web interface are now implemented; most other open items are
-physical, fault-injection, visual-browser, or endurance verification.
+The 2026-08-11 matrix audit found no row still marked as missing production
+integration. CANopen heartbeat/error diagnostics, controller command families,
+global host output, streamed-play diagnostics, and the configuration web
+interface are implemented. Open items are now physical conformance,
+target-only fault injection, refreshed HIL after revised semantics,
+visual-browser coverage, or endurance verification unless a row says otherwise.
 
 User-controlled filesystem paths are intentionally sandboxed below `/sd` as
 documented in [ADR-016](architecture-decisions.md#adr-016). This is a local

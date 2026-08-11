@@ -799,28 +799,27 @@ served the complete local asset in 10.71 seconds; the report is
 into larger transport writes transferred only 11,214 of 106,343 bytes in 15
 seconds, so that unproven implementation was removed before commit.
 
-Portable coverage was regenerated on 2026-08-09 after focused AVI preview,
-file-transfer, CAN PDO/TPDO, filesystem-command, and storage-retention tests
-were added. All 730 host tests passed with 96.74 percent line (7885/8151),
-99.01 percent function (800/808), and 86.93 percent branch (3260/3750)
-coverage. This reduced uncovered production lines from 327 to 270 and uncovered
-branches from 563 to 494. USB production
-policy has 100 percent line coverage for protocol state, receive staging,
-transmit drain, and timeout tracking; the remaining USB limitation is physical
-TinyUSB endpoint control, not an uncovered portable branch. CANopen timing was
-additionally exercised with virtual time for inactive/expired M942 runs,
-write-retry exhaustion, deadline-bounded writes, and reads ending exactly at
-the absolute deadline. The generated report remains local under
+Portable coverage was regenerated on 2026-08-11 after global host-output,
+streamed-play resource/diagnostic, controller-transfer allocation, and listing
+allocation work. All 844 host tests passed with 96.22 percent line (9262/9626),
+98.51 percent function (924/938), and 86.72 percent branch (3840/4428)
+coverage; all 42 Python tooling tests also passed. The larger denominator now
+includes the subsequently added production policies and public inline methods,
+so the percentages are not directly comparable to the earlier 8151-line
+snapshot. USB production policy remains at 100 percent line coverage for
+protocol state, receive staging, transmit drain, and timeout tracking; the
+remaining USB limitation is physical TinyUSB endpoint control. The generated
+report remains local under
 `build/host-coverage/coverage/`; release automation publishes the equivalent
 report and badge.
 
-The next coverage-focused host priorities are play-controller failures,
-discovery-policy boundary cases, BLUFI wire/fragment errors, and diagnostic-log
-writer recovery. AVI parsing is down from 26 to 10 uncovered lines; its
-remaining branches are mostly defensive bounds that the public parser's earlier
-invariants make unreachable. PDO/TPDO retains similar dictionary-corruption
-guards that cannot be produced through the validated public write API. These
-coverage limits are separate from the
+The largest uncovered portable source is the play controller at 35 lines;
+several are the newly added invariant and invalid-cache corruption diagnostics,
+which valid public operations deliberately cannot trigger. Smaller reasonable
+future targets are BLUFI wire/fragment errors, runtime-counter failures,
+diagnostic-log recovery, and discovery boundaries. AVI and CAN PDO/TPDO retain
+defensive bounds and dictionary-corruption guards that cannot be produced
+through their validated public APIs. These coverage limits are separate from the
 remaining conformance limits: physical SD media, controller UART, CAN bus,
 camera behavior, RF-loss endurance, and forced TinyUSB endpoint stalls still
 require their corresponding hardware fixtures or lower-level instrumentation.
