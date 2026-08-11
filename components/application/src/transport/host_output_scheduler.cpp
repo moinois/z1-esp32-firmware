@@ -33,11 +33,15 @@ HostOutputAdmission HostOutputScheduler::admit(
         }
         return HostOutputAdmission::capacity_drop;
     }
+#if defined(__cpp_exceptions)
     try {
+#endif
         queue.push_back({frame, std::move(destination)});
+#if defined(__cpp_exceptions)
     } catch (const std::bad_alloc&) {
         return HostOutputAdmission::allocation_failure;
     }
+#endif
     return HostOutputAdmission::accepted;
 }
 
@@ -53,11 +57,15 @@ HostOutputAdmission HostOutputScheduler::admit_listing(
         })) {
         return HostOutputAdmission::capacity_drop;
     }
+#if defined(__cpp_exceptions)
     try {
+#endif
         non_download_.push_back({frame, std::move(destination)});
+#if defined(__cpp_exceptions)
     } catch (const std::bad_alloc&) {
         return HostOutputAdmission::allocation_failure;
     }
+#endif
     return HostOutputAdmission::accepted;
 }
 
