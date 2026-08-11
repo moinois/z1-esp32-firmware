@@ -82,3 +82,21 @@ TEST_CASE(hft_007_finishing_active_does_not_remove_an_already_queued_start) {
     REQUIRE_EQ(admission.pending(), 1U);
     REQUIRE_EQ(admission.take_next()->start.path, std::string("/two"));
 }
+
+TEST_CASE(hft_008_missing_initial_response_does_not_release_the_active_start) {
+    FileTransferAdmission admission;
+    REQUIRE(admission.enqueue(tcp(0U, 1U), upload("/active")));
+
+    const auto accepted = admission.take_next();
+    // Response delivery belongs to the transport and may fail here. Admission
+    // deliberately changes only at the operation's terminal outcome.
+    REQUIRE(accepted.has_value());
+    REQUIRE(admission.active());
+
+    REQUIRE(admission.enqueue(tcp(1U, 1U), upload("/deferred-1")));
+    REQUIRE(admission.enqueue(tcp(2U, 1U), upload("/deferred-2")));
+    REQUIRE(admission.enqueue(tcp(3U, 1U), upload("/deferred-3")));
+    REQUIRE(admission.enqueue(tcp(0U, 2U), upload("/deferred-4")));
+    REQUIRE(!admission.enqueue(tcp(1U, 2U), upload("/rejected")));
+    REQUIRE_EQ(admission.pending(), 4U);
+}
