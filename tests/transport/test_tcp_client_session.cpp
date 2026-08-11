@@ -51,6 +51,22 @@ TEST_CASE(tcp_session_queues_encoded_frames) {
     REQUIRE_EQ(*session.transmit_queue().front(), firmware::core::encode_frame(frame));
 }
 
+TEST_CASE(trn_005_tcp_session_delegates_global_admission_but_allows_delivery_bypass) {
+    firmware::application::TcpClientSession session({});
+    const firmware::core::Frame frame{0x33U, {'x'}};
+    firmware::core::Frame delegated{};
+    session.set_output_handler([&delegated](const firmware::core::Frame& value) {
+        delegated = value;
+        return true;
+    });
+
+    REQUIRE(session.queue_frame(frame));
+    REQUIRE_EQ(delegated, frame);
+    REQUIRE(!session.has_pending_transmit_frame());
+    REQUIRE(session.queue_frame_direct(frame));
+    REQUIRE(session.has_pending_transmit_frame());
+}
+
 TEST_CASE(tcp_session_sender_removes_frame_only_after_success) {
     firmware::application::TcpClientSession session({});
     const firmware::core::Frame frame{0x33U, {'x'}};

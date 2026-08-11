@@ -3,6 +3,7 @@
 
 #include "controller_command_loop.hpp"
 #include "tcp_control_adapter.hpp"
+#include "host_output_adapter.hpp"
 #include "esp_image_validator.hpp"
 #include "ota_update_adapter.hpp"
 #include "nvs_key_value_adapter.hpp"
@@ -231,7 +232,14 @@ public:
     }
 
     void broadcast(std::uint8_t type, std::string_view payload) override {
-        broadcast_tcp_frame({type, {payload.begin(), payload.end()}});
+        constexpr std::string_view delete_failure_prefix =
+            "Error: failed to delete [";
+        const auto source = payload.substr(0U, delete_failure_prefix.size()) ==
+                                    delete_failure_prefix
+                                ? firmware::application::HostOutputSource::motion_board_unchanged
+                                : firmware::application::HostOutputSource::rate_limited_console_error;
+        static_cast<void>(broadcast_host_frame(
+            {type, {payload.begin(), payload.end()}}, source));
     }
 
 private:

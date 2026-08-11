@@ -68,6 +68,7 @@
 #include "posix_file.hpp"
 #include "posix_filesystem_mutation.hpp"
 #include "esp_wifi_scanner.hpp"
+#include "host_output_adapter.hpp"
 
 #include <array>
 #include <algorithm>
@@ -144,8 +145,7 @@ firmware::application::UsbProtocolState protocol_state;
 class UsbFrameSink final : public FrameSink {
 public:
     bool send_frame(firmware::core::Frame frame) override {
-        const auto encoded = firmware::core::encode_frame(frame);
-        return !encoded.empty() && protocol_state.transmit_queue().enqueue(encoded);
+        return queue_usb_frame(frame);
     }
 };
 
@@ -190,10 +190,7 @@ public:
     }
 
     void send(firmware::core::Frame frame) override {
-        const auto encoded = firmware::core::encode_frame(frame);
-        if (!encoded.empty()) {
-            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-        }
+        static_cast<void>(queue_usb_frame(frame));
     }
 
 };
@@ -273,10 +270,7 @@ public:
     }
 
     void send(firmware::core::Frame frame) override {
-        const auto encoded = firmware::core::encode_frame(frame);
-        if (!encoded.empty()) {
-            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-        }
+        static_cast<void>(queue_usb_frame(frame));
     }
 
 private:
@@ -307,10 +301,7 @@ public:
     }
 
     void send(firmware::core::Frame frame) override {
-        const auto encoded = firmware::core::encode_frame(frame);
-        if (!encoded.empty()) {
-            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-        }
+        static_cast<void>(queue_usb_frame(frame));
     }
 };
 
@@ -471,10 +462,7 @@ public:
     void send(firmware::core::Frame frame) override {
         static_cast<void>(firmware::target::wifi_diagnostic_log().append(
             "wlan.response type=" + std::to_string(frame.type)));
-        const auto encoded = firmware::core::encode_frame(frame);
-        if (!encoded.empty()) {
-            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-        }
+        static_cast<void>(queue_usb_frame(frame));
     }
 
     void delay_milliseconds(std::uint32_t duration) override {
@@ -517,11 +505,7 @@ public:
     }
 
     void broadcast(firmware::core::Frame frame) override {
-        const auto encoded = firmware::core::encode_frame(frame);
-        if (!encoded.empty()) {
-            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-            firmware::target::broadcast_tcp_frame(frame);
-        }
+        static_cast<void>(broadcast_host_frame(frame));
     }
 
     void diagnose(
@@ -634,10 +618,7 @@ public:
 
     void send(const firmware::application::HostIdentity&,
               firmware::core::Frame frame) override {
-        const auto encoded = firmware::core::encode_frame(frame);
-        if (!encoded.empty()) {
-            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-        }
+        static_cast<void>(queue_usb_frame(frame));
     }
 
     void release_ownership() override {}
@@ -732,8 +713,7 @@ public:
 
     bool send(const firmware::application::HostIdentity&,
               firmware::core::Frame frame) override {
-        const auto encoded = firmware::core::encode_frame(frame);
-        return !encoded.empty() && protocol_state.transmit_queue().enqueue(encoded);
+        return queue_usb_frame(frame);
     }
 
     void diagnose(
@@ -787,10 +767,7 @@ public:
     void respond(const firmware::application::HostIdentity& host,
                  const firmware::core::Frame& frame) override {
         if (!(host == usb_host_identity)) return;
-        const auto encoded = firmware::core::encode_frame(frame);
-        if (!encoded.empty()) {
-            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-        }
+        static_cast<void>(queue_usb_frame(frame));
     }
 
     std::uint64_t monotonic_milliseconds() const override {
@@ -868,10 +845,7 @@ public:
     }
 
     void send(firmware::core::Frame frame) override {
-        const auto encoded = firmware::core::encode_frame(frame);
-        if (!encoded.empty()) {
-            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-        }
+        static_cast<void>(queue_usb_frame(frame));
     }
 
     void log_warning(std::string_view message) override {
@@ -936,8 +910,7 @@ public:
     }
 
     bool send(firmware::core::Frame frame) override {
-        const auto encoded = firmware::core::encode_frame(frame);
-        return !encoded.empty() && protocol_state.transmit_queue().enqueue(encoded);
+        return queue_host_listing(frame, usb_host_identity);
     }
 
     void log_warning(std::string_view message) override {
@@ -966,10 +939,7 @@ public:
     }
 
     void send(firmware::core::Frame frame) override {
-        const auto encoded = firmware::core::encode_frame(frame);
-        if (!encoded.empty()) {
-            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-        }
+        static_cast<void>(queue_usb_frame(frame));
     }
 };
 
@@ -1036,10 +1006,7 @@ void usb_local_command_task(void* /* unused */) {
             const auto result = firmware::application::handle_recording_command(
                 match.kind, recording_state.requested());
             recording_state.set_requested(result.requested);
-            const auto encoded = firmware::core::encode_frame(result.response);
-            if (!encoded.empty()) {
-                static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-            }
+            static_cast<void>(queue_usb_frame(result.response));
         } else if (match.kind == firmware::core::CommandKind::serial_get ||
                    match.kind == firmware::core::CommandKind::serial_set) {
             firmware::application::SerialNumberService service(serial_port);
@@ -1139,8 +1106,7 @@ void usb_local_command_task(void* /* unused */) {
             const auto response = execute_access_point_command(
                 match.kind, command_frame->payload);
             if (response.has_value()) {
-                static_cast<void>(protocol_state.transmit_queue().enqueue(
-                    firmware::core::encode_frame(*response)));
+                static_cast<void>(queue_usb_frame(*response));
             }
         } else if (match.kind == firmware::core::CommandKind::config_restore ||
                    match.kind == firmware::core::CommandKind::config_default) {
@@ -1168,8 +1134,7 @@ void usb_local_command_task(void* /* unused */) {
         } else if (match.kind == firmware::core::CommandKind::diagnose) {
             const auto response = shared_controller_snapshots().diagnostic_reply(0);
             if (response.has_value()) {
-                static_cast<void>(protocol_state.transmit_queue().enqueue(
-                    firmware::core::encode_frame(*response)));
+                static_cast<void>(queue_usb_frame(*response));
             }
         } else if (match.kind == firmware::core::CommandKind::wifi_diagnose) {
             const std::string log = firmware::target::wifi_diagnostic_log().read();
@@ -1179,11 +1144,10 @@ void usb_local_command_task(void* /* unused */) {
                  offset += diagnostic_chunk_size) {
                 const std::size_t count =
                     std::min(diagnostic_chunk_size, payload.size() - offset);
-                static_cast<void>(protocol_state.transmit_queue().enqueue(
-                    firmware::core::encode_frame(
-                        {firmware::core::protocol::text_response,
-                         {payload.begin() + static_cast<std::ptrdiff_t>(offset),
-                          payload.begin() + static_cast<std::ptrdiff_t>(offset + count)}})));
+                static_cast<void>(queue_usb_frame(
+                    {firmware::core::protocol::text_response,
+                     {payload.begin() + static_cast<std::ptrdiff_t>(offset),
+                      payload.begin() + static_cast<std::ptrdiff_t>(offset + count)}}));
             }
 #if Z1_MOCK_SD_ENABLED
         } else if (match.kind == firmware::core::CommandKind::mock_sd_control) {
@@ -1208,8 +1172,7 @@ void usb_local_command_task(void* /* unused */) {
 #endif
         } else if (match.kind == firmware::core::CommandKind::version) {
             const auto response = shared_controller_snapshots().version_reply();
-            static_cast<void>(protocol_state.transmit_queue().enqueue(
-                firmware::core::encode_frame(response)));
+            static_cast<void>(queue_usb_frame(response));
         }
         vTaskDelay(pdMS_TO_TICKS(local_command_settle_milliseconds));
     }
@@ -1307,10 +1270,7 @@ void handle_usb_file_transfer(const firmware::core::Frame& frame) {
             const firmware::core::Frame rejection{
                 firmware::core::protocol::file_cancel,
                 firmware::core::ByteVector(message.begin(), message.end())};
-            const auto encoded = firmware::core::encode_frame(rejection);
-            if (!encoded.empty()) {
-                static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-            }
+            static_cast<void>(queue_usb_frame(rejection));
             xSemaphoreGive(usb_file_mutex);
             return;
         }
@@ -1425,6 +1385,8 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
         esp_timer_get_time() / microseconds_per_millisecond);
     for (const auto& frame : decoder.push(staged, received_at)) {
         protocol_state.valid_frame_received();
+        firmware::target::set_host_output_usb_active(
+            protocol_state.can_send());
         if (frame.type == firmware::core::protocol::file_command ||
             (frame.type >= firmware::core::protocol::file_md5 &&
              frame.type <= firmware::core::protocol::file_retry)) {
@@ -1440,17 +1402,13 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
             const auto response = shared_controller_snapshots().status_reply(
                 status_service.extension());
             if (response.has_value()) {
-                static_cast<void>(protocol_state.transmit_queue().enqueue(
-                    firmware::core::encode_frame(*response)));
+                static_cast<void>(queue_usb_frame(*response));
             }
             continue;
         }
         if (frame.type == firmware::core::protocol::play_status) {
             const auto response = shared_play_session().status_reply(usb_play_port);
-            const auto encoded = firmware::core::encode_frame(response);
-            if (!encoded.empty()) {
-                static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-            }
+            static_cast<void>(queue_usb_frame(response));
             continue;
         }
         if (frame.type == firmware::core::protocol::general_command) {
@@ -1468,12 +1426,7 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
                                                        microseconds_per_millisecond),
                             usb_play_port)) {
                         const auto response = play_session.status_reply(usb_play_port);
-                        const auto encoded =
-                            firmware::core::encode_frame(response);
-                        if (!encoded.empty()) {
-                            static_cast<void>(protocol_state.transmit_queue().enqueue(
-                                encoded));
-                        }
+                        static_cast<void>(queue_usb_frame(response));
                     } else {
                         shared_host_router().ownership().release_play();
                     }
@@ -1603,6 +1556,9 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
 /// Marks native USB ready when TinyUSB reports that the device was mounted.
 extern "C" void tud_mount_cb(void) {
     protocol_state.enumerated();
+    // Enumeration proves physical presence only. USB becomes an eligible host
+    // destination after the first structurally valid application frame.
+    firmware::target::set_host_output_usb_active(false);
 }
 
 /// Clears connection and decoder state when the USB host unmounts the device.
@@ -1610,6 +1566,7 @@ extern "C" void tud_umount_cb(void) {
     decoder.reset();
     protocol_state.disconnected();
     tcp_router_usb_disconnected();
+    firmware::target::set_host_output_usb_active(false);
 }
 
 /// Accepts data reported by the TinyUSB vendor-interface receive callback.
@@ -1648,6 +1605,7 @@ extern "C" void tud_vendor_tx_cb(uint8_t /* index */,
                                   uint32_t /* sent_bytes */) {}
 
 bool UsbDeviceAdapter::start() {
+    static_cast<void>(initialize_host_output_adapter());
     const tinyusb_config_t configuration{
         .device_descriptor = reinterpret_cast<const tusb_desc_device_t*>(
             device_descriptor.data()),
@@ -1734,9 +1692,21 @@ void prepare_usb_for_restart() {
 }
 
 bool queue_usb_frame(const firmware::core::Frame& frame) {
+    return queue_host_frame(
+        frame, {firmware::application::HostTransport::usb, 0U, 0U});
+}
+
+bool deliver_usb_frame(const firmware::core::Frame& frame) {
     const auto encoded = firmware::core::encode_frame(frame);
     if (encoded.empty()) return false;
-    return protocol_state.transmit_queue().enqueue(encoded);
+    const bool delivered = protocol_state.transmit_queue().enqueue(encoded);
+    if (!delivered && protocol_state.transmit_queue().failed()) {
+        // A capacity timeout latches destination failure until re-enumeration;
+        // remove USB from global selection so output is not routed into a dead
+        // endpoint and the last-host purge rule can take effect immediately.
+        firmware::target::set_host_output_usb_active(false);
+    }
+    return delivered;
 }
 
 }  // namespace firmware::target

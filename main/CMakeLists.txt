@@ -63,6 +63,7 @@ idf_component_register(
         "update/update_phase_persistence.cpp"
         "update/firmware_update_adapter.cpp"
         "transport/tcp_control_adapter.cpp"
+        "transport/host_output_adapter.cpp"
         "media/recording_request_state.cpp"
         "transport/usb_device_adapter.cpp"
     REQUIRES

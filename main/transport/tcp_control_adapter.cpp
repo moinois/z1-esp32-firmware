@@ -62,6 +62,7 @@
 #include "application/web/recording_commands.hpp"
 #include "core/protocol/text.hpp"
 #include "core/protocol/protocol_constants.hpp"
+#include "host_output_adapter.hpp"
 
 #include <arpa/inet.h>
 #include <algorithm>
@@ -121,7 +122,11 @@ firmware::application::StationRuntime tcp_station_runtime;
 firmware::application::LiveConfiguration tcp_live_configuration;
 std::atomic_bool m942_exercise_active{false};
 std::mutex tcp_session_registry_mutex;
-std::vector<firmware::application::TcpClientSession*> tcp_sessions;
+struct TcpSessionRegistration {
+    firmware::application::TcpClientSession* session;
+    int socket;
+};
+std::vector<TcpSessionRegistration> tcp_sessions;
 QueueHandle_t tcp_nvs_command_queue = nullptr;
 
 enum class TcpNvsCommandKind : std::uint8_t {
@@ -722,9 +727,14 @@ void serve_tcp_client(TcpClientContext* context) {
              static_cast<unsigned long>(context->identity.generation),
              active_clients.load(std::memory_order_acquire));
     firmware::application::TcpClientSession session(context->identity);
+    session.set_output_handler([identity = context->identity](
+                                   const firmware::core::Frame& frame) {
+        return queue_host_frame(frame, identity);
+    });
     {
         std::lock_guard<std::mutex> lock(tcp_session_registry_mutex);
-        tcp_sessions.push_back(&session);
+        tcp_sessions.push_back({&session, client});
+        set_host_output_tcp_active(true);
     }
     TcpFileTransferRuntime& transfer_runtime =
         transfer_runtime_for_slot(context->identity.slot);
@@ -831,8 +841,13 @@ void serve_tcp_client(TcpClientContext* context) {
     tcp_router.ownership().transport_disconnected(context->identity);
     {
         std::lock_guard<std::mutex> lock(tcp_session_registry_mutex);
-        tcp_sessions.erase(std::remove(tcp_sessions.begin(), tcp_sessions.end(),
-                                       &session), tcp_sessions.end());
+        tcp_sessions.erase(
+            std::remove_if(tcp_sessions.begin(), tcp_sessions.end(),
+                           [&session](const auto& registration) {
+                               return registration.session == &session;
+                           }),
+            tcp_sessions.end());
+        set_host_output_tcp_active(!tcp_sessions.empty());
     }
     close(client);
     {
@@ -947,6 +962,7 @@ void tcp_accept_task(void*) {
 }  // namespace
 
 void TcpControlAdapter::start() {
+    static_cast<void>(initialize_host_output_adapter());
     tcp_nvs_command_queue = xQueueCreate(maximum_clients, sizeof(void*));
     if (tcp_nvs_command_queue == nullptr ||
         xTaskCreate(tcp_nvs_command_task, "tcp_nvs", nvs_task_stack_size,
@@ -995,10 +1011,38 @@ void tcp_router_usb_disconnected() {
 }
 
 void broadcast_tcp_frame(const firmware::core::Frame& frame) {
+    static_cast<void>(broadcast_host_frame(frame));
+}
+
+bool deliver_tcp_frame(
+    const firmware::application::HostIdentity& destination,
+    const firmware::core::Frame& frame) {
     std::lock_guard<std::mutex> lock(tcp_session_registry_mutex);
-    for (auto* session : tcp_sessions) {
-        if (session != nullptr) {
-            static_cast<void>(session->queue_frame(frame));
+    for (const auto& registration : tcp_sessions) {
+        if (registration.session != nullptr &&
+            registration.session->identity().slot == destination.slot) {
+            const auto encoded = firmware::core::encode_frame(frame);
+            if (encoded.empty()) return false;
+            const bool sent = send_tcp_bytes(registration.socket, encoded);
+            if (!sent) shutdown(registration.socket, SHUT_RDWR);
+            return sent;
+        }
+    }
+    return false;
+}
+
+void deliver_broadcast_tcp_frame(const firmware::core::Frame& frame) {
+    std::lock_guard<std::mutex> lock(tcp_session_registry_mutex);
+    const auto encoded = firmware::core::encode_frame(frame);
+    if (encoded.empty()) return;
+    for (std::uint8_t slot = 0U; slot < maximum_clients; ++slot) {
+        const auto found = std::find_if(
+            tcp_sessions.begin(), tcp_sessions.end(), [slot](const auto& item) {
+                return item.session != nullptr && item.session->identity().slot == slot;
+            });
+        if (found != tcp_sessions.end() &&
+            !send_tcp_bytes(found->socket, encoded)) {
+            shutdown(found->socket, SHUT_RDWR);
         }
     }
 }

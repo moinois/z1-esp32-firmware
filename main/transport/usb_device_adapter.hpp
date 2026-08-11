@@ -40,6 +40,9 @@ public:
 ///         `false` when encoding failed or the queue rejected the frame.
 bool queue_usb_frame(const firmware::core::Frame& frame);
 
+/// Bypasses global admission when its selected frame reaches the USB endpoint.
+bool deliver_usb_frame(const firmware::core::Frame& frame);
+
 /// Announces an intentional USB detach before a firmware-triggered restart.
 ///
 /// The device pull-up is disabled through TinyUSB, allowing the host to close

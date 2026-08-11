@@ -17,6 +17,15 @@ void TcpClientSession::receive(core::BytesView bytes,
 }
 
 bool TcpClientSession::queue_frame(const core::Frame& frame) {
+    if (output_handler_) return output_handler_(frame);
+    return queue_frame_direct(frame);
+}
+
+void TcpClientSession::set_output_handler(OutputHandler handler) {
+    output_handler_ = std::move(handler);
+}
+
+bool TcpClientSession::queue_frame_direct(const core::Frame& frame) {
     std::lock_guard<std::mutex> lock(transmit_mutex_);
     return transmit_queue_.enqueue(core::encode_frame(frame));
 }

@@ -5,8 +5,8 @@
 #include "controller_channel_adapter.hpp"
 #include "runtime_play_observer.hpp"
 #include "tcp_control_adapter.hpp"
-#include "usb_device_adapter.hpp"
 #include "controller_command_loop.hpp"
+#include "host_output_adapter.hpp"
 #include "play_runtime_state.hpp"
 #include "posix_file.hpp"
 
@@ -44,10 +44,11 @@ std::optional<std::string> ControllerPlayAdapter::cached_md5(
 }
 
 void ControllerPlayAdapter::broadcast(firmware::core::Frame frame) {
-    // Play errors are host broadcasts, not controller responses. Preserve the
-    // normative USB-before-TCP destination order used by shared host output.
-    static_cast<void>(queue_usb_frame(frame));
-    broadcast_tcp_frame(frame);
+    // Rate-limited play errors use the catastrophic TRN-006 overflow class;
+    // selection later expands an admitted broadcast in USB-before-TCP order.
+    static_cast<void>(broadcast_host_frame(
+        frame,
+        firmware::application::HostOutputSource::rate_limited_console_error));
 }
 
 void ControllerPlayAdapter::diagnose(

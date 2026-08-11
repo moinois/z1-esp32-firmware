@@ -35,8 +35,11 @@
 #include "application/controller/controller_config_transfer.hpp"
 #include "application/controller/controller_factory_transfer.hpp"
 #include "application/runtime/local_command_queue.hpp"
+#include "application/runtime/router.hpp"
 #include "application/playback/play_controller.hpp"
 #include "core/protocol/protocol_constants.hpp"
+#include "tcp_control_adapter.hpp"
+#include "host_output_adapter.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -143,10 +146,9 @@ void controller_command_task(void*) {
         const auto now_milliseconds =
             static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
         for (const auto& alarm : activity_monitor.poll(now_milliseconds)) {
-            const auto encoded = firmware::core::encode_controller_frame(alarm);
-            if (!encoded.empty()) {
-                write_controller_frame(channel, encoded);
-            }
+            static_cast<void>(broadcast_host_frame(
+                alarm,
+                firmware::application::HostOutputSource::inactivity_alarm));
         }
         const int count = channel.read(input, sizeof(input));
         if (count <= 0) continue;
@@ -155,6 +157,12 @@ void controller_command_task(void*) {
         for (const auto& frame : frames) {
             activity_monitor.record_valid_frame(
                 static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL));
+            const auto route = shared_host_router().from_controller(frame);
+            if (route.has(firmware::application::RouteTarget::broadcast)) {
+                static_cast<void>(broadcast_host_frame(
+                    frame,
+                    firmware::application::HostOutputSource::motion_board_unchanged));
+            }
             if (frame.type == firmware::core::protocol::machine_status) {
                 shared_controller_snapshots().update_status(frame.payload);
                 set_controller_running(firmware::core::status_reports_running(

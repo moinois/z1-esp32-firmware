@@ -257,15 +257,20 @@ The first core-to-periphery development slice contains:
 - M951/M952 recording control wired through recognition, state policy, and UART response;
 - TCP control listener on port 2222 with bounded client slots and keepalive options;
 - per-client TCP receive loops with independent stream decoders and overflow rejection;
-- bounded TCP transmit FIFO retaining complete frames until transport completion;
-- TCP whole-frame sender policy with short-write continuation and temporary-failure retry;
-- TCP overflow rejection wired to the whole-frame sender with a one-second call timeout;
-- per-client TCP session composition for incremental frames, stable identity, and queued responses;
+- firmware-wide host-output scheduling with independent 32-frame download-data
+  and non-download capacities, retained destinations, bounded listing wait,
+  no-host cleanup, and source-specific overflow purge behavior;
+- USB-before-TCP broadcast expansion and deterministic TCP slot delivery from
+  each selected one-download-plus-other output group;
+- TCP whole-frame sender policy with short-write continuation, temporary-failure
+  retry, and permanent-failure connection shutdown;
+- per-client TCP receive composition with incremental frames, stable identity,
+  and delegated global response admission;
 - target TCP tasks now retain per-connection identities and make explicit routing decisions;
 - callback-based TCP dispatch ports for controller, local, file, and play services;
 - mutex-protected TCP-to-controller forwarding through the existing UART output scheduler;
 - target TCP receive processing routed through the shared callback dispatcher;
-- target TCP clients drain queued frames with whole-frame retry semantics;
+- target TCP sockets deliver globally selected frames with whole-frame retry semantics;
 - transport-neutral local-command family classification shared by TCP, USB,
   and controller response adapters;
 - origin-aware TCP dispatch context for per-client response queueing;

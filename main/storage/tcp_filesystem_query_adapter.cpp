@@ -4,6 +4,7 @@
 #include "sd_access_diagnostics.hpp"
 
 #include "application/transport/tcp_client_session.hpp"
+#include "host_output_adapter.hpp"
 
 #include "esp_log.h"
 
@@ -66,7 +67,7 @@ TcpDirectoryListAdapter::list_directory(std::string_view path) {
 }
 
 bool TcpDirectoryListAdapter::send(firmware::core::Frame frame) {
-    return session_.queue_frame(frame);
+    return queue_host_listing(frame, session_.identity());
 }
 
 void TcpDirectoryListAdapter::log_warning(std::string_view message) {
