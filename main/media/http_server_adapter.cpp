@@ -24,6 +24,7 @@
 #include "camera_hardware_adapter.hpp"
 #include "application/runtime/live_control_policy.hpp"
 #include "application/runtime/live_initialization.hpp"
+#include "application/runtime/live_frame_iteration.hpp"
 #include "application/playback/preview_open.hpp"
 #include "application/playback/preview_metadata.hpp"
 #include "application/playback/preview_responses.hpp"
@@ -107,26 +108,46 @@ struct LiveStreamTaskContext {
     std::uint32_t generation;
 };
 
-// Captures and sends one complete camera frame to an admitted live socket.
-bool send_live_frame(httpd_handle_t handle, int socket_id) {
-    const auto frame = HardwareAdapterFactory::camera().capture_jpeg();
-    if (!frame.has_value()) {
-        return false;
+// Bridges the portable validation/capture/send ordering to ESP-IDF HTTP APIs.
+class TargetLiveFramePort final : public firmware::application::LiveFramePort {
+public:
+    explicit TargetLiveFramePort(httpd_handle_t handle) : handle_(handle) {}
+
+    bool socket_valid(std::uint32_t socket_id) override {
+        return httpd_ws_get_fd_info(handle_, static_cast<int>(socket_id)) ==
+               HTTPD_WS_CLIENT_WEBSOCKET;
     }
-    httpd_ws_frame_t outgoing{};
-    outgoing.type = HTTPD_WS_TYPE_BINARY;
-    outgoing.payload = const_cast<std::uint8_t*>(frame->data());
-    outgoing.len = frame->size();
-    return httpd_ws_send_frame_async(handle, socket_id, &outgoing) == ESP_OK;
+
+    std::optional<firmware::core::ByteVector> capture_jpeg() override {
+        return HardwareAdapterFactory::camera().capture_jpeg();
+    }
+
+    bool send_jpeg(std::uint32_t socket_id,
+                   firmware::core::BytesView frame) override {
+        httpd_ws_frame_t outgoing{};
+        outgoing.type = HTTPD_WS_TYPE_BINARY;
+        outgoing.payload = const_cast<std::uint8_t*>(frame.data());
+        outgoing.len = frame.size();
+        return httpd_ws_send_frame_async(handle_, static_cast<int>(socket_id),
+                                          &outgoing) == ESP_OK;
+    }
+
+private:
+    httpd_handle_t handle_;
+};
+
+// Runs the shared ordering for both the claimed first frame and later frames.
+bool send_live_frame(httpd_handle_t handle, int socket_id) {
+    TargetLiveFramePort port(handle);
+    return firmware::application::run_live_frame_iteration(
+        static_cast<std::uint32_t>(socket_id), port);
 }
 
 // Captures and asynchronously sends JPEG frames without retaining a request pointer.
 void live_stream_task(void* parameter) {
     auto* context = static_cast<LiveStreamTaskContext*>(parameter);
     while (live_generation.load(std::memory_order_acquire) ==
-               context->generation &&
-           httpd_ws_get_fd_info(context->handle, context->socket_id) ==
-               HTTPD_WS_CLIENT_WEBSOCKET) {
+           context->generation) {
         if (!send_live_frame(context->handle, context->socket_id)) {
             break;
         }

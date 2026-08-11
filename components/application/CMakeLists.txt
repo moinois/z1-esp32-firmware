@@ -39,6 +39,7 @@ set(APPLICATION_SOURCES
     src/configuration/live_configuration.cpp
     src/runtime/live_control_policy.cpp
     src/runtime/live_initialization.cpp
+    src/runtime/live_frame_iteration.cpp
     src/runtime/heartbeat.cpp
     src/runtime/m942_exercise.cpp
     src/runtime/nvs_fault_injection.cpp
