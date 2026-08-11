@@ -8,12 +8,18 @@
 #include "esp_wifi.h"
 #include "esp_err.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/semphr.h"
+#include "freertos/task.h"
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cstdio>
 #include <cstring>
 #include <mutex>
+#include <new>
 #include <string>
 
 namespace firmware::target {
@@ -26,6 +32,114 @@ constexpr std::string_view enabled_key = "en";
 constexpr std::string_view machine_name_key = "wifi.machine_name";
 constexpr std::size_t maximum_query_ssid_size = 32U;
 constexpr std::size_t maximum_query_password_size = 64U;
+constexpr UBaseType_t persistence_waiting_capacity = 4U;
+constexpr std::uint32_t persistence_admission_milliseconds = 100U;
+constexpr std::uint32_t persistence_completion_milliseconds = 3000U;
+constexpr std::uint32_t persistence_task_stack_size = 4096U;
+constexpr UBaseType_t persistence_task_priority = 3U;
+
+enum class PersistenceKind : std::uint8_t { channel, password, enabled };
+
+struct PersistenceJob {
+    PersistenceKind kind = PersistenceKind::channel;
+    std::array<char, 64U> text{};
+    std::size_t text_size = 0U;
+    bool enabled = false;
+    SemaphoreHandle_t completion = nullptr;
+    std::atomic<unsigned> references{2U};
+    bool succeeded = false;
+};
+
+QueueHandle_t persistence_queue = nullptr;
+bool persistence_worker_available = false;
+
+void release_job(PersistenceJob* job) {
+    if (job->references.fetch_sub(1U, std::memory_order_acq_rel) == 1U) {
+        if (job->completion != nullptr) vSemaphoreDelete(job->completion);
+        delete job;
+    }
+}
+
+void access_point_persistence_task(void*) {
+    for (;;) {
+        PersistenceJob* job = nullptr;
+        if (xQueueReceive(persistence_queue, &job, portMAX_DELAY) != pdTRUE ||
+            job == nullptr) {
+            continue;
+        }
+        const std::string_view text(job->text.data(), job->text_size);
+        if (job->kind == PersistenceKind::channel) {
+            job->succeeded = NvsKeyValueAdapter{}.write_string(
+                softap_namespace, channel_key, text);
+        } else if (job->kind == PersistenceKind::password) {
+            job->succeeded = NvsKeyValueAdapter{}.write_string(
+                softap_namespace, password_key, text);
+        } else {
+            job->succeeded = NvsKeyValueAdapter{}.write_u8(
+                softap_namespace, enabled_key, job->enabled ? 1U : 0U);
+        }
+        xSemaphoreGive(job->completion);
+        release_job(job);
+    }
+}
+
+void initialize_persistence_worker() {
+    if (persistence_queue != nullptr || persistence_worker_available) return;
+    persistence_queue = xQueueCreate(persistence_waiting_capacity,
+                                     sizeof(PersistenceJob*));
+    if (persistence_queue == nullptr) {
+        ESP_LOGE("APP_AP", "AP NVS IPC create failed");
+        return;
+    }
+    if (xTaskCreate(access_point_persistence_task, "ap_nvs",
+                    persistence_task_stack_size, nullptr,
+                    persistence_task_priority, nullptr) != pdPASS) {
+        ESP_LOGE("APP_AP", "AP NVS worker create failed");
+        vQueueDelete(persistence_queue);
+        persistence_queue = nullptr;
+        return;
+    }
+    persistence_worker_available = true;
+}
+
+bool persist_async(PersistenceKind kind, std::string_view text, bool enabled) {
+    if (!persistence_worker_available || persistence_queue == nullptr ||
+        text.size() > 64U) {
+        return false;
+    }
+    auto* job = new (std::nothrow) PersistenceJob;
+    if (job == nullptr) {
+        ESP_LOGE("APP_AP", "AP NVS queue full");
+        return false;
+    }
+    job->kind = kind;
+    job->text_size = text.size();
+    job->enabled = enabled;
+    std::copy(text.begin(), text.end(), job->text.begin());
+    job->completion = xSemaphoreCreateBinary();
+    if (job->completion == nullptr) {
+        job->references.store(1U);
+        release_job(job);
+        ESP_LOGE("APP_AP", "AP NVS queue full");
+        return false;
+    }
+    if (xQueueSend(persistence_queue, &job,
+                   pdMS_TO_TICKS(persistence_admission_milliseconds)) != pdTRUE) {
+        job->references.store(1U);
+        release_job(job);
+        ESP_LOGE("APP_AP", "AP NVS queue full");
+        return false;
+    }
+    if (xSemaphoreTake(job->completion,
+                       pdMS_TO_TICKS(persistence_completion_milliseconds)) != pdTRUE) {
+        ESP_LOGE("APP_AP", "AP NVS worker timeout");
+        release_job(job);
+        return false;
+    }
+    const bool result = job->succeeded;
+    release_job(job);
+    return result;
+}
 
 std::mutex command_mutex;
 firmware::application::AccessPointCommandState command_state;
@@ -62,19 +176,17 @@ class TargetAccessPointPort final
     : public firmware::application::AccessPointCommandPort {
 public:
     bool persist_channel(std::optional<std::uint8_t> channel) override {
-        return NvsKeyValueAdapter{}.write_string(
-            softap_namespace, channel_key,
-            channel.has_value() ? std::to_string(*channel) : std::string{});
+        const std::string value = channel.has_value() ? std::to_string(*channel)
+                                                      : std::string{};
+        return persist_async(PersistenceKind::channel, value, false);
     }
 
     bool persist_password(std::string_view password) override {
-        return NvsKeyValueAdapter{}.write_string(softap_namespace, password_key,
-                                                 password);
+        return persist_async(PersistenceKind::password, password, false);
     }
 
     bool persist_enabled(bool enabled) override {
-        return NvsKeyValueAdapter{}.write_u8(softap_namespace, enabled_key,
-                                             enabled ? 1U : 0U);
+        return persist_async(PersistenceKind::enabled, {}, enabled);
     }
 
     bool persist_machine_name(std::string_view name) override {
@@ -205,6 +317,7 @@ TargetAccessPointPort command_port;
 void initialize_access_point_commands(
     std::string_view machine_name,
     const firmware::application::AccessPointStartupSettings& settings) {
+    initialize_persistence_worker();
     std::lock_guard<std::mutex> lock(command_mutex);
     command_state = {};
     command_state.machine_name = std::string(machine_name);
