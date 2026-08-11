@@ -28,6 +28,10 @@ public:
         firmware::core::BytesView input, bool encrypt) override;
     void send_negotiation_response(firmware::core::BytesView response) override;
     void report_error(std::uint8_t error) override;
+    void report_diagnostic(
+        firmware::application::BlufiSecurityDiagnostic diagnostic,
+        int first = 0, int second = 0) override;
+    int last_crypto_error() const override;
 
     /// Returns and clears the most recent negotiation response.
     std::optional<firmware::core::ByteVector> take_negotiation_response();
@@ -36,6 +40,7 @@ private:
     mbedtls_dhm_context dhm_{};
     mbedtls_aes_context aes_{};
     firmware::core::ByteVector negotiation_response_;
+    int last_crypto_error_ = 0;
 };
 
 }  // namespace firmware::target

@@ -48,6 +48,25 @@ struct BlufiDhResult {
     BlufiDhFailure failure;
     core::ByteVector public_key;
     core::ByteVector shared_secret;
+    int error_code = 0;
+};
+
+/// Identifies exact DIAG-044 negotiation lifecycle and failure records.
+enum class BlufiSecurityDiagnostic {
+    initialized,
+    deinitialized,
+    invalid_format,
+    uninitialized,
+    parameter_allocation_failed,
+    parameter_retained,
+    missing_parameter,
+    short_parameter,
+    dh_parse_failed,
+    dh_length_unsupported,
+    public_key_failed,
+    shared_secret_failed,
+    digest_failed,
+    negotiation_complete,
 };
 
 /// Isolates BLUFI security state from allocation and cryptographic libraries.
@@ -79,6 +98,15 @@ public:
 
     /// Sends one exact BLUFI error value.
     virtual void report_error(std::uint8_t error) = 0;
+
+    /** Emits one target diagnostic. Values carry lengths or library errors;
+     *  the default preserves lightweight host substitutes.
+     */
+    virtual void report_diagnostic(BlufiSecurityDiagnostic, int = 0,
+                                   int = 0) {}
+
+    /// Returns the most recent target-library error for diagnostic rendering.
+    virtual int last_crypto_error() const { return 0; }
 };
 
 /// Owns one BLE connection's parameter buffer, AES key, and readiness state.
@@ -119,6 +147,7 @@ private:
     core::ByteVector parameters_;
     std::array<std::uint8_t, 16U> key_{};
     bool ready_ = false;
+    bool initialized_ = true;
 };
 
 }  // namespace firmware::application

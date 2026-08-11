@@ -46,21 +46,37 @@ std::uint8_t dh_error(BlufiDhFailure failure) {
 }  // namespace
 
 BlufiSecurityContext::BlufiSecurityContext(BlufiSecurityPort& port)
-    : port_(port) {}
+    : port_(port) {
+    port_.report_diagnostic(BlufiSecurityDiagnostic::initialized);
+}
 
 void BlufiSecurityContext::create() {
     parameters_.clear();
     key_.fill(0U);
     ready_ = false;
+    if (!initialized_) {
+        initialized_ = true;
+        port_.report_diagnostic(BlufiSecurityDiagnostic::initialized);
+    }
 }
 
 void BlufiSecurityContext::destroy() {
-    create();
+    parameters_.clear();
+    key_.fill(0U);
+    ready_ = false;
+    if (!initialized_) return;
+    initialized_ = false;
+    port_.report_diagnostic(BlufiSecurityDiagnostic::deinitialized);
 }
 
 void BlufiSecurityContext::receive_negotiation(core::BytesView message) {
     if (message.size() < minimum_negotiation_message_size) {
+        port_.report_diagnostic(BlufiSecurityDiagnostic::invalid_format);
         port_.report_error(data_format_error);
+        return;
+    }
+    if (!initialized_) {
+        port_.report_diagnostic(BlufiSecurityDiagnostic::uninitialized);
         return;
     }
     if (message[0] == parameter_length_kind) {
@@ -80,24 +96,44 @@ void BlufiSecurityContext::receive_parameter_length(core::BytesView message) {
     }
     auto allocated = port_.allocate_parameter_buffer(size);
     if (!allocated.has_value() || allocated->size() != size) {
+        port_.report_diagnostic(BlufiSecurityDiagnostic::parameter_allocation_failed);
         port_.report_error(allocation_error);
         return;
     }
     parameters_ = std::move(*allocated);
+    port_.report_diagnostic(BlufiSecurityDiagnostic::parameter_retained,
+                            static_cast<int>(size));
 }
 
 void BlufiSecurityContext::receive_parameter_data(core::BytesView message) {
-    if (parameters_.empty() || message.size() - 1U < parameters_.size()) {
+    if (parameters_.empty()) {
+        port_.report_diagnostic(BlufiSecurityDiagnostic::missing_parameter);
+        port_.report_error(parameter_error);
+        return;
+    }
+    if (message.size() - 1U < parameters_.size()) {
+        port_.report_diagnostic(BlufiSecurityDiagnostic::short_parameter,
+                                static_cast<int>(parameters_.size() + 1U),
+                                static_cast<int>(message.size()));
         port_.report_error(parameter_error);
         return;
     }
     std::copy_n(message.begin() + 1U, parameters_.size(), parameters_.begin());
     const BlufiDhResult derived = port_.derive_diffie_hellman(parameters_);
     if (derived.failure != BlufiDhFailure::none) {
+        const auto diagnostic =
+            derived.failure == BlufiDhFailure::parse
+                ? BlufiSecurityDiagnostic::dh_parse_failed
+                : derived.failure == BlufiDhFailure::public_key
+                      ? BlufiSecurityDiagnostic::public_key_failed
+                      : BlufiSecurityDiagnostic::shared_secret_failed;
+        port_.report_diagnostic(diagnostic, derived.error_code);
         port_.report_error(dh_error(derived.failure));
         return;
     }
     if (derived.public_key.size() > maximum_key_material_size) {
+        port_.report_diagnostic(BlufiSecurityDiagnostic::dh_length_unsupported,
+                                static_cast<int>(derived.public_key.size()));
         port_.report_error(public_key_error);
         return;
     }
@@ -112,12 +148,16 @@ void BlufiSecurityContext::receive_parameter_data(core::BytesView message) {
     }
     const auto digest = port_.md5(transformed);
     if (!digest.has_value()) {
+        port_.report_diagnostic(BlufiSecurityDiagnostic::digest_failed,
+                                port_.last_crypto_error());
         port_.report_error(key_digest_error);
         return;
     }
     key_ = *digest;
     ready_ = true;
     port_.send_negotiation_response(derived.public_key);
+    port_.report_diagnostic(BlufiSecurityDiagnostic::negotiation_complete,
+                            static_cast<int>(derived.public_key.size()));
 }
 
 bool BlufiSecurityContext::ready() const {

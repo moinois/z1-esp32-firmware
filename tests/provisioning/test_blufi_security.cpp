@@ -14,6 +14,7 @@
 using firmware::application::BlufiDhFailure;
 using firmware::application::BlufiDhResult;
 using firmware::application::BlufiSecurityContext;
+using firmware::application::BlufiSecurityDiagnostic;
 using firmware::application::BlufiSecurityPort;
 using firmware::core::ByteVector;
 
@@ -68,6 +69,20 @@ public:
         errors.push_back(error);
     }
 
+    void report_diagnostic(BlufiSecurityDiagnostic diagnostic, int first,
+                           int second) override {
+        diagnostics.push_back({diagnostic, first, second});
+    }
+
+    struct Diagnostic {
+        BlufiSecurityDiagnostic kind;
+        int first;
+        int second;
+        bool operator==(const Diagnostic& other) const {
+            return kind == other.kind && first == other.first && second == other.second;
+        }
+    };
+
     bool allocation_succeeds = true;
     BlufiDhResult dh_result{BlufiDhFailure::none, {1U}, {2U}};
     std::optional<std::array<std::uint8_t, 16U>> digest =
@@ -82,6 +97,7 @@ public:
     bool aes_encrypt = false;
     std::vector<ByteVector> responses;
     std::vector<std::uint8_t> errors;
+    std::vector<Diagnostic> diagnostics;
 };
 
 // Passes concise literal test bytes through the production non-owning view API.
@@ -233,7 +249,31 @@ TEST_CASE(blesec_006_readiness_clears_only_with_context_lifecycle) {
     REQUIRE(context.ready());
 
     context.destroy();
+    receive(context, {0U, 0U, 1U});
     REQUIRE(!context.ready());
     context.create();
     REQUIRE(!context.ready());
+}
+
+TEST_CASE(diag_044_reports_exact_portable_security_decisions) {
+    FakeBlufiSecurityPort port;
+    BlufiSecurityContext context(port);
+    receive(context, {0U});
+    receive(context, {0U, 0U, 2U});
+    receive(context, {1U, 7U, 8U});
+    context.destroy();
+    receive(context, {0U, 0U, 1U});
+
+    REQUIRE_EQ(port.diagnostics.front().kind,
+               BlufiSecurityDiagnostic::initialized);
+    REQUIRE_EQ(port.diagnostics[1].kind,
+               BlufiSecurityDiagnostic::invalid_format);
+    const FakeBlufiSecurityPort::Diagnostic retained{
+        BlufiSecurityDiagnostic::parameter_retained, 2, 0};
+    const FakeBlufiSecurityPort::Diagnostic complete{
+        BlufiSecurityDiagnostic::negotiation_complete, 1, 0};
+    REQUIRE_EQ(port.diagnostics[2], retained);
+    REQUIRE_EQ(port.diagnostics[3], complete);
+    REQUIRE_EQ(port.diagnostics.back().kind,
+               BlufiSecurityDiagnostic::uninitialized);
 }
