@@ -24,3 +24,19 @@ TEST_CASE(diag_030_formats_every_valid_aggregate_header_line_in_order) {
             "ESP32 Included: Yes", "LPC1768 Included: Yes",
             "======================================"}));
 }
+
+TEST_CASE(diag_031_selects_the_exact_persisted_phase_record) {
+    using firmware::application::update_recovery_diagnostic;
+    REQUIRE_EQ(update_recovery_diagnostic(1U, false)->message,
+               std::string("OTA-NVS (phase=1)"));
+    REQUIRE_EQ(update_recovery_diagnostic(2U, true)->message,
+               std::string("OTA-NVS (phase=2): resume LPC upgrade (lpc1768.bin present)"));
+    REQUIRE_EQ(update_recovery_diagnostic(2U, false)->message,
+               std::string("OTA-NVS (phase=2): LPC phase but bin missing"));
+    REQUIRE_EQ(update_recovery_diagnostic(3U, false)->message,
+               std::string("OTA-NVS (phase=3): previous upgrade failed"));
+    REQUIRE_EQ(update_recovery_diagnostic(4U, false)->message,
+               std::string("OTA-NVS (phase=4): previous LPC transfer completed, clear NVS"));
+    REQUIRE(!update_recovery_diagnostic(0U, false).has_value());
+    REQUIRE(!update_recovery_diagnostic(9U, false).has_value());
+}

@@ -45,4 +45,24 @@ std::vector<std::string> aggregate_header_diagnostics(
             "======================================"};
 }
 
+std::optional<UpdateRecoveryDiagnostic> update_recovery_diagnostic(
+    std::uint8_t phase, bool staged_controller_exists) {
+    switch (phase) {
+        case 1U: return UpdateRecoveryDiagnostic{true, "OTA-NVS (phase=1)"};
+        case 2U:
+            return UpdateRecoveryDiagnostic{
+                !staged_controller_exists,
+                staged_controller_exists
+                    ? "OTA-NVS (phase=2): resume LPC upgrade (lpc1768.bin present)"
+                    : "OTA-NVS (phase=2): LPC phase but bin missing"};
+        case 3U:
+            return UpdateRecoveryDiagnostic{true,
+                "OTA-NVS (phase=3): previous upgrade failed"};
+        case 4U:
+            return UpdateRecoveryDiagnostic{false,
+                "OTA-NVS (phase=4): previous LPC transfer completed, clear NVS"};
+        default: return std::nullopt;
+    }
+}
+
 }  // namespace firmware::application

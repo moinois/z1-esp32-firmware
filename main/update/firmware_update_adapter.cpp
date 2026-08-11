@@ -251,8 +251,19 @@ void update_task(void*) {
     vTaskDelay(pdMS_TO_TICKS(1000U));
     const auto persisted_phase = NvsKeyValueAdapter{}.read_u8("ota_state", "phase");
     if (persisted_phase.has_value()) {
-        ESP_LOGI(tag, "recovered OTA phase %u",
-                 static_cast<unsigned>(*persisted_phase));
+        struct stat staged_information{};
+        const std::string staged_path =
+            firmware::core::physical_sd_path("/lpc1768.bin");
+        const bool staged_exists =
+            stat(staged_path.c_str(), &staged_information) == 0 &&
+            S_ISREG(staged_information.st_mode);
+        if (const auto diagnostic =
+                firmware::application::update_recovery_diagnostic(
+                    *persisted_phase, staged_exists);
+            diagnostic.has_value()) {
+            if (diagnostic->warning) ESP_LOGW(tag, "%s", diagnostic->message.c_str());
+            else ESP_LOGI(tag, "%s", diagnostic->message.c_str());
+        }
         if (*persisted_phase == 4U) {
             static_cast<void>(NvsKeyValueAdapter{}.write_u8("ota_state", "phase", 0U));
         }
