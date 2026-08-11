@@ -115,22 +115,22 @@ public:
         if (file == nullptr) {
             return {firmware::application::UpdateLoadFailure::absent, {}};
         }
-        if (std::fseek(file, 0L, SEEK_END) != 0) {
+        static_cast<void>(std::fseek(file, 0L, SEEK_END));
+        const std::uint32_t extent = static_cast<std::uint32_t>(std::ftell(file));
+        static_cast<void>(std::fseek(file, 0L, SEEK_SET));
+        auto bytes = firmware::application::UpdateBytes::allocate(extent);
+        if (!bytes.has_value()) {
             std::fclose(file);
-            return {firmware::application::UpdateLoadFailure::seek, {}};
+            ESP_LOGE(tag, "Failed to allocate memory");
+            return {firmware::application::UpdateLoadFailure::allocation, {}};
         }
-        const long length = std::ftell(file);
-        if (length < 0L || std::fseek(file, 0L, SEEK_SET) != 0) {
-            std::fclose(file);
-            return {firmware::application::UpdateLoadFailure::size, {}};
-        }
-        firmware::core::ByteVector bytes(static_cast<std::size_t>(length));
-        const std::size_t count = std::fread(bytes.data(), 1U, bytes.size(), file);
+        const std::size_t count = std::fread(bytes->data(), 1U, bytes->size(), file);
         std::fclose(file);
-        if (count != bytes.size()) {
+        if (count != bytes->size()) {
+            ESP_LOGE(tag, "Failed to read complete file");
             return {firmware::application::UpdateLoadFailure::short_read, {}};
         }
-        return {firmware::application::UpdateLoadFailure::none, std::move(bytes)};
+        return {firmware::application::UpdateLoadFailure::none, std::move(*bytes)};
     }
     void aggregate_opened() override {
         static_cast<void>(NvsKeyValueAdapter{}.write_u8(

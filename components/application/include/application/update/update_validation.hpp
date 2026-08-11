@@ -6,6 +6,8 @@
 
 #include <cstdint>
 #include <optional>
+#include <memory>
+#include <initializer_list>
 #include <string_view>
 
 namespace firmware::application {
@@ -14,22 +16,38 @@ namespace firmware::application {
 enum class UpdateLoadFailure {
     none,
     absent,
-    seek,
-    size,
     allocation,
     short_read,
+};
+
+/// Explicitly fallible contiguous ownership for a complete aggregate image.
+class UpdateBytes {
+public:
+    UpdateBytes() = default;
+    UpdateBytes(core::ByteVector bytes);
+    UpdateBytes(std::initializer_list<std::uint8_t> bytes);
+    static std::optional<UpdateBytes> allocate(std::size_t size);
+    std::uint8_t* data() { return data_.get(); }
+    const std::uint8_t* data() const { return data_.get(); }
+    std::size_t size() const { return size_; }
+    operator core::BytesView() const { return {data(), size()}; }
+private:
+    explicit UpdateBytes(std::size_t size, std::unique_ptr<std::uint8_t[]> data)
+        : data_(std::move(data)), size_(size) {}
+    std::unique_ptr<std::uint8_t[]> data_;
+    std::size_t size_ = 0U;
 };
 
 /// Holds a complete aggregate or the exact stage at which loading failed.
 struct UpdateLoadResult {
     UpdateLoadFailure failure;
-    core::ByteVector bytes;
+    UpdateBytes bytes;
 };
 
 /// Holds one fully validated aggregate and its decoded metadata.
 struct ValidatedUpdatePackage {
     core::UpdateHeader header;
-    core::ByteVector bytes;
+    UpdateBytes bytes;
 };
 
 /// Isolates validation policy from storage, phase state, hosts, and ESP images.

@@ -62,8 +62,8 @@ void UpdateApplicationService::stage_controller(
     if (package.header.controller_size == 0U) {
         return;
     }
-    const std::size_t controller_offset =
-        core::update_package_header_size + package.header.mainboard_size;
+    const std::uint32_t controller_offset = static_cast<std::uint32_t>(
+        core::update_package_header_size + package.header.mainboard_size);
     const core::BytesView controller_image(
         package.bytes.data() + controller_offset,
         package.header.controller_size);

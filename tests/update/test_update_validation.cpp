@@ -14,6 +14,7 @@
 
 using firmware::application::UpdateLoadFailure;
 using firmware::application::UpdateLoadResult;
+using firmware::application::UpdateBytes;
 using firmware::application::UpdateValidationPort;
 using firmware::application::UpdateValidationService;
 using firmware::core::ByteVector;
@@ -64,7 +65,7 @@ public:
     UpdateLoadResult load_aggregate(std::string_view path) override {
         calls.emplace_back("load");
         paths.emplace_back(path);
-        return load_result;
+        return std::move(load_result);
     }
 
     // Records that opening the aggregate clears prior persisted failure.
@@ -121,6 +122,17 @@ public:
 
 }  // namespace
 
+TEST_CASE(upd_020_update_buffer_allocation_is_explicit_and_contiguous) {
+    auto empty = UpdateBytes::allocate(0U);
+    auto bytes = UpdateBytes::allocate(3U);
+    REQUIRE(empty.has_value());
+    REQUIRE_EQ(empty->size(), 0U);
+    REQUIRE(bytes.has_value());
+    REQUIRE_EQ(bytes->size(), 3U);
+    bytes->data()[1] = 0x5aU;
+    REQUIRE_EQ(static_cast<firmware::core::BytesView>(*bytes)[1], 0x5aU);
+}
+
 TEST_CASE(upd_004_and_005_absent_aggregate_cleans_then_sends_exact_reset) {
     FakeUpdateValidationPort port;
     UpdateValidationService validation(port);
@@ -141,9 +153,7 @@ TEST_CASE(upd_004_and_005_absent_aggregate_cleans_then_sends_exact_reset) {
 }
 
 TEST_CASE(upd_020_nondestructive_load_failures_publish_and_leave_aggregate) {
-    for (const UpdateLoadFailure failure :
-         {UpdateLoadFailure::seek, UpdateLoadFailure::size,
-          UpdateLoadFailure::allocation}) {
+    for (const UpdateLoadFailure failure : {UpdateLoadFailure::allocation}) {
         FakeUpdateValidationPort port;
         port.load_result = {failure, {}};
         UpdateValidationService validation(port);

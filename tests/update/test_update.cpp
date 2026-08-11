@@ -64,6 +64,18 @@ TEST_CASE(upd_013_declared_images_must_fit_but_trailing_bytes_are_allowed) {
     REQUIRE_EQ(firmware::core::parse_update_package(bytes).error, firmware::core::UpdateError::size);
 }
 
+TEST_CASE(upd_013_required_size_uses_wrapping_32_bit_arithmetic) {
+    ByteVector bytes(32U, 0U);
+    put_le32(bytes, 0U, 0x4D5173EEUL);
+    bytes[4] = 1U;
+    bytes[5] = 32U;
+    bytes[6] = 2U;
+    put_le32(bytes, 12U, 0xffffffe0U);
+    put_le32(bytes, 24U, firmware::core::crc32_iso_hdlc({bytes.data(), 24U}));
+    put_le32(bytes, 28U, firmware::core::aggregate_file_crc(bytes));
+    REQUIRE(firmware::core::parse_update_package(bytes).valid());
+}
+
 TEST_CASE(upd_010_rejects_short_magic_version_and_header_length) {
     REQUIRE_EQ(firmware::core::aggregate_file_crc(ByteVector(31U, 0U)), 0U);
     REQUIRE_EQ(firmware::core::parse_update_package(ByteVector(31U, 0U)).error,

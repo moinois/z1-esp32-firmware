@@ -27,14 +27,14 @@ constexpr std::uint32_t crc32_initial_value = 0xFFFFFFFFUL;
 constexpr std::uint32_t crc32_polynomial = 0xEDB88320UL;
 constexpr std::uint32_t crc32_final_xor = 0xFFFFFFFFUL;
 
-std::uint32_t read_le32(const ByteVector& bytes, std::size_t offset) {
+std::uint32_t read_le32(BytesView bytes, std::size_t offset) {
     return bytes[offset] | (std::uint32_t(bytes[offset + 1]) << 8U) |
            (std::uint32_t(bytes[offset + 2]) << 16U) | (std::uint32_t(bytes[offset + 3]) << 24U);
 }
 
 }  // namespace
 
-std::uint32_t aggregate_file_crc(const ByteVector& package) {
+std::uint32_t aggregate_file_crc(BytesView package) {
     if (package.size() < update_package_header_size) {
         return 0U;
     }
@@ -56,7 +56,7 @@ std::uint32_t aggregate_file_crc(const ByteVector& package) {
     return crc ^ crc32_final_xor;
 }
 
-UpdateParseResult parse_update_package(const ByteVector& package) {
+UpdateParseResult parse_update_package(BytesView package) {
     if (package.size() < update_package_header_size) {
         return {{}, UpdateError::short_file};
     }
@@ -87,8 +87,11 @@ UpdateParseResult parse_update_package(const ByteVector& package) {
     if (aggregate_file_crc(package) != read_le32(package, file_crc_offset)) {
         return {{}, UpdateError::file_crc};
     }
-    if (static_cast<std::uint64_t>(update_package_header_size) + mainboard_size + controller_size >
-        package.size()) {
+    const std::uint32_t controller_offset =
+        static_cast<std::uint32_t>(update_package_header_size + mainboard_size);
+    const std::uint32_t required_size =
+        static_cast<std::uint32_t>(controller_offset + controller_size);
+    if (required_size > static_cast<std::uint32_t>(package.size())) {
         return {{}, UpdateError::size};
     }
     if (mainboard_size != 0U && package[update_package_header_size] != esp_image_magic) {

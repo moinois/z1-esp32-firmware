@@ -9,6 +9,8 @@
 #include <optional>
 #include <string_view>
 #include <utility>
+#include <algorithm>
+#include <new>
 
 namespace firmware::application {
 namespace {
@@ -20,6 +22,23 @@ constexpr std::array<std::uint8_t, 6U> reset_command{
     'r', 'e', 's', 'e', 't', 0U};
 
 }  // namespace
+
+UpdateBytes::UpdateBytes(core::ByteVector bytes) {
+    auto allocated = allocate(bytes.size());
+    if (!allocated.has_value()) return;
+    *this = std::move(*allocated);
+    std::copy(bytes.begin(), bytes.end(), data());
+}
+
+UpdateBytes::UpdateBytes(std::initializer_list<std::uint8_t> bytes)
+    : UpdateBytes(core::ByteVector(bytes)) {}
+
+std::optional<UpdateBytes> UpdateBytes::allocate(std::size_t size) {
+    if (size == 0U) return UpdateBytes{};
+    auto data = std::unique_ptr<std::uint8_t[]>(new (std::nothrow) std::uint8_t[size]);
+    if (!data) return std::nullopt;
+    return UpdateBytes(size, std::move(data));
+}
 
 UpdateValidationService::UpdateValidationService(UpdateValidationPort& port)
     : port_(port) {}
@@ -37,9 +56,7 @@ std::optional<ValidatedUpdatePackage> UpdateValidationService::validate(
     }
 
     port_.aggregate_opened();
-    if (loaded.failure == UpdateLoadFailure::seek ||
-        loaded.failure == UpdateLoadFailure::size ||
-        loaded.failure == UpdateLoadFailure::allocation) {
+    if (loaded.failure == UpdateLoadFailure::allocation) {
         port_.publish_error();
         return std::nullopt;
     }

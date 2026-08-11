@@ -50,7 +50,7 @@ struct UpdateParseResult {
     }
 };
 /** Computes the aggregate CRC while excluding the encoded CRC field itself. */
-std::uint32_t aggregate_file_crc(const ByteVector& package);
+std::uint32_t aggregate_file_crc(BytesView package);
 /** Validates and decodes a complete in-memory aggregate firmware package. */
-UpdateParseResult parse_update_package(const ByteVector& package);
+UpdateParseResult parse_update_package(BytesView package);
 }  // namespace firmware::core
