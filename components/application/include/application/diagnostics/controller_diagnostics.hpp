@@ -22,6 +22,8 @@ enum class ControllerTransferDiagnosticEvent {
     layout_reply_failure,
     missing_content,
     data_open_failure,
+    frame_data_allocation_failure,
+    encoded_frame_allocation_failure,
     timeout,
 };
 

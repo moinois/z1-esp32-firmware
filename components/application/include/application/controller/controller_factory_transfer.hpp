@@ -28,6 +28,12 @@ public:
     /// Attempts one removal of the requested file.
     virtual bool remove_file(std::string_view path) = 0;
 
+    /// Probes transient data-response retention for deterministic DIAG-035 handling.
+    virtual bool response_data_memory_available(std::size_t bytes) {
+        static_cast<void>(bytes);
+        return true;
+    }
+
     /// Submits one complete response and reports queue acceptance.
     virtual bool send(core::Frame frame) = 0;
 

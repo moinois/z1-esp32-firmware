@@ -42,6 +42,11 @@ public:
         return remove_succeeds;
     }
 
+    bool response_data_memory_available(std::size_t bytes) override {
+        allocation_size = bytes;
+        return allocation_succeeds;
+    }
+
     // Records one response and reports configured queue acceptance.
     bool send(Frame frame) override {
         sent.push_back(std::move(frame));
@@ -55,6 +60,8 @@ public:
     bool exists = true;
     bool remove_succeeds = true;
     bool send_succeeds = true;
+    bool allocation_succeeds = true;
+    std::size_t allocation_size = 0U;
     std::string_view last_path;
     std::size_t requested_chunk_size = 0U;
     std::size_t remove_count = 0U;
@@ -117,6 +124,21 @@ TEST_CASE(lpcfac_002_geometry_counts_stars_but_excludes_hash_comments) {
     REQUIRE_EQ(port.sent.back(), Frame({0xE2U, {0U, 0U, 0U, 2U, 0U, 100U}}));
     REQUIRE_EQ(transfer.frame_count(), 2U);
     REQUIRE_EQ(transfer.frame_data_size(), 100U);
+}
+
+TEST_CASE(diag_035_factory_data_retention_failure_is_explicit) {
+    ControllerFactoryTransfer transfer;
+    FakeFactoryPort port;
+    port.chunks = std::vector<ByteVector>{bytes("factory\n")};
+    transfer.handle(geometry(132U), port);
+    port.allocation_succeeds = false;
+
+    transfer.handle({0xE3U, {0U, 0U, 0U, 1U}}, port);
+
+    REQUIRE_EQ(port.allocation_size, 12U);
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("Failed to allocate memory for frame data"));
+    REQUIRE_EQ(port.sent.back().type, 0xE5U);
 }
 
 TEST_CASE(lpcfac_002_geometry_rejects_zero_and_more_than_512_without_clearing_old_geometry) {

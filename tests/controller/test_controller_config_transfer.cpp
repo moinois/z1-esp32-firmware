@@ -33,6 +33,11 @@ public:
         return chunks;
     }
 
+    bool response_data_memory_available(std::size_t bytes) override {
+        allocation_size = bytes;
+        return allocation_succeeds;
+    }
+
     // Records one response and reports configured submission success.
     bool send(Frame frame) override {
         sent.push_back(std::move(frame));
@@ -45,6 +50,8 @@ public:
 
     bool exists = true;
     bool send_succeeds = true;
+    bool allocation_succeeds = true;
+    std::size_t allocation_size = 0U;
     std::size_t requested_chunk_size = 0U;
     std::optional<std::vector<ByteVector>> chunks = std::vector<ByteVector>{};
     std::vector<Frame> sent;
@@ -93,6 +100,21 @@ TEST_CASE(lpccfg_002_geometry_counts_all_chunks_longer_than_two_including_commen
     REQUIRE_EQ(port.sent.back(), Frame({0xD2U, {0U, 0U, 0U, 2U, 2U, 0U}}));
     REQUIRE_EQ(transfer.frame_count(), 2U);
     REQUIRE_EQ(transfer.frame_data_size(), 512U);
+}
+
+TEST_CASE(diag_035_configuration_data_retention_failure_is_explicit) {
+    ControllerConfigTransfer transfer;
+    FakeConfigPort port;
+    port.chunks = std::vector<ByteVector>{bytes("value\n")};
+    transfer.handle(geometry(), port);
+    port.allocation_succeeds = false;
+
+    transfer.handle({0xD3U, {0U, 0U, 0U, 0U}}, port);
+
+    REQUIRE_EQ(port.allocation_size, 11U);
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("Failed to allocate memory for frame data"));
+    REQUIRE_EQ(port.sent.back().type, 0xD5U);
 }
 
 TEST_CASE(lpccfg_003_data_filters_comments_stars_and_nonfinal_chunks_without_lf) {

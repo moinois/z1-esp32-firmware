@@ -2,6 +2,7 @@
 #include "controller_transfer_adapter.hpp"
 #include "configuration_file_store.hpp"
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 
 #include "controller_channel_adapter.hpp"
 #include "runtime_status_adapter.hpp"
@@ -99,7 +100,24 @@ bool ControllerTransferAdapter::remove_file(std::string_view path) {
     return unlink(std::string(path).c_str()) == 0;
 }
 
+bool ControllerTransferAdapter::response_data_memory_available(std::size_t bytes) {
+    void* probe = heap_caps_malloc(bytes, MALLOC_CAP_8BIT);
+    if (probe == nullptr) return false;
+    heap_caps_free(probe);
+    return true;
+}
+
 bool ControllerTransferAdapter::send(firmware::core::Frame frame) {
+    constexpr std::size_t encoded_overhead =
+        firmware::core::protocol::common_frame_overhead;
+    if (!response_data_memory_available(frame.payload.size() + encoded_overhead)) {
+        const auto family = static_cast<firmware::application::ControllerTransferFamily>(
+            ((frame.type >> 4U) - 0x0cU));
+        diagnose(firmware::application::controller_transfer_diagnostic(
+            family,
+            firmware::application::ControllerTransferDiagnosticEvent::encoded_frame_allocation_failure));
+        return false;
+    }
     const auto encoded = firmware::core::encode_controller_frame(frame);
     if (encoded.empty()) return false;
     diagnose(firmware::application::controller_transfer_sent_diagnostic(

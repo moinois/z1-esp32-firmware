@@ -54,3 +54,19 @@ TEST_CASE(diag_035_and_036_format_sent_failures_and_layout_details) {
     REQUIRE_EQ(details[0].message, std::string("Total frames: 3"));
     REQUIRE_EQ(details[1].message, std::string("Frame size: 512 bytes"));
 }
+
+TEST_CASE(diag_035_allocation_failures_use_exact_family_tag_and_text) {
+    using firmware::application::controller_transfer_diagnostic;
+    const auto data = controller_transfer_diagnostic(
+        ControllerTransferFamily::firmware,
+        ControllerTransferDiagnosticEvent::frame_data_allocation_failure);
+    REQUIRE(data.error);
+    REQUIRE_EQ(data.tag, std::string_view("dfu_LPC1768"));
+    REQUIRE_EQ(data.message,
+               std::string("Failed to allocate memory for frame data"));
+    REQUIRE_EQ(controller_transfer_diagnostic(
+                   ControllerTransferFamily::factory,
+                   ControllerTransferDiagnosticEvent::encoded_frame_allocation_failure)
+                   .message,
+               std::string("Failed to allocate memory for frame"));
+}

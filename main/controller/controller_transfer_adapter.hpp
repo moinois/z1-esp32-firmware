@@ -28,6 +28,7 @@ public:
     std::optional<std::vector<firmware::core::ByteVector>>
     read_configuration_chunks(std::size_t chunk_size) override;
     bool remove_file(std::string_view path) override;
+    bool response_data_memory_available(std::size_t bytes) override;
     bool send(firmware::core::Frame frame) override;
     void diagnose(
         firmware::application::ControllerTransferDiagnostic diagnostic) override;

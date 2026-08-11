@@ -74,6 +74,12 @@ ControllerTransferDiagnostic controller_transfer_diagnostic(
         message = family == ControllerTransferFamily::factory
             ? "Failed to open Factory ini file: /sd/factory.ini"
             : "Failed to open firmware file: /sd/config.txt";
+    } else if (event ==
+               ControllerTransferDiagnosticEvent::frame_data_allocation_failure) {
+        message = "Failed to allocate memory for frame data";
+    } else if (event ==
+               ControllerTransferDiagnosticEvent::encoded_frame_allocation_failure) {
+        message = "Failed to allocate memory for frame";
     } else if (event == ControllerTransferDiagnosticEvent::timeout) {
         message = "DFU process timeout in state " + std::to_string(frame_index);
     } else {
@@ -84,6 +90,8 @@ ControllerTransferDiagnostic controller_transfer_diagnostic(
                        event == ControllerTransferDiagnosticEvent::layout_reply_failure ||
                        event == ControllerTransferDiagnosticEvent::missing_content ||
                        event == ControllerTransferDiagnosticEvent::data_open_failure ||
+                       event == ControllerTransferDiagnosticEvent::frame_data_allocation_failure ||
+                       event == ControllerTransferDiagnosticEvent::encoded_frame_allocation_failure ||
                        event == ControllerTransferDiagnosticEvent::timeout;
     return {error, transfer_tag(family), std::move(message)};
 }

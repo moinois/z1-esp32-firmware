@@ -38,6 +38,12 @@ public:
                                                       std::uint64_t offset,
                                                       std::size_t maximum_size) = 0;
 
+    /// Probes transient data-response retention for deterministic DIAG-035 handling.
+    virtual bool response_data_memory_available(std::size_t bytes) {
+        static_cast<void>(bytes);
+        return true;
+    }
+
     /// Submits one complete controller response and reports queue acceptance.
     virtual bool send(core::Frame frame) = 0;
 

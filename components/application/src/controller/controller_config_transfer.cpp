@@ -170,6 +170,15 @@ void ControllerConfigTransfer::handle_data(core::BytesView payload,
         data.push_back('\n');
     }
 
+    const std::size_t response_size = request->wire_index.size() + data.size();
+    if (!port.response_data_memory_available(response_size)) {
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::configuration,
+            ControllerTransferDiagnosticEvent::frame_data_allocation_failure));
+        report_error(port);
+        return;
+    }
+
     core::ByteVector response = request->wire_index;
     response.insert(response.end(), data.begin(), data.end());
     if (!port.send(make_transfer_reply(core::protocol::configuration_family,

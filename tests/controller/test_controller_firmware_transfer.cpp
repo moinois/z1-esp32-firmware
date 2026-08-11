@@ -41,6 +41,11 @@ public:
         return read_result;
     }
 
+    bool response_data_memory_available(std::size_t bytes) override {
+        allocation_size = bytes;
+        return allocation_succeeds;
+    }
+
     // Records one response and reports whether its submission succeeded.
     bool send(Frame frame) override {
         if (sent.empty()) diagnostics_at_first_send = diagnostics.size();
@@ -62,6 +67,8 @@ public:
 
     bool exists = true;
     bool send_succeeds = true;
+    bool allocation_succeeds = true;
+    std::size_t allocation_size = 0U;
     std::optional<std::uint64_t> size = 1025U;
     std::optional<ByteVector> read_result = ByteVector({1U, 2U});
     std::string_view last_path;
@@ -116,6 +123,21 @@ TEST_CASE(lpcfw_001_available_start_activates_suppression_and_publishes_start) {
     REQUIRE_EQ(port.diagnostics_at_first_send, 1U);
     REQUIRE_EQ(port.diagnostics.front().message,
                std::string("Received PTYPE_FIRM_START"));
+}
+
+TEST_CASE(diag_035_firmware_data_retention_failure_is_explicit_and_cancels) {
+    ControllerFirmwareTransfer transfer;
+    FakeFirmwarePort port;
+    transfer.handle({0xC1U, {}}, 0U, port);
+    transfer.handle(geometry(1U, 512U), 1U, port);
+    port.allocation_succeeds = false;
+
+    transfer.handle({0xC3U, {0U, 0U, 0U, 1U}}, 2U, port);
+
+    REQUIRE_EQ(port.allocation_size, 6U);
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("Failed to allocate memory for frame data"));
+    REQUIRE_EQ(port.sent.back().type, 0xC5U);
 }
 
 TEST_CASE(lpcfw_002_geometry_ignores_proposed_count_and_rounds_up_file_blocks) {

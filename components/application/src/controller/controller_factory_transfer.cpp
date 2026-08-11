@@ -153,6 +153,14 @@ void ControllerFactoryTransfer::handle_data(core::BytesView payload,
         if (chunk.size() > maximum_record_size || chunk.size() > frame_data_size_) {
             return;
         }
+        const std::size_t response_size = request->wire_index.size() + chunk.size();
+        if (!port.response_data_memory_available(response_size)) {
+            port.diagnose(controller_transfer_diagnostic(
+                ControllerTransferFamily::factory,
+                ControllerTransferDiagnosticEvent::frame_data_allocation_failure));
+            report_error(port);
+            return;
+        }
         core::ByteVector response = request->wire_index;
         response.insert(response.end(), chunk.begin(), chunk.end());
         if (!port.send(make_transfer_reply(core::protocol::factory_family,
