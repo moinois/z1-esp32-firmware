@@ -45,6 +45,9 @@ void ControllerFirmwareTransfer::handle(const core::Frame& frame,
 void ControllerFirmwareTransfer::handle_start(std::uint64_t now_milliseconds,
                                               ControllerFirmwarePort& port) {
     if (!port.file_exists(firmware_path)) {
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::firmware,
+            ControllerTransferDiagnosticEvent::missing_content));
         report_error(port);
         return;
     }
@@ -66,14 +69,17 @@ void ControllerFirmwareTransfer::handle_start(std::uint64_t now_milliseconds,
 void ControllerFirmwareTransfer::handle_geometry(core::BytesView payload,
                                                  std::uint64_t now_milliseconds,
                                                  ControllerFirmwarePort& port) {
-    port.diagnose(controller_transfer_diagnostic(
-        ControllerTransferFamily::firmware,
-        ControllerTransferDiagnosticEvent::layout));
     const auto proposed = parse_transfer_geometry(payload);
     const auto file_size = port.file_size(firmware_path);
     if (!proposed.has_value() || proposed->frame_data_size == 0U ||
         proposed->frame_data_size > controller_transfer_frame_data_size ||
         !file_size.has_value()) {
+        if (payload.size() < 6U) port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::firmware,
+            ControllerTransferDiagnosticEvent::short_layout));
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::firmware,
+            ControllerTransferDiagnosticEvent::layout));
         report_error(port);
         return;
     }
@@ -95,8 +101,14 @@ void ControllerFirmwareTransfer::handle_geometry(core::BytesView payload,
                                        core::protocol::transfer_geometry,
                                        encode_transfer_geometry(frame_count_,
                                                                 frame_data_size_)))) {
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::firmware,
+            ControllerTransferDiagnosticEvent::layout_reply_failure));
         report_error(port);
     }
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::firmware,
+        ControllerTransferDiagnosticEvent::layout));
 }
 
 void ControllerFirmwareTransfer::handle_data(core::BytesView payload,
@@ -106,6 +118,9 @@ void ControllerFirmwareTransfer::handle_data(core::BytesView payload,
         ControllerTransferDiagnosticEvent::data));
     const auto request = parse_transfer_data_request(payload);
     if (!request.has_value()) {
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::firmware,
+            ControllerTransferDiagnosticEvent::short_data));
         report_error(port);
         return;
     }
@@ -167,6 +182,9 @@ void ControllerFirmwareTransfer::apply_timeout(std::uint64_t now_milliseconds,
     if (!active_ || !waiting_ || !timeout_elapsed) {
         return;
     }
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::firmware,
+        ControllerTransferDiagnosticEvent::timeout, 1U));
     finish(FirmwareTransferEvent::timed_out, port);
 }
 

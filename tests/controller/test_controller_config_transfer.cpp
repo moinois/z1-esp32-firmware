@@ -192,6 +192,10 @@ TEST_CASE(lpccfg_002_geometry_rejects_malformed_read_and_send_failures) {
     port.chunks = std::nullopt;
     transfer.handle(geometry(), port);
     REQUIRE_EQ(port.sent.back().type, 0xD5U);
+    REQUIRE_EQ(port.diagnostics[port.diagnostics.size() - 2U].message,
+               std::string("Failed to open firmware file: /sd/config.txt"));
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("Received PTYPE_CONFIG_VIEW"));
     port.chunks = std::vector<ByteVector>{bytes("abc\n")};
     port.send_succeeds = false;
     transfer.handle(geometry(), port);
@@ -204,7 +208,7 @@ TEST_CASE(lpccfg_003_data_rejects_malformed_unconfigured_and_io_failures) {
 
     transfer.handle({0xD3U, {1U}}, port);
     REQUIRE_EQ(port.sent.back().type, 0xD5U);
-    REQUIRE_EQ(port.diagnostics.back().message,
+    REQUIRE_EQ(port.diagnostics[port.diagnostics.size() - 2U].message,
                std::string("Received PTYPE_CONFIG_DATA"));
     const std::size_t before_unconfigured = port.sent.size();
     transfer.handle({0xD3U, {0U, 0U, 0U, 1U}}, port);

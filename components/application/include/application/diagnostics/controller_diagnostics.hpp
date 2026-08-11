@@ -1,9 +1,12 @@
 /** @file @brief Declares exact controller-path diagnostic formatting. */
 #pragma once
 
+#include "core/protocol/bytes.hpp"
+
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace firmware::application {
 
@@ -14,6 +17,12 @@ enum class ControllerTransferDiagnosticEvent {
     data,
     data_request,
     data_sent,
+    short_layout,
+    short_data,
+    layout_reply_failure,
+    missing_content,
+    data_open_failure,
+    timeout,
 };
 
 /// Owns one fully formatted transfer diagnostic and its normative tag/severity.
@@ -27,6 +36,14 @@ struct ControllerTransferDiagnostic {
 ControllerTransferDiagnostic controller_transfer_diagnostic(
     ControllerTransferFamily family, ControllerTransferDiagnosticEvent event,
     std::uint32_t frame_index = 0U);
+
+/// Formats the DIAG-035 record emitted once a response has been encoded.
+ControllerTransferDiagnostic controller_transfer_sent_diagnostic(
+    std::uint8_t frame_type, std::size_t payload_size);
+
+/// Formats the ordered DIAG-036 layout metadata encoded in a response.
+std::vector<ControllerTransferDiagnostic> controller_transfer_layout_diagnostics(
+    std::uint8_t frame_type, core::BytesView payload);
 
 /// Formats the DIAG-038 warning emitted when the controller output FIFO is full.
 std::string controller_queue_full_diagnostic(std::uint8_t frame_type);

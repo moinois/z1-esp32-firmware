@@ -53,24 +53,36 @@ void ControllerFactoryTransfer::handle_start(ControllerFactoryPort& port) {
         active_ = true;
     }
     if (!acknowledgement_sent || !available) {
+        if (!available) port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::factory,
+            ControllerTransferDiagnosticEvent::missing_content));
         report_error(port);
     }
 }
 
 void ControllerFactoryTransfer::handle_geometry(core::BytesView payload,
                                                 ControllerFactoryPort& port) {
-    port.diagnose(controller_transfer_diagnostic(
-        ControllerTransferFamily::factory,
-        ControllerTransferDiagnosticEvent::layout));
     const auto proposed = parse_transfer_geometry(payload);
     if (!proposed.has_value() || proposed->frame_data_size == 0U ||
         proposed->frame_data_size > controller_transfer_frame_data_size) {
+        if (payload.size() < 6U) port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::factory,
+            ControllerTransferDiagnosticEvent::short_layout));
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::factory,
+            ControllerTransferDiagnosticEvent::layout));
         report_error(port);
         return;
     }
     const auto chunks =
         port.read_chunks(factory_path, controller_transfer_chunk_size);
     if (!chunks.has_value()) {
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::factory,
+            ControllerTransferDiagnosticEvent::data_open_failure));
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::factory,
+            ControllerTransferDiagnosticEvent::layout));
         report_error(port);
         return;
     }
@@ -87,8 +99,14 @@ void ControllerFactoryTransfer::handle_geometry(core::BytesView payload,
                                        core::protocol::transfer_geometry,
                                        encode_transfer_geometry(frame_count_,
                                                                 frame_data_size_)))) {
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::factory,
+            ControllerTransferDiagnosticEvent::layout_reply_failure));
         report_error(port);
     }
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::factory,
+        ControllerTransferDiagnosticEvent::layout));
 }
 
 void ControllerFactoryTransfer::handle_data(core::BytesView payload,
@@ -98,6 +116,9 @@ void ControllerFactoryTransfer::handle_data(core::BytesView payload,
         ControllerTransferDiagnosticEvent::data));
     const auto request = parse_transfer_data_request(payload);
     if (!request.has_value()) {
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::factory,
+            ControllerTransferDiagnosticEvent::short_data));
         report_error(port);
         return;
     }
@@ -110,6 +131,9 @@ void ControllerFactoryTransfer::handle_data(core::BytesView payload,
     const auto chunks =
         port.read_chunks(factory_path, controller_transfer_chunk_size);
     if (!chunks.has_value()) {
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::factory,
+            ControllerTransferDiagnosticEvent::data_open_failure));
         report_error(port);
         return;
     }

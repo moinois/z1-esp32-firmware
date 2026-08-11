@@ -2,6 +2,7 @@
 #include "application/diagnostics/controller_diagnostics.hpp"
 
 #include <cstdio>
+#include <utility>
 
 namespace firmware::application {
 namespace {
@@ -46,10 +47,79 @@ ControllerTransferDiagnostic controller_transfer_diagnostic(
     } else if (event == ControllerTransferDiagnosticEvent::data_sent) {
         message = "Frame " + std::to_string(frame_index) +
                   " data sent successfully";
+    } else if (event == ControllerTransferDiagnosticEvent::short_layout) {
+        if (family == ControllerTransferFamily::firmware) {
+            message = "PTYPE_FIRM_CAN response data format error";
+        } else if (family == ControllerTransferFamily::configuration) {
+            message = "PTYPE_CONFIG_CAN response data format error";
+        } else {
+            message = "PTYPE_FACTORY_VIEW response data format error";
+        }
+    } else if (event == ControllerTransferDiagnosticEvent::short_data) {
+        message = family == ControllerTransferFamily::firmware
+            ? "PTYPE_FIRM_DATA command data format error"
+            : "PTYPE_CONFIG_CAN command data format error";
+    } else if (event == ControllerTransferDiagnosticEvent::layout_reply_failure) {
+        message = "Failed to send " + std::string(packet_name(
+            family, ControllerTransferDiagnosticEvent::layout)) + " response";
+    } else if (event == ControllerTransferDiagnosticEvent::missing_content) {
+        if (family == ControllerTransferFamily::firmware) {
+            message = "Firmware file does not exist: /sd/lpc1768.bin";
+        } else if (family == ControllerTransferFamily::configuration) {
+            message = "Config file does not exist: /sd/config.txt";
+        } else {
+            message = "Factory ini file does not exist: /sd/factory.ini";
+        }
+    } else if (event == ControllerTransferDiagnosticEvent::data_open_failure) {
+        message = family == ControllerTransferFamily::factory
+            ? "Failed to open Factory ini file: /sd/factory.ini"
+            : "Failed to open firmware file: /sd/config.txt";
+    } else if (event == ControllerTransferDiagnosticEvent::timeout) {
+        message = "DFU process timeout in state " + std::to_string(frame_index);
     } else {
         message = "Received " + std::string(packet_name(family, event));
     }
-    return {false, transfer_tag(family), std::move(message)};
+    const bool error = event == ControllerTransferDiagnosticEvent::short_layout ||
+                       event == ControllerTransferDiagnosticEvent::short_data ||
+                       event == ControllerTransferDiagnosticEvent::layout_reply_failure ||
+                       event == ControllerTransferDiagnosticEvent::missing_content ||
+                       event == ControllerTransferDiagnosticEvent::data_open_failure ||
+                       event == ControllerTransferDiagnosticEvent::timeout;
+    return {error, transfer_tag(family), std::move(message)};
+}
+
+ControllerTransferDiagnostic controller_transfer_sent_diagnostic(
+    std::uint8_t frame_type, std::size_t payload_size) {
+    const auto family = static_cast<ControllerTransferFamily>(
+        ((frame_type >> 4U) - 0x0cU));
+    char message[64]{};
+    std::snprintf(message, sizeof(message),
+                  "Sent frame: type=0x%02X, data_len=%d",
+                  static_cast<unsigned>(frame_type),
+                  static_cast<int>(payload_size));
+    return {false, transfer_tag(family), message};
+}
+
+std::vector<ControllerTransferDiagnostic> controller_transfer_layout_diagnostics(
+    std::uint8_t frame_type, core::BytesView payload) {
+    if ((frame_type & 0x0fU) != 2U || payload.size() < 6U) return {};
+    const std::uint32_t count = (std::uint32_t(payload[0]) << 24U) |
+                                (std::uint32_t(payload[1]) << 16U) |
+                                (std::uint32_t(payload[2]) << 8U) | payload[3];
+    const std::uint16_t size = static_cast<std::uint16_t>(
+        (std::uint16_t(payload[4]) << 8U) | payload[5]);
+    const std::uint8_t family_nibble = frame_type & 0xf0U;
+    if (family_nibble == 0xd0U) {
+        return {{false, "cfg_LPC1768", "Total frames: " + std::to_string(count)},
+                {false, "cfg_LPC1768", "Frame size: 512 bytes"}};
+    }
+    if (family_nibble == 0xe0U) {
+        return {{false, "factory_LPC1768",
+                 "Factory ini Total frames: " + std::to_string(count)},
+                {false, "factory_LPC1768",
+                 "Factory ini Frame size: " + std::to_string(size) + " bytes"}};
+    }
+    return {};
 }
 
 std::string controller_queue_full_diagnostic(std::uint8_t frame_type) {

@@ -102,6 +102,13 @@ bool ControllerTransferAdapter::remove_file(std::string_view path) {
 bool ControllerTransferAdapter::send(firmware::core::Frame frame) {
     const auto encoded = firmware::core::encode_controller_frame(frame);
     if (encoded.empty()) return false;
+    diagnose(firmware::application::controller_transfer_sent_diagnostic(
+        frame.type, frame.payload.size()));
+    for (auto& diagnostic :
+         firmware::application::controller_transfer_layout_diagnostics(
+             frame.type, frame.payload)) {
+        diagnose(std::move(diagnostic));
+    }
     const int written = channel_.write(encoded);
     if (written != static_cast<int>(encoded.size())) {
         ESP_LOGE("uart_task", "UART send failed");

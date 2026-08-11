@@ -82,7 +82,9 @@ TEST_CASE(lpcfac_001_start_acknowledges_then_reports_an_absent_exact_path) {
     REQUIRE_EQ(port.sent[0].type, 0xE1U);
     REQUIRE_EQ(port.sent[1].type, 0xE5U);
     REQUIRE(!transfer.active());
-    REQUIRE(port.diagnostics.empty());
+    REQUIRE_EQ(port.diagnostics.size(), 1U);
+    REQUIRE_EQ(port.diagnostics.front().message,
+               std::string("Factory ini file does not exist: /sd/factory.ini"));
 }
 
 TEST_CASE(diag_034_factory_overlong_record_reports_located_data_before_rejection) {
@@ -201,6 +203,10 @@ TEST_CASE(lpcfac_002_geometry_rejects_malformed_read_and_send_failures) {
     port.chunks = std::nullopt;
     transfer.handle(geometry(100U), port);
     REQUIRE_EQ(port.sent.back().type, 0xE5U);
+    REQUIRE_EQ(port.diagnostics[port.diagnostics.size() - 2U].message,
+               std::string("Failed to open Factory ini file: /sd/factory.ini"));
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("Received PTYPE_FACTORY_VIEW"));
     port.chunks = std::vector<ByteVector>{bytes("value")};
     port.send_succeeds = false;
     transfer.handle(geometry(100U), port);
