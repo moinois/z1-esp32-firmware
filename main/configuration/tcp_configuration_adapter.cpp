@@ -38,7 +38,7 @@ TcpConfigurationAdapter::read_configuration_chunks(
 
 std::optional<std::string> TcpConfigurationAdapter::read_value(
     std::string_view tag, std::string_view key) {
-    return ConfigurationFileStore{}.get(tag, key);
+    return ConfigurationFileStore{}.get_hashed(tag, key);
 }
 
 bool TcpConfigurationAdapter::set_value(std::string_view tag,

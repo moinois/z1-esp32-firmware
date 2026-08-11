@@ -7,19 +7,28 @@
 #include "core/protocol/protocol_constants.hpp"
 
 #include <string>
+#include <algorithm>
 #include <vector>
 
 namespace firmware::application {
 namespace {
 
 constexpr std::size_t maximum_set_tokens = 4U;
+constexpr std::size_t unknown_source_result_limit = 255U;
+constexpr std::size_t recognized_source_result_limit = 511U;
 constexpr std::string_view usage_message =
     "Usage: config-set source setting value # where source is sd, setting is the key and value is the new value\r\n";
 
 // Sends one console response from owned text.
-void send_console(std::string message, ConfigurationSetPort& port) {
+void send_console(std::string message, ConfigurationSetPort& port,
+                  std::size_t limit = recognized_source_result_limit) {
+    message.resize(std::min(message.size(), limit));
     port.send({core::protocol::console_message,
                {message.begin(), message.end()}});
+}
+
+bool selector_matches(std::string_view supplied, std::string_view expected) {
+    return core::configuration_hash(supplied) == core::configuration_hash(expected);
 }
 
 // Produces the exact source-labelled success or capacity failure response.
@@ -58,23 +67,24 @@ void ConfigurationSet::execute(core::BytesView argument,
         return;
     }
 
-    if (tokens[0] == configuration_sources::live) {
+    if (selector_matches(tokens[0], configuration_sources::live)) {
         live.ensure_loaded(port);
-        send_result(configuration_sources::live, tokens[1], tokens[2],
+        send_result(tokens[0], tokens[1], tokens[2],
                     live.set(tokens[1], tokens[2]), port);
         return;
     }
-    if (tokens[0] == configuration_sources::sd) {
+    if (selector_matches(tokens[0], configuration_sources::sd)) {
         const std::string tag = tokens.size() == 4U
                                     ? tokens[1]
                                     : std::string(mainboard_configuration_tag);
         const std::string_view key = tokens.size() == 4U ? tokens[2] : tokens[1];
         const std::string_view value = tokens.size() == 4U ? tokens[3] : tokens[2];
-        send_result(configuration_sources::sd, key, value,
+        send_result(tokens[0], key, value,
                     set_sd(tag, key, value, port), port);
         return;
     }
-    send_console(tokens[0] + " source does not exist\r\n", port);
+    send_console(tokens[0] + " source does not exist\r\n", port,
+                 unknown_source_result_limit);
 }
 
 }  // namespace firmware::application

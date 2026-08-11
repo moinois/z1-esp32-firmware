@@ -1,5 +1,6 @@
 /** @file @brief Implements bounded lazy configuration loading and first-match update semantics. */
 #include "application/configuration/live_configuration.hpp"
+#include "core/configuration/configuration_syntax.hpp"
 
 #include <algorithm>
 #include <string>
@@ -51,9 +52,10 @@ void LiveConfiguration::reset() {
 }
 
 std::optional<std::string> LiveConfiguration::find(std::string_view key) const {
+    const std::uint16_t requested_hash = core::configuration_hash(key);
     const auto found = std::find_if(
-        entries_.begin(), entries_.end(), [key](const auto& entry) {
-            return entry.key == key;
+        entries_.begin(), entries_.end(), [requested_hash](const auto& entry) {
+            return core::configuration_hash(entry.key) == requested_hash;
         });
     if (found == entries_.end()) {
         return std::nullopt;

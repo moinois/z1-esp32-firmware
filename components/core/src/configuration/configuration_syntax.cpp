@@ -25,6 +25,14 @@ std::string_view trim_ascii(std::string_view text) {
 
 }  // namespace
 
+std::uint16_t configuration_hash(std::string_view text) {
+    std::uint16_t value = 0U;
+    for (const unsigned char byte : text) {
+        value = static_cast<std::uint16_t>(value * 33U + byte);
+    }
+    return value;
+}
+
 std::optional<ConfigurationEntry> parse_sd_config_line(std::string_view line) {
     line = trim_ascii(line);
     if (line.empty() || line.front() == ';') {

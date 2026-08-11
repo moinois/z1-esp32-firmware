@@ -4,6 +4,7 @@
 #include "core/protocol/bytes.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -18,6 +19,9 @@ struct ConfigurationEntry {
     /// Value content with the parser-specific comment policy applied.
     std::string value;
 };
+
+/** Computes the wrapping 16-bit configuration selector hash from CFG-015. */
+std::uint16_t configuration_hash(std::string_view text);
 
 /** Parses one persisted configuration line using delimiter and comment rules. */
 std::optional<ConfigurationEntry> parse_sd_config_line(std::string_view line);

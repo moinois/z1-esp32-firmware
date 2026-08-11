@@ -2,6 +2,7 @@
 #include "configuration_file_store.hpp"
 
 #include "application/configuration/configuration_tags.hpp"
+#include "core/configuration/configuration_syntax.hpp"
 #include "core/filesystem/sd_user_path.hpp"
 
 #include <cstdio>
@@ -71,6 +72,36 @@ std::optional<std::string> ConfigurationFileStore::get(
     const auto value = configuration.get(key);
     if (!value.has_value()) return std::nullopt;
     return std::string(*value);
+}
+
+std::optional<std::string> ConfigurationFileStore::get_hashed(
+    std::string_view tag, std::string_view key) const {
+    std::lock_guard<std::mutex> lock(configuration_file_mutex);
+    auto document = read_document();
+    std::string prefix(effective_tag(tag));
+    if (!prefix.empty() && prefix.back() != '_') prefix.push_back('_');
+    const std::uint16_t requested_hash = firmware::core::configuration_hash(key);
+    for (const auto& entry : document.entries()) {
+        if (entry.key.size() < prefix.size()) continue;
+        bool matching_prefix = true;
+        for (std::size_t index = 0U; index < prefix.size(); ++index) {
+            const auto lower = [](char value) {
+                return value >= 'A' && value <= 'Z'
+                           ? static_cast<char>(value - 'A' + 'a')
+                           : value;
+            };
+            if (lower(prefix[index]) != lower(entry.key[index])) {
+                matching_prefix = false;
+                break;
+            }
+        }
+        if (matching_prefix &&
+            firmware::core::configuration_hash(
+                std::string_view(entry.key).substr(prefix.size())) == requested_hash) {
+            return entry.value;
+        }
+    }
+    return std::nullopt;
 }
 
 std::vector<firmware::application::ConfigurationEntry>

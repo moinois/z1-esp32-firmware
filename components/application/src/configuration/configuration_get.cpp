@@ -15,6 +15,12 @@ namespace firmware::application {
 namespace {
 
 constexpr std::size_t maximum_get_tokens = 3U;
+constexpr std::size_t missing_result_limit = 255U;
+constexpr std::size_t found_result_limit = 511U;
+
+bool selector_matches(std::string_view supplied, std::string_view expected) {
+    return core::configuration_hash(supplied) == core::configuration_hash(expected);
+}
 
 // Sends one source-labelled lookup result with the selected packet type.
 void send_result(std::uint8_t packet_type, std::string_view source,
@@ -31,6 +37,9 @@ void send_result(std::uint8_t packet_type, std::string_view source,
         message += " is not in config";
     }
     message += "\r\n";
+    message.resize(std::min(message.size(), value.has_value()
+                                               ? found_result_limit
+                                               : missing_result_limit));
     port.send({packet_type, {message.begin(), message.end()}});
 }
 
@@ -55,18 +64,18 @@ void ConfigurationGet::execute(core::BytesView argument,
         return;
     }
 
-    if (tokens[0] == configuration_sources::sd) {
+    if (selector_matches(tokens[0], configuration_sources::sd)) {
         const std::string tag = tokens.size() == 3U
                                     ? tokens[1]
                                     : std::string(mainboard_configuration_tag);
         const std::string_view key = tokens.size() == 3U ? tokens[2] : tokens[1];
-        send_result(core::protocol::console_message, configuration_sources::sd, key,
+        send_result(core::protocol::console_message, tokens[0], key,
                     port.read_value(tag, key), port);
         return;
     }
-    if (tokens[0] == configuration_sources::live) {
+    if (selector_matches(tokens[0], configuration_sources::live)) {
         live.ensure_loaded(port);
-        send_result(core::protocol::console_message, configuration_sources::live, tokens[1],
+        send_result(core::protocol::console_message, tokens[0], tokens[1],
                     live.find(tokens[1]), port);
     }
 }

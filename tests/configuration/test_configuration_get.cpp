@@ -153,3 +153,30 @@ TEST_CASE(cfg_011_and_013_unknown_source_is_silent_but_one_token_is_a_cached_key
     REQUIRE_EQ(text(port.sent[0].payload),
                std::string("cached: live is not in config\r\n"));
 }
+
+TEST_CASE(cfg_015_source_and_live_keys_use_the_normative_16_bit_hash) {
+    LiveConfiguration live;
+    FakeConfigurationGetPort port;
+    port.live_chunks = std::vector<ByteVector>{bytes("key=collision")};
+
+    ConfigurationGet::execute(bytes(" wax kg7"), live, port);
+
+    REQUIRE_EQ(port.sent.size(), 1U);
+    REQUIRE_EQ(text(port.sent[0].payload),
+               std::string("wax: kg7 is set to collision\r\n"));
+}
+
+TEST_CASE(cfg_016_get_results_use_the_normative_payload_limits) {
+    LiveConfiguration live;
+    FakeConfigurationGetPort found;
+    found.sd_value = std::string(500U, 'v');
+    const std::string long_key(300U, 'k');
+
+    ConfigurationGet::execute(bytes(" sd " + long_key), live, found);
+    REQUIRE_EQ(found.sent[0].payload.size(), 511U);
+
+    FakeConfigurationGetPort missing;
+    missing.sd_value.reset();
+    ConfigurationGet::execute(bytes(" sd " + long_key), live, missing);
+    REQUIRE_EQ(missing.sent[0].payload.size(), 255U);
+}

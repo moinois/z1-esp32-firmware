@@ -178,7 +178,7 @@ public:
 
     std::optional<std::string> read_value(std::string_view tag,
                                           std::string_view key) override {
-        return ConfigurationFileStore{}.get(tag, key);
+        return ConfigurationFileStore{}.get_hashed(tag, key);
     }
 
     bool set_value(std::string_view tag, std::string_view key,

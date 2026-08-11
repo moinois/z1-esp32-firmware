@@ -21,6 +21,10 @@ public:
     std::optional<std::string> get(std::string_view tag,
                                    std::string_view key) const;
 
+    /// Returns the first namespaced value whose key has the CFG-015 hash.
+    std::optional<std::string> get_hashed(std::string_view tag,
+                                          std::string_view key) const;
+
     /// Returns all values under the normalized tag_ namespace.
     std::vector<firmware::application::ConfigurationEntry> get_all(
         std::string_view tag) const;

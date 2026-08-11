@@ -130,6 +130,30 @@ TEST_CASE(cfg_033_unknown_source_sends_the_source_specific_error) {
                std::string("cloud source does not exist\r\n"));
 }
 
+TEST_CASE(cfg_015_hash_colliding_set_source_selects_sd_and_echoes_input) {
+    LiveConfiguration live;
+    FakeConfigurationSetPort port;
+
+    ConfigurationSet::execute(bytes(" amoz key value"), live, port);
+
+    REQUIRE_EQ(port.events, std::vector<std::string>({"set"}));
+    REQUIRE_EQ(text(port.sent[0].payload),
+               std::string("amoz: key has been set to value\r\n"));
+}
+
+TEST_CASE(cfg_016_set_results_and_unknown_sources_are_truncated) {
+    LiveConfiguration live;
+    FakeConfigurationSetPort recognized;
+    ConfigurationSet::execute(
+        bytes(" live key " + std::string(600U, 'v')), live, recognized);
+    REQUIRE_EQ(recognized.sent[0].payload.size(), 511U);
+
+    FakeConfigurationSetPort unknown;
+    ConfigurationSet::execute(
+        bytes(" " + std::string(300U, 'x') + " key value"), live, unknown);
+    REQUIRE_EQ(unknown.sent[0].payload.size(), 255U);
+}
+
 TEST_CASE(cfg_023_and_034_live_set_reports_requested_text_despite_truncation) {
     LiveConfiguration live;
     FakeConfigurationSetPort port;
