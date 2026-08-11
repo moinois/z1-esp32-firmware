@@ -58,3 +58,12 @@ TEST_CASE(webup_003_transport_end_completes_even_without_multipart_headers) {
     REQUIRE_EQ(extractor.content(),
                ByteVector({'r', 'a', 'w', ' ', 'b', 'y', 't', 'e', 's'}));
 }
+
+TEST_CASE(webup_002_detection_may_use_nul_terminated_receive_residual) {
+    MultipartPartExtractor extractor("boundary");
+    const ByteVector accessible{'x', 'y', 'b', 'o', 'u', 'n', 'd', 'a', 'r', 'y',
+                                '\r', '\n', '\r', '\n', 'z', '\0'};
+    REQUIRE(extractor.feed(accessible, 2U, true));
+    REQUIRE(extractor.last_boundary_detected());
+    REQUIRE(extractor.content().empty());
+}

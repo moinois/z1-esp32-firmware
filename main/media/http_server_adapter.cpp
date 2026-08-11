@@ -675,7 +675,7 @@ esp_err_t send_bad_request(httpd_req_t* request, const char* message) {
 // Receives multipart blocks and offers each extracted block to an active update.
 bool receive_multipart_part(
     httpd_req_t* request, std::optional<std::size_t> maximum_request_body,
-    const std::function<void(firmware::core::BytesView)>& offer) {
+    const std::function<void(firmware::core::BytesView, bool)>& offer) {
     const std::size_t header_length =
         httpd_req_get_hdr_value_len(request, "Content-Type");
     if (header_length == 0U ||
@@ -729,14 +729,14 @@ bool receive_multipart_part(
             next_progress = received + upload_progress_interval;
         }
         if (!extractor.feed(
-                {block.data(), static_cast<std::size_t>(count)},
+                {block.data(), block.size()}, static_cast<std::size_t>(count),
                 received == request_size)) {
             static_cast<void>(send_bad_request(request,
                                                "Invalid multipart request"));
             return false;
         }
         auto accepted = extractor.take_content();
-        if (!accepted.empty()) offer(accepted);
+        offer(accepted, extractor.last_boundary_detected());
     }
     if (extractor.status() !=
         firmware::core::MultipartExtractStatus::complete) {
@@ -757,7 +757,10 @@ esp_err_t firmware_update_handler(httpd_req_t* request) {
     bool content_received = false;
     const bool received = receive_multipart_part(
         request, maximum_request_body,
-        [&](firmware::core::BytesView block) {
+        [&](firmware::core::BytesView block, bool boundary_detected) {
+            ESP_LOGI("WEBSERVER", "%s",
+                     boundary_detected ? "找到空行并处理数据"
+                                       : "直接写入固件程序");
             content_received = content_received || block.size() != 0U;
             service.offer(block, port);
         });
@@ -772,7 +775,7 @@ esp_err_t web_volume_update_handler(httpd_req_t* request) {
     if (!service.begin(port)) return ESP_OK;
     const bool received = receive_multipart_part(
         request, std::nullopt,
-        [&](firmware::core::BytesView block) { service.offer(block, port); });
+        [&](firmware::core::BytesView block, bool) { service.offer(block, port); });
     if (received) static_cast<void>(service.finish(port));
     return ESP_OK;
 }

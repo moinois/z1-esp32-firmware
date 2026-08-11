@@ -28,6 +28,12 @@ public:
      */
     bool feed(BytesView block, bool transport_finished);
 
+    /** Detects within the complete accessible receive area but delivers only
+     *  `current_size` bytes, matching the target's reused fixed buffer.
+     */
+    bool feed(BytesView accessible, std::size_t current_size,
+              bool transport_finished);
+
     /// Text-view convenience overload for HTTP adapter callers.
     bool feed(std::string_view block, bool transport_finished) {
         return feed(BytesView(block), transport_finished);
@@ -44,10 +50,14 @@ public:
      */
     ByteVector take_content();
 
+    /// Reports whether the most recently processed block detected the boundary.
+    bool last_boundary_detected() const;
+
 private:
     std::string boundary_;
     ByteVector content_;
     MultipartExtractStatus status_ = MultipartExtractStatus::reading_headers;
+    bool last_boundary_detected_ = false;
 };
 
 }  // namespace firmware::core
