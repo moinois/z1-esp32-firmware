@@ -23,6 +23,11 @@ bool Ownership::has_file_owner() const {
     return file_owner_.has_value();
 }
 
+std::optional<HostIdentity> Ownership::file_owner() const {
+    if (!file_owner_.has_value()) return std::nullopt;
+    return HostIdentity{file_owner_->transport, file_owner_->slot, 0U};
+}
+
 bool Ownership::claim_play(const HostIdentity& host) {
     if (play_owner_.has_value() && !is_play_owner(host)) {
         return false;

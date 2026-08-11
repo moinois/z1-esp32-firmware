@@ -1300,6 +1300,16 @@ void handle_usb_file_transfer(const firmware::core::Frame& frame) {
         xSemaphoreGive(usb_file_mutex);
         return;
     }
+    const auto owner = shared_host_router().ownership().file_owner();
+    if (owner.has_value() &&
+        !shared_host_router().ownership().is_file_owner(usb_host_identity)) {
+        const auto diagnostic =
+            firmware::application::non_owner_file_data_diagnostic(
+                usb_host_identity, *owner);
+        ESP_LOGW(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+        xSemaphoreGive(usb_file_mutex);
+        return;
+    }
     if (usb_upload.active()) {
         usb_upload.handle(frame, now, usb_upload_port);
     }

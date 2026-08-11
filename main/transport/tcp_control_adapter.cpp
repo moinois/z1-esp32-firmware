@@ -730,7 +730,14 @@ void serve_tcp_client(TcpClientContext* context) {
                 transfer_runtime.handle(frame,
                                          static_cast<std::uint64_t>(esp_timer_get_time() / 1000));
             },
-            {}});
+            {},
+            [](firmware::application::TcpClientSession& session,
+               const firmware::application::HostIdentity& owner) {
+                const auto diagnostic =
+                    firmware::application::non_owner_file_data_diagnostic(
+                        session.identity(), owner);
+                ESP_LOGW(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+            }});
     configure_socket(client);
     bool transport_healthy = drain_tcp_transmit_queue(client, session);
     while (transport_healthy) {

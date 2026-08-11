@@ -46,6 +46,9 @@ public:
     /// Reports whether any file owner exists.
     bool has_file_owner() const;
 
+    /// Returns the current transport/slot owner for diagnostics when present.
+    std::optional<HostIdentity> file_owner() const;
+
     /// Claims playback, allowing a repeat only from the same physical connection.
     bool claim_play(const HostIdentity& host);
 

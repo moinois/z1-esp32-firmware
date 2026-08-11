@@ -46,3 +46,30 @@ TEST_CASE(tcp_dispatcher_routes_file_data_only_to_file_sink) {
     REQUIRE_EQ(file_calls, 1);
     REQUIRE_EQ(controller_calls, 0);
 }
+
+TEST_CASE(diag_038_tcp_dispatcher_reports_non_owner_file_data_without_reply_sink) {
+    firmware::application::Router router;
+    const firmware::application::HostIdentity owner{
+        firmware::application::HostTransport::usb, 0U, 0U};
+    router.ownership().claim_file(owner);
+    int file_calls = 0;
+    int diagnostic_calls = 0;
+    firmware::application::HostIdentity observed_owner;
+    firmware::application::TcpDispatchSinks sinks;
+    sinks.file_transfer = [&](auto&, const auto&) { ++file_calls; };
+    sinks.non_owner_file_data = [&](auto&, const auto& current_owner) {
+        ++diagnostic_calls;
+        observed_owner = current_owner;
+    };
+    firmware::application::TcpFrameDispatcher dispatcher(router, sinks);
+    firmware::application::TcpClientSession session(
+        {firmware::application::HostTransport::tcp, 1U, 4U});
+
+    dispatcher.dispatch(session,
+                        {firmware::core::protocol::file_data, {'x'}});
+
+    REQUIRE_EQ(file_calls, 0);
+    REQUIRE_EQ(diagnostic_calls, 1);
+    REQUIRE_EQ(observed_owner.transport,
+               firmware::application::HostTransport::usb);
+}

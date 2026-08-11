@@ -86,7 +86,9 @@ RouteDecision Router::from_host(const HostIdentity& host, const core::Frame& fra
         return decision;
     }
     if (is_file_data_type(frame.type)) {
-        decision.add(ownership_.is_file_owner(host) ? RouteTarget::file_transfer : RouteTarget::consume);
+        const bool owner = ownership_.is_file_owner(host);
+        decision.add(owner ? RouteTarget::file_transfer : RouteTarget::consume);
+        decision.non_owner_file_data = !owner && ownership_.has_file_owner();
         return decision;
     }
     if (frame.type == core::protocol::play_status) {

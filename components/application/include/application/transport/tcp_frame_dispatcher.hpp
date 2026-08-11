@@ -14,6 +14,7 @@ struct TcpDispatchSinks {
     std::function<void(TcpClientSession&, const core::Frame&)> local_command;
     std::function<void(TcpClientSession&, const core::Frame&)> file_transfer;
     std::function<void(TcpClientSession&, const core::Frame&)> play_status;
+    std::function<void(TcpClientSession&, const HostIdentity&)> non_owner_file_data;
 };
 
 /** Applies shared routing policy and invokes all selected available sinks. */

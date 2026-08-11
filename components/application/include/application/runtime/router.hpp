@@ -40,6 +40,8 @@ struct RouteDecision {
     ControllerFamily controller_family = ControllerFamily::none;
     /// Requires the local transfer state machine to accept before forwarding.
     bool controller_requires_local_acceptance = false;
+    /// Identifies the consumed file-data case that requires DIAG-038 output.
+    bool non_owner_file_data = false;
 
     /// Reports whether the decision includes a destination.
     bool has(RouteTarget target) const;
