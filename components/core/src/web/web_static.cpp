@@ -5,7 +5,7 @@ namespace firmware::core {
 namespace {
 
 constexpr std::string_view html_marker = ".html";
-constexpr std::string_view css_marker = "css";
+constexpr std::string_view css_marker = ".css";
 constexpr std::string_view javascript_marker = ".js";
 constexpr std::string_view html_mime_type = "text/html";
 constexpr std::string_view css_mime_type = "text/css";
@@ -24,12 +24,13 @@ bool ends_in_directory_separator(std::string_view path) {
 
 std::optional<std::string> resolve_static_path(std::string_view request_uri) {
     std::string path(web::volume_prefix);
-    path.append(request_uri);
+    const std::size_t maximum_characters = web::static_path_capacity - 1U;
+    path.append(request_uri.substr(
+        0U, maximum_characters > path.size() ? maximum_characters - path.size()
+                                             : 0U));
     if (ends_in_directory_separator(path)) {
-        path.append(web::directory_index_name);
-    }
-    if (path.size() >= web::static_path_capacity) {
-        return std::nullopt;
+        path.append(web::directory_index_name.substr(
+            0U, maximum_characters - path.size()));
     }
     return path;
 }

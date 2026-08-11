@@ -24,7 +24,7 @@ inline constexpr std::string_view missing_static_file_body =
 
 }  // namespace web
 
-/** Resolves a request URI beneath SPIFFS or rejects an oversized result. */
+/** Resolves a request URI beneath SPIFFS, truncating to its fixed C buffer. */
 std::optional<std::string> resolve_static_path(std::string_view request_uri);
 
 /** Selects a MIME type using the required case-sensitive suffix precedence. */

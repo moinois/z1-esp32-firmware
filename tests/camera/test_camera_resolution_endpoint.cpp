@@ -26,28 +26,28 @@ public:
 
 }  // namespace
 
-TEST_CASE(web_020_empty_or_invalid_resolution_body_returns_exact_400) {
+TEST_CASE(web_020_empty_or_invalid_resolution_body_returns_exact_500) {
     FakeCameraResolutionPort port;
     CameraResolutionEndpoint endpoint;
     const auto empty = endpoint.handle(firmware::core::BytesView{}, port);
-    REQUIRE_EQ(empty.status_code, 400U);
+    REQUIRE_EQ(empty.status_code, 500U);
     REQUIRE_EQ(empty.body, std::string_view("No Data"));
 
     const auto invalid = endpoint.handle("not-json", port);
-    REQUIRE_EQ(invalid.status_code, 400U);
+    REQUIRE_EQ(invalid.status_code, 500U);
     REQUIRE_EQ(invalid.body, std::string_view("Invalid JSON"));
     REQUIRE_EQ(port.calls, 0U);
 }
 
-TEST_CASE(web_021_missing_or_nonnumeric_resolution_returns_exact_400) {
+TEST_CASE(web_021_missing_or_nonnumeric_resolution_returns_exact_500) {
     FakeCameraResolutionPort port;
     CameraResolutionEndpoint endpoint;
     const auto missing = endpoint.handle("{}", port);
-    REQUIRE_EQ(missing.status_code, 400U);
+    REQUIRE_EQ(missing.status_code, 500U);
     REQUIRE_EQ(missing.body, std::string_view("Missing or invalid 'resolution'"));
 
     const auto wrong_type = endpoint.handle("{\"resolution\":\"7\"}", port);
-    REQUIRE_EQ(wrong_type.status_code, 400U);
+    REQUIRE_EQ(wrong_type.status_code, 500U);
     REQUIRE_EQ(wrong_type.body, std::string_view("Missing or invalid 'resolution'"));
 }
 

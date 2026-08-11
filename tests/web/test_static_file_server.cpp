@@ -82,7 +82,7 @@ public:
 
 }  // namespace
 
-TEST_CASE(web_011_missing_or_overlong_static_files_return_exact_404) {
+TEST_CASE(web_011_missing_and_truncated_static_files_return_exact_404) {
     FakeStaticFilePort file;
     FakeStaticFileResponse response;
     StaticFileServer server;
@@ -97,6 +97,7 @@ TEST_CASE(web_011_missing_or_overlong_static_files_return_exact_404) {
     const std::string overlong(300U, 'x');
     server.serve(overlong, file, response);
     REQUIRE_EQ(response.error_status, 404U);
+    REQUIRE_EQ(file.opened_path.size(), 255U);
 }
 
 TEST_CASE(web_011_existing_files_use_mime_type_and_256_byte_chunks) {
@@ -108,10 +109,11 @@ TEST_CASE(web_011_existing_files_use_mime_type_and_256_byte_chunks) {
     REQUIRE_EQ(file.opened_path, std::string("/spiffs/assets/app.js"));
     REQUIRE(response.began_chunks);
     REQUIRE_EQ(response.chunked_type, std::string_view("application/javascript"));
-    REQUIRE_EQ(response.chunks.size(), 3U);
+    REQUIRE_EQ(response.chunks.size(), 4U);
     REQUIRE_EQ(response.chunks[0].size(), 256U);
     REQUIRE_EQ(response.chunks[1].size(), 256U);
     REQUIRE_EQ(response.chunks[2].size(), 88U);
+    REQUIRE(response.chunks[3].empty());
     REQUIRE(response.finished_chunks);
     REQUIRE_EQ(file.close_calls, 1U);
 }
@@ -123,5 +125,6 @@ TEST_CASE(web_011_directory_uri_serves_index_file) {
     file.content = "index";
     server.serve("/", file, response);
     REQUIRE_EQ(file.opened_path, std::string("/spiffs/index.html"));
-    REQUIRE_EQ(response.chunks.size(), 1U);
+    REQUIRE_EQ(response.chunks.size(), 2U);
+    REQUIRE(response.chunks.back().empty());
 }

@@ -23,10 +23,10 @@ void StaticFileServer::serve(std::string_view request_uri, StaticFilePort& file,
         if (!chunk.has_value()) {
             break;
         }
+        response.send_chunk(*chunk);
         if (chunk->empty()) {
             break;
         }
-        response.send_chunk(*chunk);
     }
     file.close();
     response.finish_chunks();

@@ -37,7 +37,7 @@ std::uint8_t normalize_frame_size(double value) {
 core::HttpResponsePolicy CameraResolutionEndpoint::handle(
     core::BytesView request_body, CameraResolutionPort& camera) const {
     if (request_body.size() == 0U) {
-        return error_response(400U, no_data_body);
+        return error_response(500U, no_data_body);
     }
 
     const core::BytesView bounded_body(request_body.data(),
@@ -46,12 +46,12 @@ core::HttpResponsePolicy CameraResolutionEndpoint::handle(
                                            : request_body.size());
     const auto document = core::parse_json_prefix(bounded_body);
     if (!document.has_value()) {
-        return error_response(400U, invalid_json_body);
+        return error_response(500U, invalid_json_body);
     }
     const auto resolution = core::find_json_number(*document, "resolution");
     if (!resolution.has_value() || !std::isfinite(*resolution) ||
         std::floor(*resolution) != *resolution) {
-        return error_response(400U, invalid_resolution_body);
+        return error_response(500U, invalid_resolution_body);
     }
 
     const FrameDimensions dimensions = camera_dimensions(

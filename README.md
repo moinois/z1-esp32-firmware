@@ -167,13 +167,14 @@ The first core-to-periphery development slice contains:
   sensor orientation, stream-size application, and capture timeout contract;
 - exact main/video HTTP listener limits and web-volume mount/SPIFFS format
   settings, including 512-byte parser storage and 63-byte names;
-- static-file path construction, MIME selection, missing-file text, chunk size,
-  and the fixed firmware identity JSON payload;
+- fixed-buffer static-path truncation, ordered MIME selection, missing-file
+  text, double-empty EOF chunking, and the fixed firmware identity JSON;
 - HTTP response status/content policy, method matching, URI query exclusion,
   and exact parser-error responses;
 - bounded JSON-prefix parsing with embedded-NUL termination and first,
   case-insensitive member lookup;
-- camera-resolution endpoint validation, 63-byte request limits,
+- camera-resolution endpoint validation, 63-byte request limits, exact 500
+  input-error responses,
   [CAM-001](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#cam-001)
   normalization, and exact sensor success/failure responses;
 - ESP-IDF `esp32-camera` integration for the configured DVP/SCCB camera, sensor
@@ -203,7 +204,8 @@ The first core-to-periphery development slice contains:
 - Recording task composes request/play state, configured recording dimensions,
   JPEG capture, tested AVI segment policy, and one-second FreeRTOS scheduling;
 - static-file serving through replaceable file/response ports, exact 404
-  behavior, MIME selection, 256-byte chunks, and terminating empty chunk;
+  behavior, MIME selection, 256-byte chunks, an EOF empty chunk, and the
+  terminating empty chunk;
 - nonfatal web-volume startup with format-and-retry policy and an ESP-IDF
   SPIFFS adapter;
 - ESP-IDF main/video HTTP listener startup using the exact independent limits,
