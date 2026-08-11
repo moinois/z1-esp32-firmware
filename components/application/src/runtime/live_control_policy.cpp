@@ -5,6 +5,9 @@ namespace firmware::application {
 
 std::vector<LiveControlDecision> LiveControlPolicy::handle(
     std::uint32_t socket_id, std::string_view payload) {
+    // LIVE-001 treats every WebSocket payload as C text. Bytes following the
+    // first NUL belong to the same frame but must not affect command matching.
+    payload = payload.substr(0U, payload.find('\0'));
     if (payload == "stop_stream") {
         if (owner_.has_value() && *owner_ == socket_id) {
             owner_.reset();

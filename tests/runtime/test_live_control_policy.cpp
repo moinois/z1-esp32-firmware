@@ -20,6 +20,19 @@ TEST_CASE(live_001_exact_commands_start_stop_and_ignore_other_payloads) {
     REQUIRE_EQ(policy.handle(7U, "stop_stream"), std::vector<LiveControlDecision>{});
 }
 
+TEST_CASE(live_001_embedded_nul_terminates_commands_and_ignores_suffix_bytes) {
+    LiveControlPolicy policy;
+    const std::string_view start_with_suffix("start_stream\0ignored", 20U);
+    const std::string_view stop_with_suffix("stop_stream\0ignored", 19U);
+
+    REQUIRE_EQ(policy.handle(7U, start_with_suffix),
+               (std::vector<LiveControlDecision>{{LiveControlAction::start, 7U}}));
+    REQUIRE_EQ(policy.handle(7U, stop_with_suffix),
+               (std::vector<LiveControlDecision>{{LiveControlAction::stop, 7U}}));
+    REQUIRE_EQ(policy.handle(7U, std::string_view("other\0start_stream", 18U)),
+               std::vector<LiveControlDecision>{});
+}
+
 TEST_CASE(live_005_and_006_new_owner_stops_old_stream_and_notifies_old_socket) {
     LiveControlPolicy policy;
     REQUIRE_EQ(policy.handle(1U, "start_stream"),

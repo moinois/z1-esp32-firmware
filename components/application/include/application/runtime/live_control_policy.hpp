@@ -29,7 +29,8 @@ struct LiveControlDecision {
 /// Implements exact command matching and single-owner live-stream arbitration.
 class LiveControlPolicy {
 public:
-    /// Applies one complete text command from a socket identity.
+    /// Applies one NUL-terminated command carried by any WebSocket data frame.
+    /// Bytes following an embedded NUL are deliberately ignored.
     std::vector<LiveControlDecision> handle(std::uint32_t socket_id,
                                              std::string_view payload);
 

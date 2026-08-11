@@ -82,3 +82,21 @@ TEST_CASE(live_012_capture_or_send_failure_terminates_the_iteration) {
     REQUIRE_EQ(send_failure.events,
                std::vector<std::string>({"valid", "capture", "send"}));
 }
+
+TEST_CASE(live_003_successful_empty_capture_is_sent_and_streaming_continues) {
+    class EmptyFramePort final : public LiveFramePort {
+    public:
+        bool socket_valid(std::uint32_t) override { return true; }
+        std::optional<ByteVector> capture_jpeg() override {
+            return ByteVector{};
+        }
+        bool send_jpeg(std::uint32_t, firmware::core::BytesView frame) override {
+            sent_empty = frame.size() == 0U;
+            return true;
+        }
+        bool sent_empty = false;
+    } empty;
+
+    REQUIRE(firmware::application::run_live_frame_iteration(3U, empty));
+    REQUIRE(empty.sent_empty);
+}

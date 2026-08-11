@@ -11,6 +11,7 @@
 #include "esp_log.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "freertos/task.h"
 
 #include "application/web/web_config.hpp"
@@ -69,6 +70,8 @@ constexpr std::size_t maximum_configuration_key_size = 128U;
 constexpr std::size_t maximum_configuration_value_size = 512U;
 constexpr std::uint32_t live_stream_task_stack_size = 4096U;
 constexpr UBaseType_t live_stream_task_priority = 4U;
+constexpr std::uint32_t live_arbiter_task_stack_size = 4096U;
+constexpr UBaseType_t live_arbiter_task_priority = 4U;
 constexpr std::uint32_t preview_task_stack_size = 6144U;
 constexpr UBaseType_t preview_task_priority = 4U;
 firmware::application::LiveControlPolicy live_control_policy;
@@ -102,7 +105,22 @@ std::optional<PreviewRuntime> preview_runtime;
 std::atomic_uint32_t preview_generation{0U};
 std::atomic_uint32_t live_generation{0U};
 
-constexpr TickType_t live_frame_interval = pdMS_TO_TICKS(100U);
+constexpr TickType_t live_frame_interval = pdMS_TO_TICKS(50U);
+constexpr UBaseType_t live_control_queue_capacity = 8U;
+constexpr TickType_t live_start_admission_wait = pdMS_TO_TICKS(500U);
+constexpr TickType_t live_stop_admission_wait = pdMS_TO_TICKS(200U);
+
+enum class LiveControlRequestAction : std::uint8_t { start, stop };
+
+// Contains no request pointer because HTTP request storage expires after the
+// URI callback; the server handle and descriptor remain sufficient identities.
+struct LiveControlRequest {
+    httpd_handle_t handle;
+    int socket_id;
+    LiveControlRequestAction action;
+};
+
+QueueHandle_t live_control_queue = nullptr;
 
 // Owns one continuous live-camera stream until ownership is revoked.
 struct LiveStreamTaskContext {
@@ -151,23 +169,30 @@ void live_stream_task(void* parameter) {
     auto* context = static_cast<LiveStreamTaskContext*>(parameter);
     while (live_generation.load(std::memory_order_acquire) ==
            context->generation) {
+        TickType_t capture_started = xTaskGetTickCount();
         if (!send_live_frame(context->handle, context->socket_id)) {
+            if (httpd_ws_get_fd_info(context->handle, context->socket_id) ==
+                HTTPD_WS_CLIENT_WEBSOCKET) {
+                static_cast<void>(httpd_sess_trigger_close(
+                    context->handle, context->socket_id));
+            }
             break;
         }
-        vTaskDelay(live_frame_interval);
+        // Measure the nominal period from capture start rather than adding a
+        // fixed post-send delay, which would accumulate capture/send latency.
+        vTaskDelayUntil(&capture_started, live_frame_interval);
     }
     delete context;
     vTaskDelete(nullptr);
 }
 
 // Starts a generation-bound live stream for one admitted socket.
-void start_live_stream(httpd_req_t* request) {
+bool start_live_stream(httpd_handle_t handle, int socket_id) {
     const auto generation = live_generation.fetch_add(
                                 1U, std::memory_order_acq_rel) +
                             1U;
-    const int socket_id = httpd_req_to_sockfd(request);
     auto* context = new (std::nothrow) LiveStreamTaskContext{
-        request->handle,
+        handle,
         socket_id,
         generation,
     };
@@ -176,7 +201,7 @@ void start_live_stream(httpd_req_t* request) {
             firmware::application::LiveMediaDiagnosticEvent::stream_allocation_failed,
             socket_id);
         ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
-        return;
+        return false;
     }
     if (xTaskCreate(live_stream_task, "live_stream",
                     live_stream_task_stack_size, context,
@@ -186,7 +211,106 @@ void start_live_stream(httpd_req_t* request) {
             firmware::application::LiveMediaDiagnosticEvent::stream_task_create_failed,
             socket_id);
         ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+        return false;
     }
+    return true;
+}
+
+// Sends the normative notification before relinquishing preview ownership.
+void preempt_preview_for_live(httpd_handle_t handle) {
+    if (!preview_runtime.has_value()) return;
+    const std::string message = firmware::core::format_preview_preemption(
+        "live", preview_runtime->session_id);
+    httpd_ws_frame_t response{};
+    response.type = HTTPD_WS_TYPE_TEXT;
+    response.payload = reinterpret_cast<std::uint8_t*>(
+        const_cast<char*>(message.data()));
+    response.len = message.size();
+    static_cast<void>(httpd_ws_send_frame_async(
+        handle, static_cast<int>(preview_runtime->socket_id), &response));
+    preview_generation.fetch_add(1U, std::memory_order_acq_rel);
+    preview_runtime.reset();
+}
+
+// Applies queued requests serially so ownership changes cannot race between
+// HTTP server callbacks from different sockets.
+void live_arbiter_task(void*) {
+    LiveControlRequest request{};
+    while (true) {
+        if (xQueueReceive(live_control_queue, &request, portMAX_DELAY) != pdTRUE) {
+            continue;
+        }
+        const auto socket_id = static_cast<std::uint32_t>(request.socket_id);
+        const auto decisions = request.action == LiveControlRequestAction::start
+                                   ? live_control_policy.handle(socket_id,
+                                                                "start_stream")
+                                   : live_control_policy.handle(socket_id,
+                                                                "stop_stream");
+        for (const auto& decision : decisions) {
+            if (decision.action ==
+                firmware::application::LiveControlAction::preempted) {
+                const std::string message =
+                    firmware::core::format_live_preemption("live");
+                httpd_ws_frame_t response{};
+                response.type = HTTPD_WS_TYPE_TEXT;
+                response.payload = reinterpret_cast<std::uint8_t*>(
+                    const_cast<char*>(message.data()));
+                response.len = message.size();
+                static_cast<void>(httpd_ws_send_frame_async(
+                    request.handle, static_cast<int>(decision.socket_id),
+                    &response));
+            }
+            if (decision.action == firmware::application::LiveControlAction::stop ||
+                decision.action ==
+                    firmware::application::LiveControlAction::preempted) {
+                live_generation.fetch_add(1U, std::memory_order_acq_rel);
+            }
+            if (decision.action == firmware::application::LiveControlAction::start) {
+                preempt_preview_for_live(request.handle);
+                if (!start_live_stream(
+                        request.handle, static_cast<int>(decision.socket_id))) {
+                    // The earlier stream remains preempted, but a later request
+                    // must be able to claim ownership after resource recovery.
+                    static_cast<void>(
+                        live_control_policy.on_disconnect(decision.socket_id));
+                }
+            }
+        }
+    }
+}
+
+// Submits one bounded live-control request using the requirement-specific wait.
+bool submit_live_control(httpd_handle_t handle, int socket_id,
+                         LiveControlRequestAction action) {
+    if (live_control_queue == nullptr) return false;
+    const LiveControlRequest request{handle, socket_id, action};
+    const TickType_t wait = action == LiveControlRequestAction::start
+                                ? live_start_admission_wait
+                                : live_stop_admission_wait;
+    return xQueueSend(live_control_queue, &request, wait) == pdTRUE;
+}
+
+// Creates the live-control service independently of WebSocket connections.
+bool start_live_arbiter() {
+    live_control_queue = xQueueCreate(live_control_queue_capacity,
+                                      sizeof(LiveControlRequest));
+    if (live_control_queue == nullptr) {
+        const auto diagnostic = firmware::application::live_media_diagnostic(
+            firmware::application::LiveMediaDiagnosticEvent::arbiter_queue_create_failed);
+        ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+        return false;
+    }
+    if (xTaskCreate(live_arbiter_task, "live_arbiter",
+                    live_arbiter_task_stack_size, nullptr,
+                    live_arbiter_task_priority, nullptr) != pdPASS) {
+        vQueueDelete(live_control_queue);
+        live_control_queue = nullptr;
+        const auto diagnostic = firmware::application::live_media_diagnostic(
+            firmware::application::LiveMediaDiagnosticEvent::arbiter_task_create_failed);
+        ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+        return false;
+    }
+    return true;
 }
 
 // Reads one preview file for the metadata admission path.
@@ -803,62 +927,54 @@ esp_err_t video_websocket_handler(httpd_req_t* request) {
         if (!live_initialization.ensure_available()) {
             return ESP_FAIL;
         }
-        const auto socket_id = static_cast<std::uint32_t>(
-            httpd_req_to_sockfd(request));
-        if (!live_control_policy.on_disconnect(socket_id).empty()) {
-            live_generation.fetch_add(1U, std::memory_order_acq_rel);
-        }
+        // A reused descriptor may still own a surviving stream. The bounded
+        // stop is intentionally best-effort and produces no application data.
+        static_cast<void>(submit_live_control(
+            request->handle, httpd_req_to_sockfd(request),
+            LiveControlRequestAction::stop));
         return ESP_OK;
     }
-    const auto socket_id =
-        static_cast<std::uint32_t>(httpd_req_to_sockfd(request));
+    const int socket_id = httpd_req_to_sockfd(request);
     httpd_ws_frame_t frame{};
     if (httpd_ws_recv_frame(request, &frame, 0U) != ESP_OK) {
-        const auto decisions = live_control_policy.on_disconnect(socket_id);
-        if (!decisions.empty()) {
-            live_generation.fetch_add(1U, std::memory_order_acq_rel);
-        }
+        static_cast<void>(httpd_sess_trigger_close(request->handle, socket_id));
         return ESP_FAIL;
     }
     if (frame.len == 0U) return ESP_OK;
-    std::vector<std::uint8_t> payload(frame.len);
-    frame.payload = payload.data();
-    if (httpd_ws_recv_frame(request, &frame, frame.len) != ESP_OK) {
-        const auto decisions = live_control_policy.on_disconnect(socket_id);
-        if (!decisions.empty()) {
-            live_generation.fetch_add(1U, std::memory_order_acq_rel);
-        }
+    auto payload = std::unique_ptr<std::uint8_t[]>(
+        new (std::nothrow) std::uint8_t[frame.len]);
+    if (!payload) {
+        static_cast<void>(httpd_sess_trigger_close(request->handle, socket_id));
         return ESP_FAIL;
     }
-    if (frame.type != HTTPD_WS_TYPE_TEXT) {
-        return ESP_OK;
+    frame.payload = payload.get();
+    if (httpd_ws_recv_frame(request, &frame, frame.len) != ESP_OK) {
+        static_cast<void>(submit_live_control(
+            request->handle, socket_id, LiveControlRequestAction::stop));
+        static_cast<void>(httpd_sess_trigger_close(request->handle, socket_id));
+        return ESP_FAIL;
     }
+    // LIVE-001 deliberately ignores the WebSocket data type and treats the
+    // retained bytes as NUL-terminated command text.
     const std::string_view command(
-        reinterpret_cast<const char*>(payload.data()), payload.size());
-    const auto decisions = live_control_policy.handle(
-        socket_id, command);
-    for (const auto& decision : decisions) {
-        if (decision.action == firmware::application::LiveControlAction::preempted) {
-            const std::string message = firmware::core::format_live_preemption("live");
-            httpd_ws_frame_t response{};
-            response.type = HTTPD_WS_TYPE_TEXT;
-            response.payload = reinterpret_cast<uint8_t*>(
-                const_cast<char*>(message.data()));
-            response.len = message.size();
-            static_cast<void>(httpd_ws_send_frame_async(
-                request->handle, static_cast<int>(decision.socket_id), &response));
+        reinterpret_cast<const char*>(payload.get()), frame.len);
+    const std::string_view terminated = command.substr(0U, command.find('\0'));
+    if (terminated == "stop_stream") {
+        static_cast<void>(submit_live_control(
+            request->handle, socket_id, LiveControlRequestAction::stop));
+    } else if (terminated == "start_stream" &&
+               !submit_live_control(request->handle, socket_id,
+                                    LiveControlRequestAction::start)) {
+        const auto diagnostic = firmware::application::live_media_diagnostic(
+            firmware::application::LiveMediaDiagnosticEvent::request_timeout,
+            socket_id);
+        if (diagnostic.warning) {
+            ESP_LOGW(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+        } else {
+            ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
         }
-        if (decision.action == firmware::application::LiveControlAction::stop ||
-            decision.action == firmware::application::LiveControlAction::preempted) {
-            live_generation.fetch_add(1U, std::memory_order_acq_rel);
-        }
-        if (decision.action == firmware::application::LiveControlAction::start &&
-            decision.socket_id == socket_id) {
-            if (send_live_frame(request->handle,
-                                httpd_req_to_sockfd(request))) {
-                start_live_stream(request);
-            }
-        }
+        static_cast<void>(httpd_sess_trigger_close(request->handle, socket_id));
+        return ESP_FAIL;
     }
     return ESP_OK;
 }
@@ -1134,6 +1250,7 @@ void HttpServerAdapter::start() {
         ESP_LOGW(tag, "video HTTP server did not start");
     } else {
 #if CONFIG_HTTPD_WS_SUPPORT
+        static_cast<void>(start_live_arbiter());
         register_video_handlers(video_handle_);
 #endif
     }
