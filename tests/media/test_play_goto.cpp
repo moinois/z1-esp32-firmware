@@ -141,16 +141,49 @@ TEST_CASE(play_019_short_valid_identifier_sends_f4_and_exact_format_error) {
                bytes("Error:PTYPE_PLAY_DATA goto cmd format error [P3]"));
 }
 
-TEST_CASE(play_020_rewind_failure_sends_f5_without_cleanup) {
+TEST_CASE(play_010_and_019_short_goto_uses_identifier_residual_then_reports_format) {
+    PlaySession session;
+    PlayController controller(session);
+    FakeGotoPort port;
+    session.prepare(bytes("play /job"), 0U, port);
+    const std::uint16_t identifier = session.path_identifier();
+    controller.handle({0xF1U, {static_cast<std::uint8_t>(identifier >> 8U),
+                               static_cast<std::uint8_t>(identifier)}},
+                      0U, port);
+    port.sent.clear();
+
+    controller.handle({0xF6U, {}}, 1U, port);
+
+    REQUIRE_EQ(port.sent.back().type, 0xF4U);
+    REQUIRE_EQ(port.broadcasts.back().payload,
+               bytes("Error:PTYPE_PLAY_DATA goto cmd format error [P3]"));
+}
+
+TEST_CASE(play_020_rewind_failure_is_ignored_and_scan_still_runs) {
     PlaySession session;
     PlayController controller(session);
     FakeGotoPort port;
     session.prepare(bytes("play /job"), 0U, port);
     port.rewind_succeeds = false;
+    port.set_lines({{bytes("line\n"), false}});
 
     controller.handle({0xF6U, goto_request(session.path_identifier(), 1U)}, 0U, port);
 
-    REQUIRE_EQ(port.sent.back().type, 0xF5U);
+    REQUIRE_EQ(port.sent.back().type, 0xF7U);
+    REQUIRE(session.file_open());
+    REQUIRE_EQ(port.release_count, 0U);
+}
+
+TEST_CASE(play_020_read_failure_stops_silently_after_reset) {
+    PlaySession session;
+    PlayController controller(session);
+    FakeGotoPort port;
+    session.prepare(bytes("play /job"), 0U, port);
+    port.read_fails = true;
+
+    controller.handle({0xF6U, goto_request(session.path_identifier(), 2U)}, 0U, port);
+
+    REQUIRE(port.sent.empty());
     REQUIRE(session.file_open());
     REQUIRE_EQ(port.release_count, 0U);
 }
@@ -168,7 +201,7 @@ TEST_CASE(play_020_target_zero_reports_after_the_first_nonempty_line) {
     REQUIRE_EQ(port.sent.size(), 1U);
     REQUIRE_EQ(port.sent.back(),
                Frame({0xF7U, {static_cast<std::uint8_t>(identifier >> 8U),
-                               static_cast<std::uint8_t>(identifier), 0U, 0U, 0U, 2U,
+                               static_cast<std::uint8_t>(identifier), 0U, 0U, 0U, 1U,
                                0U, 0U, 0U, 3U}}));
 }
 

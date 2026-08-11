@@ -161,6 +161,24 @@ TEST_CASE(play_013_short_data_request_with_open_file_sends_f4_and_exact_error) {
                bytes("Error:PTYPE_PLAY_DATA command data format error [P2]"));
 }
 
+TEST_CASE(play_010_and_013_short_data_uses_identifier_residual_then_reports_format) {
+    PlaySession session;
+    PlayController controller(session);
+    FakePlayDataPort port;
+    session.prepare(bytes("play /job"), 0U, port);
+    const std::uint16_t identifier = session.path_identifier();
+    controller.handle({0xF1U, {static_cast<std::uint8_t>(identifier >> 8U),
+                               static_cast<std::uint8_t>(identifier)}},
+                      0U, port);
+    port.sent.clear();
+
+    controller.handle({0xF3U, {}}, 1U, port);
+
+    REQUIRE_EQ(port.sent.back().type, 0xF4U);
+    REQUIRE_EQ(port.broadcasts.back().payload,
+               bytes("Error:PTYPE_PLAY_DATA command data format error [P2]"));
+}
+
 TEST_CASE(play_012_missing_or_zero_line_limit_means_255) {
     PlaySession session;
     PlayController controller(session);
@@ -228,6 +246,29 @@ TEST_CASE(play_016_same_index_resends_retained_nonempty_result_without_reading) 
     REQUIRE_EQ(port.chunks.size(), remaining);
 }
 
+TEST_CASE(play_016_shorter_result_retains_stale_suffix_until_old_nul) {
+    PlaySession session;
+    PlayController controller(session);
+    FakePlayDataPort port;
+    port.set_lines({{bytes("abcdef\n"), false}, {bytes("x\n"), false}});
+    prepare_running(session, controller, port);
+    const std::uint16_t identifier = session.path_identifier();
+
+    controller.handle({0xF3U, data_request(identifier, 0U, 1U)}, 1U, port);
+    controller.handle({0xF3U, data_request(identifier, 1U, 1U)}, 2U, port);
+    const Frame fresh_short_reply = port.sent.back();
+    controller.handle({0xF3U, data_request(identifier, 1U, 1U)}, 3U, port);
+
+    REQUIRE_EQ(fresh_short_reply.payload,
+               ByteVector({static_cast<std::uint8_t>(identifier >> 8U),
+                           static_cast<std::uint8_t>(identifier), 0U, 0U, 0U, 1U,
+                           'x', '\n'}));
+    REQUIRE_EQ(port.sent.back().payload,
+               ByteVector({static_cast<std::uint8_t>(identifier >> 8U),
+                           static_cast<std::uint8_t>(identifier), 0U, 0U, 0U, 1U,
+                           'x', '\n', 'c', 'd', 'e', 'f', '\n'}));
+}
+
 TEST_CASE(play_016_out_of_position_index_rewinds_and_skips_from_start) {
     PlaySession session;
     PlayController controller(session);
@@ -243,7 +284,7 @@ TEST_CASE(play_016_out_of_position_index_rewinds_and_skips_from_start) {
     REQUIRE_EQ(port.sent.back().payload[6], static_cast<std::uint8_t>('t'));
 }
 
-TEST_CASE(play_016_rewind_failure_sends_f4_without_closing_or_releasing) {
+TEST_CASE(play_016_rewind_failure_is_ignored_before_later_read_failure) {
     PlaySession session;
     PlayController controller(session);
     FakePlayDataPort port;
@@ -275,15 +316,17 @@ TEST_CASE(play_017_eof_sends_final_data_then_f4_and_performs_cleanup) {
     REQUIRE_EQ(port.release_count, 1U);
 }
 
-TEST_CASE(play_007_empty_nul_line_produces_no_reply_and_leaves_play_open) {
+TEST_CASE(play_007_leading_nul_chunk_is_discarded_before_aggregation) {
     PlaySession session;
     PlayController controller(session);
     FakePlayDataPort port;
-    port.set_lines({{{0U, 'x', '\n'}, false}});
+    port.set_lines({{{0U, 'x', '\n'}, false}, {bytes("next\n"), true}});
     prepare_running(session, controller, port);
 
     controller.handle({0xF3U, data_request(session.path_identifier(), 0U)}, 1U, port);
 
-    REQUIRE(port.sent.empty());
-    REQUIRE(session.file_open());
+    REQUIRE_EQ(port.sent.front().type, 0xF3U);
+    REQUIRE_EQ(port.sent.front().payload.back(), static_cast<std::uint8_t>('\n'));
+    REQUIRE_EQ(port.sent.back().type, 0xF4U);
+    REQUIRE(!session.file_open());
 }

@@ -83,15 +83,29 @@ TEST_CASE(play_007_embedded_nul_ends_observed_data_after_consuming_the_chunk) {
     REQUIRE(source.chunks.empty());
 }
 
-TEST_CASE(play_007_leading_nul_is_an_empty_non_eof_logical_result) {
+TEST_CASE(play_007_leading_nul_chunk_is_discarded_before_the_next_line) {
     FakeLineSource source;
     source.chunks.push_back({{0U, 'G', '1', '\n'}, false});
+    source.chunks.push_back({bytes("G2\n"), false});
 
     const auto result = PlayLineReader::read(source);
 
     REQUIRE_EQ(result.status, PlayLineStatus::line);
-    REQUIRE(result.data.empty());
+    REQUIRE_EQ(result.data, bytes("G2\n"));
     REQUIRE(!result.reached_eof);
+}
+
+TEST_CASE(play_020_observed_size_precedes_controller_line_normalization) {
+    FakeLineSource source;
+    source.chunks.push_back({ByteVector(65U, 'x'), true});
+    const auto result = PlayLineReader::read(source);
+    REQUIRE_EQ(result.data.size(), 64U);
+    REQUIRE_EQ(result.observed_size, 65U);
+
+    FakeLineSource long_source;
+    long_source.chunks.push_back({ByteVector(129U, 'x'), false});
+    long_source.chunks.push_back({bytes("tail\n"), false});
+    REQUIRE_EQ(PlayLineReader::read(long_source).observed_size, 1U);
 }
 
 TEST_CASE(play_014_empty_eof_and_read_failure_are_distinct) {

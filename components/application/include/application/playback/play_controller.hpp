@@ -4,6 +4,7 @@
 #include "application/playback/play_line_reader.hpp"
 #include "application/playback/play_session.hpp"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 
@@ -46,9 +47,13 @@ private:
     void handle_goto(core::BytesView payload, std::uint64_t now_milliseconds,
                      PlayControllerPort& port);
     void handle_terminal(PlayControllerPort& port);
-    bool seek_line(std::uint32_t target, PlayControllerPort& port);
+    void seek_line(std::uint32_t target, PlayControllerPort& port);
+    void retain_response(std::uint32_t requested_index, core::BytesView response);
+    void clear_retained_response();
     void send_progress(PlayControllerPort& port) const;
     void reset_read_state();
+    void observe_identifier_bytes(core::BytesView payload);
+    [[nodiscard]] std::uint16_t observed_identifier() const;
 
     PlaySession& session_;
     std::uint32_t session_generation_ = 0U;
@@ -56,6 +61,8 @@ private:
     std::uint64_t transmitted_bytes_ = 0U;
     std::optional<std::uint32_t> retained_index_;
     core::ByteVector retained_payload_;
+    core::ByteVector retained_storage_;
+    std::array<std::uint8_t, 2U> identifier_residual_{};
 };
 
 }  // namespace firmware::application

@@ -3,6 +3,7 @@
 
 #include "core/protocol/protocol_constants.hpp"
 
+#include <algorithm>
 #include <string_view>
 #include <utility>
 
@@ -36,12 +37,6 @@ constexpr std::uint8_t play_error_response = core::protocol::family_packet(
 constexpr std::uint8_t play_progress_response = core::protocol::family_packet(
     core::protocol::play_family, core::protocol::play_progress);
 
-// Decodes an unsigned 16-bit big-endian identifier from two available bytes.
-std::uint16_t decode_identifier(core::BytesView payload) {
-    return static_cast<std::uint16_t>((static_cast<std::uint16_t>(payload[0]) << 8U) |
-                                      payload[1]);
-}
-
 // Decodes an unsigned 32-bit big-endian value from four available bytes.
 std::uint32_t decode_u32(const std::uint8_t* bytes) {
     return (static_cast<std::uint32_t>(bytes[0]) << 24U) |
@@ -73,6 +68,7 @@ void PlayController::handle(const core::Frame& frame, std::uint64_t now_millisec
         session_generation_ = session_.generation();
         reset_read_state();
     }
+    observe_identifier_bytes(frame.payload);
     const std::uint8_t operation = frame.type & core::protocol::operation_mask;
     switch (operation) {
         case core::protocol::transfer_start:
@@ -100,10 +96,8 @@ void PlayController::handle(const core::Frame& frame, std::uint64_t now_millisec
 void PlayController::handle_goto(core::BytesView payload,
                                  std::uint64_t now_milliseconds,
                                  PlayControllerPort& port) {
-    const bool identifier_present = payload.size() >= identifier_size;
-    const bool identifier_matches = identifier_present &&
-                                    decode_identifier(payload) == session_.path_identifier();
-    if (!session_.file_open() || (identifier_present && !identifier_matches)) {
+    const bool identifier_matches = observed_identifier() == session_.path_identifier();
+    if (!session_.file_open() || !identifier_matches) {
         static_cast<void>(port.send({play_complete_response, {}}));
         session_.report_error(goto_check_error, now_milliseconds, port);
         return;
@@ -114,12 +108,8 @@ void PlayController::handle_goto(core::BytesView payload,
         return;
     }
 
-    retained_index_.reset();
-    retained_payload_.clear();
-    if (!port.rewind_file()) {
-        static_cast<void>(port.send({play_error_response, {}}));
-        return;
-    }
+    clear_retained_response();
+    static_cast<void>(port.rewind_file());
     current_line_ = 0U;
     transmitted_bytes_ = 0U;
     const std::uint32_t target = decode_u32(payload.data() + request_index_offset);
@@ -128,7 +118,6 @@ void PlayController::handle_goto(core::BytesView payload,
     for (;;) {
         const PlayLineResult line = PlayLineReader::read(port);
         if (line.status == PlayLineStatus::failure) {
-            static_cast<void>(port.send({play_complete_response, {}}));
             return;
         }
         if (line.status == PlayLineStatus::end_of_file) {
@@ -137,7 +126,7 @@ void PlayController::handle_goto(core::BytesView payload,
         }
 
         ++current_line_;
-        transmitted_bytes_ += line.data.size();
+        transmitted_bytes_ += line.observed_size;
         const bool reached_target = !line.data.empty() &&
                                     (target == 0U || current_line_ >= target);
         const std::uint64_t now = port.now_milliseconds();
@@ -163,8 +152,7 @@ void PlayController::handle_data(core::BytesView payload,
         static_cast<void>(port.send({play_complete_response, {}}));
         return;
     }
-    if (payload.size() >= identifier_size &&
-        decode_identifier(payload) != session_.path_identifier()) {
+    if (observed_identifier() != session_.path_identifier()) {
         static_cast<void>(port.send({play_complete_response, {}}));
         return;
     }
@@ -188,9 +176,8 @@ void PlayController::handle_data(core::BytesView payload,
         static_cast<void>(port.send({play_data_response, retained_payload_}));
         return;
     }
-    if (requested_index != current_line_ && !seek_line(requested_index, port)) {
-        static_cast<void>(port.send({play_complete_response, {}}));
-        return;
+    if (requested_index != current_line_) {
+        seek_line(requested_index, port);
     }
 
     core::ByteVector data;
@@ -221,8 +208,7 @@ void PlayController::handle_data(core::BytesView payload,
         core::ByteVector response(payload.begin(), payload.begin() + data_request_size);
         response.insert(response.end(), data.begin(), data.end());
         static_cast<void>(port.send({play_data_response, response}));
-        retained_index_ = requested_index;
-        retained_payload_ = std::move(response);
+        retain_response(requested_index, response);
     }
     if (reached_eof) {
         static_cast<void>(port.send({play_complete_response, {}}));
@@ -230,12 +216,13 @@ void PlayController::handle_data(core::BytesView payload,
     }
 }
 
-void PlayController::handle_start(core::BytesView payload,
+void PlayController::handle_start(core::BytesView,
                                   std::uint64_t now_milliseconds,
                                   PlayControllerPort& port) {
+    clear_retained_response();
     port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::start_received));
-    const bool valid = payload.size() >= identifier_size && session_.file_open() &&
-                       decode_identifier(payload) == session_.path_identifier();
+    const bool valid = session_.file_open() &&
+                       observed_identifier() == session_.path_identifier();
     if (!valid) {
         port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::start_invalid));
         static_cast<void>(port.send({play_error_response, {}}));
@@ -260,24 +247,22 @@ void PlayController::handle_terminal(PlayControllerPort& port) {
     port.release_play_ownership();
 }
 
-bool PlayController::seek_line(std::uint32_t target, PlayControllerPort& port) {
-    if (!port.rewind_file()) {
-        return false;
-    }
+void PlayController::seek_line(std::uint32_t target, PlayControllerPort& port) {
+    static_cast<void>(port.rewind_file());
     current_line_ = 0U;
     transmitted_bytes_ = 0U;
     while (current_line_ < target) {
         const PlayLineResult line = PlayLineReader::read(port);
-        if (line.status != PlayLineStatus::line) {
-            return false;
+        if (line.status != PlayLineStatus::line || line.data.empty()) {
+            break;
         }
         ++current_line_;
-        transmitted_bytes_ += line.data.size();
+        transmitted_bytes_ += line.observed_size;
         if (line.reached_eof && current_line_ < target) {
-            return false;
+            break;
         }
     }
-    return true;
+    current_line_ = target;
 }
 
 void PlayController::send_progress(PlayControllerPort& port) const {
@@ -297,11 +282,42 @@ void PlayController::send_progress(PlayControllerPort& port) const {
     static_cast<void>(port.send({play_progress_response, std::move(payload)}));
 }
 
+void PlayController::retain_response(std::uint32_t requested_index,
+                                     core::BytesView response) {
+    // The reference firmware reuses a zero-terminated response buffer. A
+    // shorter result overwrites only its prefix, deliberately retaining bytes
+    // from the preceding result until the old terminator (PLAY-016).
+    if (retained_storage_.size() <= response.size()) {
+        retained_storage_.resize(response.size() + 1U, 0U);
+    }
+    std::copy(response.begin(), response.end(), retained_storage_.begin());
+    const auto terminator = std::find(retained_storage_.begin() + response.size(),
+                                      retained_storage_.end(), 0U);
+    retained_payload_.assign(retained_storage_.begin(), terminator);
+    retained_index_ = requested_index;
+}
+
+void PlayController::clear_retained_response() {
+    retained_index_.reset();
+    retained_payload_.clear();
+    retained_storage_.clear();
+}
+
+void PlayController::observe_identifier_bytes(core::BytesView payload) {
+    const std::size_t available = std::min(payload.size(), identifier_residual_.size());
+    std::copy_n(payload.begin(), available, identifier_residual_.begin());
+}
+
+std::uint16_t PlayController::observed_identifier() const {
+    return static_cast<std::uint16_t>(
+        (static_cast<std::uint16_t>(identifier_residual_[0]) << 8U) |
+        identifier_residual_[1]);
+}
+
 void PlayController::reset_read_state() {
     current_line_ = 0U;
     transmitted_bytes_ = 0U;
-    retained_index_.reset();
-    retained_payload_.clear();
+    clear_retained_response();
 }
 
 }  // namespace firmware::application

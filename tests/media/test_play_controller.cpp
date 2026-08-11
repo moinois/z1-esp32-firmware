@@ -130,6 +130,25 @@ TEST_CASE(play_010_mismatched_identifier_keeps_file_available_for_retry) {
     REQUIRE_EQ(port.release_count, 0U);
 }
 
+TEST_CASE(play_010_missing_identifier_byte_reuses_preceding_play_input) {
+    PlaySession session;
+    PlayController controller(session);
+    FakePlayControllerPort port;
+    REQUIRE(session.prepare(bytes("play /job"), 0U, port));
+    const std::uint16_t identifier = session.path_identifier();
+    const std::uint8_t high = static_cast<std::uint8_t>(identifier >> 8U);
+    const std::uint8_t low = static_cast<std::uint8_t>(identifier);
+
+    controller.handle({0xF1U, {high, low}}, 0U, port);
+    controller.handle({0xF1U, {high}}, 1U, port);
+    controller.handle({0xF1U, {}}, 2U, port);
+
+    REQUIRE_EQ(port.sent.size(), 3U);
+    REQUIRE_EQ(port.sent[0].type, 0xF2U);
+    REQUIRE_EQ(port.sent[1].type, 0xF2U);
+    REQUIRE_EQ(port.sent[2].type, 0xF2U);
+}
+
 TEST_CASE(play_011_valid_start_returns_identifier_and_big_endian_file_size) {
     PlaySession session;
     PlayController controller(session);
@@ -219,7 +238,7 @@ TEST_CASE(play_018_incoming_f2_and_f7_are_ignored) {
     REQUIRE(port.state_changes.empty());
 }
 
-TEST_CASE(play_023_goto_rewind_failure_sends_cancel_without_leaking_state) {
+TEST_CASE(play_020_goto_rewind_and_read_failures_are_silent) {
     PlaySession session;
     PlayController controller(session);
     FakePlayControllerPort port;
@@ -232,7 +251,7 @@ TEST_CASE(play_023_goto_rewind_failure_sends_cancel_without_leaking_state) {
                         static_cast<std::uint8_t>(identifier), 0U, 0U, 0U, 1U}},
                       1U, port);
 
-    REQUIRE_EQ(port.sent.back(), Frame({0xF5U, {}}));
+    REQUIRE(port.sent.empty());
     REQUIRE(session.file_open());
     REQUIRE(!session.running());
 }

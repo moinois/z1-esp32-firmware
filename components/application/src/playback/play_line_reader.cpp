@@ -25,16 +25,19 @@ bool completes_line(const PlayLineChunk& chunk) {
 }  // namespace
 
 PlayLineResult PlayLineReader::read(PlayLineSource& source) {
-    const auto first = source.read_chunk(maximum_chunk_size);
+    auto first = source.read_chunk(maximum_chunk_size);
     if (!first.has_value()) {
-        return {PlayLineStatus::failure, {}, false};
+        return {PlayLineStatus::failure, {}, false, 0U};
+    }
+    while (!first->bytes.empty() && first->bytes.front() == 0U) {
+        first = source.read_chunk(maximum_chunk_size);
+        if (!first.has_value()) {
+            return {PlayLineStatus::failure, {}, false, 0U};
+        }
     }
     core::ByteVector observed = observed_bytes(first->bytes);
     if (first->bytes.empty() && first->end_of_file) {
-        return {PlayLineStatus::end_of_file, {}, true};
-    }
-    if (observed.empty() && !first->bytes.empty() && first->bytes.front() == 0U) {
-        return {PlayLineStatus::line, {}, first->end_of_file};
+        return {PlayLineStatus::end_of_file, {}, true, 0U};
     }
 
     std::size_t chunk_count = 1U;
@@ -43,7 +46,7 @@ PlayLineResult PlayLineReader::read(PlayLineSource& source) {
     while (!complete) {
         const auto next = source.read_chunk(maximum_chunk_size);
         if (!next.has_value()) {
-            return {PlayLineStatus::failure, {}, false};
+            return {PlayLineStatus::failure, {}, false, 0U};
         }
         ++chunk_count;
         reached_eof = next->end_of_file;
@@ -51,13 +54,14 @@ PlayLineResult PlayLineReader::read(PlayLineSource& source) {
     }
 
     if (chunk_count > 1U) {
-        return {PlayLineStatus::line, {'\n'}, reached_eof};
+        return {PlayLineStatus::line, {'\n'}, reached_eof, 1U};
     }
+    const std::size_t observed_size = observed.size();
     if (observed.size() > maximum_returned_line_size) {
         observed.resize(maximum_returned_line_size);
         observed.back() = '\n';
     }
-    return {PlayLineStatus::line, std::move(observed), reached_eof};
+    return {PlayLineStatus::line, std::move(observed), reached_eof, observed_size};
 }
 
 }  // namespace firmware::application

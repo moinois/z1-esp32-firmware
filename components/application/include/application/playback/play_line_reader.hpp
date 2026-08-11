@@ -36,6 +36,8 @@ struct PlayLineResult {
     PlayLineStatus status;
     core::ByteVector data;
     bool reached_eof;
+    /// Bytes counted by goto progress before controller-size normalization.
+    std::size_t observed_size = 0U;
 };
 
 /// Converts filesystem chunks into the controller's bounded logical-line form.
