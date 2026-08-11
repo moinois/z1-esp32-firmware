@@ -65,4 +65,11 @@ std::optional<UpdateRecoveryDiagnostic> update_recovery_diagnostic(
     }
 }
 
+std::string ota_failure_diagnostic(int error) {
+    char output[40]{};
+    std::snprintf(output, sizeof(output), "ESP32 OTA failed: 0x%x",
+                  static_cast<unsigned>(error));
+    return output;
+}
+
 }  // namespace firmware::application

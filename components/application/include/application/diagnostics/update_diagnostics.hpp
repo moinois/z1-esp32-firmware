@@ -22,4 +22,7 @@ struct UpdateRecoveryDiagnostic {
 std::optional<UpdateRecoveryDiagnostic> update_recovery_diagnostic(
     std::uint8_t phase, bool staged_controller_exists);
 
+/// Formats the DIAG-032 ESP-IDF OTA failure code in lowercase hexadecimal.
+std::string ota_failure_diagnostic(int error);
+
 }  // namespace firmware::application

@@ -12,6 +12,7 @@
 
 #include "core/protocol/bytes.hpp"
 #include "application/controller/controller_command_frames.hpp"
+#include "application/diagnostics/update_diagnostics.hpp"
 
 #include <cstdio>
 #include <string>
@@ -19,7 +20,12 @@
 namespace firmware::target {
 namespace {
 
-constexpr char tag[] = "OTA";
+constexpr char tag[] = "app_upgrade";
+
+void log_ota_failure(esp_err_t error) {
+    const auto message = firmware::application::ota_failure_diagnostic(error);
+    ESP_LOGE(tag, "%s", message.c_str());
+}
 
 }  // namespace
 
@@ -44,7 +50,9 @@ bool OtaUpdateAdapter::begin_mainboard_write(std::uint32_t size) {
     if (inactive_partition_ == nullptr || ota_active_) {
         return false;
     }
-    if (esp_ota_begin(inactive_partition_, size, &ota_handle_) != ESP_OK) {
+    const esp_err_t result = esp_ota_begin(inactive_partition_, size, &ota_handle_);
+    if (result != ESP_OK) {
+        log_ota_failure(result);
         return false;
     }
     ota_active_ = true;
@@ -52,11 +60,17 @@ bool OtaUpdateAdapter::begin_mainboard_write(std::uint32_t size) {
 }
 
 bool OtaUpdateAdapter::write_mainboard(firmware::core::BytesView image) {
-    return ota_active_ && esp_ota_write(ota_handle_, image.data(), image.size()) == ESP_OK;
+    if (!ota_active_) return false;
+    const esp_err_t result = esp_ota_write(ota_handle_, image.data(), image.size());
+    if (result != ESP_OK) log_ota_failure(result);
+    return result == ESP_OK;
 }
 
 bool OtaUpdateAdapter::finalize_mainboard_write() {
-    if (!ota_active_ || esp_ota_end(ota_handle_) != ESP_OK) {
+    if (!ota_active_) return false;
+    const esp_err_t result = esp_ota_end(ota_handle_);
+    if (result != ESP_OK) {
+        log_ota_failure(result);
         return false;
     }
     ota_active_ = false;
@@ -64,8 +78,10 @@ bool OtaUpdateAdapter::finalize_mainboard_write() {
 }
 
 bool OtaUpdateAdapter::select_mainboard_for_boot() {
-    return inactive_partition_ != nullptr &&
-           esp_ota_set_boot_partition(inactive_partition_) == ESP_OK;
+    if (inactive_partition_ == nullptr) return false;
+    const esp_err_t result = esp_ota_set_boot_partition(inactive_partition_);
+    if (result != ESP_OK) log_ota_failure(result);
+    return result == ESP_OK;
 }
 
 void OtaUpdateAdapter::abort_mainboard_write() {

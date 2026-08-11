@@ -40,3 +40,8 @@ TEST_CASE(diag_031_selects_the_exact_persisted_phase_record) {
     REQUIRE(!update_recovery_diagnostic(0U, false).has_value());
     REQUIRE(!update_recovery_diagnostic(9U, false).has_value());
 }
+
+TEST_CASE(diag_032_formats_ota_errors_as_unpadded_lowercase_hex) {
+    REQUIRE_EQ(firmware::application::ota_failure_diagnostic(0x10a),
+               std::string("ESP32 OTA failed: 0x10a"));
+}
