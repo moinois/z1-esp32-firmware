@@ -69,7 +69,7 @@ def test_mock_controller_populates_runtime_snapshots(usb_client) -> None:
     assert b"RSSI:" in diagnostic
 
     version = wait_for_payload(GENERAL_COMMAND, b"version", 0x83)
-    assert version == b"version = mock-controller-1.0.1.11\n"
+    assert version == b"version = mock-controller-1.0.1.13\n"
 
 
 @pytest.mark.hardware

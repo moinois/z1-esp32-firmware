@@ -52,7 +52,7 @@ def test_http_firmware_identity(tcp_host: str) -> None:
     assert status == 200
     assert content_type == "application/json"
     assert body == (
-        b'{"version":"0.1.11","build_date":"2026.06.22",'
+        b'{"version":"0.1.13","build_date":"2026.08.05",'
         b'"idf_ver":"v5.4.1"}'
     )
 

@@ -49,6 +49,6 @@ TEST_CASE(web_011_and_013_fixed_web_payloads_are_exact) {
     REQUIRE_EQ(firmware::core::web::static_file_chunk_size, 256U);
     REQUIRE_EQ(firmware_identity_json(),
                std::string_view(
-                   "{\"version\":\"0.1.11\",\"build_date\":\"2026.06.22\","
+                   "{\"version\":\"0.1.13\",\"build_date\":\"2026.08.05\","
                    "\"idf_ver\":\"v5.4.1\"}"));
 }

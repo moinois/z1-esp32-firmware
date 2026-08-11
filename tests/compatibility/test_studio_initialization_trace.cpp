@@ -194,7 +194,7 @@ TEST_CASE(compat_studio_trace_completes_config_listing_and_readiness_responses) 
     snapshots.update_version(bytes("1.0.15"));
     REQUIRE_EQ(snapshots.status_reply({})->type, 0x81U);
     REQUIRE_EQ(text(snapshots.version_reply().payload),
-               std::string("version = 1.0.15.0.1.11\n"));
+               std::string("version = 1.0.15.0.1.13\n"));
 }
 
 TEST_CASE(compat_studio_trace_keeps_normative_missing_storage_terminals) {

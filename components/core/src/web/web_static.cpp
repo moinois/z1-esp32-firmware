@@ -12,7 +12,7 @@ constexpr std::string_view css_mime_type = "text/css";
 constexpr std::string_view javascript_mime_type = "application/javascript";
 constexpr std::string_view plain_text_mime_type = "text/plain";
 constexpr std::string_view fixed_firmware_identity =
-    "{\"version\":\"0.1.11\",\"build_date\":\"2026.06.22\","
+    "{\"version\":\"0.1.13\",\"build_date\":\"2026.08.05\","
     "\"idf_ver\":\"v5.4.1\"}";
 
 // Reports whether the complete path names a directory resource.

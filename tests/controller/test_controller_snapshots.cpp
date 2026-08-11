@@ -54,7 +54,7 @@ TEST_CASE(stat_002_empty_status_is_ignored_but_other_empty_snapshots_replace) {
 
     REQUIRE(text(snapshots.status_reply({})->payload).find("<Run|") == 0U);
     REQUIRE(!snapshots.diagnostic_reply(-20).has_value());
-    REQUIRE_EQ(text(snapshots.version_reply().payload), std::string("version = .0.1.11\n"));
+    REQUIRE_EQ(text(snapshots.version_reply().payload), std::string("version = .0.1.13\n"));
 }
 
 TEST_CASE(stat_003_only_three_newest_pending_statuses_are_retained) {
@@ -138,12 +138,12 @@ TEST_CASE(stat_009_version_uses_short_nul_terminated_controller_prefix) {
     ControllerSnapshots snapshots;
     snapshots.update_version(ByteVector{'1', '.', '2', 0, 'x'});
 
-    REQUIRE_EQ(text(snapshots.version_reply().payload), std::string("version = 1.2.0.1.11\n"));
+    REQUIRE_EQ(text(snapshots.version_reply().payload), std::string("version = 1.2.0.1.13\n"));
 }
 
 TEST_CASE(stat_009_version_omits_prefix_when_it_is_64_bytes_or_longer) {
     ControllerSnapshots snapshots;
     snapshots.update_version(ByteVector(64, 'v'));
 
-    REQUIRE_EQ(text(snapshots.version_reply().payload), std::string("version = .0.1.11\n"));
+    REQUIRE_EQ(text(snapshots.version_reply().payload), std::string("version = .0.1.13\n"));
 }

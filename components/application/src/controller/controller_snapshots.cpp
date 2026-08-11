@@ -117,7 +117,7 @@ std::optional<core::Frame> ControllerSnapshots::diagnostic_reply(std::int32_t rs
 
 core::Frame ControllerSnapshots::version_reply() const {
     constexpr std::string_view prefix = "version = ";
-    constexpr std::string_view suffix = ".0.1.11\n";
+    constexpr std::string_view suffix = ".0.1.13\n";
     core::ByteVector payload(prefix.begin(), prefix.end());
 
     const auto nul = std::find(version_.begin(), version_.end(), 0U);
