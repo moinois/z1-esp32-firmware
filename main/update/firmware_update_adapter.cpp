@@ -108,12 +108,27 @@ public:
         static_cast<void>(std::remove(std::string(path).c_str()));
     }
     void clear_attributes(std::string_view path) override {
-        static_cast<void>(chmod(std::string(path).c_str(), 0666));
+        struct stat information{};
+        if (stat(std::string(path).c_str(), &information) != 0) {
+            constexpr int fat_no_file = 4;
+            const int fat_result = errno == ENOENT ? fat_no_file : 1;
+            const auto message =
+                firmware::application::update_aggregate_stat_failure(fat_result);
+            ESP_LOGW(tag, "%s", message.c_str());
+        }
+        if (chmod(std::string(path).c_str(), 0666) != 0) {
+            const auto message =
+                firmware::application::update_aggregate_attribute_warning();
+            ESP_LOGW(tag, "%s", message.c_str());
+        }
     }
     firmware::application::UpdateLoadResult load_aggregate(
         std::string_view path) override {
         std::FILE* file = std::fopen(std::string(path).c_str(), "rb");
         if (file == nullptr) {
+            const auto message =
+                firmware::application::update_aggregate_open_failure();
+            ESP_LOGE(tag, "%s", message.c_str());
             return {firmware::application::UpdateLoadFailure::absent, {}};
         }
         static_cast<void>(std::fseek(file, 0L, SEEK_END));

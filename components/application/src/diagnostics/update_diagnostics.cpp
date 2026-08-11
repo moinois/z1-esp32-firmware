@@ -95,4 +95,17 @@ std::string update_delete_unrecoverable(std::string_view path, int error,
            std::string(error_text) + ")";
 }
 
+std::string update_aggregate_stat_failure(int fat_result) {
+    return "[fw_del] f_stat(FAT2) failed: path=0:/firmware.bin fr=" +
+           std::to_string(fat_result);
+}
+
+std::string update_aggregate_attribute_warning() {
+    return "[fw_del] pre-clear readonly failed or not needed: /sd/firmware.bin";
+}
+
+std::string update_aggregate_open_failure() {
+    return "Failed to open file: /sd/firmware.bin";
+}
+
 }  // namespace firmware::application

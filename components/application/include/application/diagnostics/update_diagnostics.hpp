@@ -32,5 +32,11 @@ std::string update_delete_mode_failure(std::string_view path, int error,
                                        std::string_view error_text);
 std::string update_delete_unrecoverable(std::string_view path, int error,
                                         std::string_view error_text);
+/// Formats the first DIAG-042 missing-aggregate FAT lookup warning.
+std::string update_aggregate_stat_failure(int fat_result);
+/// Returns the second DIAG-042 best-effort attribute warning.
+std::string update_aggregate_attribute_warning();
+/// Returns the final DIAG-042 aggregate-open error.
+std::string update_aggregate_open_failure();
 
 }  // namespace firmware::application

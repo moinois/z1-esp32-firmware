@@ -25,6 +25,20 @@ TEST_CASE(diag_030_formats_every_valid_aggregate_header_line_in_order) {
             "======================================"}));
 }
 
+TEST_CASE(diag_042_missing_aggregate_diagnostics_are_exact_and_orderable) {
+    const std::vector<std::string> messages{
+        firmware::application::update_aggregate_stat_failure(4),
+        firmware::application::update_aggregate_attribute_warning(),
+        firmware::application::update_aggregate_open_failure(),
+    };
+    REQUIRE_EQ(messages,
+               std::vector<std::string>({
+                   "[fw_del] f_stat(FAT2) failed: path=0:/firmware.bin fr=4",
+                   "[fw_del] pre-clear readonly failed or not needed: /sd/firmware.bin",
+                   "Failed to open file: /sd/firmware.bin",
+               }));
+}
+
 TEST_CASE(diag_031_selects_the_exact_persisted_phase_record) {
     using firmware::application::update_recovery_diagnostic;
     REQUIRE_EQ(update_recovery_diagnostic(1U, false)->message,
