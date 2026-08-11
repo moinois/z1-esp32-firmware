@@ -116,6 +116,7 @@ add_executable(
     transport/test_tcp_transmit_queue.cpp
     transport/test_tcp_frame_sender.cpp
     transport/test_tcp_client_session.cpp
+    transport/test_host_output_scheduler.cpp
     transport/test_tcp_frame_dispatcher.cpp
     controller/test_controller_frame_forwarder.cpp
     runtime/test_local_command_classifier.cpp
