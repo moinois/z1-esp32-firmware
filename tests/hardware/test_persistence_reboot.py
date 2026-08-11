@@ -11,7 +11,11 @@ import urllib.request
 
 import pytest
 
-from tests.hardware.hil_ota import multipart_upload, wait_for_tcp_service_restart
+from tests.hardware.hil_ota import (
+    multipart_upload,
+    open_usb_before_restart,
+    wait_for_usb_service_restart,
+)
 from tests.hardware.hil_protocol import (
     GENERAL_COMMAND,
     UsbProtocolClient,
@@ -103,6 +107,7 @@ def test_runtime_identity_and_wifi_persist_across_ota_reboot(tcp_host: str) -> N
     assert b"sn get failed" not in serial_before.lower()
     assert b"sn = " in serial_before.lower()
 
+    previous_usb = open_usb_before_restart()
     status, body = multipart_upload(
         tcp_host,
         "/update",
@@ -111,9 +116,7 @@ def test_runtime_identity_and_wifi_persist_across_ota_reboot(tcp_host: str) -> N
     )
     assert status == 200
     assert body == b"Firmware upgrade finished. The system will reboot in 2 seconds..."
-    wait_for_tcp_service_restart(tcp_host, 2222)
-
-    restored = _wait_for_usb()
+    restored = wait_for_usb_service_restart(previous_usb)
     after = _runtime(restored)
     assert after[0] == before[0]
     assert after[1] >= before[1]

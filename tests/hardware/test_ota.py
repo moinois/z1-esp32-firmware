@@ -9,27 +9,11 @@ import time
 
 import pytest
 
-from tests.hardware.hil_ota import multipart_upload, wait_for_tcp_service_restart
-from tests.hardware.hil_protocol import GENERAL_COMMAND, UsbProtocolClient, find_native_usb_device
-
-
-def _wait_for_usb_reenumeration(timeout_seconds: float = 20.0) -> None:
-    """Waits for the intentional USB detach to be followed by a usable handle."""
-
-    deadline = time.monotonic() + timeout_seconds
-    while time.monotonic() < deadline:
-        device, _ = find_native_usb_device()
-        if device is not None:
-            try:
-                client = UsbProtocolClient(device)
-                if client.exchange(GENERAL_COMMAND, b"sn-get", 1.0):
-                    return
-            except Exception:
-                # macOS may expose descriptors before libusb can claim the
-                # interface; continue polling until enumeration settles.
-                pass
-        time.sleep(0.25)
-    pytest.fail("native USB did not re-enumerate after OTA restart")
+from tests.hardware.hil_ota import (
+    multipart_upload,
+    open_usb_before_restart,
+    wait_for_usb_service_restart,
+)
 
 
 @pytest.mark.hardware
@@ -44,12 +28,13 @@ def test_web_volume_image_can_be_installed(tcp_host: str) -> None:
     image_path = Path(image_name)
     if not image_path.is_file():
         pytest.skip(f"SPIFFS image fixture does not exist: {image_path}")
+    previous_usb = open_usb_before_restart()
     status, body = multipart_upload(
         tcp_host, "/updateffs", image_path.read_bytes(), image_path.name
     )
     assert status == 200
     assert body == b"UI upgrade finished. The system will reboot in 2 seconds..."
-    wait_for_tcp_service_restart(tcp_host, 80)
+    wait_for_usb_service_restart(previous_usb).close()
 
 
 @pytest.mark.hardware
@@ -83,6 +68,7 @@ def test_ota_survives_receive_timeout(tcp_host: str) -> None:
         "Connection: close\r\n\r\n"
     ).encode("ascii")
 
+    previous_usb = open_usb_before_restart()
     try:
         connection = socket.create_connection((tcp_host, 80), timeout=10.0)
     except OSError as error:
@@ -125,6 +111,4 @@ def test_ota_survives_receive_timeout(tcp_host: str) -> None:
     assert response.endswith(
         b"Firmware upgrade finished. The system will reboot in 2 seconds..."
     )
-    wait_for_tcp_service_restart(tcp_host, 80)
-    if os.getenv("Z1_HIL_VERIFY_USB_REENUMERATION") == "1":
-        _wait_for_usb_reenumeration()
+    wait_for_usb_service_restart(previous_usb).close()

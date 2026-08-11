@@ -8,6 +8,12 @@ import time
 
 import pytest
 
+from tests.hardware.hil_protocol import (
+    GENERAL_COMMAND,
+    UsbProtocolClient,
+    find_native_usb_device,
+)
+
 
 def multipart_upload(
     host: str,
@@ -71,3 +77,47 @@ def wait_for_tcp_service_restart(
         time.sleep(poll_interval_seconds)
     state = "recover" if observed_outage else "stop before reboot"
     pytest.fail(f"target TCP service did not {state} on port {port}")
+
+
+def open_usb_before_restart() -> UsbProtocolClient:
+    """Opens the application USB transport that must be invalidated by reboot."""
+
+    device, reason = find_native_usb_device()
+    if device is None:
+        pytest.skip(reason or "native USB device unavailable before reboot")
+    return UsbProtocolClient(device)
+
+
+def wait_for_usb_service_restart(
+    previous: UsbProtocolClient,
+    *,
+    timeout_seconds: float = 45.0,
+    poll_interval_seconds: float = 0.1,
+) -> UsbProtocolClient:
+    """Requires old-handle failure, re-enumeration, and a new protocol reply."""
+
+    deadline = time.monotonic() + timeout_seconds
+    observed_disconnect = False
+    while time.monotonic() < deadline:
+        if not observed_disconnect:
+            try:
+                previous.exchange(GENERAL_COMMAND, b"sn-get", 0.25)
+            except Exception:
+                observed_disconnect = True
+                previous.close()
+            if not observed_disconnect:
+                time.sleep(poll_interval_seconds)
+                continue
+
+        device, _ = find_native_usb_device()
+        if device is not None:
+            try:
+                current = UsbProtocolClient(device)
+                if current.exchange(GENERAL_COMMAND, b"sn-get", 1.0):
+                    return current
+                current.close()
+            except Exception:
+                pass
+        time.sleep(poll_interval_seconds)
+    state = "re-enumerate and answer" if observed_disconnect else "disconnect"
+    pytest.fail(f"native USB did not {state} across target reboot")
