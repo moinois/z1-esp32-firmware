@@ -2,6 +2,7 @@
 #pragma once
 
 #include "core/protocol/frame.hpp"
+#include "application/diagnostics/controller_diagnostics.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -26,6 +27,9 @@ public:
 
     /// Submits one complete response and reports queue acceptance.
     virtual bool send(core::Frame frame) = 0;
+
+    /// Publishes one normative transfer diagnostic without binding logging APIs.
+    virtual void diagnose(ControllerTransferDiagnostic diagnostic) = 0;
 };
 
 /// Processes the `0xD1` through `0xD5` configuration exchange.

@@ -47,6 +47,9 @@ void ControllerFactoryTransfer::handle_start(ControllerFactoryPort& port) {
         core::protocol::factory_family, core::protocol::transfer_start));
     const bool available = port.file_exists(factory_path);
     if (available) {
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::factory,
+            ControllerTransferDiagnosticEvent::start));
         active_ = true;
     }
     if (!acknowledgement_sent || !available) {
@@ -56,6 +59,9 @@ void ControllerFactoryTransfer::handle_start(ControllerFactoryPort& port) {
 
 void ControllerFactoryTransfer::handle_geometry(core::BytesView payload,
                                                 ControllerFactoryPort& port) {
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::factory,
+        ControllerTransferDiagnosticEvent::layout));
     const auto proposed = parse_transfer_geometry(payload);
     if (!proposed.has_value() || proposed->frame_data_size == 0U ||
         proposed->frame_data_size > controller_transfer_frame_data_size) {
@@ -87,11 +93,17 @@ void ControllerFactoryTransfer::handle_geometry(core::BytesView payload,
 
 void ControllerFactoryTransfer::handle_data(core::BytesView payload,
                                             ControllerFactoryPort& port) {
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::factory,
+        ControllerTransferDiagnosticEvent::data));
     const auto request = parse_transfer_data_request(payload);
     if (!request.has_value()) {
         report_error(port);
         return;
     }
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::factory,
+        ControllerTransferDiagnosticEvent::data_request, request->index));
     if (request->index == 0U || frame_data_size_ == 0U) {
         return;
     }
@@ -111,6 +123,9 @@ void ControllerFactoryTransfer::handle_data(core::BytesView payload,
         if (eligible_index != request->index) {
             continue;
         }
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::factory,
+            ControllerTransferDiagnosticEvent::data_sent, request->index));
         if (chunk.size() > maximum_record_size || chunk.size() > frame_data_size_) {
             return;
         }

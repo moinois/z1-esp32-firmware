@@ -49,6 +49,10 @@ void ControllerFirmwareTransfer::handle_start(std::uint64_t now_milliseconds,
         return;
     }
 
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::firmware,
+        ControllerTransferDiagnosticEvent::start));
+
     active_ = true;
     waiting_ = true;
     wait_started_milliseconds_ = now_milliseconds;
@@ -62,6 +66,9 @@ void ControllerFirmwareTransfer::handle_start(std::uint64_t now_milliseconds,
 void ControllerFirmwareTransfer::handle_geometry(core::BytesView payload,
                                                  std::uint64_t now_milliseconds,
                                                  ControllerFirmwarePort& port) {
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::firmware,
+        ControllerTransferDiagnosticEvent::layout));
     const auto proposed = parse_transfer_geometry(payload);
     const auto file_size = port.file_size(firmware_path);
     if (!proposed.has_value() || proposed->frame_data_size == 0U ||
@@ -94,11 +101,18 @@ void ControllerFirmwareTransfer::handle_geometry(core::BytesView payload,
 
 void ControllerFirmwareTransfer::handle_data(core::BytesView payload,
                                              ControllerFirmwarePort& port) {
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::firmware,
+        ControllerTransferDiagnosticEvent::data));
     const auto request = parse_transfer_data_request(payload);
     if (!request.has_value()) {
         report_error(port);
         return;
     }
+
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::firmware,
+        ControllerTransferDiagnosticEvent::data_request, request->index));
 
     const std::uint64_t block = request->index <= 1U ? 0U : request->index - 1U;
     const std::uint64_t offset = block * frame_data_size_;
@@ -110,6 +124,9 @@ void ControllerFirmwareTransfer::handle_data(core::BytesView payload,
         report_error(port);
         return;
     }
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::firmware,
+        ControllerTransferDiagnosticEvent::data_sent, request->index));
     if (frame_data_size_ == 0U || data->empty()) {
         return;
     }

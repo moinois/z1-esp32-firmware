@@ -29,6 +29,8 @@ public:
     read_configuration_chunks(std::size_t chunk_size) override;
     bool remove_file(std::string_view path) override;
     bool send(firmware::core::Frame frame) override;
+    void diagnose(
+        firmware::application::ControllerTransferDiagnostic diagnostic) override;
     void publish(firmware::application::FirmwareTransferEvent event,
                  std::uint32_t index, std::uint32_t frame_count) override;
 

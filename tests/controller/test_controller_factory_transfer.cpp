@@ -48,6 +48,10 @@ public:
         return send_succeeds;
     }
 
+    void diagnose(firmware::application::ControllerTransferDiagnostic diagnostic) override {
+        diagnostics.push_back(std::move(diagnostic));
+    }
+
     bool exists = true;
     bool remove_succeeds = true;
     bool send_succeeds = true;
@@ -56,6 +60,7 @@ public:
     std::size_t remove_count = 0U;
     std::optional<std::vector<ByteVector>> chunks = std::vector<ByteVector>{};
     std::vector<Frame> sent;
+    std::vector<firmware::application::ControllerTransferDiagnostic> diagnostics;
 };
 
 Frame geometry(std::uint16_t data_size) {
@@ -77,6 +82,25 @@ TEST_CASE(lpcfac_001_start_acknowledges_then_reports_an_absent_exact_path) {
     REQUIRE_EQ(port.sent[0].type, 0xE1U);
     REQUIRE_EQ(port.sent[1].type, 0xE5U);
     REQUIRE(!transfer.active());
+    REQUIRE(port.diagnostics.empty());
+}
+
+TEST_CASE(diag_034_factory_overlong_record_reports_located_data_before_rejection) {
+    ControllerFactoryTransfer transfer;
+    FakeFactoryPort port;
+    port.chunks = std::vector<ByteVector>{ByteVector(133U, 'x')};
+    transfer.handle(geometry(132U), port);
+    const std::size_t replies_before = port.sent.size();
+
+    transfer.handle({0xE3U, {0U, 0U, 0U, 1U}}, port);
+
+    REQUIRE_EQ(port.sent.size(), replies_before);
+    REQUIRE_EQ(port.diagnostics[port.diagnostics.size() - 3U].message,
+               std::string("Received PTYPE_FACTORY_DATA"));
+    REQUIRE_EQ(port.diagnostics[port.diagnostics.size() - 2U].message,
+               std::string("Received device request for frame 1 data"));
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("Frame 1 data sent successfully"));
 }
 
 TEST_CASE(lpcfac_002_geometry_counts_stars_but_excludes_hash_comments) {

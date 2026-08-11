@@ -61,6 +61,9 @@ void ControllerConfigTransfer::handle_start(ControllerConfigPort& port) {
         core::protocol::configuration_family, core::protocol::transfer_start));
     const bool available = port.configuration_available();
     if (available) {
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::configuration,
+            ControllerTransferDiagnosticEvent::start));
         active_ = true;
     }
     if (!acknowledgement_sent || !available) {
@@ -70,6 +73,9 @@ void ControllerConfigTransfer::handle_start(ControllerConfigPort& port) {
 
 void ControllerConfigTransfer::handle_geometry(core::BytesView payload,
                                                ControllerConfigPort& port) {
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::configuration,
+        ControllerTransferDiagnosticEvent::layout));
     if (!parse_transfer_geometry(payload).has_value()) {
         report_error(port);
         return;
@@ -96,11 +102,17 @@ void ControllerConfigTransfer::handle_geometry(core::BytesView payload,
 
 void ControllerConfigTransfer::handle_data(core::BytesView payload,
                                            ControllerConfigPort& port) {
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::configuration,
+        ControllerTransferDiagnosticEvent::data));
     const auto request = parse_transfer_data_request(payload);
     if (!request.has_value()) {
         report_error(port);
         return;
     }
+    port.diagnose(controller_transfer_diagnostic(
+        ControllerTransferFamily::configuration,
+        ControllerTransferDiagnosticEvent::data_request, request->index));
     if (frame_data_size_ == 0U) {
         return;
     }

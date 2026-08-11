@@ -43,8 +43,13 @@ public:
 
     // Records one response and reports whether its submission succeeded.
     bool send(Frame frame) override {
+        if (sent.empty()) diagnostics_at_first_send = diagnostics.size();
         sent.push_back(std::move(frame));
         return send_succeeds;
+    }
+
+    void diagnose(firmware::application::ControllerTransferDiagnostic diagnostic) override {
+        diagnostics.push_back(std::move(diagnostic));
     }
 
     // Records one externally observable update-state transition.
@@ -63,10 +68,12 @@ public:
     std::uint64_t read_offset = 0U;
     std::size_t read_maximum = 0U;
     std::size_t read_count = 0U;
+    std::size_t diagnostics_at_first_send = 0U;
     std::uint32_t progress_index = 0U;
     std::uint32_t progress_count = 0U;
     std::vector<Frame> sent;
     std::vector<FirmwareTransferEvent> events;
+    std::vector<firmware::application::ControllerTransferDiagnostic> diagnostics;
 };
 
 Frame geometry(std::uint32_t proposed_count, std::uint16_t data_size) {
@@ -106,6 +113,9 @@ TEST_CASE(lpcfw_001_available_start_activates_suppression_and_publishes_start) {
     REQUIRE_EQ(port.sent.back(), Frame({0xC1U, {}}));
     REQUIRE(transfer.active());
     REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::started);
+    REQUIRE_EQ(port.diagnostics_at_first_send, 1U);
+    REQUIRE_EQ(port.diagnostics.front().message,
+               std::string("Received PTYPE_FIRM_START"));
 }
 
 TEST_CASE(lpcfw_002_geometry_ignores_proposed_count_and_rounds_up_file_blocks) {
@@ -165,6 +175,10 @@ TEST_CASE(lpc_015_successful_zero_byte_read_produces_no_data_reply) {
     transfer.handle({0xC3U, {0U, 0U, 0U, 1U}}, 1U, port);
 
     REQUIRE_EQ(port.sent.size(), sent_before);
+    REQUIRE_EQ(port.diagnostics[port.diagnostics.size() - 2U].message,
+               std::string("Received device request for frame 1 data"));
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("Frame 1 data sent successfully"));
 }
 
 TEST_CASE(lpcfw_004_sent_block_publishes_requested_index_and_negotiated_count) {

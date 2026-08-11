@@ -110,6 +110,15 @@ bool ControllerTransferAdapter::send(firmware::core::Frame frame) {
     return true;
 }
 
+void ControllerTransferAdapter::diagnose(
+    firmware::application::ControllerTransferDiagnostic diagnostic) {
+    if (diagnostic.error) {
+        ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+    } else {
+        ESP_LOGI(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+    }
+}
+
 void ControllerTransferAdapter::publish(
     firmware::application::FirmwareTransferEvent event, std::uint32_t index,
     std::uint32_t frame_count) {

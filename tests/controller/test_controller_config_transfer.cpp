@@ -39,11 +39,16 @@ public:
         return send_succeeds;
     }
 
+    void diagnose(firmware::application::ControllerTransferDiagnostic diagnostic) override {
+        diagnostics.push_back(std::move(diagnostic));
+    }
+
     bool exists = true;
     bool send_succeeds = true;
     std::size_t requested_chunk_size = 0U;
     std::optional<std::vector<ByteVector>> chunks = std::vector<ByteVector>{};
     std::vector<Frame> sent;
+    std::vector<firmware::application::ControllerTransferDiagnostic> diagnostics;
 };
 
 Frame geometry() {
@@ -73,6 +78,8 @@ TEST_CASE(lpccfg_001_available_start_activates_controller_traffic_suppression) {
 
     REQUIRE(transfer.active());
     REQUIRE_EQ(port.sent.back().type, 0xD1U);
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("Received PTYPE_CONFIG_START"));
 }
 
 TEST_CASE(lpccfg_002_geometry_counts_all_chunks_longer_than_two_including_comments) {
@@ -180,6 +187,8 @@ TEST_CASE(lpccfg_002_geometry_rejects_malformed_read_and_send_failures) {
 
     transfer.handle({0xD2U, {1U}}, port);
     REQUIRE_EQ(port.sent.back().type, 0xD5U);
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("Received PTYPE_CONFIG_VIEW"));
     port.chunks = std::nullopt;
     transfer.handle(geometry(), port);
     REQUIRE_EQ(port.sent.back().type, 0xD5U);
@@ -195,6 +204,8 @@ TEST_CASE(lpccfg_003_data_rejects_malformed_unconfigured_and_io_failures) {
 
     transfer.handle({0xD3U, {1U}}, port);
     REQUIRE_EQ(port.sent.back().type, 0xD5U);
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("Received PTYPE_CONFIG_DATA"));
     const std::size_t before_unconfigured = port.sent.size();
     transfer.handle({0xD3U, {0U, 0U, 0U, 1U}}, port);
     REQUIRE_EQ(port.sent.size(), before_unconfigured);

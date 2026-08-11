@@ -2,6 +2,7 @@
 #pragma once
 
 #include "core/protocol/frame.hpp"
+#include "application/diagnostics/controller_diagnostics.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -39,6 +40,9 @@ public:
 
     /// Submits one complete controller response and reports queue acceptance.
     virtual bool send(core::Frame frame) = 0;
+
+    /// Publishes one normative transfer diagnostic without binding logging APIs.
+    virtual void diagnose(ControllerTransferDiagnostic diagnostic) = 0;
 
     /// Publishes controller-update state without coupling to its representation.
     virtual void publish(FirmwareTransferEvent event, std::uint32_t index,
