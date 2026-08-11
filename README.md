@@ -62,6 +62,8 @@ The first core-to-periphery development slice contains:
   congestion-based access-point channel selection;
 - required station-scan then AP/station startup with explicit radio, DHCP,
   hostname, socket-capacity, and failure settings;
+- persistent SoftAP channel, password, and enable startup settings plus shared
+  USB/TCP `ap`, `M482`, and `M483` control and query handling;
 - bounded Wi-Fi scan filtering with raw-SSID duplicate semantics, strongest
   observation retention, stable RSSI ordering, and exact result formatting;
 - bounded WLAN command parsing and user-scan orchestration with exact scan
