@@ -301,8 +301,8 @@ The first core-to-periphery development slice contains:
 - OTA phase publication persists the specified byte in NVS namespace `ota_state`, key `phase`;
 - Update boot processing reads the persisted OTA phase and clears completed phase 4 before retrying aggregate work;
 - HTTP target responses preserve the portable 400, 404, 405, 413, and 500 status mapping;
-- HTTP POST `/update` uses the shared multipart receiver in 1024-byte blocks, tolerates up to six consecutive five-second receive timeouts, reports progress, and applies the first part through the ESP-IDF OTA adapter;
-- HTTP POST `/updateffs` uses the same bounded-timeout multipart receiver and writes the first part to the complete SPIFFS partition without unmounting it;
+- HTTP POST `/update` initializes OTA before multipart inspection, processes independent receive blocks up to 1024 bytes, treats nonpositive receive results as end-of-input, and defers block-write failures to finalization;
+- HTTP POST `/updateffs` selects and erases SPIFFS before multipart inspection, then offers extracted blocks at successive wrapping 32-bit offsets without unmounting or checking partition bounds;
 - shared atomic recording-request state available to media tasks;
 - recording eligibility policy requiring request plus play/controller running state;
 - the fixed ESP32-S3 flash partition table;

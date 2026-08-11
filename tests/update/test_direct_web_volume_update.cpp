@@ -27,8 +27,10 @@ public:
         return erase_ok;
     }
 
-    bool write_content(firmware::core::BytesView content) override {
+    bool write_content(std::uint32_t offset,
+                       firmware::core::BytesView content) override {
         events.push_back("write");
+        offsets.push_back(offset);
         written.assign(content.begin(), content.end());
         return write_ok;
     }
@@ -53,6 +55,7 @@ public:
     bool write_ok = true;
     std::size_t capacity = 100U;
     ByteVector written;
+    std::vector<std::uint32_t> offsets;
     std::vector<std::string> events;
     std::uint16_t response_status = 0U;
     std::string_view response_body{};
@@ -102,7 +105,19 @@ TEST_CASE(webup_020_oversized_content_does_not_write_or_restart) {
     FakeWebVolumeUpdatePort port;
     port.capacity = 1U;
     DirectWebVolumeUpdateService service;
-    REQUIRE(!service.apply(ByteVector{'x', 'y'}, port));
-    REQUIRE(port.written.empty());
-    REQUIRE_EQ(port.response_status, 0U);
+    REQUIRE(service.apply(ByteVector{'x', 'y'}, port));
+    REQUIRE_EQ(port.written, ByteVector({'x', 'y'}));
+    REQUIRE_EQ(port.response_status, 200U);
+}
+
+TEST_CASE(webup_004_and_020_erase_precedes_block_writes_at_successive_offsets) {
+    FakeWebVolumeUpdatePort port;
+    DirectWebVolumeUpdateService service;
+    REQUIRE(service.begin(port));
+    REQUIRE_EQ(port.events, std::vector<std::string>({"partition", "erase"}));
+    service.offer(ByteVector{'a', 'b'}, port);
+    port.write_ok = false;
+    service.offer(ByteVector{'c'}, port);
+    REQUIRE(service.finish(port));
+    REQUIRE_EQ(port.offsets, std::vector<std::uint32_t>({0U, 2U}));
 }

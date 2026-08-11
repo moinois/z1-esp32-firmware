@@ -48,4 +48,10 @@ const ByteVector& MultipartPartExtractor::content() const {
     return content_;
 }
 
+ByteVector MultipartPartExtractor::take_content() {
+    ByteVector accepted;
+    accepted.swap(content_);
+    return accepted;
+}
+
 }  // namespace firmware::core

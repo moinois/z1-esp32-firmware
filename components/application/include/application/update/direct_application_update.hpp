@@ -52,6 +52,15 @@ public:
 /// Applies one direct image with exact failure ordering and success handoff.
 class DirectApplicationUpdateService {
 public:
+    /// Initializes the OTA destination before multipart metadata is inspected.
+    bool begin(DirectApplicationUpdatePort& port) const;
+
+    /// Offers one extracted receive block; write failure is deferred to finish.
+    void offer(core::BytesView block, DirectApplicationUpdatePort& port) const;
+
+    /// Finalizes, selects, responds, and restarts after input has ended.
+    bool finish(bool content_received, DirectApplicationUpdatePort& port) const;
+
     /// Runs the full direct application update transaction.
     bool apply(core::BytesView image, DirectApplicationUpdatePort& port) const;
 

@@ -22,8 +22,8 @@ public:
     /// Erases the complete partition before writing offset zero.
     virtual bool erase_partition() = 0;
 
-    /// Writes all extracted bytes at partition offset zero.
-    virtual bool write_content(core::BytesView content) = 0;
+    /// Writes one extracted block at the supplied wrapping 32-bit offset.
+    virtual bool write_content(std::uint32_t offset, core::BytesView content) = 0;
 
     /// Sends one complete HTTP result body.
     virtual void send_response(std::uint16_t status, std::string_view body) = 0;
@@ -38,6 +38,15 @@ public:
 /// Applies one raw web-volume image without filesystem-image validation.
 class DirectWebVolumeUpdateService {
 public:
+    /// Selects and erases the web partition before multipart inspection.
+    bool begin(DirectWebVolumeUpdatePort& port);
+
+    /// Offers one block and advances the wrapping offset regardless of result.
+    void offer(core::BytesView content, DirectWebVolumeUpdatePort& port);
+
+    /// Sends success and performs the normative delayed restart.
+    bool finish(DirectWebVolumeUpdatePort& port) const;
+
     /// Executes erase, bounded write, success response, delay, and restart.
     bool apply(core::BytesView content, DirectWebVolumeUpdatePort& port) const;
 
@@ -50,6 +59,7 @@ public:
 private:
     /// Publishes one HTTP 500 response and returns failure.
     static bool fail(DirectWebVolumeUpdatePort& port, std::string_view body);
+    std::uint32_t offset_ = 0U;
 };
 
 }  // namespace firmware::application

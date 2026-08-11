@@ -51,6 +51,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -363,14 +364,15 @@ public:
     }
 
     // Writes the extracted image at the beginning of the selected partition.
-    bool write_content(firmware::core::BytesView content) override {
+    bool write_content(std::uint32_t offset,
+                       firmware::core::BytesView content) override {
         if (partition_ == nullptr) {
             return false;
         }
         if (content.size() == 0U) {
             return true;
         }
-        return esp_partition_write(partition_, 0U, content.data(), content.size()) == ESP_OK;
+        return esp_partition_write(partition_, offset, content.data(), content.size()) == ESP_OK;
     }
 
     // Sends the portable update result through the HTTP request.
@@ -663,7 +665,6 @@ esp_err_t camera_resolution_handler(httpd_req_t* request) {
     return httpd_resp_send(request, response.body.data(), response.body.size());
 }
 
-constexpr unsigned maximum_consecutive_receive_timeouts = 6U;
 constexpr std::size_t upload_progress_interval = 256U * 1024U;
 
 esp_err_t send_bad_request(httpd_req_t* request, const char* message) {
@@ -671,23 +672,24 @@ esp_err_t send_bad_request(httpd_req_t* request, const char* message) {
     return httpd_resp_send(request, message, HTTPD_RESP_USE_STRLEN);
 }
 
-// Receives and extracts one multipart part while tolerating bounded transport gaps.
-std::unique_ptr<firmware::core::MultipartPartExtractor> receive_multipart_part(
-    httpd_req_t* request, std::optional<std::size_t> maximum_request_body) {
+// Receives multipart blocks and offers each extracted block to an active update.
+bool receive_multipart_part(
+    httpd_req_t* request, std::optional<std::size_t> maximum_request_body,
+    const std::function<void(firmware::core::BytesView)>& offer) {
     const std::size_t header_length =
         httpd_req_get_hdr_value_len(request, "Content-Type");
     if (header_length == 0U ||
         header_length >= firmware::core::web_update::content_type_capacity) {
         static_cast<void>(send_bad_request(
             request, "Invalid multipart Content-Type"));
-        return nullptr;
+        return false;
     }
     std::string content_type(header_length + 1U, '\0');
     if (httpd_req_get_hdr_value_str(request, "Content-Type", content_type.data(),
                                     content_type.size()) != ESP_OK) {
         static_cast<void>(send_bad_request(
             request, "Invalid multipart Content-Type"));
-        return nullptr;
+        return false;
     }
     content_type.resize(header_length);
     const auto boundary =
@@ -697,15 +699,13 @@ std::unique_ptr<firmware::core::MultipartPartExtractor> receive_multipart_part(
         (maximum_request_body.has_value() &&
          request_size > *maximum_request_body)) {
         static_cast<void>(send_bad_request(request, "Invalid multipart request"));
-        return nullptr;
+        return false;
     }
 
-    auto extractor =
-        std::make_unique<firmware::core::MultipartPartExtractor>(*boundary);
+    firmware::core::MultipartPartExtractor extractor(*boundary);
     std::vector<std::uint8_t> block(1024U);
     std::size_t received = 0U;
     std::size_t next_progress = upload_progress_interval;
-    unsigned consecutive_timeouts = 0U;
     ESP_LOGI(tag, "multipart receive started: %u bytes",
              static_cast<unsigned>(request_size));
     while (received < request_size) {
@@ -713,31 +713,14 @@ std::unique_ptr<firmware::core::MultipartPartExtractor> receive_multipart_part(
         const int count = httpd_req_recv(
             request, reinterpret_cast<char*>(block.data()),
             std::min(block.size(), remaining));
-        if (count == HTTPD_SOCK_ERR_TIMEOUT) {
-            if (consecutive_timeouts < maximum_consecutive_receive_timeouts) {
-                ++consecutive_timeouts;
-                ESP_LOGW(tag,
-                         "multipart receive timeout %u/%u after %u/%u bytes",
-                         consecutive_timeouts,
-                         maximum_consecutive_receive_timeouts,
-                         static_cast<unsigned>(received),
-                         static_cast<unsigned>(request_size));
-                continue;
-            }
-            ESP_LOGE(tag,
-                     "multipart timeout budget exhausted after %u retries at %u/%u bytes",
-                     maximum_consecutive_receive_timeouts,
-                     static_cast<unsigned>(received),
-                     static_cast<unsigned>(request_size));
-        }
         if (count <= 0) {
-            ESP_LOGE(tag, "multipart receive failed: result=%d after %u/%u bytes",
+            ESP_LOGI(tag, "multipart receive ended: result=%d after %u/%u bytes",
                      count, static_cast<unsigned>(received),
                      static_cast<unsigned>(request_size));
-            static_cast<void>(send_bad_request(request, "Bad Request"));
-            return nullptr;
+            // WEBUP-003 treats all zero-or-negative receive results as EOF.
+            static_cast<void>(extractor.feed(firmware::core::BytesView{}, true));
+            break;
         }
-        consecutive_timeouts = 0U;
         received += static_cast<std::size_t>(count);
         if (received >= next_progress || received == request_size) {
             ESP_LOGI(tag, "multipart receive progress: %u/%u bytes",
@@ -745,46 +728,52 @@ std::unique_ptr<firmware::core::MultipartPartExtractor> receive_multipart_part(
                      static_cast<unsigned>(request_size));
             next_progress = received + upload_progress_interval;
         }
-        if (!extractor->feed(
+        if (!extractor.feed(
                 {block.data(), static_cast<std::size_t>(count)},
                 received == request_size)) {
             static_cast<void>(send_bad_request(request,
                                                "Invalid multipart request"));
-            return nullptr;
+            return false;
         }
+        auto accepted = extractor.take_content();
+        if (!accepted.empty()) offer(accepted);
     }
-    if (extractor->status() !=
+    if (extractor.status() !=
         firmware::core::MultipartExtractStatus::complete) {
         static_cast<void>(send_bad_request(request, "Invalid multipart request"));
-        return nullptr;
+        return false;
     }
     ESP_LOGI(tag, "multipart receive completed: %u bytes",
              static_cast<unsigned>(received));
-    return extractor;
+    return true;
 }
 
 // Extracts the first multipart image and applies it through the direct OTA service.
 esp_err_t firmware_update_handler(httpd_req_t* request) {
     constexpr std::size_t maximum_request_body = 2U * 1024U * 1024U;
-    auto extractor = receive_multipart_part(request, maximum_request_body);
-    if (extractor == nullptr) {
-        return ESP_OK;
-    }
     DirectHttpOtaPort port(request);
     firmware::application::DirectApplicationUpdateService service;
-    static_cast<void>(service.apply(extractor->content(), port));
+    if (!service.begin(port)) return ESP_OK;
+    bool content_received = false;
+    const bool received = receive_multipart_part(
+        request, maximum_request_body,
+        [&](firmware::core::BytesView block) {
+            content_received = content_received || block.size() != 0U;
+            service.offer(block, port);
+        });
+    if (received) static_cast<void>(service.finish(content_received, port));
     return ESP_OK;
 }
 
 // Extracts the first multipart part and applies it as a raw web-volume image.
 esp_err_t web_volume_update_handler(httpd_req_t* request) {
-    auto extractor = receive_multipart_part(request, std::nullopt);
-    if (extractor == nullptr) {
-        return ESP_OK;
-    }
     DirectHttpWebVolumePort port(request);
     firmware::application::DirectWebVolumeUpdateService service;
-    static_cast<void>(service.apply(extractor->content(), port));
+    if (!service.begin(port)) return ESP_OK;
+    const bool received = receive_multipart_part(
+        request, std::nullopt,
+        [&](firmware::core::BytesView block) { service.offer(block, port); });
+    if (received) static_cast<void>(service.finish(port));
     return ESP_OK;
 }
 

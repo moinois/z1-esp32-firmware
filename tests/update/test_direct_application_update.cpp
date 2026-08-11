@@ -90,7 +90,7 @@ TEST_CASE(webup_010_success_uses_exact_ota_order_and_restart_delay) {
     const ByteVector image(32U, 0xA5U);
     REQUIRE(service.apply(image, port));
     REQUIRE_EQ(port.events,
-               std::vector<std::string>({"camera", "partition", "erase", "begin:32",
+               std::vector<std::string>({"camera", "partition", "erase", "begin:4294967295",
                                          "write:32", "finish", "boot", "response",
                                          "delay", "restart"}));
     REQUIRE_EQ(port.response_status, 200U);
@@ -113,15 +113,13 @@ TEST_CASE(webup_011_partition_and_erase_failures_have_exact_500_text) {
     REQUIRE_EQ(erase.response_body, std::string_view("OTA partition wipe unsuccessful"));
 }
 
-TEST_CASE(webup_011_write_failure_aborts_and_does_not_restart) {
+TEST_CASE(webup_012_write_failure_is_deferred_to_finalization) {
     FakeDirectUpdatePort port;
     port.write_ok = false;
     DirectApplicationUpdateService service;
-    REQUIRE(!service.apply(ByteVector({'x', 'y'}), port));
-    REQUIRE_EQ(port.response_status, 500U);
-    REQUIRE_EQ(port.response_body, std::string_view("OTA finish Failed"));
-    REQUIRE_EQ(port.events.back(), std::string("response"));
-    REQUIRE_EQ(port.events[5], std::string("abort"));
+    REQUIRE(service.apply(ByteVector({'x', 'y'}), port));
+    REQUIRE_EQ(port.response_status, 200U);
+    REQUIRE_EQ(port.events[5], std::string("finish"));
 }
 
 TEST_CASE(webup_014_empty_or_invalid_finalization_uses_finish_failure) {
@@ -146,7 +144,7 @@ TEST_CASE(webup_011_camera_and_begin_failures_stop_before_writing) {
     REQUIRE(!service.apply(ByteVector({'x'}), begin));
     REQUIRE_EQ(begin.events,
                std::vector<std::string>({"camera", "partition", "erase",
-                                         "begin:1", "response"}));
+                                         "begin:4294967295", "response"}));
     REQUIRE_EQ(begin.response_body,
                std::string_view("Unable to initialize OTA process"));
 }
@@ -159,7 +157,7 @@ TEST_CASE(webup_011_finish_and_boot_failures_do_not_restart) {
     REQUIRE(!service.apply(ByteVector({'x'}), finish));
     REQUIRE_EQ(finish.events,
                std::vector<std::string>({"camera", "partition", "erase",
-                                         "begin:1", "write:1", "finish",
+                                         "begin:4294967295", "write:1", "finish",
                                          "abort", "response"}));
     REQUIRE_EQ(finish.response_body, std::string_view("OTA finish Failed"));
 
@@ -168,8 +166,22 @@ TEST_CASE(webup_011_finish_and_boot_failures_do_not_restart) {
     REQUIRE(!service.apply(ByteVector({'x'}), boot));
     REQUIRE_EQ(boot.events,
                std::vector<std::string>({"camera", "partition", "erase",
-                                         "begin:1", "write:1", "finish",
+                                         "begin:4294967295", "write:1", "finish",
                                          "boot", "response"}));
     REQUIRE_EQ(boot.response_body,
                std::string_view("Failed to set boot partition"));
+}
+
+TEST_CASE(webup_004_begin_precedes_content_and_blocks_are_offered_separately) {
+    FakeDirectUpdatePort port;
+    DirectApplicationUpdateService service;
+    REQUIRE(service.begin(port));
+    REQUIRE_EQ(port.events,
+               std::vector<std::string>({"camera", "partition", "erase",
+                                         "begin:4294967295"}));
+    service.offer(ByteVector{'a'}, port);
+    service.offer(ByteVector{'b', 'c'}, port);
+    REQUIRE(service.finish(true, port));
+    REQUIRE_EQ(port.events[4], std::string("write:1"));
+    REQUIRE_EQ(port.events[5], std::string("write:2"));
 }

@@ -40,9 +40,9 @@ def test_web_volume_image_can_be_installed(tcp_host: str) -> None:
 @pytest.mark.hardware
 @pytest.mark.destructive
 @pytest.mark.http
-@pytest.mark.requirement("WEBUP-002")
-@pytest.mark.requirement("WEBUP-010")
-def test_ota_survives_receive_timeout(tcp_host: str) -> None:
+@pytest.mark.requirement("WEBUP-003")
+@pytest.mark.requirement("WEBUP-012")
+def test_ota_receive_timeout_finalizes_partial_image(tcp_host: str) -> None:
     image_name = os.getenv("Z1_HIL_OTA_IMAGE")
     if not image_name:
         pytest.skip("set Z1_HIL_OTA_IMAGE to the application image to install")
@@ -58,8 +58,8 @@ def test_ota_survives_receive_timeout(tcp_host: str) -> None:
         f'filename="{image_path.name}"\r\n'
         "Content-Type: application/octet-stream\r\n\r\n"
     ).encode("ascii")
-    suffix = f"\r\n--{boundary}--\r\n".encode("ascii")
-    content_length = len(prefix) + len(image) + len(suffix)
+    suffix_length = len(f"\r\n--{boundary}--\r\n".encode("ascii"))
+    content_length = len(prefix) + len(image) + suffix_length
     headers = (
         "POST /update HTTP/1.1\r\n"
         f"Host: {tcp_host}\r\n"
@@ -68,7 +68,6 @@ def test_ota_survives_receive_timeout(tcp_host: str) -> None:
         "Connection: close\r\n\r\n"
     ).encode("ascii")
 
-    previous_usb = open_usb_before_restart()
     try:
         connection = socket.create_connection((tcp_host, 80), timeout=10.0)
     except OSError as error:
@@ -77,10 +76,9 @@ def test_ota_survives_receive_timeout(tcp_host: str) -> None:
         connection.settimeout(180.0)
         initial_image_bytes = min(4096, len(image))
         connection.sendall(headers + prefix + image[:initial_image_bytes])
-        # The configured HTTP receive timeout is five seconds. This gap must
-        # exercise at least one timeout before the valid upload continues.
+        # WEBUP-003 treats the first nonpositive receive result as successful
+        # input end. The partial image must consequently reach finalization.
         time.sleep(7.0)
-        connection.sendall(image[initial_image_bytes:] + suffix)
         response = bytearray()
         while True:
             block = connection.recv(4096)
@@ -107,8 +105,5 @@ def test_ota_survives_receive_timeout(tcp_host: str) -> None:
                 break
 
     status_line = bytes(response).partition(b"\r\n")[0]
-    assert status_line.startswith(b"HTTP/1.1 200 ")
-    assert response.endswith(
-        b"Firmware upgrade finished. The system will reboot in 2 seconds..."
-    )
-    wait_for_usb_service_restart(previous_usb).close()
+    assert status_line.startswith(b"HTTP/1.1 500 ")
+    assert b"OTA finish Failed" in response

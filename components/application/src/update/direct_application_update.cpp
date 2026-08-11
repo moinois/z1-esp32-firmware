@@ -1,6 +1,8 @@
 /** @file @brief Implements direct application OTA ordering, abort behavior, and restart handoff. */
 #include "application/update/direct_application_update.hpp"
 
+#include <limits>
+
 namespace firmware::application {
 namespace {
 
@@ -17,10 +19,13 @@ constexpr std::string_view success_body =
 
 bool DirectApplicationUpdateService::apply(
     core::BytesView image, DirectApplicationUpdatePort& port) const {
+    if (!begin(port)) return false;
+    offer(image, port);
+    return finish(image.size() != 0U, port);
+}
+
+bool DirectApplicationUpdateService::begin(DirectApplicationUpdatePort& port) const {
     if (!port.deinitialize_camera()) {
-        return fail(port, finish_failure_body);
-    }
-    if (image.size() == 0U) {
         return fail(port, finish_failure_body);
     }
     if (!port.select_inactive_partition()) {
@@ -29,10 +34,23 @@ bool DirectApplicationUpdateService::apply(
     if (!port.erase_partition()) {
         return fail(port, erase_failure_body);
     }
-    if (!port.begin_update(image.size())) {
+    constexpr std::size_t unknown_image_size =
+        std::numeric_limits<std::uint32_t>::max();
+    if (!port.begin_update(unknown_image_size)) {
         return fail(port, begin_failure_body);
     }
-    if (!port.write_image(image)) {
+    return true;
+}
+
+void DirectApplicationUpdateService::offer(
+    core::BytesView block, DirectApplicationUpdatePort& port) const {
+    // WEBUP-012 deliberately leaves write failure to esp_ota_end validation.
+    static_cast<void>(port.write_image(block));
+}
+
+bool DirectApplicationUpdateService::finish(
+    bool content_received, DirectApplicationUpdatePort& port) const {
+    if (!content_received) {
         port.abort_update();
         return fail(port, finish_failure_body);
     }

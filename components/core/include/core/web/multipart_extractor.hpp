@@ -39,6 +39,11 @@ public:
     /// Returns all accepted content; valid until this extractor is destroyed.
     const ByteVector& content() const;
 
+    /** Moves accepted bytes out so a target can write each receive block
+     *  without retaining the complete uploaded image in RAM.
+     */
+    ByteVector take_content();
+
 private:
     std::string boundary_;
     ByteVector content_;
