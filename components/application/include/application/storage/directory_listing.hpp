@@ -45,6 +45,15 @@ public:
     virtual bool send(core::Frame frame) = 0;
     /// Emits one already-formatted APP_FILE warning.
     virtual void log_warning(std::string_view message) = 0;
+
+    /** Probes transient storage before forming an entry path.
+     * Production ports use the target heap; the default keeps simple portable
+     * ports source-compatible while fault tests can reject deterministically.
+     */
+    virtual bool response_memory_available(std::size_t bytes) {
+        static_cast<void>(bytes);
+        return true;
+    }
 };
 
 /// Formats and chunks one complete `ls` operation.

@@ -7,6 +7,7 @@
 #include "host_output_adapter.hpp"
 
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 
 #include <cerrno>
 #include <dirent.h>
@@ -72,6 +73,13 @@ bool TcpDirectoryListAdapter::send(firmware::core::Frame frame) {
 
 void TcpDirectoryListAdapter::log_warning(std::string_view message) {
     ESP_LOGW("APP_FILE", "%.*s", static_cast<int>(message.size()), message.data());
+}
+
+bool TcpDirectoryListAdapter::response_memory_available(std::size_t bytes) {
+    void* probe = heap_caps_malloc(bytes, MALLOC_CAP_8BIT);
+    if (probe == nullptr) return false;
+    heap_caps_free(probe);
+    return true;
 }
 
 TcpFileHashAdapter::TcpFileHashAdapter(

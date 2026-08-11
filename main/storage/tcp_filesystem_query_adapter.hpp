@@ -21,6 +21,7 @@ public:
         std::string_view path) override;
     bool send(firmware::core::Frame frame) override;
     void log_warning(std::string_view message) override;
+    bool response_memory_available(std::size_t bytes) override;
 
 private:
     firmware::application::TcpClientSession& session_;

@@ -121,6 +121,13 @@ void DirectoryListing::execute(core::BytesView argument, DirectoryListPort& port
     core::ByteVector chunk;
     chunk.reserve(maximum_supported_chunk_payload_size);
     for (const DirectoryEntry& entry : *entries) {
+        const std::size_t path_storage = parsed->path.size() + 1U +
+                                         entry.name.size() + 1U;
+        if (!port.response_memory_available(path_storage)) {
+            port.log_warning(
+                "ls: xRx2ControllerQueue send timeout (malloc err path)");
+            continue;
+        }
         const std::string entry_path = parsed->path + "/" + entry.name;
         if (entry_path.size() >= line_size_limit) {
             port.log_warning("Path too long, truncated: " + entry_path);

@@ -45,6 +45,10 @@ public:
         return send_succeeds;
     }
     void log_warning(std::string_view message) override { warnings.emplace_back(message); }
+    bool response_memory_available(std::size_t bytes) override {
+        allocation_sizes.push_back(bytes);
+        return allocation_succeeds;
+    }
 
     std::optional<std::vector<DirectoryEntry>> entries =
         std::vector<DirectoryEntry>{};
@@ -53,6 +57,8 @@ public:
     std::vector<Frame> sent;
     std::vector<std::string> warnings;
     bool send_succeeds = true;
+    bool allocation_succeeds = true;
+    std::vector<std::size_t> allocation_sizes;
 };
 
 const UtcFileTime sample_time{2026U, 7U, 20U, 1U, 2U, 3U};
@@ -164,4 +170,18 @@ TEST_CASE(diag_028_listing_reports_tail_and_completion_delivery_failures) {
     REQUIRE_EQ(port.warnings, std::vector<std::string>({
         "ls: xRx2ControllerQueue send timeout (tail LOAD_INFO)",
         "ls: xRx2ControllerQueue send timeout (LOAD_FINISH)"}));
+}
+
+TEST_CASE(diag_028_listing_reports_entry_path_allocation_failure) {
+    FakeDirectoryListPort port;
+    port.entries = std::vector<DirectoryEntry>{{"entry", false, 0U, sample_time, true}};
+    port.allocation_succeeds = false;
+
+    DirectoryListing::execute(bytes("/sd"), port);
+
+    REQUIRE_EQ(port.allocation_sizes, std::vector<std::size_t>({10U}));
+    REQUIRE_EQ(port.warnings, std::vector<std::string>({
+        "ls: xRx2ControllerQueue send timeout (malloc err path)"}));
+    REQUIRE_EQ(port.sent.size(), 1U);
+    REQUIRE_EQ(port.sent.front().type, 0x84U);
 }

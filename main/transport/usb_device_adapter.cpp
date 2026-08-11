@@ -916,6 +916,13 @@ public:
     void log_warning(std::string_view message) override {
         ESP_LOGW("APP_FILE", "%.*s", static_cast<int>(message.size()), message.data());
     }
+
+    bool response_memory_available(std::size_t bytes) override {
+        void* probe = heap_caps_malloc(bytes, MALLOC_CAP_8BIT);
+        if (probe == nullptr) return false;
+        heap_caps_free(probe);
+        return true;
+    }
 };
 
 /// Calculates file hashes and sends hash responses through native USB.
