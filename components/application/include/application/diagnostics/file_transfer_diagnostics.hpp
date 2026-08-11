@@ -31,4 +31,15 @@ FileTransferDiagnostic file_transfer_start_queue_full_diagnostic();
 /// Returns the exact DIAG-039 prepared-download delivery warning.
 FileTransferDiagnostic download_delivery_drop_diagnostic();
 
+/// Failure classes emitted by the legacy bounded absolute-path resolver.
+enum class PathResolutionDiagnostic {
+    invalid_arguments,
+    absolute_path_too_long,
+    current_directory_failure,
+    combined_path_too_long,
+};
+
+/// Returns one exact tagged DIAG-040 path-resolution failure record.
+FileTransferDiagnostic path_resolution_diagnostic(PathResolutionDiagnostic failure);
+
 }  // namespace firmware::application

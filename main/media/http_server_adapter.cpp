@@ -25,6 +25,7 @@
 #include "application/runtime/live_control_policy.hpp"
 #include "application/runtime/live_initialization.hpp"
 #include "application/runtime/live_frame_iteration.hpp"
+#include "application/diagnostics/live_media_diagnostics.hpp"
 #include "application/playback/preview_open.hpp"
 #include "application/playback/preview_metadata.hpp"
 #include "application/playback/preview_responses.hpp"
@@ -49,6 +50,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <new>
 #include <cstdio>
 #include <cstdint>
 #include <functional>
@@ -163,15 +165,27 @@ void start_live_stream(httpd_req_t* request) {
     const auto generation = live_generation.fetch_add(
                                 1U, std::memory_order_acq_rel) +
                             1U;
-    auto* context = new LiveStreamTaskContext{
+    const int socket_id = httpd_req_to_sockfd(request);
+    auto* context = new (std::nothrow) LiveStreamTaskContext{
         request->handle,
-        httpd_req_to_sockfd(request),
+        socket_id,
         generation,
     };
+    if (context == nullptr) {
+        const auto diagnostic = firmware::application::live_media_diagnostic(
+            firmware::application::LiveMediaDiagnosticEvent::stream_allocation_failed,
+            socket_id);
+        ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+        return;
+    }
     if (xTaskCreate(live_stream_task, "live_stream",
                     live_stream_task_stack_size, context,
                     live_stream_task_priority, nullptr) != pdPASS) {
         delete context;
+        const auto diagnostic = firmware::application::live_media_diagnostic(
+            firmware::application::LiveMediaDiagnosticEvent::stream_task_create_failed,
+            socket_id);
+        ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
     }
 }
 

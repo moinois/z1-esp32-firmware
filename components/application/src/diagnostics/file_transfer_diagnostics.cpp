@@ -58,4 +58,19 @@ FileTransferDiagnostic download_delivery_drop_diagnostic() {
     return {"APP_FILE", "download: xFileTransferQueue full, drop chunk"};
 }
 
+FileTransferDiagnostic path_resolution_diagnostic(
+    PathResolutionDiagnostic failure) {
+    switch (failure) {
+        case PathResolutionDiagnostic::invalid_arguments:
+            return {"APP_FILE", "absolute_from_relative: invalid args"};
+        case PathResolutionDiagnostic::absolute_path_too_long:
+            return {"APP_FILE", "absolute_from_relative: path too long"};
+        case PathResolutionDiagnostic::current_directory_failure:
+            return {"APP_FILE", "absolute_from_relative: getcwd failed"};
+        case PathResolutionDiagnostic::combined_path_too_long:
+            return {"APP_FILE", "absolute_from_relative: combined path too long"};
+    }
+    return {};
+}
+
 }  // namespace firmware::application

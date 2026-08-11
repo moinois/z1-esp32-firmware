@@ -42,6 +42,23 @@ TEST_CASE(diag_039_file_queue_diagnostics_are_exact) {
                std::string("download: xFileTransferQueue full, drop chunk"));
 }
 
+TEST_CASE(diag_040_path_resolution_diagnostics_are_exact) {
+    using firmware::application::PathResolutionDiagnostic;
+    using firmware::application::path_resolution_diagnostic;
+    REQUIRE_EQ(path_resolution_diagnostic(
+                   PathResolutionDiagnostic::invalid_arguments).message,
+               std::string("absolute_from_relative: invalid args"));
+    REQUIRE_EQ(path_resolution_diagnostic(
+                   PathResolutionDiagnostic::absolute_path_too_long).message,
+               std::string("absolute_from_relative: path too long"));
+    REQUIRE_EQ(path_resolution_diagnostic(
+                   PathResolutionDiagnostic::current_directory_failure).message,
+               std::string("absolute_from_relative: getcwd failed"));
+    REQUIRE_EQ(path_resolution_diagnostic(
+                   PathResolutionDiagnostic::combined_path_too_long).message,
+               std::string("absolute_from_relative: combined path too long"));
+}
+
 TEST_CASE(diag_027_busy_reply_uses_the_normative_usb_source_identifier) {
     REQUIRE_EQ(file_transfer_busy_message({HostTransport::usb, 0U, 0U}),
                std::string("发送 upload/download 忙回复(0x91)给客户端[0x01]"));
