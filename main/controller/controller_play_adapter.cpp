@@ -9,6 +9,7 @@
 #include "posix_file.hpp"
 
 #include "esp_timer.h"
+#include "esp_heap_caps.h"
 #include "core/filesystem/file_transfer_paths.hpp"
 #include "core/protocol/frame.hpp"
 
@@ -57,7 +58,11 @@ void ControllerPlayAdapter::diagnose(
 
 bool ControllerPlayAdapter::send(firmware::core::Frame frame) {
     const auto encoded = firmware::core::encode_controller_frame(frame);
-    if (encoded.empty()) return false;
+    if (encoded.empty()) {
+        diagnose(firmware::application::playback_diagnostic(
+            firmware::application::PlaybackDiagnosticEvent::frame_allocation_failed));
+        return false;
+    }
     const int written = channel_.write(encoded);
     if (written != static_cast<int>(encoded.size())) {
         ESP_LOGE("uart_task", "UART send failed");
@@ -81,6 +86,13 @@ bool ControllerPlayAdapter::rewind_file() {
 
 std::uint64_t ControllerPlayAdapter::now_milliseconds() const {
     return static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL);
+}
+
+bool ControllerPlayAdapter::response_memory_available(std::size_t bytes) {
+    void* probe = heap_caps_malloc(bytes, MALLOC_CAP_8BIT);
+    if (probe == nullptr) return false;
+    heap_caps_free(probe);
+    return true;
 }
 
 std::optional<firmware::application::PlayLineChunk>

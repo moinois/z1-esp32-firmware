@@ -25,6 +25,7 @@ public:
     void release_play_ownership() override;
     bool rewind_file() override;
     std::uint64_t now_milliseconds() const override;
+    bool response_memory_available(std::size_t bytes) override;
     std::optional<firmware::application::PlayLineChunk> read_chunk(
         std::size_t maximum_size) override;
 

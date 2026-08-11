@@ -24,8 +24,59 @@ PlaybackDiagnostic playback_diagnostic(PlaybackDiagnosticEvent event,
                     "PLAY_FAIL[P1] start check failed.file does not exist or CRC wrong"};
         case PlaybackDiagnosticEvent::start_valid:
             return {false, false, "play_LPC1768", "Send PTYPE_PLAY_VIEW to LPC1768"};
+        case PlaybackDiagnosticEvent::data_invalid:
+            return {false, true, "play_LPC1768",
+                    "PLAY_FAIL[P2] data check failed.file does not exist or CRC wrong"};
+        case PlaybackDiagnosticEvent::data_format_invalid:
+            return {false, true, "play_LPC1768",
+                    "PLAY_FAIL [P2] PTYPE_PLAY_DATA command data format error"};
+        case PlaybackDiagnosticEvent::data_missing_frame_max:
+            return {false, true, "play_LPC1768",
+                    "PTYPE_PLAY_DATA command data format error (no frame_max field)"};
+        case PlaybackDiagnosticEvent::goto_invalid:
+            return {false, true, "play_LPC1768",
+                    "PLAY_FAIL [P3]goto check failed.file does not exist or CRC wrong"};
+        case PlaybackDiagnosticEvent::goto_format_invalid:
+            return {false, true, "play_LPC1768",
+                    "[P3] PTYPE_PLAY_DATA goto cmd format error"};
+        case PlaybackDiagnosticEvent::long_line_replaced:
+            return {true, false, "play_LPC1768",
+                    "Long line replaced with empty line for LPC1768"};
+        case PlaybackDiagnosticEvent::frame_allocation_failed:
+            return {false, true, "play_LPC1768",
+                    "Failed to allocate memory for frame"};
+        case PlaybackDiagnosticEvent::output_full:
+            return {false, false, "play_LPC1768", "队列已满，放入队列失败"};
+        case PlaybackDiagnosticEvent::data_no_memory:
+            return {false, true, "play_LPC1768",
+                    "PLAY_FAIL [P2] no memory for frame_data"};
+        case PlaybackDiagnosticEvent::goto_no_memory:
+            return {false, true, "play_LPC1768",
+                    "PLAY_FAIL [P3] no memory for goto frame_data"};
     }
     return {};
+}
+
+PlaybackDiagnostic playback_sequence_diagnostic(std::string_view format,
+                                                 std::uint32_t first,
+                                                 std::uint32_t second,
+                                                 std::uint32_t third,
+                                                 std::uint32_t fourth,
+                                                 bool warning) {
+    char message[192]{};
+    std::snprintf(message, sizeof(message), std::string(format).c_str(),
+                  static_cast<unsigned long>(first),
+                  static_cast<unsigned long>(second),
+                  static_cast<unsigned long>(third),
+                  static_cast<unsigned long>(fourth));
+    return {warning, false, "play_LPC1768", message};
+}
+
+PlaybackDiagnostic playback_data_sent_diagnostic(std::size_t data_length) {
+    char message[80]{};
+    std::snprintf(message, sizeof(message), "Sent frame: type=0xF3, data_len=%ld",
+                  static_cast<long>(data_length));
+    return {false, false, "play_LPC1768", message};
 }
 
 PlaybackDiagnostic playback_dequeue_diagnostic(std::uint64_t microseconds,

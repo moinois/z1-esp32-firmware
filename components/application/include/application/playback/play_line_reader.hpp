@@ -38,6 +38,8 @@ struct PlayLineResult {
     bool reached_eof;
     /// Bytes counted by goto progress before controller-size normalization.
     std::size_t observed_size = 0U;
+    /// True when a single observed chunk exceeded the controller's 64-byte line.
+    bool overlong_replaced = false;
 };
 
 /// Converts filesystem chunks into the controller's bounded logical-line form.

@@ -27,6 +27,14 @@ public:
 
     /// Returns monotonic time for progress-report pacing during synchronous scans.
     virtual std::uint64_t now_milliseconds() const = 0;
+
+    /** Probes whether transient response data can be retained now. Production
+     *  adapters perform an actual target-heap allocation probe; tests can
+     *  deterministically inject the PLAY-022 failure path. */
+    virtual bool response_memory_available(std::size_t bytes) {
+        static_cast<void>(bytes);
+        return true;
+    }
 };
 
 /// Processes controller start and terminal packets for streamed play.

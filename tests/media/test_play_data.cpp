@@ -45,6 +45,11 @@ public:
         broadcasts.push_back(std::move(frame));
     }
 
+    void diagnose(
+        const firmware::application::PlaybackDiagnostic& diagnostic) override {
+        diagnostics.push_back(diagnostic);
+    }
+
     // Records one controller response.
     bool send(Frame frame) override {
         sent.push_back(std::move(frame));
@@ -84,6 +89,11 @@ public:
         return 0U;
     }
 
+    bool response_memory_available(std::size_t bytes) override {
+        allocation_sizes.push_back(bytes);
+        return allocation_succeeds;
+    }
+
     void set_lines(std::initializer_list<PlayLineChunk> values) {
         initial_chunks = values;
         chunks = initial_chunks;
@@ -91,6 +101,7 @@ public:
 
     bool rewind_succeeds = true;
     bool read_fails = false;
+    bool allocation_succeeds = true;
     std::size_t close_count = 0U;
     std::size_t release_count = 0U;
     std::size_t rewind_count = 0U;
@@ -100,6 +111,8 @@ public:
     std::vector<Frame> sent;
     std::vector<Frame> broadcasts;
     std::vector<bool> states;
+    std::vector<firmware::application::PlaybackDiagnostic> diagnostics;
+    std::vector<std::size_t> allocation_sizes;
 };
 
 ByteVector data_request(std::uint16_t identifier, std::uint32_t index,
@@ -269,6 +282,23 @@ TEST_CASE(play_016_shorter_result_retains_stale_suffix_until_old_nul) {
                            'x', '\n', 'c', 'd', 'e', 'f', '\n'}));
 }
 
+TEST_CASE(diag_037_data_retransmit_and_send_emit_exact_sequence_records) {
+    PlaySession session;
+    PlayController controller(session);
+    FakePlayDataPort port;
+    port.set_lines({{bytes("one\n"), false}});
+    prepare_running(session, controller, port);
+    const ByteVector request = data_request(session.path_identifier(), 0U, 1U);
+
+    controller.handle({0xF3U, request}, 1U, port);
+    controller.handle({0xF3U, request}, 2U, port);
+
+    REQUIRE_EQ(port.diagnostics[port.diagnostics.size() - 2U].message,
+               std::string("Sent frame: type=0xF3, data_len=4"));
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("FRAME_SEQ_RETRANSMIT req=0 local=1"));
+}
+
 TEST_CASE(play_016_out_of_position_index_rewinds_and_skips_from_start) {
     PlaySession session;
     PlayController controller(session);
@@ -295,6 +325,29 @@ TEST_CASE(play_016_rewind_failure_is_ignored_before_later_read_failure) {
     controller.handle({0xF3U, data_request(session.path_identifier(), 2U)}, 1U, port);
 
     REQUIRE_EQ(port.sent.back().type, 0xF4U);
+    REQUIRE(session.file_open());
+    REQUIRE_EQ(port.release_count, 0U);
+}
+
+TEST_CASE(play_022_data_allocation_failure_preserves_file_position_and_state) {
+    PlaySession session;
+    PlayController controller(session);
+    FakePlayDataPort port;
+    port.set_lines({{bytes("zero\n"), false}, {bytes("one\n"), false}});
+    prepare_running(session, controller, port);
+    const std::size_t chunks_before = port.chunks.size();
+    port.allocation_succeeds = false;
+
+    controller.handle({0xF3U, data_request(session.path_identifier(), 1U)}, 1U, port);
+
+    REQUIRE_EQ(port.allocation_sizes, std::vector<std::size_t>({518U}));
+    REQUIRE_EQ(port.rewind_count, 0U);
+    REQUIRE_EQ(port.chunks.size(), chunks_before);
+    REQUIRE_EQ(port.sent.back(), Frame({0xF4U, {}}));
+    REQUIRE_EQ(port.broadcasts.back().payload,
+               bytes("Error:no memory for frame_data [P2]"));
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("PLAY_FAIL [P2] no memory for frame_data"));
     REQUIRE(session.file_open());
     REQUIRE_EQ(port.release_count, 0U);
 }

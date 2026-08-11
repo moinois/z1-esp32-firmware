@@ -45,6 +45,11 @@ public:
         broadcasts.push_back(std::move(frame));
     }
 
+    void diagnose(
+        const firmware::application::PlaybackDiagnostic& diagnostic) override {
+        diagnostics.push_back(diagnostic);
+    }
+
     // Records one controller response.
     bool send(Frame frame) override {
         sent.push_back(std::move(frame));
@@ -82,6 +87,11 @@ public:
         return clock;
     }
 
+    bool response_memory_available(std::size_t bytes) override {
+        allocation_sizes.push_back(bytes);
+        return allocation_succeeds;
+    }
+
     void set_lines(std::initializer_list<PlayLineChunk> values) {
         initial_chunks = values;
         chunks = initial_chunks;
@@ -89,6 +99,7 @@ public:
 
     bool rewind_succeeds = true;
     bool read_fails = false;
+    bool allocation_succeeds = true;
     std::uint64_t clock = 0U;
     std::uint64_t milliseconds_per_read = 0U;
     std::size_t close_count = 0U;
@@ -98,6 +109,8 @@ public:
     std::deque<PlayLineChunk> chunks;
     std::vector<Frame> sent;
     std::vector<Frame> broadcasts;
+    std::vector<firmware::application::PlaybackDiagnostic> diagnostics;
+    std::vector<std::size_t> allocation_sizes;
 };
 
 ByteVector goto_request(std::uint16_t identifier, std::uint32_t line) {
@@ -188,6 +201,28 @@ TEST_CASE(play_020_read_failure_stops_silently_after_reset) {
     REQUIRE_EQ(port.release_count, 0U);
 }
 
+TEST_CASE(play_022_goto_allocation_failure_rewinds_then_sends_f5_without_cleanup) {
+    PlaySession session;
+    PlayController controller(session);
+    FakeGotoPort port;
+    session.prepare(bytes("play /job"), 0U, port);
+    port.set_lines({{bytes("line\n"), false}});
+    port.allocation_succeeds = false;
+
+    controller.handle({0xF6U, goto_request(session.path_identifier(), 3U)}, 1U, port);
+
+    REQUIRE_EQ(port.rewind_count, 1U);
+    REQUIRE_EQ(port.allocation_sizes, std::vector<std::size_t>({10U}));
+    REQUIRE_EQ(port.chunks.size(), 1U);
+    REQUIRE_EQ(port.sent.back(), Frame({0xF5U, {}}));
+    REQUIRE_EQ(port.broadcasts.back().payload,
+               bytes("Error:no memory for goto frame_data [P3]"));
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("PLAY_FAIL [P3] no memory for goto frame_data"));
+    REQUIRE(session.file_open());
+    REQUIRE_EQ(port.release_count, 0U);
+}
+
 TEST_CASE(play_020_target_zero_reports_after_the_first_nonempty_line) {
     PlaySession session;
     PlayController controller(session);
@@ -203,6 +238,12 @@ TEST_CASE(play_020_target_zero_reports_after_the_first_nonempty_line) {
                Frame({0xF7U, {static_cast<std::uint8_t>(identifier >> 8U),
                                static_cast<std::uint8_t>(identifier), 0U, 0U, 0U, 1U,
                                0U, 0U, 0U, 3U}}));
+    REQUIRE_EQ(port.diagnostics[port.diagnostics.size() - 3U].message,
+               std::string("Received device request for frame 0 data"));
+    REQUIRE_EQ(port.diagnostics[port.diagnostics.size() - 2U].message,
+               std::string("FRAME_SEQ[GOTO] reset local: req=0 local 0->0 played_cnt reset"));
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("FRAME_SEQ[GOTO] reached target: currentlen=3 req=0 local=1"));
 }
 
 TEST_CASE(play_020_progress_is_sent_only_after_more_than_100_ms) {

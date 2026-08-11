@@ -18,14 +18,35 @@ constexpr std::string_view goto_check_error =
     "Error:goto check failed.file does not exist or CRC wrong [P3]";
 constexpr std::string_view goto_format_error =
     "Error:PTYPE_PLAY_DATA goto cmd format error [P3]";
+constexpr std::string_view data_memory_error =
+    "Error:no memory for frame_data [P2]";
+constexpr std::string_view goto_memory_error =
+    "Error:no memory for goto frame_data [P3]";
 constexpr std::size_t maximum_data_size = 512U;
 constexpr std::size_t minimum_remaining_data = 74U;
 constexpr std::size_t identifier_size = core::protocol::big_endian_u16_size;
 constexpr std::size_t request_index_offset = identifier_size;
 constexpr std::size_t data_request_size = identifier_size + core::protocol::big_endian_u32_size;
 constexpr std::size_t request_with_line_limit_size = data_request_size + identifier_size;
+constexpr std::size_t maximum_data_response_size = data_request_size + maximum_data_size;
+constexpr std::size_t goto_response_size = identifier_size +
+                                           (2U * core::protocol::big_endian_u32_size);
 constexpr std::uint16_t default_maximum_lines = 255U;
 constexpr std::uint64_t progress_interval_milliseconds = 100U;
+constexpr std::string_view retransmit_diagnostic =
+    "FRAME_SEQ_RETRANSMIT req=%lu local=%lu";
+constexpr std::string_view mismatch_diagnostic =
+    "FRAME_SEQ_MISMATCH: req=%lu != local=%lu and != last_req=%lu (valid=%lu) -> will SEEK from file head";
+constexpr std::string_view seek_anchor_diagnostic =
+    "FRAME_SEQ[SEEK] found anchor: currentlen=%lu req-1=%lu local_before_read=%lu";
+constexpr std::string_view no_data_diagnostic =
+    "FRAME_SEQ[SEEK] no data sent: req=%lu local=%lu frame_max=%lu (seek anchor miss or EOF?)";
+constexpr std::string_view goto_request_diagnostic =
+    "Received device request for frame %lu data";
+constexpr std::string_view goto_reset_diagnostic =
+    "FRAME_SEQ[GOTO] reset local: req=%lu local 0->0 played_cnt reset";
+constexpr std::string_view goto_target_diagnostic =
+    "FRAME_SEQ[GOTO] reached target: currentlen=%lu req=%lu local=%lu";
 constexpr std::uint8_t play_start_response = core::protocol::family_packet(
     core::protocol::play_family, core::protocol::transfer_geometry);
 constexpr std::uint8_t play_data_response = core::protocol::family_packet(
@@ -98,21 +119,32 @@ void PlayController::handle_goto(core::BytesView payload,
                                  PlayControllerPort& port) {
     const bool identifier_matches = observed_identifier() == session_.path_identifier();
     if (!session_.file_open() || !identifier_matches) {
+        port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::goto_invalid));
         static_cast<void>(port.send({play_complete_response, {}}));
         session_.report_error(goto_check_error, now_milliseconds, port);
         return;
     }
     if (payload.size() < data_request_size) {
+        port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::goto_format_invalid));
         static_cast<void>(port.send({play_complete_response, {}}));
         session_.report_error(goto_format_error, now_milliseconds, port);
         return;
     }
 
-    clear_retained_response();
     static_cast<void>(port.rewind_file());
     current_line_ = 0U;
     transmitted_bytes_ = 0U;
     const std::uint32_t target = decode_u32(payload.data() + request_index_offset);
+    port.diagnose(playback_sequence_diagnostic(goto_request_diagnostic, target, 0U,
+                                               0U, 0U, false));
+    port.diagnose(playback_sequence_diagnostic(goto_reset_diagnostic, target, 0U));
+    if (!port.response_memory_available(goto_response_size)) {
+        port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::goto_no_memory));
+        static_cast<void>(port.send({play_error_response, {}}));
+        session_.report_error(goto_memory_error, now_milliseconds, port);
+        return;
+    }
+    clear_retained_response();
     std::uint64_t last_progress = port.now_milliseconds();
 
     for (;;) {
@@ -124,6 +156,9 @@ void PlayController::handle_goto(core::BytesView payload,
             send_progress(port);
             return;
         }
+        if (line.overlong_replaced) {
+            port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::long_line_replaced));
+        }
 
         ++current_line_;
         transmitted_bytes_ += line.observed_size;
@@ -132,6 +167,11 @@ void PlayController::handle_goto(core::BytesView payload,
         const std::uint64_t now = port.now_milliseconds();
         const bool interval_elapsed = now - last_progress > progress_interval_milliseconds;
         if (interval_elapsed || reached_target) {
+            if (reached_target) {
+                port.diagnose(playback_sequence_diagnostic(
+                    goto_target_diagnostic, line.observed_size, target,
+                    current_line_, 0U, false));
+            }
             send_progress(port);
             last_progress = now;
         }
@@ -149,14 +189,17 @@ void PlayController::handle_data(core::BytesView payload,
                                  std::uint64_t now_milliseconds,
                                  PlayControllerPort& port) {
     if (!session_.file_open()) {
+        port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::data_invalid));
         static_cast<void>(port.send({play_complete_response, {}}));
         return;
     }
     if (observed_identifier() != session_.path_identifier()) {
+        port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::data_invalid));
         static_cast<void>(port.send({play_complete_response, {}}));
         return;
     }
     if (payload.size() < data_request_size) {
+        port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::data_format_invalid));
         static_cast<void>(port.send({play_complete_response, {}}));
         session_.report_error(data_format_error, now_milliseconds, port);
         return;
@@ -171,12 +214,29 @@ void PlayController::handle_data(core::BytesView payload,
         if (maximum_lines == 0U) {
             maximum_lines = default_maximum_lines;
         }
+    } else {
+        port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::data_missing_frame_max));
     }
-    if (retained_index_ == requested_index && !retained_payload_.empty()) {
+    if (retained_index_ == requested_index && requested_index != current_line_ &&
+        !retained_payload_.empty()) {
+        port.diagnose(playback_sequence_diagnostic(
+            retransmit_diagnostic, requested_index, current_line_));
         static_cast<void>(port.send({play_data_response, retained_payload_}));
         return;
     }
-    if (requested_index != current_line_) {
+    const bool repositioned = requested_index != current_line_;
+    if (repositioned) {
+        port.diagnose(playback_sequence_diagnostic(
+            mismatch_diagnostic, requested_index, current_line_,
+            retained_index_.value_or(0U), retained_index_.has_value() ? 1U : 0U));
+    }
+    if (!port.response_memory_available(maximum_data_response_size)) {
+        port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::data_no_memory));
+        static_cast<void>(port.send({play_complete_response, {}}));
+        session_.report_error(data_memory_error, now_milliseconds, port);
+        return;
+    }
+    if (repositioned) {
         seek_line(requested_index, port);
     }
 
@@ -185,6 +245,10 @@ void PlayController::handle_data(core::BytesView payload,
     for (std::uint16_t line_count = 0U; line_count < maximum_lines; ++line_count) {
         const PlayLineResult line = PlayLineReader::read(port);
         if (line.status == PlayLineStatus::failure) {
+            if (repositioned) {
+                port.diagnose(playback_sequence_diagnostic(
+                    no_data_diagnostic, requested_index, current_line_, maximum_lines));
+            }
             static_cast<void>(port.send({play_complete_response, {}}));
             return;
         }
@@ -192,9 +256,16 @@ void PlayController::handle_data(core::BytesView payload,
             reached_eof = true;
             break;
         }
+        if (line.overlong_replaced) {
+            port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::long_line_replaced));
+        }
         ++current_line_;
         transmitted_bytes_ += line.data.size();
         if (line.data.empty()) {
+            if (repositioned) {
+                port.diagnose(playback_sequence_diagnostic(
+                    no_data_diagnostic, requested_index, current_line_, maximum_lines));
+            }
             return;
         }
         data.insert(data.end(), line.data.begin(), line.data.end());
@@ -204,10 +275,15 @@ void PlayController::handle_data(core::BytesView payload,
         }
     }
 
+    if (data.empty() && repositioned) {
+        port.diagnose(playback_sequence_diagnostic(
+            no_data_diagnostic, requested_index, current_line_, maximum_lines));
+    }
     if (!data.empty()) {
         core::ByteVector response(payload.begin(), payload.begin() + data_request_size);
         response.insert(response.end(), data.begin(), data.end());
         static_cast<void>(port.send({play_data_response, response}));
+        port.diagnose(playback_data_sent_diagnostic(data.size()));
         retain_response(requested_index, response);
     }
     if (reached_eof) {
@@ -256,8 +332,17 @@ void PlayController::seek_line(std::uint32_t target, PlayControllerPort& port) {
         if (line.status != PlayLineStatus::line || line.data.empty()) {
             break;
         }
+        if (line.overlong_replaced) {
+            port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::long_line_replaced));
+        }
+        const std::uint32_t local_before_read = current_line_;
         ++current_line_;
         transmitted_bytes_ += line.observed_size;
+        if (current_line_ == target) {
+            port.diagnose(playback_sequence_diagnostic(
+                seek_anchor_diagnostic, line.observed_size, target - 1U,
+                local_before_read, 0U, false));
+        }
         if (line.reached_eof && current_line_ < target) {
             break;
         }
