@@ -6,6 +6,7 @@
 
 #include "driver/twai.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -70,7 +71,18 @@ bool CanTwaiAdapter::receive(core::CanFrame& frame) const {
     return true;
 }
 
-bool CanTwaiAdapter::transmit(const core::CanFrame& frame) const {
+bool CanTwaiAdapter::transmit(const core::CanFrame& frame) {
+    if (frame.identifier > maximum_standard_identifier ||
+        frame.size > classic_can_payload_capacity) {
+        return false;
+    }
+    std::lock_guard<std::mutex> lock(transmit_mutex_);
+    transmitter_.offer(frame);
+    return true;
+}
+
+bool CanTwaiAdapter::attempt(const core::CanFrame& frame,
+                             std::uint32_t timeout_milliseconds) {
     if (frame.identifier > maximum_standard_identifier ||
         frame.size > classic_can_payload_capacity) {
         return false;
@@ -79,7 +91,11 @@ bool CanTwaiAdapter::transmit(const core::CanFrame& frame) const {
     message.identifier = frame.identifier;
     message.data_length_code = frame.size;
     std::copy_n(frame.data.begin(), frame.size, message.data);
-    return twai_transmit(&message, nonblocking_wait) == ESP_OK;
+    return twai_transmit(&message, pdMS_TO_TICKS(timeout_milliseconds)) == ESP_OK;
+}
+
+void CanTwaiAdapter::delay(std::uint32_t milliseconds) {
+    vTaskDelay(pdMS_TO_TICKS(milliseconds));
 }
 
 std::uint8_t CanTwaiAdapter::error_register() const {

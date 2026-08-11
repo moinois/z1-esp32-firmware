@@ -2,6 +2,7 @@
 set(APPLICATION_SOURCES
     src/connectivity/automatic_connection.cpp
     src/can/can_output_monitor.cpp
+    src/can/can_pending_transmitter.cpp
     src/can/canopen_service.cpp
     src/camera/camera_settings.cpp
     src/camera/camera_resolution_endpoint.cpp

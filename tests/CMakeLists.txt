@@ -10,6 +10,7 @@ add_executable(
     can/test_canopen_sdo_mailbox.cpp
     can/test_can_twai_config.cpp
     can/test_canopen_service.cpp
+    can/test_can_pending_transmitter.cpp
     can/test_can_output_monitor.cpp
     camera/test_camera_settings.cpp
     camera/test_camera_hardware_config.cpp
