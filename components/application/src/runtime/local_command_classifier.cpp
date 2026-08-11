@@ -22,6 +22,10 @@ LocalCommandFamily classify_local_command(core::CommandKind command) {
             return LocalCommandFamily::filesystem;
         case core::CommandKind::wlan:
             return LocalCommandFamily::wlan;
+        case core::CommandKind::access_point:
+        case core::CommandKind::station_parameter_query:
+        case core::CommandKind::access_point_parameter_query:
+            return LocalCommandFamily::access_point;
         default:
             return LocalCommandFamily::none;
     }

@@ -39,6 +39,11 @@ TEST_CASE(local_classifier_maps_every_transport_local_family) {
         ExpectedFamily{CommandKind::remove, LocalCommandFamily::filesystem},
         ExpectedFamily{CommandKind::move, LocalCommandFamily::filesystem},
         ExpectedFamily{CommandKind::wlan, LocalCommandFamily::wlan},
+        ExpectedFamily{CommandKind::access_point, LocalCommandFamily::access_point},
+        ExpectedFamily{CommandKind::station_parameter_query,
+                       LocalCommandFamily::access_point},
+        ExpectedFamily{CommandKind::access_point_parameter_query,
+                       LocalCommandFamily::access_point},
         ExpectedFamily{CommandKind::status, LocalCommandFamily::none},
     };
 

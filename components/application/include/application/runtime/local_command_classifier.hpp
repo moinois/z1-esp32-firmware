@@ -13,6 +13,7 @@ enum class LocalCommandFamily {
     recording,
     filesystem,
     wlan,
+    access_point,
 };
 
 /// Classifies a recognized command without executing or responding to it.

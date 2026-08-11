@@ -58,6 +58,47 @@ TEST_CASE(cmd_002_complete_payload_commands_keep_offset_zero) {
     REQUIRE_EQ(firmware::core::recognize_command(serial).argument_offset, 0U);
 }
 
+TEST_CASE(apcmd_001_ap_requires_nul_or_ascii_whitespace_boundary) {
+    using firmware::core::CommandKind;
+    REQUIRE_EQ(firmware::core::recognize_command(ByteVector{'a', 'p', ' '}).kind,
+               CommandKind::access_point);
+    REQUIRE_EQ(firmware::core::recognize_command(ByteVector{'a', 'p', '\t'}).kind,
+               CommandKind::access_point);
+    REQUIRE_EQ(firmware::core::recognize_command(ByteVector{'a', 'p', 0}).kind,
+               CommandKind::access_point);
+    REQUIRE_EQ(firmware::core::recognize_command(ByteVector{'a', 'p', 'x'}).kind,
+               CommandKind::unknown);
+    REQUIRE_EQ(firmware::core::recognize_command(ByteVector{'A', 'P', ' '}).kind,
+               CommandKind::unknown);
+}
+
+TEST_CASE(cmd_002_ap_literal_space_exposes_bytes_from_offset_three) {
+    const auto spaced = firmware::core::recognize_command(
+        ByteVector{'a', 'p', ' ', 'g', 'e', 't'});
+    REQUIRE_EQ(spaced.argument_offset, 3U);
+
+    const auto tabbed = firmware::core::recognize_command(
+        ByteVector{'a', 'p', '\t', 'g', 'e', 't'});
+    REQUIRE_EQ(tabbed.argument_offset, 6U);
+}
+
+TEST_CASE(apq_001_m482_and_m483_are_bounded_case_sensitive_prefixes) {
+    using firmware::core::CommandKind;
+    REQUIRE_EQ(firmware::core::recognize_command(
+                   ByteVector{'M', '4', '8', '2', '.', '7'}).kind,
+               CommandKind::station_parameter_query);
+    REQUIRE_EQ(firmware::core::recognize_command(
+                   ByteVector{'M', '4', '8', '3', 'x'}).kind,
+               CommandKind::access_point_parameter_query);
+    REQUIRE_EQ(firmware::core::recognize_command(
+                   ByteVector{'m', '4', '8', '2'}).kind,
+               CommandKind::unknown);
+
+    ByteVector overlong(129U, 'x');
+    std::copy_n("M482", 4U, overlong.begin());
+    REQUIRE(!firmware::core::recognize_command(overlong).accepted);
+}
+
 TEST_CASE(cmd_mock_sd_control_exposes_only_its_action_as_argument) {
     const ByteVector command{'m', 'o', 'c', 'k', '-', 's', 'd', ' ',
                              'f', 'a', 'i', 'l', '-', 'r', 'e', 'a', 'd'};

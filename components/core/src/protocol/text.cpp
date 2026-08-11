@@ -12,6 +12,10 @@ constexpr std::uint8_t first_escape_code = 1U;
 constexpr std::uint8_t last_escape_code = 5U;
 constexpr std::size_t maximum_bounded_command_size = 128U;
 
+bool ascii_whitespace(std::uint8_t byte) {
+    return byte == ' ' || (byte >= '\t' && byte <= '\r');
+}
+
 }  // namespace
 
 std::string decode_escaped(BytesView input) {
@@ -63,6 +67,14 @@ CommandMatch recognize_command(BytesView payload) {
         std::size_t offset;
         bool unlimited;
     };
+    if (payload.size() >= 3U && payload[0] == 'a' && payload[1] == 'p' &&
+        (payload[2] == 0U || ascii_whitespace(payload[2]))) {
+        const std::size_t offset =
+            payload[2] == ' ' ? 3U : payload.size();
+        return {CommandKind::access_point, offset,
+                payload.size() <= maximum_bounded_command_size};
+    }
+
     static constexpr Rule rules[] = {
         {"?", CommandKind::status, 0, true},
         {"ls", CommandKind::list, 2, false},
@@ -76,6 +88,8 @@ CommandMatch recognize_command(BytesView payload) {
         {"config-get", CommandKind::config_get, 11, false},
         {"config-set", CommandKind::config_set, 11, false},
         {"time", CommandKind::time, 4, false},
+        {"M482", CommandKind::station_parameter_query, 0, false},
+        {"M483", CommandKind::access_point_parameter_query, 0, false},
         {"wlan", CommandKind::wlan, 0, false},
         {"M942", CommandKind::can_exercise, 0, false},
         {"M951", CommandKind::record_start, 0, true},
