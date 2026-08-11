@@ -40,6 +40,12 @@ public:
         modes.push_back(mode);
         return mode_change_succeeds;
     }
+    void report_mode_failure(std::string_view path) override {
+        mode_failures.emplace_back(path);
+    }
+    void report_unrecoverable(std::string_view path) override {
+        unrecoverable.emplace_back(path);
+    }
 
     // Records one exact retry delay.
     void delay_milliseconds(std::uint32_t duration) override {
@@ -62,6 +68,8 @@ public:
     std::vector<std::uint32_t> delays;
     std::vector<std::uint8_t> broadcast_types;
     std::vector<std::string> broadcasts;
+    std::vector<std::string> mode_failures;
+    std::vector<std::string> unrecoverable;
 };
 
 }  // namespace
@@ -134,6 +142,10 @@ TEST_CASE(upd_061_failed_permission_adjustments_stop_immediately) {
     REQUIRE_EQ(port.attribute_paths.size(), 1U);
     REQUIRE_EQ(port.mode_paths.size(), 1U);
     REQUIRE(port.delays.empty());
+    REQUIRE_EQ(port.mode_failures,
+               std::vector<std::string>({"/sd/firmware.bin"}));
+    REQUIRE_EQ(port.unrecoverable,
+               std::vector<std::string>({"/sd/firmware.bin"}));
 }
 
 TEST_CASE(upd_061_read_only_filesystem_stops_when_fat_adjustment_fails) {
@@ -147,6 +159,8 @@ TEST_CASE(upd_061_read_only_filesystem_stops_when_fat_adjustment_fails) {
     REQUIRE_EQ(port.unlink_paths.size(), 1U);
     REQUIRE_EQ(port.attribute_paths.size(), 1U);
     REQUIRE(port.mode_paths.empty());
+    REQUIRE_EQ(port.unrecoverable,
+               std::vector<std::string>({"/sd/firmware.bin"}));
 }
 
 TEST_CASE(upd_061_read_only_filesystem_retries_after_fat_adjustment) {

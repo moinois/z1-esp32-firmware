@@ -171,8 +171,10 @@ public:
     firmware::application::UpdateDeleteResult unlink_file(
         std::string_view path) override {
         if (std::remove(std::string(path).c_str()) == 0 || errno == ENOENT) {
+            unlink_error_ = 0;
             return firmware::application::UpdateDeleteResult::success;
         }
+        unlink_error_ = errno;
         if (errno == EBUSY) {
             return firmware::application::UpdateDeleteResult::busy;
         }
@@ -190,7 +192,22 @@ public:
     }
 
     bool set_mode(std::string_view path, std::uint32_t mode) override {
-        return chmod(std::string(path).c_str(), static_cast<mode_t>(mode)) == 0;
+        const bool succeeded =
+            chmod(std::string(path).c_str(), static_cast<mode_t>(mode)) == 0;
+        mode_error_ = succeeded ? 0 : errno;
+        return succeeded;
+    }
+
+    void report_mode_failure(std::string_view path) override {
+        const auto message = firmware::application::update_delete_mode_failure(
+            path, mode_error_, std::strerror(mode_error_));
+        ESP_LOGE(tag, "%s", message.c_str());
+    }
+
+    void report_unrecoverable(std::string_view path) override {
+        const auto message = firmware::application::update_delete_unrecoverable(
+            path, unlink_error_, std::strerror(unlink_error_));
+        ESP_LOGE(tag, "%s", message.c_str());
     }
 
     void delay_milliseconds(std::uint32_t duration) override {
@@ -200,6 +217,10 @@ public:
     void broadcast(std::uint8_t type, std::string_view payload) override {
         broadcast_tcp_frame({type, {payload.begin(), payload.end()}});
     }
+
+private:
+    int unlink_error_ = 0;
+    int mode_error_ = 0;
 };
 
 class UpdateApplicationTargetPort final

@@ -52,3 +52,12 @@ TEST_CASE(diag_032_formats_update_nvs_failures_exactly) {
     REQUIRE_EQ(firmware::application::update_nvs_save_failure(3U, "ESP_FAIL"),
                std::string("ota nvs save phase 3 failed: ESP_FAIL"));
 }
+
+TEST_CASE(diag_032_formats_update_delete_failures_exactly) {
+    REQUIRE_EQ(firmware::application::update_delete_mode_failure(
+                   "/sd/firmware.bin", 13, "Permission denied"),
+               std::string("[fw_del] chmod 失败: path=/sd/firmware.bin errno=13 (Permission denied)"));
+    REQUIRE_EQ(firmware::application::update_delete_unrecoverable(
+                   "/sd/firmware.bin", 30, "Read-only file system"),
+               std::string("[fw_del] 不可恢复错误，停止重试: path=/sd/firmware.bin errno=30 (Read-only file system)"));
+}

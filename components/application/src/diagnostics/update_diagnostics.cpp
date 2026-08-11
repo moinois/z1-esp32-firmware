@@ -82,4 +82,17 @@ std::string update_nvs_save_failure(std::uint8_t phase,
            std::string(error_name);
 }
 
+std::string update_delete_mode_failure(std::string_view path, int error,
+                                       std::string_view error_text) {
+    return "[fw_del] chmod 失败: path=" + std::string(path) + " errno=" +
+           std::to_string(error) + " (" + std::string(error_text) + ")";
+}
+
+std::string update_delete_unrecoverable(std::string_view path, int error,
+                                        std::string_view error_text) {
+    return "[fw_del] 不可恢复错误，停止重试: path=" + std::string(path) +
+           " errno=" + std::to_string(error) + " (" +
+           std::string(error_text) + ")";
+}
+
 }  // namespace firmware::application

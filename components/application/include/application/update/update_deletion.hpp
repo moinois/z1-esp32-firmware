@@ -29,6 +29,8 @@ public:
 
     /// Applies a POSIX-compatible fallback mode to the file.
     virtual bool set_mode(std::string_view path, std::uint32_t mode) = 0;
+    virtual void report_mode_failure(std::string_view path) = 0;
+    virtual void report_unrecoverable(std::string_view path) = 0;
 
     /// Delays a recovery or retry by the exact requested duration.
     virtual void delay_milliseconds(std::uint32_t duration) = 0;

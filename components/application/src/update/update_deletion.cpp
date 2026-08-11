@@ -42,6 +42,7 @@ bool UpdateDeletionService::remove(std::string_view path) {
             recoverable = recover_permissions(path, result);
         }
         if (!recoverable) {
+            port_.report_unrecoverable(path);
             broadcast_failure(path);
             return false;
         }
@@ -59,6 +60,7 @@ bool UpdateDeletionService::recover_permissions(
     bool adjusted = port_.clear_fat_attributes(path);
     if (!adjusted && failure == UpdateDeleteResult::permission_denied) {
         adjusted = port_.set_mode(path, writable_file_mode);
+        if (!adjusted) port_.report_mode_failure(path);
     }
     if (adjusted) {
         port_.delay_milliseconds(permission_delay_milliseconds);

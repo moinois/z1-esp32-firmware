@@ -28,5 +28,9 @@ std::string ota_failure_diagnostic(int error);
 std::string update_nvs_open_failure(std::string_view error_name);
 std::string update_nvs_save_failure(std::uint8_t phase,
                                     std::string_view error_name);
+std::string update_delete_mode_failure(std::string_view path, int error,
+                                       std::string_view error_text);
+std::string update_delete_unrecoverable(std::string_view path, int error,
+                                        std::string_view error_text);
 
 }  // namespace firmware::application
