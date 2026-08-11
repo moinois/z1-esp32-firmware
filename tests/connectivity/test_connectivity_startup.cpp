@@ -83,7 +83,7 @@ TEST_CASE(net_003_to_008_connectivity_starts_with_exact_scan_and_network_policy)
     REQUIRE(!port.startup_config.power_save_enabled);
     REQUIRE_EQ(port.startup_config.global_socket_capacity, 16U);
     REQUIRE_EQ(port.startup_config.default_hostname,
-               std::string("Z1-Community"));
+               std::string("espressif"));
     REQUIRE_EQ(port.startup_config.access_point_ipv4,
                std::string("192.168.4.1"));
     REQUIRE_EQ(port.startup_config.access_point_prefix_length, 24U);
