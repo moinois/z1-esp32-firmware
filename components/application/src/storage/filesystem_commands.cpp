@@ -102,10 +102,14 @@ void FilesystemCommands::remove(core::BytesView argument,
 
 void FilesystemCommands::move(core::BytesView argument,
                               FilesystemCommandPort& port) {
-    const auto paths = core::parse_move_paths(argument);
-    if (!paths.has_value()) {
+    const auto parsed = core::parse_move_paths_detailed(argument);
+    if (!parsed.paths.has_value()) {
+        port.log_warning(parsed.error == core::MovePathError::missing_separator
+                             ? "mv: missing separator in params"
+                             : "mv: empty from/to path");
         return;
     }
+    const auto& paths = parsed.paths;
     // FILE-025 requires both resolved paths, including the /sd root. Both
     // values have passed the same shared normalization and sandbox policy.
     const std::string displayed_source = paths->source;

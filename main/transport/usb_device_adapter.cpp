@@ -193,6 +193,7 @@ public:
             static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
         }
     }
+
 };
 
 UsbConfigurationPort configuration_port;
@@ -881,6 +882,11 @@ public:
         if (!encoded.empty()) {
             static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
         }
+    }
+
+    void log_warning(std::string_view message) override {
+        ESP_LOGW("APP_FILE", "%.*s", static_cast<int>(message.size()),
+                 message.data());
     }
 };
 

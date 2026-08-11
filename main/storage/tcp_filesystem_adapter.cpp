@@ -3,6 +3,7 @@
 #include "sd_access_diagnostics.hpp"
 
 #include "application/transport/tcp_client_session.hpp"
+#include "esp_log.h"
 
 #include <cerrno>
 #include <cstdio>
@@ -74,6 +75,11 @@ bool TcpFilesystemAdapter::rename_path(std::string_view source,
 
 void TcpFilesystemAdapter::send(firmware::core::Frame frame) {
     static_cast<void>(session_.queue_frame(frame));
+}
+
+void TcpFilesystemAdapter::log_warning(std::string_view message) {
+    ESP_LOGW("APP_FILE", "%.*s", static_cast<int>(message.size()),
+             message.data());
 }
 
 }  // namespace firmware::target

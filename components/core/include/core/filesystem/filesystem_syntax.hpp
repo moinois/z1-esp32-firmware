@@ -26,6 +26,19 @@ struct MovePaths {
     std::string destination;
 };
 
+/// Distinguishes the two malformed `mv` forms with normative diagnostics.
+enum class MovePathError {
+    none,
+    missing_separator,
+    empty_path,
+};
+
+/// Carries parsed move paths or the exact syntax category that prevented them.
+struct MovePathParseResult {
+    std::optional<MovePaths> paths;
+    MovePathError error = MovePathError::none;
+};
+
 /** Decodes escapes and lexically normalizes one filesystem argument.
  *  @param argument Raw command argument bytes.
  *  @return Normalized path, or no value when syntax or bounds are invalid.
@@ -50,5 +63,8 @@ std::optional<std::string> parse_remove_path(BytesView argument);
  *  @return Both paths, or no value unless exactly two valid paths are present.
  */
 std::optional<MovePaths> parse_move_paths(BytesView argument);
+
+/** Parses move paths while preserving the diagnostic reason for failure. */
+MovePathParseResult parse_move_paths_detailed(BytesView argument);
 
 }  // namespace firmware::core

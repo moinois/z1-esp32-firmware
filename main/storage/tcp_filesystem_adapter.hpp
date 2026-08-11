@@ -22,6 +22,7 @@ public:
     bool rename_path(std::string_view source,
                      std::string_view destination) override;
     void send(firmware::core::Frame frame) override;
+    void log_warning(std::string_view message) override;
 
 private:
     firmware::application::TcpClientSession& session_;

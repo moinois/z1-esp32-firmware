@@ -30,6 +30,9 @@ public:
 
     /// Sends one response to the destination selected by the command adapter.
     virtual void send(core::Frame frame) = 0;
+
+    /// Emits one already-formatted APP_FILE warning without a protocol reply.
+    virtual void log_warning(std::string_view message) = 0;
 };
 
 /// Executes bounded path-oriented filesystem mutations and fixed replies.

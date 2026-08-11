@@ -64,6 +64,10 @@ public:
         sent.push_back(std::move(frame));
     }
 
+    void log_warning(std::string_view message) override {
+        warnings.emplace_back(message);
+    }
+
     bool primary_create_succeeds = true;
     bool primary_path_remains = false;
     bool primary_rename_succeeds = true;
@@ -74,6 +78,7 @@ public:
     std::vector<std::string> existence_queries;
     std::vector<std::pair<std::string, std::string>> renames;
     std::vector<Frame> sent;
+    std::vector<std::string> warnings;
 };
 
 }  // namespace
@@ -170,6 +175,28 @@ TEST_CASE(file_025_move_failure_sends_only_the_exact_failure) {
     REQUIRE_EQ(port.sent[0].type, 0x85U);
     REQUIRE_EQ(text(port.sent[0].payload),
                std::string("Could not rename /sd/old to /sd/new\r\n"));
+}
+
+TEST_CASE(diag_028_move_without_separator_logs_the_exact_warning) {
+    FakeFilesystemCommandPort port;
+
+    FilesystemCommands::move(bytes(" only-one-path"), port);
+
+    REQUIRE_EQ(port.warnings,
+               std::vector<std::string>({"mv: missing separator in params"}));
+    REQUIRE(port.renames.empty());
+    REQUIRE(port.sent.empty());
+}
+
+TEST_CASE(diag_028_move_with_an_empty_path_logs_the_exact_warning) {
+    FakeFilesystemCommandPort port;
+
+    FilesystemCommands::move(bytes(" source "), port);
+
+    REQUIRE_EQ(port.warnings,
+               std::vector<std::string>({"mv: empty from/to path"}));
+    REQUIRE(port.renames.empty());
+    REQUIRE(port.sent.empty());
 }
 
 TEST_CASE(file_026_ftype_always_reports_nc) {

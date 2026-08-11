@@ -121,6 +121,7 @@ public:
     bool path_exists(std::string_view) override { return false; }
     bool rename_path(std::string_view, std::string_view) override { return false; }
     void send(Frame frame) override { sent.push_back(std::move(frame)); }
+    void log_warning(std::string_view) override {}
 
     std::vector<Frame> sent;
 };

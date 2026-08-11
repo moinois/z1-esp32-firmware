@@ -109,11 +109,11 @@ std::optional<std::string> parse_remove_path(BytesView argument) {
     return resolve_sd_user_path(path);
 }
 
-std::optional<MovePaths> parse_move_paths(BytesView argument) {
+MovePathParseResult parse_move_paths_detailed(BytesView argument) {
     std::string decoded = decode_escaped(argument);
     const std::size_t first = decoded.find_first_not_of(' ');
     if (first == std::string::npos) {
-        return std::nullopt;
+        return {{}, MovePathError::missing_separator};
     }
     decoded.erase(0U, first);
 
@@ -122,18 +122,21 @@ std::optional<MovePaths> parse_move_paths(BytesView argument) {
         separator = decoded.find(' ');
     }
     if (separator == std::string::npos) {
-        return std::nullopt;
+        return {{}, MovePathError::missing_separator};
     }
 
     std::string source = clean_path_text(decoded.substr(0U, separator));
     std::string destination = clean_path_text(decoded.substr(separator + 1U));
     if (source.empty() || destination.empty()) {
-        return std::nullopt;
+        return {{}, MovePathError::empty_path};
     }
-    return MovePaths{
-        resolve_sd_user_path(source),
-        resolve_sd_user_path(destination),
-    };
+    return {MovePaths{resolve_sd_user_path(source),
+                      resolve_sd_user_path(destination)},
+            MovePathError::none};
+}
+
+std::optional<MovePaths> parse_move_paths(BytesView argument) {
+    return parse_move_paths_detailed(argument).paths;
 }
 
 }  // namespace firmware::core
