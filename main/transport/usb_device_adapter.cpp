@@ -65,6 +65,7 @@
 #include "access_point_command_adapter.hpp"
 #include "sd_access_diagnostics.hpp"
 #include "posix_file.hpp"
+#include "posix_filesystem_mutation.hpp"
 #include "esp_wifi_scanner.hpp"
 
 #include <array>
@@ -821,45 +822,16 @@ std::deque<firmware::core::Frame> pending_usb_file_frames;
 NvsSerialNumberPort serial_port(usb_frame_sink);
 NvsRuntimeCommandPort runtime_port(usb_frame_sink);
 
-/// Removes a file or directory tree used by a USB filesystem command.
-///
-/// @param path Physical sandboxed path to remove recursively.
-void remove_usb_tree(const std::string& path) {
-    struct stat status{};
-    if (stat(path.c_str(), &status) != 0) return;
-    if (!S_ISDIR(status.st_mode)) {
-        static_cast<void>(unlink(path.c_str()));
-        return;
-    }
-    DIR* directory = opendir(path.c_str());
-    if (directory != nullptr) {
-        while (const dirent* entry = readdir(directory)) {
-            const std::string name(entry->d_name);
-            if (name == current_directory_entry ||
-                name == parent_directory_entry) {
-                continue;
-            }
-            remove_usb_tree(path + directory_separator + name);
-        }
-        closedir(directory);
-    }
-    static_cast<void>(rmdir(path.c_str()));
-}
-
 /// Implements directory creation, inspection, and removal for USB commands.
 class UsbFilesystemPort final
     : public firmware::application::FilesystemCommandPort {
 public:
     bool create_directory(std::string_view path, std::uint32_t mode) override {
-        const std::string value(path);
-        if (mkdir(value.c_str(), static_cast<mode_t>(mode)) == 0 ||
-            errno == EEXIST) return true;
-        firmware::target::log_sd_access_failure("create directory", path, errno);
-        return false;
+        return firmware::target::create_posix_directory(path, mode);
     }
 
     void remove_recursively(std::string_view path) override {
-        remove_usb_tree(std::string(path));
+        firmware::target::remove_posix_tree(path);
     }
 
     bool path_exists(std::string_view path) override {
@@ -870,11 +842,7 @@ public:
 
     bool rename_path(std::string_view source,
                      std::string_view destination) override {
-        const std::string old_path(source);
-        const std::string new_path(destination);
-        if (rename(old_path.c_str(), new_path.c_str()) == 0) return true;
-        firmware::target::log_sd_access_failure("rename", source, errno);
-        return false;
+        return firmware::target::rename_posix_path(source, destination);
     }
 
     void send(firmware::core::Frame frame) override {

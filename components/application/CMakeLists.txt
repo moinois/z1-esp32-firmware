@@ -26,6 +26,7 @@ set(APPLICATION_SOURCES
     src/diagnostics/diagnostic_capture.cpp
     src/diagnostics/blufi_custom_diagnostics.cpp
     src/diagnostics/file_transfer_diagnostics.cpp
+    src/diagnostics/filesystem_diagnostics.cpp
     src/update/direct_application_update.cpp
     src/update/direct_web_volume_update.cpp
     src/diagnostics/diagnostic_log_writer.cpp

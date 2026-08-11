@@ -17,6 +17,7 @@ idf_component_register(
         "storage/sd_card_adapter.cpp"
         "storage/sd_access_diagnostics.cpp"
         "storage/posix_file.cpp"
+        "storage/posix_filesystem_mutation.cpp"
         "diagnostics/diagnostic_capture_adapter.cpp"
         "diagnostics/serial_log_mirror_adapter.cpp"
         "runtime/nvs_key_value_adapter.cpp"
