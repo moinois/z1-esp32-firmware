@@ -53,6 +53,9 @@ PlaybackDiagnostic playback_diagnostic(PlaybackDiagnosticEvent event,
         case PlaybackDiagnosticEvent::goto_no_memory:
             return {false, true, "play_LPC1768",
                     "PLAY_FAIL [P3] no memory for goto frame_data"};
+        case PlaybackDiagnosticEvent::host_broadcast_overflow:
+            return {true, false, "play_LPC1768",
+                    "xRx2ControllerQueue full, drop 0x90 and reset queue"};
     }
     return {};
 }

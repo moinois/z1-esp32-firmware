@@ -98,8 +98,14 @@ bool queue_host_listing(const firmware::core::Frame& frame,
 
 bool broadcast_host_frame(const firmware::core::Frame& frame,
                           firmware::application::HostOutputSource source) {
-    return admitted(scheduler.admit(
-        frame, firmware::application::HostOutputDestination::broadcast(), source));
+    return admitted(admit_host_broadcast(frame, source));
+}
+
+firmware::application::HostOutputAdmission admit_host_broadcast(
+    const firmware::core::Frame& frame,
+    firmware::application::HostOutputSource source) {
+    return scheduler.admit(
+        frame, firmware::application::HostOutputDestination::broadcast(), source);
 }
 
 void set_host_output_usb_active(bool active) {

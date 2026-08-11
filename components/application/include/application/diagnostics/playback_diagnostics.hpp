@@ -35,6 +35,7 @@ enum class PlaybackDiagnosticEvent {
     output_full,
     data_no_memory,
     goto_no_memory,
+    host_broadcast_overflow,
 };
 
 /// Formats one fixed or path-bearing DIAG-037 playback record.

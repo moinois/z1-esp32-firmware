@@ -50,6 +50,12 @@ TEST_CASE(diag_037_formats_all_fixed_playback_failure_records_exactly) {
                std::string("[P3] PTYPE_PLAY_DATA goto cmd format error"));
     REQUIRE(playback_diagnostic(
                 PlaybackDiagnosticEvent::long_line_replaced).warning);
+    const auto overflow = playback_diagnostic(
+        PlaybackDiagnosticEvent::host_broadcast_overflow);
+    REQUIRE(overflow.warning);
+    REQUIRE_EQ(overflow.tag, std::string_view("play_LPC1768"));
+    REQUIRE_EQ(overflow.message,
+               std::string("xRx2ControllerQueue full, drop 0x90 and reset queue"));
 }
 
 TEST_CASE(diag_037_formats_sequence_and_data_sent_records_exactly) {

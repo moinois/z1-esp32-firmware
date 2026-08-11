@@ -46,9 +46,13 @@ std::optional<std::string> ControllerPlayAdapter::cached_md5(
 void ControllerPlayAdapter::broadcast(firmware::core::Frame frame) {
     // Rate-limited play errors use the catastrophic TRN-006 overflow class;
     // selection later expands an admitted broadcast in USB-before-TCP order.
-    static_cast<void>(broadcast_host_frame(
+    const auto result = admit_host_broadcast(
         frame,
-        firmware::application::HostOutputSource::rate_limited_console_error));
+        firmware::application::HostOutputSource::rate_limited_console_error);
+    if (result == firmware::application::HostOutputAdmission::purged_at_capacity) {
+        diagnose(firmware::application::playback_diagnostic(
+            firmware::application::PlaybackDiagnosticEvent::host_broadcast_overflow));
+    }
 }
 
 void ControllerPlayAdapter::diagnose(

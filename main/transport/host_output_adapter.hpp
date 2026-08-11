@@ -27,6 +27,15 @@ bool broadcast_host_frame(
     firmware::application::HostOutputSource source =
         firmware::application::HostOutputSource::ordinary);
 
+/** Admits a broadcast while preserving the detailed overflow result.
+ * This form lets the play adapter distinguish its normative catastrophic
+ * queue purge from an ordinary no-destination or allocation rejection.
+ */
+firmware::application::HostOutputAdmission admit_host_broadcast(
+    const firmware::core::Frame& frame,
+    firmware::application::HostOutputSource source =
+        firmware::application::HostOutputSource::ordinary);
+
 /// Updates USB destination availability and applies the no-host purge rule.
 void set_host_output_usb_active(bool active);
 
