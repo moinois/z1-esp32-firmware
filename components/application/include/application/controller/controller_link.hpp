@@ -49,6 +49,8 @@ public:
 
     /// Returns the number of complete frames waiting to be written.
     std::size_t pending() const;
+    /// Reports whether the normative 32-item capacity is exhausted.
+    bool full() const;
 
 private:
     std::deque<core::ByteVector> items_;

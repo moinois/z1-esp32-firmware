@@ -145,7 +145,8 @@ public:
     }
     void send_controller_packet(std::uint8_t type,
                                 firmware::core::BytesView payload) override {
-        enqueue_controller_frame({type, {payload.begin(), payload.end()}});
+        enqueue_generated_controller_frame(
+            {type, {payload.begin(), payload.end()}});
     }
     bool valid_mainboard_image(firmware::core::BytesView image) override {
         return validator_.valid_mainboard_image(image);

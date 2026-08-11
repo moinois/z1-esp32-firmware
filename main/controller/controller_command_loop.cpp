@@ -28,6 +28,7 @@
 #include "esp_log.h"
 
 #include "application/controller/controller_frame_forwarder.hpp"
+#include "application/diagnostics/controller_diagnostics.hpp"
 #include "application/controller/controller_query.hpp"
 #include "application/controller/controller_link.hpp"
 #include "application/controller/controller_firmware_transfer.hpp"
@@ -62,6 +63,25 @@ SemaphoreHandle_t controller_forwarder_mutex = nullptr;
 firmware::application::ControllerFirmwareTransfer* active_firmware = nullptr;
 firmware::application::ControllerConfigTransfer* active_configuration = nullptr;
 firmware::application::ControllerFactoryTransfer* active_factory = nullptr;
+
+bool enqueue_controller_frame_impl(const firmware::core::Frame& frame,
+                                   bool diagnose_capacity) {
+    if (controller_forwarder_mutex == nullptr) {
+        return false;
+    }
+    if (xSemaphoreTake(controller_forwarder_mutex, portMAX_DELAY) != pdTRUE) {
+        return false;
+    }
+    const bool capacity_full = controller_forwarder.full();
+    const bool queued = controller_forwarder.forward(frame);
+    if (!queued && capacity_full && diagnose_capacity) {
+        const std::string message =
+            firmware::application::controller_queue_full_diagnostic(frame.type);
+        ESP_LOGW("APP_ROUTER", "%s", message.c_str());
+    }
+    xSemaphoreGive(controller_forwarder_mutex);
+    return queued;
+}
 
 void drain_forwarded_frames(ControllerChannelAdapter& channel) {
     for (;;) {
@@ -227,15 +247,11 @@ void ControllerCommandLoop::start() {
 }
 
 bool enqueue_controller_frame(const firmware::core::Frame& frame) {
-    if (controller_forwarder_mutex == nullptr) {
-        return false;
-    }
-    if (xSemaphoreTake(controller_forwarder_mutex, portMAX_DELAY) != pdTRUE) {
-        return false;
-    }
-    const bool queued = controller_forwarder.forward(frame);
-    xSemaphoreGive(controller_forwarder_mutex);
-    return queued;
+    return enqueue_controller_frame_impl(frame, false);
+}
+
+bool enqueue_generated_controller_frame(const firmware::core::Frame& frame) {
+    return enqueue_controller_frame_impl(frame, true);
 }
 
 bool controller_firmware_transfer_active() {

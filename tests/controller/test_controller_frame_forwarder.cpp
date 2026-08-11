@@ -20,3 +20,13 @@ TEST_CASE(controller_forwarder_enforces_spacing_between_writes) {
     REQUIRE(!forwarder.take_ready(9U).has_value());
     REQUIRE(forwarder.take_ready(10U).has_value());
 }
+
+TEST_CASE(diag_038_controller_forwarder_exposes_full_capacity) {
+    firmware::application::ControllerFrameForwarder forwarder;
+    for (std::uint8_t index = 0U; index < 32U; ++index) {
+        REQUIRE(!forwarder.full());
+        REQUIRE(forwarder.forward({0xA2U, {index}}));
+    }
+    REQUIRE(forwarder.full());
+    REQUIRE(!forwarder.forward({0xA2U, {32U}}));
+}

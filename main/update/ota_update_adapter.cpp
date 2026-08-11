@@ -113,7 +113,7 @@ void OtaUpdateAdapter::remove_aggregate(std::string_view path) {
 void OtaUpdateAdapter::send_controller_reset() {
     const firmware::core::Frame reset_frame =
         firmware::application::controller_reset_command();
-    if (!enqueue_controller_frame(reset_frame)) {
+    if (!enqueue_generated_controller_frame(reset_frame)) {
         ESP_LOGW(tag, "controller reset could not be queued");
     }
 }

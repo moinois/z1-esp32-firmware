@@ -16,4 +16,8 @@ std::size_t ControllerFrameForwarder::pending() const {
     return queue_.pending();
 }
 
+bool ControllerFrameForwarder::full() const {
+    return queue_.full();
+}
+
 }  // namespace firmware::application

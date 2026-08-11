@@ -16,6 +16,8 @@ public:
 
     /// Reports how many complete encoded frames are waiting.
     std::size_t pending() const;
+    /// Reports whether another otherwise valid frame would exceed capacity.
+    bool full() const;
 
 private:
     ControllerOutputQueue queue_;

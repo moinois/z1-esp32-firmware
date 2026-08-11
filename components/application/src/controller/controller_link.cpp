@@ -77,4 +77,8 @@ std::size_t ControllerOutputQueue::pending() const {
     return items_.size();
 }
 
+bool ControllerOutputQueue::full() const {
+    return items_.size() >= maximum_pending_items;
+}
+
 }  // namespace firmware::application
