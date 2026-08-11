@@ -46,6 +46,7 @@
 #include "application/storage/filesystem_commands.hpp"
 #include "application/storage/file_upload.hpp"
 #include "application/storage/file_download.hpp"
+#include "application/storage/file_transfer_admission.hpp"
 #include "application/diagnostics/file_transfer_diagnostics.hpp"
 #include "application/storage/directory_listing.hpp"
 #include "application/storage/file_hash_command.hpp"
@@ -518,11 +519,9 @@ public:
         if (frame.type == firmware::core::protocol::file_command) {
             const auto start = firmware::core::parse_file_transfer_start(frame.payload);
             if (!start.has_value()) return;
-            const bool another_host_owns =
-                router_.ownership().has_file_owner() &&
+            const bool another_host_owns = router_.ownership().has_file_owner() &&
                 !router_.ownership().is_file_owner(session_->identity());
-            if (upload_.active() || download_.active() ||
-                !router_.ownership().claim_file(session_->identity())) {
+            if (!router_.ownership().claim_file(session_->identity())) {
                 if (another_host_owns) {
                     const auto diagnostic =
                         firmware::application::file_transfer_busy_message(
@@ -537,16 +536,14 @@ public:
                                                   firmware::application::file_owner_limit_message))});
                 return;
             }
-            owns_file_transfer_ = true;
-            bool started = false;
-            if (start->direction == firmware::core::FileTransferDirection::upload) {
-                started = upload_.start(session_->identity(), start->path, now, upload_port_);
-            } else {
-                started = download_.start(session_->identity(), start->path, now, download_port_);
+            if (!admission_.enqueue(session_->identity(), *start)) {
+                const auto diagnostic =
+                    firmware::application::file_transfer_start_queue_full_diagnostic();
+                ESP_LOGW(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+                return;
             }
-            if (!started) {
-                router_.ownership().release_file();
-                owns_file_transfer_ = false;
+            if (!admission_.active()) {
+                begin_next(now);
             }
             return;
         }
@@ -560,6 +557,9 @@ public:
         if (upload_.active()) upload_.poll(now, upload_port_);
         if (download_.active()) download_.poll(now, download_port_);
         release_if_finished();
+        if (!admission_.active() && admission_.pending() != 0U) {
+            begin_next(now);
+        }
     }
 
     // Detaches only the physical connection. OWN-008 requires the logical
@@ -572,10 +572,25 @@ public:
     }
 
 private:
-    void release_if_finished() {
-        if (!upload_.active() && !download_.active() && owns_file_transfer_) {
+    void begin_next(std::uint64_t now) {
+        auto queued = admission_.take_next();
+        if (!queued.has_value()) return;
+        const bool started = queued->start.direction ==
+                                 firmware::core::FileTransferDirection::upload
+                             ? upload_.start(queued->host, queued->start.path,
+                                             now, upload_port_)
+                             : download_.start(queued->host, queued->start.path,
+                                               now, download_port_);
+        if (!started) {
+            admission_.finish_active();
             router_.ownership().release_file();
-            owns_file_transfer_ = false;
+        }
+    }
+
+    void release_if_finished() {
+        if (!upload_.active() && !download_.active() && admission_.active()) {
+            admission_.finish_active();
+            router_.ownership().release_file();
         }
     }
 
@@ -585,7 +600,7 @@ private:
     TcpFileDownloadAdapter download_port_;
     firmware::application::FileUpload upload_;
     firmware::application::FileDownload download_;
-    bool owns_file_transfer_ = false;
+    firmware::application::FileTransferAdmission admission_;
 };
 
 TcpFileTransferRuntime& transfer_runtime_for_slot(std::uint8_t slot) {

@@ -57,6 +57,7 @@
 #include "core/filesystem/sd_user_path.hpp"
 #include "application/storage/file_upload.hpp"
 #include "application/storage/file_download.hpp"
+#include "application/storage/file_transfer_admission.hpp"
 #include "application/diagnostics/file_transfer_diagnostics.hpp"
 #include "application/runtime/m942_exercise.hpp"
 #include "configuration_file_store.hpp"
@@ -748,6 +749,32 @@ private:
 
 UsbFileDownloadPort usb_download_port;
 firmware::application::FileDownload usb_download;
+firmware::application::FileTransferAdmission usb_file_admission;
+
+// Starts one accepted USB request without revalidating ownership.
+void begin_next_usb_file_transfer(std::uint64_t now) {
+    auto queued = usb_file_admission.take_next();
+    if (!queued.has_value()) return;
+    const bool started = queued->start.direction ==
+                             firmware::core::FileTransferDirection::upload
+                         ? usb_upload.start(queued->host, queued->start.path,
+                                            now, usb_upload_port)
+                         : usb_download.start(queued->host, queued->start.path,
+                                              now, usb_download_port);
+    if (!started) {
+        usb_file_admission.finish_active();
+        shared_host_router().ownership().release_file();
+    }
+}
+
+// Releases ownership when the selected operation reaches a terminal state.
+void release_finished_usb_file_transfer() {
+    if (!usb_upload.active() && !usb_download.active() &&
+        usb_file_admission.active()) {
+        usb_file_admission.finish_active();
+        shared_host_router().ownership().release_file();
+    }
+}
 
 // Adapts M942 CAN exercise responses and remote SDO access to USB.
 /// Bridges an M942 exercise request between native USB and the controller.
@@ -1267,11 +1294,7 @@ void handle_usb_file_transfer(const firmware::core::Frame& frame) {
         }
         const bool owned_by_usb =
             shared_host_router().ownership().is_file_owner(usb_host_identity);
-        const bool capacity_available =
-            !usb_upload.active() && !usb_download.active() &&
-            (owned_by_usb ||
-             shared_host_router().ownership().claim_file(usb_host_identity));
-        if (!capacity_available) {
+        if (!shared_host_router().ownership().claim_file(usb_host_identity)) {
             if (!owned_by_usb &&
                 shared_host_router().ownership().has_file_owner()) {
                 const auto diagnostic =
@@ -1291,14 +1314,15 @@ void handle_usb_file_transfer(const firmware::core::Frame& frame) {
             xSemaphoreGive(usb_file_mutex);
             return;
         }
-        const bool started = start->direction ==
-                                 firmware::core::FileTransferDirection::upload
-                             ? usb_upload.start(usb_host_identity, start->path,
-                                                now, usb_upload_port)
-                             : usb_download.start(usb_host_identity, start->path,
-                                                  now, usb_download_port);
-        if (!started) {
-            shared_host_router().ownership().release_file();
+        if (!usb_file_admission.enqueue(usb_host_identity, *start)) {
+            const auto diagnostic =
+                firmware::application::file_transfer_start_queue_full_diagnostic();
+            ESP_LOGW(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+            xSemaphoreGive(usb_file_mutex);
+            return;
+        }
+        if (!usb_file_admission.active()) {
+            begin_next_usb_file_transfer(now);
         }
         xSemaphoreGive(usb_file_mutex);
         return;
@@ -1319,10 +1343,7 @@ void handle_usb_file_transfer(const firmware::core::Frame& frame) {
     if (usb_download.active()) {
         usb_download.handle(frame, now, usb_download_port);
     }
-    if (!usb_upload.active() && !usb_download.active() &&
-        shared_host_router().ownership().is_file_owner(usb_host_identity)) {
-        shared_host_router().ownership().release_file();
-    }
+    release_finished_usb_file_transfer();
     xSemaphoreGive(usb_file_mutex);
 }
 
@@ -1383,9 +1404,10 @@ void usb_file_transfer_task(void* /* unused */) {
             if (usb_download.active()) {
                 usb_download.poll(now, usb_download_port);
             }
-            if (!usb_upload.active() && !usb_download.active() &&
-                shared_host_router().ownership().is_file_owner(usb_host_identity)) {
-                shared_host_router().ownership().release_file();
+            release_finished_usb_file_transfer();
+            if (!usb_file_admission.active() &&
+                usb_file_admission.pending() != 0U) {
+                begin_next_usb_file_transfer(now);
             }
             xSemaphoreGive(usb_file_mutex);
         }
