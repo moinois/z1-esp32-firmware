@@ -6,6 +6,7 @@
 #include "core/protocol/protocol_constants.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 namespace firmware::core {
 /** A decoded protocol packet independent of its transport framing. */
@@ -35,23 +36,25 @@ struct StreamPolicy {
     RecoveryMode recovery;
     /// Enables the alternate CRC for controller update packet families.
     bool controller_update_crc;
+    /// Enables the USB candidate deadlines defined independently of framing.
+    bool timed_usb_candidates;
 
     /// Returns the UART policy, including nested-header recovery and update CRC.
     static constexpr StreamPolicy controller_uart() {
         return {protocol::controller_maximum_frame_size,
-                RecoveryMode::scan_inside_candidate, true};
+                RecoveryMode::scan_inside_candidate, true, false};
     }
 
     /// Returns the TCP byte-stream policy.
     static constexpr StreamPolicy tcp() {
         return {protocol::host_maximum_frame_size,
-                RecoveryMode::scan_inside_candidate, false};
+                RecoveryMode::scan_inside_candidate, false, false};
     }
 
     /// Returns the USB block-oriented recovery policy.
     static constexpr StreamPolicy usb() {
         return {protocol::host_maximum_frame_size,
-                RecoveryMode::discard_candidate, false};
+                RecoveryMode::discard_candidate, false, true};
     }
 };
 /** Encodes a packet with the common host-facing CRC.
@@ -83,14 +86,27 @@ public:
      */
     std::vector<Frame> push(BytesView input);
 
+    /** Appends bytes using a monotonic timestamp for USB candidate expiry.
+     *  @param input Newly received bytes.
+     *  @param now_milliseconds Monotonic receive time for the complete block.
+     */
+    std::vector<Frame> push(BytesView input, std::uint64_t now_milliseconds);
+
     /// Forgets buffered partial input, for example after transport disconnect.
     void reset() {
         buffer_.clear();
+        header_started_milliseconds_.reset();
+        last_body_byte_milliseconds_.reset();
     }
 private:
+    std::vector<Frame> push_internal(
+        BytesView input, std::optional<std::uint64_t> now_milliseconds);
+
     /// Immutable decoding rules chosen for the owning transport.
     StreamPolicy policy_;
     /// Unconsumed stream suffix beginning at a possible frame header.
     ByteVector buffer_;
+    std::optional<std::uint64_t> header_started_milliseconds_;
+    std::optional<std::uint64_t> last_body_byte_milliseconds_;
 };
 }  // namespace firmware::core

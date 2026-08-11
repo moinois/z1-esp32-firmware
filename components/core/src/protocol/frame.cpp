@@ -19,6 +19,8 @@ constexpr std::size_t bytes_after_data_length = 6U;
 constexpr std::size_t trailer_size = 4U;
 constexpr std::uint16_t minimum_data_length = 3U;
 constexpr std::uint16_t non_payload_data_length = 3U;
+constexpr std::uint64_t usb_header_timeout_milliseconds = 100U;
+constexpr std::uint64_t usb_body_timeout_milliseconds = 10000U;
 
 void discard_prefix(ByteVector& bytes, std::size_t count) {
     const auto end = bytes.begin() + static_cast<std::ptrdiff_t>(std::min(count, bytes.size()));
@@ -64,6 +66,35 @@ ByteVector encode_controller_frame(const Frame& frame) {
 }
 
 std::vector<Frame> StreamDecoder::push(BytesView input) {
+    return push_internal(input, std::nullopt);
+}
+
+std::vector<Frame> StreamDecoder::push(BytesView input,
+                                       std::uint64_t now_milliseconds) {
+    return push_internal(input, now_milliseconds);
+}
+
+std::vector<Frame> StreamDecoder::push_internal(
+    BytesView input, std::optional<std::uint64_t> now_milliseconds) {
+    if (policy_.timed_usb_candidates && now_milliseconds.has_value()) {
+        const bool header_expired =
+            buffer_.size() >= sync_bytes.size() &&
+            buffer_.size() < frame_type_offset &&
+            header_started_milliseconds_.has_value() &&
+            *now_milliseconds - *header_started_milliseconds_ >
+                usb_header_timeout_milliseconds;
+        const bool body_expired =
+            buffer_.size() > frame_type_offset &&
+            last_body_byte_milliseconds_.has_value() &&
+            *now_milliseconds - *last_body_byte_milliseconds_ >
+                usb_body_timeout_milliseconds;
+        if (header_expired || body_expired) {
+            buffer_.clear();
+            header_started_milliseconds_.reset();
+            last_body_byte_milliseconds_.reset();
+        }
+    }
+
     buffer_.insert(buffer_.end(), input.begin(), input.end());
     std::vector<Frame> result;
 
@@ -124,6 +155,26 @@ std::vector<Frame> StreamDecoder::push(BytesView input) {
         result.push_back({buffer_[frame_type_offset],
                           ByteVector(buffer_.begin() + payload_offset, payload_end)});
         discard_prefix(buffer_, total_size);
+    }
+    if (policy_.timed_usb_candidates && now_milliseconds.has_value()) {
+        if (buffer_.size() >= sync_bytes.size() &&
+            buffer_.size() < frame_type_offset) {
+            if (!header_started_milliseconds_.has_value()) {
+                header_started_milliseconds_ = *now_milliseconds;
+            }
+            last_body_byte_milliseconds_.reset();
+        } else if (buffer_.size() == frame_type_offset) {
+            header_started_milliseconds_.reset();
+            last_body_byte_milliseconds_.reset();
+        } else if (buffer_.size() > frame_type_offset) {
+            header_started_milliseconds_.reset();
+            if (input.size() != 0U) {
+                last_body_byte_milliseconds_ = *now_milliseconds;
+            }
+        } else {
+            header_started_milliseconds_.reset();
+            last_body_byte_milliseconds_.reset();
+        }
     }
     return result;
 }

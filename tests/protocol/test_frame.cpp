@@ -130,3 +130,44 @@ TEST_CASE(frm_016_usb_discards_declared_bad_candidate_in_full) {
     REQUIRE_EQ(frames.size(), 1U);
     REQUIRE_EQ(frames.front().type, 0x84U);
 }
+
+TEST_CASE(usb_011_single_sync_byte_has_no_timeout) {
+    const auto encoded = firmware::core::encode_frame(Frame{0x84U, {}});
+    StreamDecoder decoder(StreamPolicy::usb());
+
+    REQUIRE(decoder.push(ByteVector{encoded[0]}, 0U).empty());
+    const ByteVector remainder(encoded.begin() + 1, encoded.end());
+    REQUIRE_EQ(decoder.push(remainder, 600000U),
+               std::vector<Frame>({Frame{0x84U, {}}}));
+}
+
+TEST_CASE(usb_011_incomplete_header_expires_only_after_100_ms) {
+    const auto encoded = firmware::core::encode_frame(Frame{0x84U, {}});
+    StreamDecoder boundary(StreamPolicy::usb());
+    REQUIRE(boundary.push(ByteVector(encoded.begin(), encoded.begin() + 3), 10U).empty());
+    REQUIRE_EQ(boundary.push(ByteVector(encoded.begin() + 3, encoded.end()), 110U),
+               std::vector<Frame>({Frame{0x84U, {}}}));
+
+    StreamDecoder expired(StreamPolicy::usb());
+    REQUIRE(expired.push(ByteVector(encoded.begin(), encoded.begin() + 3), 10U).empty());
+    REQUIRE(expired.push(ByteVector(encoded.begin() + 3, encoded.end()), 111U).empty());
+}
+
+TEST_CASE(usb_011_body_timeout_is_extended_by_each_arriving_byte) {
+    const auto encoded = firmware::core::encode_frame(Frame{0x90U, {'a', 'b'}});
+    StreamDecoder decoder(StreamPolicy::usb());
+    REQUIRE(decoder.push(ByteVector(encoded.begin(), encoded.begin() + 5), 0U).empty());
+    REQUIRE(decoder.push(ByteVector{encoded[5]}, 10000U).empty());
+    REQUIRE_EQ(decoder.push(ByteVector(encoded.begin() + 6, encoded.end()), 20000U),
+               std::vector<Frame>({Frame{0x90U, {'a', 'b'}}}));
+}
+
+TEST_CASE(usb_011_body_expires_after_more_than_ten_seconds_without_a_byte) {
+    const auto first = firmware::core::encode_frame(Frame{0x90U, {'a', 'b'}});
+    const auto later = firmware::core::encode_frame(Frame{0x84U, {}});
+    StreamDecoder decoder(StreamPolicy::usb());
+    REQUIRE(decoder.push(ByteVector(first.begin(), first.begin() + 5), 0U).empty());
+
+    REQUIRE_EQ(decoder.push(later, 10001U),
+               std::vector<Frame>({Frame{0x84U, {}}}));
+}

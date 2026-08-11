@@ -1410,7 +1410,9 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
         protocol_state.receive_staging();
     if (!staging.stage({bytes, size})) return;
     const auto staged = staging.take();
-    for (const auto& frame : decoder.push(staged)) {
+    const std::uint64_t received_at = static_cast<std::uint64_t>(
+        esp_timer_get_time() / microseconds_per_millisecond);
+    for (const auto& frame : decoder.push(staged, received_at)) {
         protocol_state.valid_frame_received();
         if (frame.type == firmware::core::protocol::file_command ||
             (frame.type >= firmware::core::protocol::file_md5 &&
