@@ -729,12 +729,15 @@ public:
         file_.close();
     }
 
-    void send(const firmware::application::HostIdentity&,
+    bool send(const firmware::application::HostIdentity&,
               firmware::core::Frame frame) override {
         const auto encoded = firmware::core::encode_frame(frame);
-        if (!encoded.empty()) {
-            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-        }
+        return !encoded.empty() && protocol_state.transmit_queue().enqueue(encoded);
+    }
+
+    void diagnose(
+        const firmware::application::FileTransferDiagnostic& diagnostic) override {
+        ESP_LOGW(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
     }
 
     void release_ownership() override { close_file(); }

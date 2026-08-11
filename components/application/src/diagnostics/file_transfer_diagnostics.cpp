@@ -50,4 +50,12 @@ FileTransferDiagnostic non_owner_file_data_diagnostic(
     return {"WIFI", std::move(message)};
 }
 
+FileTransferDiagnostic file_transfer_start_queue_full_diagnostic() {
+    return {"APP_FILE", "文件传输请求队列已满，丢弃"};
+}
+
+FileTransferDiagnostic download_delivery_drop_diagnostic() {
+    return {"APP_FILE", "download: xFileTransferQueue full, drop chunk"};
+}
+
 }  // namespace firmware::application

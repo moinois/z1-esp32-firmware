@@ -81,9 +81,15 @@ public:
     }
 
     // Records a response with its retained destination identity.
-    void send(const HostIdentity& host, Frame frame) override {
+    bool send(const HostIdentity& host, Frame frame) override {
         destinations.push_back(host);
         sent.push_back(std::move(frame));
+        return send_succeeds;
+    }
+
+    void diagnose(
+        const firmware::application::FileTransferDiagnostic& diagnostic) override {
+        diagnostics.push_back(diagnostic);
     }
 
     // Records normal or error ownership release.
@@ -99,6 +105,7 @@ public:
     std::optional<ByteVector> read_content = ByteVector({1U, 2U, 3U});
     bool compressed_exists = false;
     bool workspace_available = true;
+    bool send_succeeds = true;
     std::string calculated_path;
     std::string cache_path;
     std::string existence_path;
@@ -108,6 +115,7 @@ public:
     std::size_t requested_workspace = 0U;
     std::size_t read_count = 0U;
     std::size_t close_count = 0U;
+    std::vector<firmware::application::FileTransferDiagnostic> diagnostics;
     std::size_t release_count = 0U;
     std::uint64_t read_offset = 0U;
     std::vector<HostIdentity> destinations;
@@ -217,6 +225,21 @@ TEST_CASE(hftd_006_data_uses_one_based_sequence_and_8192_byte_blocks) {
     REQUIRE_EQ(port.read_offset, 8192U);
     REQUIRE_EQ(port.read_maximum, 8192U);
     REQUIRE_EQ(port.sent.back(), Frame({0xB3U, {0U, 0U, 0U, 2U, 1U, 2U, 3U}}));
+}
+
+TEST_CASE(diag_039_failed_prepared_download_delivery_emits_exact_warning) {
+    FileDownload download;
+    FakeDownloadPort port;
+    REQUIRE(download.start(owner, "/sd/job", 0U, port));
+    port.send_succeeds = false;
+
+    download.handle({0xB3U, {0U, 0U, 0U, 1U}}, 1U, port);
+
+    REQUIRE_EQ(port.diagnostics.size(), 1U);
+    REQUIRE_EQ(port.diagnostics.front().tag, std::string_view("APP_FILE"));
+    REQUIRE_EQ(port.diagnostics.front().message,
+               std::string("download: xFileTransferQueue full, drop chunk"));
+    REQUIRE(download.active());
 }
 
 TEST_CASE(hftd_007_empty_block_and_workspace_failure_abort_with_exact_errors) {

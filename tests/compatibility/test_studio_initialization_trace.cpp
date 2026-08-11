@@ -81,9 +81,12 @@ public:
 
     void close_file() override {}
 
-    void send(const HostIdentity&, Frame frame) override {
+    bool send(const HostIdentity&, Frame frame) override {
         sent.push_back(std::move(frame));
+        return true;
     }
+
+    void diagnose(const firmware::application::FileTransferDiagnostic&) override {}
 
     void release_ownership() override {
         ++release_count;

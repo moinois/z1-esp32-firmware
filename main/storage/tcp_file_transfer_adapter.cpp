@@ -3,6 +3,7 @@
 #include "sd_access_diagnostics.hpp"
 
 #include "esp_heap_caps.h"
+#include "esp_log.h"
 #include "application/transport/tcp_client_session.hpp"
 
 #include <cstdio>
@@ -140,11 +141,14 @@ void TcpFileDownloadAdapter::close_file() {
     file_.close();
 }
 
-void TcpFileDownloadAdapter::send(const firmware::application::HostIdentity&,
+bool TcpFileDownloadAdapter::send(const firmware::application::HostIdentity&,
                                   firmware::core::Frame frame) {
-    if (session_ != nullptr) {
-        static_cast<void>(session_->queue_frame(frame));
-    }
+    return session_ != nullptr && session_->queue_frame(frame);
+}
+
+void TcpFileDownloadAdapter::diagnose(
+    const firmware::application::FileTransferDiagnostic& diagnostic) {
+    ESP_LOGW(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
 }
 
 void TcpFileDownloadAdapter::release_ownership() { close_file(); }

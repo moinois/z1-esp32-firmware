@@ -31,6 +31,17 @@ TEST_CASE(diag_038_non_owner_file_data_uses_transport_specific_exact_warning) {
                std::string("文件传输命令来自非owner客户端[0x13]，当前owner[0x01]，忽略"));
 }
 
+TEST_CASE(diag_039_file_queue_diagnostics_are_exact) {
+    const auto start =
+        firmware::application::file_transfer_start_queue_full_diagnostic();
+    REQUIRE_EQ(start.tag, std::string_view("APP_FILE"));
+    REQUIRE_EQ(start.message, std::string("文件传输请求队列已满，丢弃"));
+    const auto download =
+        firmware::application::download_delivery_drop_diagnostic();
+    REQUIRE_EQ(download.message,
+               std::string("download: xFileTransferQueue full, drop chunk"));
+}
+
 TEST_CASE(diag_027_busy_reply_uses_the_normative_usb_source_identifier) {
     REQUIRE_EQ(file_transfer_busy_message({HostTransport::usb, 0U, 0U}),
                std::string("发送 upload/download 忙回复(0x91)给客户端[0x01]"));

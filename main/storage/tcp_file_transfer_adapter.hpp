@@ -57,8 +57,9 @@ public:
         std::uint64_t offset, std::size_t maximum_size) override;
     bool allocate_response_workspace(std::size_t size) override;
     void close_file() override;
-    void send(const firmware::application::HostIdentity& host,
+    bool send(const firmware::application::HostIdentity& host,
               firmware::core::Frame frame) override;
+    void diagnose(const firmware::application::FileTransferDiagnostic& diagnostic) override;
     void release_ownership() override;
 
 private:

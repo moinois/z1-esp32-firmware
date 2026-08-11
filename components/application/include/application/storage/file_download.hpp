@@ -2,6 +2,7 @@
 #pragma once
 
 #include "application/runtime/ownership.hpp"
+#include "application/diagnostics/file_transfer_diagnostics.hpp"
 #include "core/filesystem/file_transfer_paths.hpp"
 #include "core/protocol/frame.hpp"
 
@@ -46,7 +47,10 @@ public:
     virtual void close_file() = 0;
 
     /// Sends one response to the start request's retained connection identity.
-    virtual void send(const HostIdentity& host, core::Frame frame) = 0;
+    virtual bool send(const HostIdentity& host, core::Frame frame) = 0;
+
+    /// Emits one portable download-delivery diagnostic through the target logger.
+    virtual void diagnose(const FileTransferDiagnostic& diagnostic) = 0;
 
     /// Releases logical file-transfer ownership after a terminal outcome.
     virtual void release_ownership() = 0;

@@ -213,7 +213,9 @@ void FileDownload::send_data(std::uint32_t sequence, FileDownloadPort& port) {
     core::ByteVector payload = encode_u32(sequence);
     payload.insert(payload.end(), data->begin(), data->end());
     retained_response_ = {core::protocol::file_data, std::move(payload)};
-    port.send(owner_, retained_response_);
+    if (!port.send(owner_, retained_response_)) {
+        port.diagnose(download_delivery_drop_diagnostic());
+    }
     last_data_sequence_ = sequence;
     last_response_ = LastResponse::data;
     unexpected_count_ = 0U;
