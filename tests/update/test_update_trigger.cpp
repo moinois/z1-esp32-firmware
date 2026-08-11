@@ -44,6 +44,7 @@ public:
     }
     void warn_not_started() override { calls.emplace_back("warn"); }
     void processing_started() override { calls.emplace_back("started"); }
+    void processing_start_failed() override { calls.emplace_back("failed"); }
     void trigger_processing() override { calls.emplace_back("trigger"); }
 
     std::vector<bool> start_results;
@@ -118,7 +119,7 @@ TEST_CASE(upd_006_boot_request_retries_one_failed_direct_initialization) {
     initialization.boot();
 
     REQUIRE_EQ(port.calls, std::vector<std::string>(
-                               {"start", "warn", "start", "started", "trigger"}));
+                               {"start", "failed", "warn", "start", "started", "trigger"}));
 }
 
 TEST_CASE(upd_006_unavailable_requests_are_dropped_after_a_failed_retry) {
@@ -131,9 +132,9 @@ TEST_CASE(upd_006_unavailable_requests_are_dropped_after_a_failed_retry) {
     initialization.request();
 
     REQUIRE_EQ(port.calls,
-               std::vector<std::string>({"start", "warn", "start", "warn",
-                                         "start", "warn", "start", "started",
-                                         "trigger"}));
+               std::vector<std::string>({"start", "failed", "warn", "start",
+                                         "failed", "warn", "start", "failed",
+                                         "warn", "start", "started", "trigger"}));
 }
 
 TEST_CASE(upd_006_available_later_requests_do_not_reinitialize) {

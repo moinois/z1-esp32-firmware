@@ -33,6 +33,8 @@ bool UpdateTaskInitialization::try_initialize() {
     if (started) {
         available_.store(true, std::memory_order_release);
         port_.processing_started();
+    } else {
+        port_.processing_start_failed();
     }
     initializing_.store(false, std::memory_order_release);
     return started;

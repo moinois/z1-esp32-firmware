@@ -53,6 +53,9 @@ public:
     void processing_started() override {
         ESP_LOGI(tag, "[ota_task] started (stack in internal DRAM)");
     }
+    void processing_start_failed() override {
+        ESP_LOGE(tag, "[ota_task] create failed");
+    }
     void trigger_processing() override { update_requested.store(true); }
 };
 

@@ -16,6 +16,8 @@ public:
     virtual void warn_not_started() = 0;
     /// Reports successful creation of update-processing resources.
     virtual void processing_started() = 0;
+    /// Reports one failed attempt to create the processing task.
+    virtual void processing_start_failed() = 0;
     /// Delivers one coalescible request to an available processor.
     virtual void trigger_processing() = 0;
 };
