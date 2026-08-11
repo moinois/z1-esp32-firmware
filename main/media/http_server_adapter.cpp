@@ -23,6 +23,7 @@
 #include "hardware_adapter_factory.hpp"
 #include "camera_hardware_adapter.hpp"
 #include "application/runtime/live_control_policy.hpp"
+#include "application/runtime/live_initialization.hpp"
 #include "application/playback/preview_open.hpp"
 #include "application/playback/preview_metadata.hpp"
 #include "application/playback/preview_responses.hpp"
@@ -67,6 +68,18 @@ constexpr UBaseType_t live_stream_task_priority = 4U;
 constexpr std::uint32_t preview_task_stack_size = 6144U;
 constexpr UBaseType_t preview_task_priority = 4U;
 firmware::application::LiveControlPolicy live_control_policy;
+
+class TargetLiveInitializationPort final
+    : public firmware::application::LiveInitializationPort {
+public:
+    bool initialize_live_media() override {
+        return HardwareAdapterFactory::camera().initialize();
+    }
+};
+
+TargetLiveInitializationPort live_initialization_port;
+firmware::application::LiveInitialization live_initialization(
+    live_initialization_port);
 
 #if CONFIG_HTTPD_WS_SUPPORT
 // Retains the currently admitted preview file and playback state.
@@ -760,6 +773,9 @@ esp_err_t video_websocket_handler(httpd_req_t* request) {
     // ESP-IDF invokes the URI handler once for the successful HTTP upgrade.
     // Frame bytes are available only on later non-GET callbacks.
     if (request->method == HTTP_GET) {
+        if (!live_initialization.ensure_available()) {
+            return ESP_FAIL;
+        }
         const auto socket_id = static_cast<std::uint32_t>(
             httpd_req_to_sockfd(request));
         if (!live_control_policy.on_disconnect(socket_id).empty()) {
@@ -915,6 +931,9 @@ esp_err_t preview_websocket_handler(httpd_req_t* request) {
         return ESP_OK;
     }
     const auto& preview_request = *request_value;
+    if (!live_initialization.ensure_available()) {
+        return ESP_OK;
+    }
     const std::string preview_path =
         firmware::core::resolve_sd_user_path(preview_request.path);
     if (!firmware::core::preview_path_allowed(preview_path)) {

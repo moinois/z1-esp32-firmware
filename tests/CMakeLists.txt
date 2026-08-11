@@ -96,6 +96,7 @@ add_executable(
     update/test_direct_application_update.cpp
     update/test_direct_web_volume_update.cpp
     runtime/test_live_control_policy.cpp
+    runtime/test_live_initialization.cpp
     runtime/test_hardware_adapter_selection.cpp
     media/test_media_messages.cpp
     media/test_preview_path_policy.cpp
