@@ -49,6 +49,23 @@ std::uint32_t read_value(const CanopenObjectDictionary& dictionary,
 
 }  // namespace
 
+TEST_CASE(od_004_exposes_the_complete_normative_sdo_abort_code_set) {
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::toggle_bit), 0x05030000U);
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::timeout), 0x05040000U);
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::command_specifier), 0x05040001U);
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::block_size), 0x05040002U);
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::block_sequence), 0x05040003U);
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::block_crc), 0x05040004U);
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::resources), 0x05040005U);
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::unsupported_access), 0x06010000U);
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::write_only), 0x06010001U);
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::read_only), 0x06010002U);
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::object_not_found), 0x06020000U);
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::pdo_mapping), 0x06040041U);
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::pdo_length), 0x06040042U);
+    REQUIRE_EQ(static_cast<std::uint32_t>(SdoAbort::pdo_parameter), 0x06040043U);
+}
+
 TEST_CASE(od_001_scalars_use_exact_little_endian_sizes) {
     CanopenObjectDictionary dictionary;
 

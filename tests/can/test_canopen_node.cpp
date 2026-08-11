@@ -23,6 +23,10 @@ CanFrame nmt(std::uint8_t command,
 
 }  // namespace
 
+TEST_CASE(hw_053_mainboard_uses_exact_canopen_node_id) {
+    REQUIRE_EQ(firmware::core::canopen::node_id, 0x11U);
+}
+
 TEST_CASE(can_002_and_003_first_cycle_sends_bootup_then_enters_operational) {
     CanopenNode node;
 
