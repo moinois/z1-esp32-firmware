@@ -179,10 +179,10 @@ The first core-to-periphery development slice contains:
   normalization, and exact sensor success/failure responses;
 - ESP-IDF `esp32-camera` integration for the configured DVP/SCCB camera, sensor
   orientation, startup allocation, and `/api/camera/resolution` routing;
-- multipart Content-Type boundary extraction with the 512-byte limit and
-  matching outer-quote removal;
-- streaming first-part multipart extraction with split-safe headers and
-  boundaries, header overflow handling, and end-of-input behavior;
+- multipart Content-Type boundary extraction with the 512-byte storage limit,
+  exact suffix preservation, and support for an empty boundary;
+- specification-compatible block-local multipart extraction without joining
+  header or boundary fragments across receive blocks;
 - case-sensitive main/video HTTP route selection with query exclusion and
   GET-only static fallback;
 - WebSocket live-control ownership dispatch with camera JPEG frame capture and

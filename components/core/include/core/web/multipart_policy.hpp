@@ -14,8 +14,9 @@ inline constexpr std::size_t content_type_capacity = 512U;
 
 }  // namespace web_update
 
-/** Extracts a validated multipart boundary without copying the header.
- *  @return Boundary suffix, or no value when missing, empty, or oversized.
+/** Extracts the exact multipart boundary suffix without copying the header.
+ *  @return Boundary suffix, including quotes or emptiness, or no value when the
+ *          marker is missing or the stored header is oversized.
  */
 std::optional<std::string_view> parse_multipart_content_type(
     std::string_view content_type);

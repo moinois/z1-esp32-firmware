@@ -1,4 +1,4 @@
-/** @file @brief Implements streaming first-part multipart extraction and header limits. */
+/** @file @brief Implements the protocol's block-local multipart extraction. */
 #include "core/web/multipart_extractor.hpp"
 
 #include <algorithm>
@@ -6,15 +6,7 @@
 namespace firmware::core {
 namespace {
 
-constexpr std::size_t maximum_part_header_bytes = 4096U;
 constexpr std::string_view header_terminator = "\r\n\r\n";
-
-// Builds the exact marker that terminates the first multipart part.
-std::string content_boundary_marker(std::string_view boundary) {
-    std::string marker("\r\n--");
-    marker.append(boundary);
-    return marker;
-}
 
 }  // namespace
 
@@ -26,15 +18,26 @@ bool MultipartPartExtractor::feed(BytesView block, bool transport_finished) {
         status_ == MultipartExtractStatus::failed) {
         return false;
     }
-    pending_.append(reinterpret_cast<const char*>(block.data()), block.size());
-    if (status_ == MultipartExtractStatus::reading_headers &&
-        !process_headers(transport_finished)) {
-        return false;
+    const auto nul = std::find(block.begin(), block.end(), std::uint8_t{0});
+    const std::string_view detection(
+        reinterpret_cast<const char*>(block.data()),
+        static_cast<std::size_t>(nul - block.begin()));
+    const std::size_t boundary = detection.find(boundary_);
+    if (boundary == std::string_view::npos) {
+        content_.insert(content_.end(), block.begin(), block.end());
+        status_ = MultipartExtractStatus::reading_content;
+    } else {
+        const std::size_t terminator = detection.find(header_terminator, boundary);
+        if (terminator != std::string_view::npos) {
+            const std::size_t content_start = terminator + header_terminator.size();
+            content_.insert(content_.end(), block.begin() +
+                                static_cast<std::ptrdiff_t>(content_start),
+                            block.end());
+            status_ = MultipartExtractStatus::reading_content;
+        }
     }
-    if (status_ == MultipartExtractStatus::reading_content) {
-        return process_content(transport_finished);
-    }
-    return status_ != MultipartExtractStatus::failed;
+    if (transport_finished) status_ = MultipartExtractStatus::complete;
+    return true;
 }
 
 MultipartExtractStatus MultipartPartExtractor::status() const {
@@ -43,38 +46,6 @@ MultipartExtractStatus MultipartPartExtractor::status() const {
 
 const ByteVector& MultipartPartExtractor::content() const {
     return content_;
-}
-
-bool MultipartPartExtractor::process_headers(bool transport_finished) {
-    const std::size_t terminator = pending_.find(header_terminator);
-    if (terminator == std::string::npos) {
-        if (pending_.size() > maximum_part_header_bytes || transport_finished) {
-            status_ = MultipartExtractStatus::failed;
-            return false;
-        }
-        return true;
-    }
-    pending_.erase(0U, terminator + header_terminator.size());
-    status_ = MultipartExtractStatus::reading_content;
-    return true;
-}
-
-bool MultipartPartExtractor::process_content(bool transport_finished) {
-    const std::string marker = content_boundary_marker(boundary_);
-    const std::size_t boundary_start = pending_.find(marker);
-    if (boundary_start != std::string::npos) {
-        content_.insert(content_.end(), pending_.begin(),
-                        pending_.begin() + static_cast<std::ptrdiff_t>(boundary_start));
-        status_ = MultipartExtractStatus::complete;
-        pending_.clear();
-        return true;
-    }
-    if (transport_finished) {
-        content_.insert(content_.end(), pending_.begin(), pending_.end());
-        pending_.clear();
-        status_ = MultipartExtractStatus::complete;
-    }
-    return true;
 }
 
 }  // namespace firmware::core

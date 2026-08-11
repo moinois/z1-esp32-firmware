@@ -16,17 +16,6 @@ std::optional<std::string_view> parse_multipart_content_type(
     }
     std::string_view boundary = content_type.substr(
         marker_start + boundary_marker.size());
-    if (boundary.empty()) {
-        return std::nullopt;
-    }
-    if (boundary.size() >= 2U && boundary.front() == '"' &&
-        boundary.back() == '"') {
-        boundary.remove_prefix(1U);
-        boundary.remove_suffix(1U);
-    }
-    if (boundary.empty()) {
-        return std::nullopt;
-    }
     return boundary;
 }
 

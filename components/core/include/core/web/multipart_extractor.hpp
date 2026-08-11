@@ -1,4 +1,4 @@
-/** @file @brief Bounded streaming extraction of the first multipart part. */
+/** @file @brief Block-local extraction of multipart update content. */
 #pragma once
 
 #include "core/protocol/bytes.hpp"
@@ -17,13 +17,13 @@ enum class MultipartExtractStatus {
     failed,
 };
 
-/** Extracts first-part content across arbitrary transport block boundaries. */
+/** Applies the firmware protocol's intentionally block-local multipart rules. */
 class MultipartPartExtractor {
 public:
-    /** Retains the validated boundary used to find the content terminator. */
+    /** Retains the exact boundary suffix, including quotes or emptiness. */
     explicit MultipartPartExtractor(std::string_view boundary);
 
-    /** Feeds one block and optionally marks transport end-of-input.
+    /** Processes one block independently and optionally marks end-of-input.
      *  @return False once parsing has failed; true for progress or completion.
      */
     bool feed(BytesView block, bool transport_finished);
@@ -40,14 +40,7 @@ public:
     const ByteVector& content() const;
 
 private:
-    /// Searches bounded headers and transitions to content mode when complete.
-    bool process_headers(bool transport_finished);
-
-    /// Searches for a split-safe terminator and finalizes content when found.
-    bool process_content(bool transport_finished);
-
     std::string boundary_;
-    std::string pending_;
     ByteVector content_;
     MultipartExtractStatus status_ = MultipartExtractStatus::reading_headers;
 };
