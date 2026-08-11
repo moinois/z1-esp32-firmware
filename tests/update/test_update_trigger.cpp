@@ -2,6 +2,7 @@
 #include "test.hpp"
 
 #include "application/update/update_trigger.hpp"
+#include "application/update/update_task_initialization.hpp"
 
 #include <string>
 #include <string_view>
@@ -9,6 +10,8 @@
 
 using firmware::application::UpdateTriggerPort;
 using firmware::application::UpdateTriggerService;
+using firmware::application::UpdateTaskInitialization;
+using firmware::application::UpdateTaskInitializationPort;
 
 namespace {
 
@@ -28,6 +31,24 @@ public:
 
     std::vector<std::string> calls;
     std::vector<std::string> paths;
+};
+
+class FakeUpdateTaskInitializationPort final
+    : public UpdateTaskInitializationPort {
+public:
+    bool start_processing() override {
+        calls.emplace_back("start");
+        const bool result = start_results.at(start_index);
+        ++start_index;
+        return result;
+    }
+    void warn_not_started() override { calls.emplace_back("warn"); }
+    void processing_started() override { calls.emplace_back("started"); }
+    void trigger_processing() override { calls.emplace_back("trigger"); }
+
+    std::vector<bool> start_results;
+    std::size_t start_index = 0U;
+    std::vector<std::string> calls;
 };
 
 }  // namespace
@@ -76,4 +97,54 @@ TEST_CASE(upd_002_multiple_pending_requests_coalesce_into_one_operation) {
 
     REQUIRE(trigger.take_request());
     REQUIRE(!trigger.take_request());
+}
+
+TEST_CASE(upd_006_boot_initializes_once_then_submits_the_boot_request) {
+    FakeUpdateTaskInitializationPort port;
+    port.start_results = {true};
+    UpdateTaskInitialization initialization(port);
+
+    initialization.boot();
+
+    REQUIRE_EQ(port.calls,
+               std::vector<std::string>({"start", "started", "trigger"}));
+}
+
+TEST_CASE(upd_006_boot_request_retries_one_failed_direct_initialization) {
+    FakeUpdateTaskInitializationPort port;
+    port.start_results = {false, true};
+    UpdateTaskInitialization initialization(port);
+
+    initialization.boot();
+
+    REQUIRE_EQ(port.calls, std::vector<std::string>(
+                               {"start", "warn", "start", "started", "trigger"}));
+}
+
+TEST_CASE(upd_006_unavailable_requests_are_dropped_after_a_failed_retry) {
+    FakeUpdateTaskInitializationPort port;
+    port.start_results = {false, false, false, true};
+    UpdateTaskInitialization initialization(port);
+
+    initialization.boot();
+    initialization.request();
+    initialization.request();
+
+    REQUIRE_EQ(port.calls,
+               std::vector<std::string>({"start", "warn", "start", "warn",
+                                         "start", "warn", "start", "started",
+                                         "trigger"}));
+}
+
+TEST_CASE(upd_006_available_later_requests_do_not_reinitialize) {
+    FakeUpdateTaskInitializationPort port;
+    port.start_results = {true};
+    UpdateTaskInitialization initialization(port);
+
+    initialization.boot();
+    initialization.request();
+    initialization.request();
+
+    REQUIRE_EQ(port.calls, std::vector<std::string>(
+                               {"start", "started", "trigger", "trigger", "trigger"}));
 }

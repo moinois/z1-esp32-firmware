@@ -15,6 +15,7 @@
 #include "application/update/update_application.hpp"
 #include "application/update/update_controller.hpp"
 #include "application/update/update_deletion.hpp"
+#include "application/update/update_task_initialization.hpp"
 #include "application/update/update_validation.hpp"
 #include "core/filesystem/sd_user_path.hpp"
 
@@ -28,13 +29,37 @@
 namespace firmware::target {
 namespace {
 
-constexpr char tag[] = "UPDATE";
+constexpr char tag[] = "app_upgrade";
 constexpr std::uint32_t update_monitor_interval_milliseconds = 250U;
 constexpr std::uint32_t update_task_stack_size = 8192U;
 constexpr UBaseType_t update_task_priority = 4U;
 std::atomic_bool update_requested{false};
 std::atomic<firmware::application::UpdateControllerMonitor*> controller_monitor{
     nullptr};
+
+void update_task(void*);
+
+class UpdateTaskTargetPort final
+    : public firmware::application::UpdateTaskInitializationPort {
+public:
+    bool start_processing() override {
+        return xTaskCreate(update_task, "firmware_update", update_task_stack_size,
+                           nullptr, update_task_priority, nullptr) == pdPASS;
+    }
+    void warn_not_started() override {
+        ESP_LOGW(tag, "[ota_task] not started yet, starting now");
+    }
+    void processing_started() override {
+        ESP_LOGI(tag, "[ota_task] started (stack in internal DRAM)");
+    }
+    void trigger_processing() override { update_requested.store(true); }
+};
+
+firmware::application::UpdateTaskInitialization& task_initialization() {
+    static UpdateTaskTargetPort port;
+    static firmware::application::UpdateTaskInitialization initialization(port);
+    return initialization;
+}
 
 class UpdateControllerTargetPort final
     : public firmware::application::UpdateControllerPort {
@@ -223,7 +248,6 @@ void update_task(void*) {
             static_cast<void>(NvsKeyValueAdapter{}.write_u8("ota_state", "phase", 0U));
         }
     }
-    update_requested.store(true);
     UpdateControllerTargetPort controller_port;
     firmware::application::UpdateControllerMonitor monitor(controller_port);
     controller_monitor.store(&monitor, std::memory_order_release);
@@ -231,6 +255,7 @@ void update_task(void*) {
     for (;;) {
         monitor.tick(xTaskGetTickCount() * portTICK_PERIOD_MS);
         if (update_requested.exchange(false)) {
+            ESP_LOGI(tag, "[ota_task] OTA trigger received");
             process_update_once();
         }
         vTaskDelay(pdMS_TO_TICKS(update_monitor_interval_milliseconds));
@@ -240,14 +265,11 @@ void update_task(void*) {
 }  // namespace
 
 void FirmwareUpdateAdapter::start() {
-    if (xTaskCreate(update_task, "firmware_update", update_task_stack_size,
-                    nullptr, update_task_priority, nullptr) != pdPASS) {
-        ESP_LOGW(tag, "could not create firmware update task");
-    }
+    task_initialization().boot();
 }
 
 void request_firmware_update_processing() {
-    update_requested.store(true);
+    task_initialization().request();
 }
 
 void notify_controller_transfer_completed(std::uint64_t now_milliseconds) {

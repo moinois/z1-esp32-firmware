@@ -88,6 +88,7 @@ set(APPLICATION_SOURCES
     src/update/update_deletion.cpp
     src/update/update_phase.cpp
     src/update/update_trigger.cpp
+    src/update/update_task_initialization.cpp
     src/update/update_validation.cpp
     src/runtime/wall_clock.cpp
     src/connectivity/wlan_command.cpp
