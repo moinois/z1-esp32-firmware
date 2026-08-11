@@ -37,6 +37,7 @@ add_executable(
     diagnostics/test_controller_diagnostics.cpp
     diagnostics/test_file_transfer_diagnostics.cpp
     diagnostics/test_filesystem_diagnostics.cpp
+    diagnostics/test_playback_diagnostics.cpp
     diagnostics/test_update_diagnostics.cpp
     connectivity/test_discovery.cpp
     connectivity/test_network_fault_injection.cpp

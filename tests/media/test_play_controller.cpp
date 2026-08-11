@@ -44,6 +44,11 @@ public:
         broadcasts.push_back(std::move(frame));
     }
 
+    void diagnose(
+        const firmware::application::PlaybackDiagnostic& diagnostic) override {
+        diagnostics.push_back(diagnostic);
+    }
+
     // Records one controller response and reports queue acceptance.
     bool send(Frame frame) override {
         sent.push_back(std::move(frame));
@@ -84,6 +89,7 @@ public:
     std::vector<Frame> sent;
     std::vector<Frame> broadcasts;
     std::vector<bool> state_changes;
+    std::vector<firmware::application::PlaybackDiagnostic> diagnostics;
 };
 
 }  // namespace
@@ -105,6 +111,10 @@ TEST_CASE(play_010_invalid_start_sends_f5_and_exact_rate_limited_error_without_c
                bytes("Error:start check failed.file does not exist or CRC wrong [P1]"));
     REQUIRE_EQ(port.close_count, closes_before);
     REQUIRE(session.file_open());
+    REQUIRE_EQ(port.diagnostics[port.diagnostics.size() - 2U].message,
+               std::string("Received PTYPE_PLAY_START"));
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("PLAY_FAIL[P1] start check failed.file does not exist or CRC wrong"));
 }
 
 TEST_CASE(play_010_mismatched_identifier_keeps_file_available_for_retry) {
@@ -138,6 +148,10 @@ TEST_CASE(play_011_valid_start_returns_identifier_and_big_endian_file_size) {
                        static_cast<std::uint8_t>(identifier), 1U, 2U, 3U, 4U}}));
     REQUIRE(session.running());
     REQUIRE_EQ(port.state_changes.back(), true);
+    REQUIRE_EQ(port.diagnostics[port.diagnostics.size() - 2U].message,
+               std::string("Received PTYPE_PLAY_START"));
+    REQUIRE_EQ(port.diagnostics.back().message,
+               std::string("Send PTYPE_PLAY_VIEW to LPC1768"));
 }
 
 TEST_CASE(play_011_repeated_valid_start_repeats_reply_and_notification) {

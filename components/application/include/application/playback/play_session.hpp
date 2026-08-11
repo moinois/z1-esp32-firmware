@@ -2,6 +2,7 @@
 #pragma once
 
 #include "core/protocol/frame.hpp"
+#include "application/diagnostics/playback_diagnostics.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -27,6 +28,10 @@ public:
 
     /// Broadcasts one console frame to active host destinations.
     virtual void broadcast(core::Frame frame) = 0;
+
+    /** Emits an optional diagnostic observer event. Ports used only for policy
+     *  tests may keep the default no-op; every production port overrides it. */
+    virtual void diagnose(const PlaybackDiagnostic&) {}
 };
 
 /// Owns prepared streamed-play identity and status across host and controller flows.

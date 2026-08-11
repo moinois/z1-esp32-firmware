@@ -20,6 +20,7 @@ public:
     std::optional<std::uint64_t> open_file(std::string_view path) override;
     std::optional<std::string> cached_md5(std::string_view path) override;
     void broadcast(firmware::core::Frame frame) override;
+    void diagnose(const firmware::application::PlaybackDiagnostic& diagnostic) override;
     bool send(firmware::core::Frame frame) override;
     void play_state_changed(bool running) override;
     void release_play_ownership() override;

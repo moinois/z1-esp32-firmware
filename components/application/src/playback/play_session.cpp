@@ -20,7 +20,12 @@ constexpr std::size_t play_prefix_size = 5U;
 constexpr std::string_view open_error = "Error:open file failed[P0]";
 
 // Selects and normalizes the path text according to the unusual play-prefix rule.
-std::string resolve_play_path(core::BytesView payload) {
+struct PlayPathSelection {
+    std::string extracted;
+    std::string resolved;
+};
+
+PlayPathSelection resolve_play_path(core::BytesView payload) {
     std::string decoded = core::decode_escaped(payload);
     if (!decoded.empty() && decoded.back() == '\n') {
         decoded.pop_back();
@@ -35,7 +40,7 @@ std::string resolve_play_path(core::BytesView payload) {
         return value != ' ';
     });
     selected.erase(selected.begin(), first);
-    return core::resolve_sd_user_path(selected);
+    return {selected, core::resolve_sd_user_path(selected)};
 }
 
 // Reports whether a cached checksum contains exactly 32 hexadecimal characters.
@@ -50,11 +55,16 @@ bool valid_md5(std::string_view value) {
 
 bool PlaySession::prepare(core::BytesView payload, std::uint64_t now_milliseconds,
                           PlayPreparationPort& port) {
+    port.diagnose(playback_diagnostic(
+        PlaybackDiagnosticEvent::preparation_recognized));
     port.close_file();
     clear_prepared_state();
     ++generation_;
 
-    const std::string resolved = resolve_play_path(payload);
+    const PlayPathSelection path = resolve_play_path(payload);
+    port.diagnose(playback_diagnostic(
+        PlaybackDiagnosticEvent::path_extracted, path.extracted));
+    const std::string& resolved = path.resolved;
     if (resolved.size() > core::file_transfer_limits::maximum_path_size) {
         report_error(open_error, now_milliseconds, port);
         return false;
@@ -65,6 +75,8 @@ bool PlaySession::prepare(core::BytesView payload, std::uint64_t now_millisecond
         if (opened_size.has_value()) {
             port.close_file();
         }
+        port.diagnose(playback_diagnostic(
+            PlaybackDiagnosticEvent::open_failure, resolved));
         report_error(open_error, now_milliseconds, port);
         return false;
     }

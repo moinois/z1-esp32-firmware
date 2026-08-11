@@ -540,6 +540,17 @@ public:
         }
     }
 
+    void diagnose(
+        const firmware::application::PlaybackDiagnostic& diagnostic) override {
+        if (diagnostic.error) {
+            ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+        } else if (diagnostic.warning) {
+            ESP_LOGW(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+        } else {
+            ESP_LOGI(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+        }
+    }
+
 private:
     FILE* file_ = nullptr;
 };

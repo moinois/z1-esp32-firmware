@@ -233,9 +233,11 @@ void PlayController::handle_data(core::BytesView payload,
 void PlayController::handle_start(core::BytesView payload,
                                   std::uint64_t now_milliseconds,
                                   PlayControllerPort& port) {
+    port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::start_received));
     const bool valid = payload.size() >= identifier_size && session_.file_open() &&
                        decode_identifier(payload) == session_.path_identifier();
     if (!valid) {
+        port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::start_invalid));
         static_cast<void>(port.send({play_error_response, {}}));
         session_.report_error(start_error, now_milliseconds, port);
         return;
@@ -246,6 +248,7 @@ void PlayController::handle_start(core::BytesView payload,
     // PLAY-023 makes controller-output admission observational only: the
     // enclosing operation advances exactly as if the response was offered.
     static_cast<void>(port.send({play_start_response, response}));
+    port.diagnose(playback_diagnostic(PlaybackDiagnosticEvent::start_valid));
     session_.mark_running();
     port.play_state_changed(true);
 }

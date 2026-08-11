@@ -45,12 +45,18 @@ public:
         broadcasts.push_back(std::move(frame));
     }
 
+    void diagnose(
+        const firmware::application::PlaybackDiagnostic& diagnostic) override {
+        diagnostics.push_back(diagnostic);
+    }
+
     std::size_t close_count = 0U;
     std::optional<std::uint64_t> open_size = 123U;
     std::optional<std::string> md5;
     std::string opened_path;
     std::string md5_path;
     std::vector<Frame> broadcasts;
+    std::vector<firmware::application::PlaybackDiagnostic> diagnostics;
 };
 
 std::string text(const ByteVector& value) {
@@ -68,6 +74,10 @@ TEST_CASE(play_001_prepare_closes_old_file_decodes_escapes_and_removes_one_final
 
     REQUIRE_EQ(port.close_count, 1U);
     REQUIRE_EQ(port.opened_path, std::string("/sd/a b"));
+    REQUIRE_EQ(port.diagnostics[0].message,
+               std::string("收到了play命令准备处理"));
+    REQUIRE_EQ(port.diagnostics[1].message,
+               std::string("play命令原始文件名: '/sd/a b'"));
 }
 
 TEST_CASE(play_002_exact_play_space_treats_the_complete_payload_as_the_path) {
@@ -123,6 +133,8 @@ TEST_CASE(play_004_open_failure_broadcasts_exact_error_at_most_once_per_second) 
     REQUIRE_EQ(port.broadcasts.front().type, 0x90U);
     REQUIRE_EQ(text(port.broadcasts.front().payload),
                std::string("Error:open file failed[P0]"));
+    REQUIRE_EQ(port.diagnostics[2].message,
+               std::string("PLAY_FAIL[P0_OPEN] fopen failed file='/sd/one'"));
 }
 
 TEST_CASE(play_005_status_is_empty_until_running_and_uses_only_valid_cached_md5) {

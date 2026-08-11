@@ -3,6 +3,7 @@
 
 #include "application/transport/tcp_client_session.hpp"
 #include "core/filesystem/file_transfer_paths.hpp"
+#include "esp_log.h"
 
 #include <cstdio>
 
@@ -34,6 +35,17 @@ std::optional<std::string> TcpPlayPreparationAdapter::cached_md5(
 
 void TcpPlayPreparationAdapter::broadcast(firmware::core::Frame frame) {
     static_cast<void>(session_.queue_frame(frame));
+}
+
+void TcpPlayPreparationAdapter::diagnose(
+    const firmware::application::PlaybackDiagnostic& diagnostic) {
+    if (diagnostic.error) {
+        ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+    } else if (diagnostic.warning) {
+        ESP_LOGW(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+    } else {
+        ESP_LOGI(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+    }
 }
 
 }  // namespace firmware::target

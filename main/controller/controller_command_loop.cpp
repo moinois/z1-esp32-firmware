@@ -183,6 +183,10 @@ void controller_command_task(void*) {
                 continue;
             }
             if (family == firmware::core::protocol::play_family) {
+                play_port.diagnose(
+                    firmware::application::playback_dequeue_diagnostic(
+                        static_cast<std::uint64_t>(esp_timer_get_time()),
+                        frame.type, frame.payload));
                 play_controller.handle(
                     frame, static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL),
                     play_port);

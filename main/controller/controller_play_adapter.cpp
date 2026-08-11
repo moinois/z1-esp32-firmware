@@ -43,6 +43,17 @@ void ControllerPlayAdapter::broadcast(firmware::core::Frame frame) {
     static_cast<void>(send(std::move(frame)));
 }
 
+void ControllerPlayAdapter::diagnose(
+    const firmware::application::PlaybackDiagnostic& diagnostic) {
+    if (diagnostic.error) {
+        ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+    } else if (diagnostic.warning) {
+        ESP_LOGW(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+    } else {
+        ESP_LOGI(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+    }
+}
+
 bool ControllerPlayAdapter::send(firmware::core::Frame frame) {
     const auto encoded = firmware::core::encode_controller_frame(frame);
     if (encoded.empty()) return false;
