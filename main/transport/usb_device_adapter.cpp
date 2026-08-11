@@ -354,12 +354,8 @@ public:
         // while keeping PMF optional for ordinary WPA2-PSK networks.
         wifi_config.sta.pmf_cfg.capable = true;
         wifi_config.sta.pmf_cfg.required = false;
-        // Keep the provisioning access point alive while the station joins;
-        // changing to station-only mode disrupts the native USB transport.
-        const esp_err_t mode_result = esp_wifi_set_mode(WIFI_MODE_APSTA);
-        static_cast<void>(firmware::target::wifi_diagnostic_log().trace(
-            mode_result == ESP_OK ? "wifi.set_mode.ok" : "wifi.set_mode.error"));
-        if (mode_result != ESP_OK) return api_result(mode_result, "set_mode");
+        // Station configuration does not own the SoftAP state; changing it
+        // here would undo APCFG-004 or a successful live `ap disable`.
         const esp_err_t config_result =
             esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
         static_cast<void>(firmware::target::wifi_diagnostic_log().trace(

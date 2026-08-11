@@ -90,9 +90,8 @@ firmware::application::StationApiResult AutomaticConnectionAdapter::apply_statio
         " password_length=" + std::to_string(password_size)));
     wifi_config.sta.scan_method = WIFI_FAST_SCAN;
     wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
-    if (esp_wifi_set_mode(WIFI_MODE_APSTA) != ESP_OK) {
-        return {false, "set_mode"};
-    }
+    // Preserve the SoftAP enable state selected during startup. Staging saved
+    // station credentials must not silently turn a disabled access point on.
     const esp_err_t result = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
     static_cast<void>(wifi_diagnostic_log().trace(
         result == ESP_OK ? "auto.apply_config.ok" : "auto.apply_config.error"));

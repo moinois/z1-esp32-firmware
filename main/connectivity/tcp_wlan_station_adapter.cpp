@@ -44,10 +44,7 @@ TcpWlanStationAdapter::apply_station_config(
     wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
     wifi_config.sta.threshold.authmode = static_cast<wifi_auth_mode_t>(
         configuration.minimum_authentication_mode);
-    const esp_err_t mode_result = esp_wifi_set_mode(WIFI_MODE_STA);
-    if (mode_result != ESP_OK) {
-        return api_result(mode_result, "set_mode");
-    }
+    // Manual station configuration does not own the SoftAP radio mode.
     return api_result(esp_wifi_set_config(WIFI_IF_STA, &wifi_config),
                       "set_config");
 }

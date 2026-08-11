@@ -59,9 +59,7 @@ firmware::application::StationApiResult BlufiProvisioningAdapter::apply_station_
     std::memcpy(wifi_config.sta.password, configuration.password.data(), password_size);
     wifi_config.sta.scan_method = WIFI_FAST_SCAN;
     wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
-    if (esp_wifi_set_mode(WIFI_MODE_APSTA) != ESP_OK) {
-        return {false, "set_mode"};
-    }
+    // Credential staging must preserve the saved/current SoftAP mode.
     return api_result(esp_wifi_set_config(WIFI_IF_STA, &wifi_config), "set_config");
 }
 
@@ -77,7 +75,10 @@ BlufiProvisioningAdapter::request_station_connect() {
 
 std::uint8_t BlufiProvisioningAdapter::current_wifi_mode() const {
     wifi_mode_t mode = WIFI_MODE_NULL;
-    return esp_wifi_get_mode(&mode) == ESP_OK ? static_cast<std::uint8_t>(mode) : 0U;
+    // BWF-043 deliberately reports concurrent mode when the driver cannot
+    // provide its live state; zero is not a valid fallback on the wire.
+    return esp_wifi_get_mode(&mode) == ESP_OK ? static_cast<std::uint8_t>(mode)
+                                             : 3U;
 }
 
 void BlufiProvisioningAdapter::stop_scan() {
