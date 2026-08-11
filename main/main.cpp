@@ -146,7 +146,8 @@ extern "C" void app_main() {
     const std::string machine_name = configured_machine_name();
     firmware::target::configure_tcp_discovery_machine_name(machine_name);
     if (!firmware::application::ConnectivityStartup::start(connectivity_adapter,
-                                                           machine_name)) {
+                                                           machine_name,
+                                                           connectivity_adapter.load_settings())) {
         ESP_LOGE(tag, "Connectivity startup failed; restarting");
         esp_restart();
     }

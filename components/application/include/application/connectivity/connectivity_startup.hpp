@@ -2,6 +2,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -42,6 +43,7 @@ struct ConnectivityStartupConfig {
     std::string access_point_ssid;
     bool visible = false;
     bool open_authentication = false;
+    std::string password;
     WifiBand band = WifiBand::ghz_2_4;
     std::uint8_t maximum_clients = 0U;
     std::uint8_t channel = 0U;
@@ -53,6 +55,25 @@ struct ConnectivityStartupConfig {
     bool access_point_dhcp_server = false;
     bool station_dhcp_client = false;
 };
+
+/// Holds normalized values loaded from the persistent `softap` namespace.
+struct AccessPointStartupSettings {
+    std::optional<std::uint8_t> saved_channel;
+    std::string password;
+    bool enabled = true;
+};
+
+/** Normalizes current string storage and the legacy unsigned channel form.
+ *
+ * A present string is authoritative even when invalid. The legacy value is
+ * consulted only when no string value could be read, matching the fact that
+ * one NVS key cannot simultaneously have both types.
+ */
+AccessPointStartupSettings parse_access_point_startup_settings(
+    std::optional<std::string_view> channel,
+    std::optional<std::uint8_t> legacy_channel,
+    std::optional<std::string_view> password,
+    std::optional<std::uint8_t> enabled);
 
 /// Isolates startup sequencing from ESP-IDF Wi-Fi and network-interface APIs.
 class ConnectivityStartupPort {
@@ -70,6 +91,9 @@ public:
     /// Applies and starts the selected concurrent AP/station configuration.
     virtual bool start_access_point_and_station(
         const ConnectivityStartupConfig& config) = 0;
+
+    /// Selects the final station-only mode when the saved SoftAP is disabled.
+    virtual bool finish_station_only_mode() = 0;
 };
 
 /// Selects the AP channel and starts required connectivity in normative order.
@@ -77,7 +101,8 @@ class ConnectivityStartup {
 public:
     /// Returns false for any fatal mode, scan, or concurrent-start failure.
     static bool start(ConnectivityStartupPort& port,
-                      std::string_view machine_name);
+                      std::string_view machine_name,
+                      const AccessPointStartupSettings& settings);
 };
 
 }  // namespace firmware::application

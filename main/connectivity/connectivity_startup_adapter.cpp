@@ -3,6 +3,7 @@
 
 #include "esp_netif.h"
 #include "esp_wifi.h"
+#include "nvs_key_value_adapter.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -15,11 +16,36 @@ namespace {
 using firmware::application::StartupScanOutcome;
 using firmware::application::StartupScanState;
 
+constexpr std::string_view softap_namespace = "softap";
+constexpr std::string_view channel_key = "ch";
+constexpr std::string_view password_key = "pass";
+constexpr std::string_view enabled_key = "en";
+
 StartupScanOutcome scan_failure(StartupScanState state) {
     return StartupScanOutcome{state, {}};
 }
 
 }  // namespace
+
+firmware::application::AccessPointStartupSettings
+ConnectivityStartupAdapter::load_settings() const {
+    const NvsKeyValueAdapter storage;
+    const NvsStringRead channel = storage.read_string(softap_namespace, channel_key);
+    const NvsStringRead password = storage.read_string(softap_namespace, password_key);
+    const std::optional<std::uint8_t> legacy_channel =
+        channel.state == NvsReadState::found
+            ? std::nullopt
+            : storage.read_u8(softap_namespace, channel_key);
+    return firmware::application::parse_access_point_startup_settings(
+        channel.state == NvsReadState::found
+            ? std::optional<std::string_view>(channel.value)
+            : std::nullopt,
+        legacy_channel,
+        password.state == NvsReadState::found
+            ? std::optional<std::string_view>(password.value)
+            : std::nullopt,
+        storage.read_u8(softap_namespace, enabled_key));
+}
 
 bool ConnectivityStartupAdapter::enter_station_only_mode() {
     if (esp_wifi_set_mode(WIFI_MODE_STA) != ESP_OK) {
@@ -75,7 +101,10 @@ bool ConnectivityStartupAdapter::start_access_point_and_station(
     access_point.ap.max_connection = policy.maximum_clients;
     access_point.ap.authmode = policy.open_authentication
                                    ? WIFI_AUTH_OPEN
-                                   : WIFI_AUTH_WPA2_PSK;
+                                   : WIFI_AUTH_WPA_WPA2_PSK;
+    const std::size_t password_size =
+        std::min(policy.password.size(), sizeof(access_point.ap.password));
+    std::memcpy(access_point.ap.password, policy.password.data(), password_size);
     if (esp_wifi_set_config(WIFI_IF_AP, &access_point) != ESP_OK) {
         return false;
     }
@@ -99,6 +128,11 @@ bool ConnectivityStartupAdapter::start_access_point_and_station(
     }
     // Wi-Fi was started for the station-only scan; changing mode keeps it running.
     return true;
+}
+
+bool ConnectivityStartupAdapter::finish_station_only_mode() {
+    return esp_wifi_set_mode(WIFI_MODE_STA) == ESP_OK &&
+           esp_wifi_set_ps(WIFI_PS_NONE) == ESP_OK;
 }
 
 }  // namespace firmware::target
