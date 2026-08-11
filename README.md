@@ -138,7 +138,7 @@ The first core-to-periphery development slice contains:
   capacity admission, namespace/key, character policy, and responses;
 - wall-clock query and positive-decimal setting with protocol silence,
   first-boot scheduling, UTC rendering fallback, and exact diagnostics;
-- persistent first-boot, whole-second power-on, and streamed-play machine-time
+- queued persistent first-boot, whole-second power-on, and streamed-play machine-time
   accounting with per-save fractional discard and silent write failures;
 - persisted `sys-time` reporting and first-boot-only `clearftm` handling with
   exact capacity, fallback, UTC, and response behavior;

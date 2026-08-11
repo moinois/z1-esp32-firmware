@@ -28,6 +28,7 @@ set(APPLICATION_SOURCES
     src/diagnostics/controller_diagnostics.cpp
     src/diagnostics/file_transfer_diagnostics.cpp
     src/diagnostics/live_media_diagnostics.cpp
+    src/diagnostics/runtime_diagnostics.cpp
     src/diagnostics/filesystem_diagnostics.cpp
     src/diagnostics/playback_diagnostics.cpp
     src/diagnostics/update_diagnostics.cpp

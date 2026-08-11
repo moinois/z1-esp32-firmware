@@ -1,6 +1,7 @@
 /** @file @brief Implements whole-second runtime accounting and silent persistence failures. */
 #include "application/runtime/runtime_counters.hpp"
 #include "application/runtime/runtime_persistence.hpp"
+#include "application/diagnostics/runtime_diagnostics.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -41,10 +42,24 @@ void RuntimeCounterService::record_first_boot(std::int64_t unix_seconds) {
     const FirstBootRead read =
         port_.read_first_boot(runtime_persistence::name_space,
                               runtime_persistence::first_boot_key);
+    if (read.open_failed) {
+        port_.diagnose(runtime_diagnostic(
+            RuntimeDiagnosticEvent::first_boot_open_failed, read.error_name));
+        return;
+    }
     if (read.result == FirstBootReadResult::missing) {
-        static_cast<void>(port_.write_first_boot(
+        const RuntimeMutationResult result = port_.write_first_boot(
             runtime_persistence::name_space,
-            runtime_persistence::first_boot_key, unix_seconds));
+            runtime_persistence::first_boot_key, unix_seconds);
+        if (result.stage == RuntimeMutationStage::open) {
+            port_.diagnose(runtime_diagnostic(
+                RuntimeDiagnosticEvent::first_boot_open_failed,
+                result.error_name));
+        } else if (result.stage == RuntimeMutationStage::mutation) {
+            port_.diagnose(runtime_diagnostic(
+                RuntimeDiagnosticEvent::first_boot_write_failed,
+                result.error_name));
+        }
     }
 }
 
@@ -53,9 +68,13 @@ void RuntimeCounterService::save_power_on(
     power_on_seconds_ += whole_elapsed_seconds(
         power_on_baseline_milliseconds_, monotonic_milliseconds);
     power_on_baseline_milliseconds_ = monotonic_milliseconds;
-    static_cast<void>(port_.write_counter(
+    const RuntimeMutationResult result = port_.write_counter(
         runtime_persistence::name_space,
-        runtime_persistence::power_on_seconds_key, power_on_seconds_));
+        runtime_persistence::power_on_seconds_key, power_on_seconds_);
+    if (result.stage == RuntimeMutationStage::open) {
+        port_.diagnose(runtime_diagnostic(
+            RuntimeDiagnosticEvent::power_on_open_failed));
+    }
 }
 
 void RuntimeCounterService::play_running_changed(
@@ -70,9 +89,16 @@ void RuntimeCounterService::play_running_changed(
         machine_seconds_ += whole_elapsed_seconds(
             play_started_milliseconds_, monotonic_milliseconds);
         play_running_ = false;
-        static_cast<void>(port_.write_counter(
+        const RuntimeMutationResult result = port_.write_counter(
             runtime_persistence::name_space,
-            runtime_persistence::machine_seconds_key, machine_seconds_));
+            runtime_persistence::machine_seconds_key, machine_seconds_);
+        if (result.stage == RuntimeMutationStage::open) {
+            port_.diagnose(runtime_diagnostic(
+                RuntimeDiagnosticEvent::machine_open_failed));
+        } else if (result.stage == RuntimeMutationStage::mutation) {
+            port_.diagnose(runtime_diagnostic(
+                RuntimeDiagnosticEvent::machine_write_failed));
+        }
     }
 }
 

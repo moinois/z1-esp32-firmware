@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <string>
 
 namespace firmware::application {
 
@@ -18,6 +19,16 @@ enum class FirstBootReadResult {
 struct FirstBootRead {
     FirstBootReadResult result;
     std::int64_t seconds;
+    bool open_failed = false;
+    std::string error_name;
+};
+
+enum class RuntimeMutationStage { none, open, mutation, commit };
+
+struct RuntimeMutationResult {
+    RuntimeMutationStage stage = RuntimeMutationStage::none;
+    std::string error_name;
+    bool succeeded() const { return stage == RuntimeMutationStage::none; }
 };
 
 /// Isolates runtime accounting from persistent namespace implementation.
@@ -31,18 +42,21 @@ public:
                                           std::string_view key) = 0;
 
     /// Attempts to persist the signed first-boot value.
-    virtual bool write_first_boot(std::string_view name_space,
-                                  std::string_view key,
-                                  std::int64_t seconds) = 0;
+    virtual RuntimeMutationResult write_first_boot(std::string_view name_space,
+                                                   std::string_view key,
+                                                   std::int64_t seconds) = 0;
 
     /// Reads one unsigned runtime counter, or reports missing/unreadable data.
     virtual std::optional<std::uint64_t> read_counter(
         std::string_view name_space, std::string_view key) = 0;
 
     /// Attempts one silent unsigned runtime counter update.
-    virtual bool write_counter(std::string_view name_space,
-                               std::string_view key,
-                               std::uint64_t value) = 0;
+    virtual RuntimeMutationResult write_counter(std::string_view name_space,
+                                                std::string_view key,
+                                                std::uint64_t value) = 0;
+
+    /// Emits one exact APP_NVS warning selected by the portable service.
+    virtual void diagnose(std::string_view message) = 0;
 };
 
 /// Owns in-memory counter baselines and discards fractional seconds per save.

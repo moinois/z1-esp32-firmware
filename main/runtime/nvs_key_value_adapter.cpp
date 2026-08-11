@@ -74,7 +74,17 @@ NvsU64Read NvsKeyValueAdapter::read_u64_state(
     std::string_view name_space, std::string_view key) const {
     nvs_handle_t handle = 0;
     std::uint64_t value = 0U;
-    if (!open_namespace(name_space, read_only, handle)) return {};
+    const esp_err_t open_result =
+#if Z1_MOCK_NVS_ENABLED
+        nvs_open_fault_active() ? ESP_FAIL :
+#endif
+        nvs_open(std::string(name_space).c_str(), read_only, &handle);
+    if (open_result == ESP_ERR_NVS_NOT_FOUND) {
+        return {NvsReadState::missing, 0U, false, open_result};
+    }
+    if (open_result != ESP_OK) {
+        return {NvsReadState::failure, 0U, true, open_result};
+    }
     const esp_err_t result = nvs_get_u64(handle, std::string(key).c_str(), &value);
     nvs_close(handle);
     if (result == ESP_OK) return {NvsReadState::found, value};
@@ -124,18 +134,36 @@ bool NvsKeyValueAdapter::write_string(std::string_view name_space,
 bool NvsKeyValueAdapter::write_u64(std::string_view name_space,
                                    std::string_view key,
                                    std::uint64_t value) const {
+    return write_u64_detailed(name_space, key, value).succeeded();
+}
+
+NvsMutationResult NvsKeyValueAdapter::write_u64_detailed(
+    std::string_view name_space, std::string_view key,
+    std::uint64_t value) const {
     nvs_handle_t handle = 0;
-    if (!open_namespace(name_space, read_write, handle)) return false;
+    const esp_err_t open_result =
+#if Z1_MOCK_NVS_ENABLED
+        nvs_open_fault_active() ? ESP_FAIL :
+#endif
+        nvs_open(std::string(name_space).c_str(), read_write, &handle);
+    if (open_result != ESP_OK) {
+        return {NvsMutationStage::open, open_result};
+    }
 #if Z1_MOCK_NVS_ENABLED
     if (nvs_commit_fault_active()) {
         nvs_close(handle);
-        return false;
+        return {NvsMutationStage::commit, ESP_FAIL};
     }
 #endif
     const esp_err_t result = nvs_set_u64(handle, std::string(key).c_str(), value);
+    if (result != ESP_OK) {
+        nvs_close(handle);
+        return {NvsMutationStage::mutation, result};
+    }
     const esp_err_t commit = commit_mutation(handle, result);
     nvs_close(handle);
-    return commit == ESP_OK;
+    return commit == ESP_OK ? NvsMutationResult{}
+                            : NvsMutationResult{NvsMutationStage::commit, commit};
 }
 
 bool NvsKeyValueAdapter::write_u8(std::string_view name_space,
@@ -174,7 +202,14 @@ NvsMutationResult NvsKeyValueAdapter::write_u8_detailed(
 bool NvsKeyValueAdapter::write_i64(std::string_view name_space,
                                    std::string_view key,
                                    std::int64_t value) const {
-    return write_u64(name_space, key, static_cast<std::uint64_t>(value));
+    return write_i64_detailed(name_space, key, value).succeeded();
+}
+
+NvsMutationResult NvsKeyValueAdapter::write_i64_detailed(
+    std::string_view name_space, std::string_view key,
+    std::int64_t value) const {
+    return write_u64_detailed(name_space, key,
+                              static_cast<std::uint64_t>(value));
 }
 
 NvsReadState NvsKeyValueAdapter::erase_key(std::string_view name_space,

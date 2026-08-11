@@ -14,10 +14,13 @@ public:
         std::string_view name_space, std::string_view key) override;
     std::optional<std::uint64_t> read_counter(
         std::string_view name_space, std::string_view key) override;
-    bool write_first_boot(std::string_view name_space, std::string_view key,
-                          std::int64_t seconds) override;
-    bool write_counter(std::string_view name_space, std::string_view key,
-                       std::uint64_t value) override;
+    firmware::application::RuntimeMutationResult write_first_boot(
+        std::string_view name_space, std::string_view key,
+        std::int64_t seconds) override;
+    firmware::application::RuntimeMutationResult write_counter(
+        std::string_view name_space, std::string_view key,
+        std::uint64_t value) override;
+    void diagnose(std::string_view message) override;
 
 private:
     NvsKeyValueAdapter nvs_;
