@@ -17,6 +17,7 @@
 #include "application/update/update_deletion.hpp"
 #include "application/update/update_task_initialization.hpp"
 #include "application/update/update_validation.hpp"
+#include "application/diagnostics/update_diagnostics.hpp"
 #include "core/filesystem/sd_user_path.hpp"
 
 #include <cstdio>
@@ -145,6 +146,14 @@ public:
     }
     bool valid_mainboard_image(firmware::core::BytesView image) override {
         return validator_.valid_mainboard_image(image);
+    }
+    void report_valid_header(const firmware::core::UpdateHeader& header,
+                             firmware::core::BytesView encoded_header) override {
+        for (const auto& line :
+             firmware::application::aggregate_header_diagnostics(header,
+                                                                  encoded_header)) {
+            ESP_LOGI(tag, "%s", line.c_str());
+        }
     }
 
 private:

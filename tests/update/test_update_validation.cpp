@@ -104,6 +104,11 @@ public:
         return image_is_valid;
     }
 
+    void report_valid_header(const firmware::core::UpdateHeader&,
+                             firmware::core::BytesView) override {
+        calls.emplace_back("report-header");
+    }
+
     UpdateLoadResult load_result{UpdateLoadFailure::absent, {}};
     bool image_is_valid = true;
     std::vector<std::string> calls;
@@ -193,6 +198,7 @@ TEST_CASE(upd_014_valid_package_delegates_exact_declared_mainboard_image) {
     REQUIRE_EQ(package->header.mainboard_size, 3U);
     REQUIRE_EQ(port.validated_images,
                std::vector<ByteVector>({{0xE9U, 1U, 2U}}));
+    REQUIRE_EQ(port.calls[4], std::string("report-header"));
     REQUIRE_EQ(port.calls.back(), std::string("validate-image"));
 }
 
@@ -204,8 +210,9 @@ TEST_CASE(upd_014_structurally_invalid_mainboard_uses_format_error_path) {
 
     REQUIRE(!validation.validate(60U).has_value());
 
-    REQUIRE_EQ(port.calls[4], std::string("validate-image"));
-    REQUIRE_EQ(port.calls[5], std::string("broadcast-error"));
-    REQUIRE_EQ(port.calls[6], std::string("remove-aggregate"));
-    REQUIRE_EQ(port.calls[7], std::string("publish-error"));
+    REQUIRE_EQ(port.calls[4], std::string("report-header"));
+    REQUIRE_EQ(port.calls[5], std::string("validate-image"));
+    REQUIRE_EQ(port.calls[6], std::string("broadcast-error"));
+    REQUIRE_EQ(port.calls[7], std::string("remove-aggregate"));
+    REQUIRE_EQ(port.calls[8], std::string("publish-error"));
 }

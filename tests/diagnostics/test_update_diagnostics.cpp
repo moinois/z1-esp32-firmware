@@ -1,0 +1,26 @@
+// Verifies exact DIAG-030 aggregate-header diagnostics.
+#include "test.hpp"
+
+#include "application/diagnostics/update_diagnostics.hpp"
+
+#include <string>
+#include <vector>
+
+using firmware::core::ByteVector;
+
+TEST_CASE(diag_030_formats_every_valid_aggregate_header_line_in_order) {
+    firmware::core::UpdateHeader header{2U, 3U, 17U, 9U, 0x1234abcdU,
+                                        0x89abcdefU};
+    ByteVector encoded(32U, 0U);
+    encoded[24] = 0x78U; encoded[25] = 0x56U; encoded[26] = 0x34U; encoded[27] = 0x12U;
+    encoded[28] = 0xefU; encoded[29] = 0xcdU; encoded[30] = 0xabU; encoded[31] = 0x89U;
+    REQUIRE_EQ(firmware::application::aggregate_header_diagnostics(header, encoded),
+        std::vector<std::string>({
+            "=== Aggregate Firmware Header Info ===", "Magic: 0x4D5173EE",
+            "Header Version: 2", "Header Length: 32 bytes", "FW Flags: 0x03",
+            "ESP32 Size: 17 bytes", "LPC1768 Size: 9 bytes",
+            "ESP32 Version: 0x1234ABCD", "LPC1768 Version: 0x89ABCDEF",
+            "Header CRC32: 0x12345678", "File CRC32: 0x89ABCDEF",
+            "ESP32 Included: Yes", "LPC1768 Included: Yes",
+            "======================================"}));
+}

@@ -66,6 +66,10 @@ public:
 
     /// Delegates structural bootable-image validation to the ESP32-S3 adapter.
     virtual bool valid_mainboard_image(core::BytesView image) = 0;
+
+    /// Emits the ordered diagnostics for one fully validated aggregate header.
+    virtual void report_valid_header(const core::UpdateHeader& header,
+                                     core::BytesView encoded_header) = 0;
 };
 
 /// Orchestrates one aggregate cleanup, load, and validation operation.

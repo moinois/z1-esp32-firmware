@@ -55,6 +55,8 @@ std::optional<ValidatedUpdatePackage> UpdateValidationService::validate(
         reject_format(now_milliseconds);
         return std::nullopt;
     }
+    port_.report_valid_header(*parsed.header,
+                              {loaded.bytes.data(), core::update_package_header_size});
     if (parsed.header->mainboard_size != 0U) {
         const core::BytesView image(
             loaded.bytes.data() + core::update_package_header_size,
