@@ -6,6 +6,8 @@
 
 #include "esp_netif.h"
 #include "esp_wifi.h"
+#include "esp_err.h"
+#include "esp_log.h"
 
 #include <algorithm>
 #include <array>
@@ -34,18 +36,26 @@ std::string bounded_c_string(const std::uint8_t* value, std::size_t capacity,
     return std::string(bytes, std::min(::strnlen(bytes, capacity), limit));
 }
 
-std::optional<std::string> interface_ipv4(const char* key, unsigned field) {
+std::optional<std::string> interface_ipv4(const char* key, unsigned field,
+                                          esp_err_t& error) {
     esp_netif_t* interface = esp_netif_get_handle_from_ifkey(key);
     esp_netif_ip_info_t info{};
-    if (interface == nullptr || esp_netif_get_ip_info(interface, &info) != ESP_OK) {
+    if (interface == nullptr) {
+        error = ESP_ERR_NOT_FOUND;
+        return std::nullopt;
+    }
+    error = esp_netif_get_ip_info(interface, &info);
+    if (error != ESP_OK) {
         return std::nullopt;
     }
     const esp_ip4_addr_t* address = field == 0U ? &info.ip : field == 1U ? &info.netmask
                                                                       : &info.gw;
     std::array<char, 16U> output{};
-    return esp_ip4addr_ntoa(address, output.data(), output.size()) == nullptr
-               ? std::nullopt
-               : std::optional<std::string>(output.data());
+    if (esp_ip4addr_ntoa(address, output.data(), output.size()) == nullptr) {
+        error = ESP_FAIL;
+        return std::nullopt;
+    }
+    return std::string(output.data());
 }
 
 class TargetAccessPointPort final
@@ -85,7 +95,7 @@ public:
         wifi.ap.channel = config.channel;
         wifi.ap.max_connection = 4U;
         wifi.ap.authmode = config.password.empty() ? WIFI_AUTH_OPEN
-                                                   : WIFI_AUTH_WPA_WPA2_PSK;
+                                                   : WIFI_AUTH_WPA2_PSK;
         return esp_wifi_set_config(WIFI_IF_AP, &wifi) == ESP_OK;
     }
 
@@ -95,8 +105,9 @@ public:
 
     std::optional<std::string> station_parameter(std::uint8_t parameter) override {
         wifi_config_t config{};
-        if (parameter <= 1U && esp_wifi_get_config(WIFI_IF_STA, &config) != ESP_OK) {
-            return std::nullopt;
+        if (parameter <= 2U) {
+            last_query_error_ = esp_wifi_get_config(WIFI_IF_STA, &config);
+            if (last_query_error_ != ESP_OK) return std::nullopt;
         }
         if (parameter == 0U) {
             return bounded_c_string(config.sta.ssid, sizeof(config.sta.ssid),
@@ -115,30 +126,43 @@ public:
         if (parameter == 3U) {
             esp_netif_t* interface = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
             const char* hostname = nullptr;
-            return interface != nullptr &&
-                           esp_netif_get_hostname(interface, &hostname) == ESP_OK &&
+            last_query_error_ = interface == nullptr
+                                    ? ESP_ERR_NOT_FOUND
+                                    : esp_netif_get_hostname(interface, &hostname);
+            auto hostname_value = interface != nullptr &&
+                           last_query_error_ == ESP_OK &&
                            hostname != nullptr
                        ? std::optional<std::string>(hostname)
                        : std::nullopt;
+            if (!hostname_value.has_value() && last_query_error_ == ESP_OK) {
+                last_query_error_ = ESP_ERR_INVALID_RESPONSE;
+            }
+            if (hostname_value.has_value() && hostname_value->size() > 95U) {
+                hostname_value->resize(95U);
+            }
+            return hostname_value;
         }
         if (parameter == 4U) {
             std::array<std::uint8_t, 6U> mac{};
-            if (esp_wifi_get_mac(WIFI_IF_STA, mac.data()) != ESP_OK) return std::nullopt;
+            last_query_error_ = esp_wifi_get_mac(WIFI_IF_STA, mac.data());
+            if (last_query_error_ != ESP_OK) return std::nullopt;
             char rendered[24U]{};
             std::snprintf(rendered, sizeof(rendered), "%X-%X-%X-%X-%X-%X",
                           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
             return rendered;
         }
         return parameter <= 7U
-                   ? interface_ipv4("WIFI_STA_DEF", parameter - 5U)
+                   ? interface_ipv4("WIFI_STA_DEF", parameter - 5U,
+                                    last_query_error_)
                    : std::nullopt;
     }
 
     std::optional<std::string> access_point_parameter(
         std::uint8_t parameter) override {
         wifi_config_t config{};
-        if (parameter <= 3U && esp_wifi_get_config(WIFI_IF_AP, &config) != ESP_OK) {
-            return std::nullopt;
+        if (parameter <= 3U) {
+            last_query_error_ = esp_wifi_get_config(WIFI_IF_AP, &config);
+            if (last_query_error_ != ESP_OK) return std::nullopt;
         }
         if (parameter == 0U) {
             return bounded_c_string(config.ap.ssid, sizeof(config.ap.ssid),
@@ -151,16 +175,27 @@ public:
         if (parameter == 2U) return std::to_string(config.ap.channel);
         if (parameter == 3U) return std::to_string(config.ap.authmode);
         if (parameter >= 4U && parameter <= 6U) {
-            return interface_ipv4("WIFI_AP_DEF", parameter - 4U);
+            return interface_ipv4("WIFI_AP_DEF", parameter - 4U,
+                                  last_query_error_);
         }
         if (parameter == 7U) {
             wifi_sta_list_t stations{};
-            return esp_wifi_ap_get_sta_list(&stations) == ESP_OK
+            last_query_error_ = esp_wifi_ap_get_sta_list(&stations);
+            return last_query_error_ == ESP_OK
                        ? std::optional<std::string>(std::to_string(stations.num))
                        : std::nullopt;
         }
         return std::nullopt;
     }
+
+    void report_query_failure(bool station, std::uint8_t parameter) override {
+        ESP_LOGW("APP_AP", "M48%d.%u query failed: %s", station ? 2 : 3,
+                 static_cast<unsigned>(parameter),
+                 esp_err_to_name(last_query_error_));
+    }
+
+private:
+    esp_err_t last_query_error_ = ESP_FAIL;
 };
 
 TargetAccessPointPort command_port;

@@ -43,6 +43,8 @@ public:
         std::uint8_t parameter) = 0;
     virtual std::optional<std::string> access_point_parameter(
         std::uint8_t parameter) = 0;
+    /// Reports one syntactically valid parameter lookup failure (DIAG-019).
+    virtual void report_query_failure(bool, std::uint8_t) {}
 };
 
 /** Executes APCMD and APQ commands and creates their exact addressed reply. */

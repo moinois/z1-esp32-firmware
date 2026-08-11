@@ -78,8 +78,7 @@ StartupScanOutcome ConnectivityStartupAdapter::scan_channels(
     channels.reserve(count);
     for (std::uint16_t index = 0U; index < count; ++index) {
         const std::uint8_t channel = records[index].primary;
-        if (channel != 0U && std::find(channels.begin(), channels.end(), channel)
-                                  == channels.end()) {
+        if (channel != 0U) {
             channels.push_back(channel);
         }
     }
@@ -101,7 +100,7 @@ bool ConnectivityStartupAdapter::start_access_point_and_station(
     access_point.ap.max_connection = policy.maximum_clients;
     access_point.ap.authmode = policy.open_authentication
                                    ? WIFI_AUTH_OPEN
-                                   : WIFI_AUTH_WPA_WPA2_PSK;
+                                   : WIFI_AUTH_WPA2_PSK;
     const std::size_t password_size =
         std::min(policy.password.size(), sizeof(access_point.ap.password));
     std::memcpy(access_point.ap.password, policy.password.data(), password_size);

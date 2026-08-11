@@ -15,7 +15,7 @@ namespace {
 constexpr std::string_view machine_name_key = "wifi.machine_name";
 constexpr std::size_t maximum_machine_name_size = 31U;
 constexpr std::uint8_t first_wifi_channel = 1U;
-constexpr std::uint8_t last_wifi_channel = 14U;
+constexpr std::uint8_t last_wifi_channel = 11U;
 constexpr std::size_t maximum_scan_observations = 20U;
 constexpr std::size_t maximum_ssid_size = 31U;
 constexpr std::size_t wlan_prefix_size = 4U;

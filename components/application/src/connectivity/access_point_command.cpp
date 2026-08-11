@@ -24,8 +24,9 @@ bool ascii_whitespace(char value) {
     return byte == ' ' || (byte >= '\t' && byte <= '\r');
 }
 
-std::string trim_trailing_ascii_whitespace(std::string value) {
-    while (!value.empty() && ascii_whitespace(value.back())) {
+std::string trim_ap_suffix(std::string value) {
+    while (!value.empty() &&
+           (value.back() == ' ' || value.back() == '\r' || value.back() == '\n')) {
         value.pop_back();
     }
     return value;
@@ -55,21 +56,31 @@ std::string selected_name(const AccessPointCommandState& state) {
 }
 
 std::optional<std::uint8_t> initial_channel(std::string_view token) {
-    if (token.empty() || token.front() < '0' || token.front() > '9') {
+    std::size_t index = 0U;
+    while (index < token.size() && ascii_whitespace(token[index])) ++index;
+    bool negative = false;
+    if (index < token.size() && (token[index] == '+' || token[index] == '-')) {
+        negative = token[index] == '-';
+        ++index;
+    }
+    if (index == token.size() || token[index] < '0' || token[index] > '9') {
         return std::nullopt;
     }
     std::uint32_t value = 0U;
-    for (const char character : token) {
+    for (; index < token.size(); ++index) {
+        const char character = token[index];
         if (character < '0' || character > '9') {
             break;
         }
         const std::uint32_t digit = static_cast<std::uint32_t>(character - '0');
-        if (value > (std::numeric_limits<std::uint32_t>::max() - digit) / 10U) {
+        constexpr std::uint32_t signed_limit =
+            static_cast<std::uint32_t>(std::numeric_limits<std::int32_t>::max());
+        if (value > (signed_limit - digit) / 10U) {
             return std::nullopt;
         }
         value = value * 10U + digit;
     }
-    if (value < minimum_saved_channel || value > maximum_saved_channel) {
+    if (negative || value < minimum_saved_channel || value > maximum_saved_channel) {
         return std::nullopt;
     }
     return static_cast<std::uint8_t>(value);
@@ -90,7 +101,7 @@ std::optional<ParsedApCommand> parse_ap(core::BytesView payload) {
     if (terminator != std::string::npos) {
         input.resize(terminator);
     }
-    input = trim_trailing_ascii_whitespace(std::move(input));
+    input = trim_ap_suffix(std::move(input));
     const std::size_t delimiter = input.find(' ');
     ParsedApCommand parsed;
     parsed.operation = input.substr(0U, delimiter);
@@ -134,7 +145,7 @@ std::optional<core::Frame> execute_ap(
                         " channel=" + std::to_string(channel) + "\r\n");
     }
     if (parsed->operation == "channel") {
-        const std::string token = first_literal_space_token(parsed->remainder);
+        const std::string token = decode(parsed->remainder);
         if (token == "clear" && !has_later_literal_space_token(parsed->remainder)) {
             state.saved_channel.reset();
             return response(port.persist_channel(std::nullopt)
@@ -205,7 +216,10 @@ std::optional<core::Frame> execute_ap(
 std::optional<core::Frame> execute_query(
     bool station, core::BytesView payload, AccessPointCommandPort& port) {
     std::string input(payload.begin(), payload.end());
-    input = trim_trailing_ascii_whitespace(std::move(input));
+    while (!input.empty() && (input.back() == ' ' || input.back() == '\t' ||
+                              input.back() == '\r' || input.back() == '\n')) {
+        input.pop_back();
+    }
     std::uint8_t parameter = 0U;
     const bool valid = input.size() == 4U ||
         (input.size() == 6U && input[4] == '.' && input[5] >= '0' && input[5] <= '7');
@@ -219,6 +233,7 @@ std::optional<core::Frame> execute_query(
     const auto value = station ? port.station_parameter(parameter)
                                : port.access_point_parameter(parameter);
     if (!value.has_value()) {
+        port.report_query_failure(station, parameter);
         return response(station ? "Query WiFi STA parameters ERROR!\n"
                                 : "Query WiFi AP parameters ERROR!\n");
     }

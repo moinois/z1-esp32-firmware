@@ -55,6 +55,9 @@ public:
         std::uint8_t parameter) override {
         return access_point_values[parameter];
     }
+    void report_query_failure(bool station, std::uint8_t parameter) override {
+        query_failures.push_back({station, parameter});
+    }
 
     bool channel_save_succeeds = true;
     bool password_save_succeeds = true;
@@ -69,6 +72,7 @@ public:
     std::optional<AccessPointRadioConfig> enabled_config;
     std::optional<std::string> station_values[8];
     std::optional<std::string> access_point_values[8];
+    std::vector<std::pair<bool, std::uint8_t>> query_failures;
 };
 
 std::optional<firmware::core::Frame> execute(
@@ -90,6 +94,10 @@ TEST_CASE(apcmd_001_invalid_shapes_return_exact_error) {
         REQUIRE_EQ(text(execute(state, port, command)),
                    std::string("ERROR: Invalid AP Command!\r\n"));
     }
+    REQUIRE_EQ(text(execute(state, port, "ap enable\t")),
+               std::string("ERROR: Invalid AP Command!\r\n"));
+    REQUIRE_EQ(text(execute(state, port, "ap enable \r\n")),
+               std::string("AP enabled\r\n"));
 }
 
 TEST_CASE(apcmd_002_get_uses_name_password_and_channel_fallbacks) {
@@ -117,6 +125,13 @@ TEST_CASE(apcmd_003_channel_uses_initial_decimal_clear_and_state_before_save) {
     REQUIRE_EQ(text(execute(state, port, "ap channel 6suffix later")),
                std::string("AP channel saved, apply on reboot\r\n"));
     REQUIRE_EQ(state.saved_channel, std::optional<std::uint8_t>(6U));
+    REQUIRE_EQ(text(execute(state, port, "ap channel   +7suffix later")),
+               std::string("AP channel saved, apply on reboot\r\n"));
+    REQUIRE_EQ(state.saved_channel, std::optional<std::uint8_t>(7U));
+    REQUIRE_EQ(text(execute(state, port, "ap channel -1")),
+               std::string("WiFi AP Channel should between 1 to 11\r\n"));
+    REQUIRE_EQ(text(execute(state, port, "ap channel 999999999999999999999")),
+               std::string("WiFi AP Channel should between 1 to 11\r\n"));
 
     port.channel_save_succeeds = false;
     REQUIRE_EQ(text(execute(state, port, "ap channel 9")),
@@ -139,9 +154,9 @@ TEST_CASE(apcmd_004_ssid_uses_remainder_escape_and_exact_length) {
 
     REQUIRE_EQ(text(execute(state, port, command)),
                std::string("AP ssid saved, apply on reboot\r\n"));
-    REQUIRE_EQ(state.machine_name, std::string("My Machine"));
+    REQUIRE_EQ(state.machine_name, std::string("My Machine  \t"));
     REQUIRE_EQ(port.persisted_machine_name,
-               std::optional<std::string>("My Machine"));
+               std::optional<std::string>("My Machine  \t"));
 
     port.name_save_succeeds = false;
     std::string nul_terminated = "ap ssid Runtime";
@@ -221,4 +236,13 @@ TEST_CASE(apq_001_to_003_query_shapes_values_and_errors_are_exact) {
                std::string("Query WiFi AP parameters ERROR!\n"));
     REQUIRE_EQ(text(execute(state, port, "M482.2", CommandKind::station_parameter_query)),
                std::string("Query WiFi STA parameters ERROR!\n"));
+    const std::vector<std::pair<bool, std::uint8_t>> expected_failures{{true, 2U}};
+    REQUIRE_EQ(port.query_failures, expected_failures);
+    REQUIRE_EQ(text(execute(state, port, "M482.1\t\r\n",
+                            CommandKind::station_parameter_query)),
+               std::string("M482 param[1]:null\n"));
+    REQUIRE_EQ(text(execute(state, port, "M482.1\v",
+                            CommandKind::station_parameter_query)),
+               std::string("Query WiFi STA parameters ERROR!\n"));
+    REQUIRE_EQ(port.query_failures.size(), 1U);
 }

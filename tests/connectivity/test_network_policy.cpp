@@ -50,6 +50,12 @@ TEST_CASE(net_004_channel_observation_counters_wrap_at_eight_bits) {
     REQUIRE_EQ(firmware::core::select_access_point_channel(observations), 1U);
 }
 
+TEST_CASE(net_004_channels_twelve_through_fourteen_do_not_affect_selection) {
+    REQUIRE_EQ(firmware::core::select_access_point_channel(
+                   {1U, 12U, 12U, 13U, 14U}),
+               2U);
+}
+
 TEST_CASE(net_005_empty_or_unavailable_scan_storage_selects_channel_one) {
     REQUIRE_EQ(firmware::core::select_access_point_channel({}), 1U);
     REQUIRE_EQ(firmware::core::select_access_point_channel({}, false), 1U);
