@@ -4,6 +4,7 @@
 #include "core/update/update_package.hpp"
 
 #include <string>
+#include <string_view>
 #include <optional>
 #include <vector>
 
@@ -24,5 +25,8 @@ std::optional<UpdateRecoveryDiagnostic> update_recovery_diagnostic(
 
 /// Formats the DIAG-032 ESP-IDF OTA failure code in lowercase hexadecimal.
 std::string ota_failure_diagnostic(int error);
+std::string update_nvs_open_failure(std::string_view error_name);
+std::string update_nvs_save_failure(std::uint8_t phase,
+                                    std::string_view error_name);
 
 }  // namespace firmware::application

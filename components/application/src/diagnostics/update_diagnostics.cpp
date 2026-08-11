@@ -72,4 +72,14 @@ std::string ota_failure_diagnostic(int error) {
     return output;
 }
 
+std::string update_nvs_open_failure(std::string_view error_name) {
+    return "ota nvs open failed: " + std::string(error_name);
+}
+
+std::string update_nvs_save_failure(std::uint8_t phase,
+                                    std::string_view error_name) {
+    return "ota nvs save phase " + std::to_string(phase) + " failed: " +
+           std::string(error_name);
+}
+
 }  // namespace firmware::application

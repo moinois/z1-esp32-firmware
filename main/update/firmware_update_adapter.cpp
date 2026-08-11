@@ -7,6 +7,7 @@
 #include "ota_update_adapter.hpp"
 #include "nvs_key_value_adapter.hpp"
 #include "runtime_status_adapter.hpp"
+#include "update_phase_persistence.hpp"
 
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -133,8 +134,7 @@ public:
         return {firmware::application::UpdateLoadFailure::none, std::move(*bytes)};
     }
     void aggregate_opened() override {
-        static_cast<void>(NvsKeyValueAdapter{}.write_u8(
-            "ota_state", "phase", 0U));
+        static_cast<void>(persist_update_phase(0U));
     }
     void remove_aggregate(std::string_view path) override {
         static_cast<void>(std::remove(std::string(path).c_str()));
@@ -268,7 +268,7 @@ void update_task(void*) {
             else ESP_LOGI(tag, "%s", diagnostic->message.c_str());
         }
         if (*persisted_phase == 4U) {
-            static_cast<void>(NvsKeyValueAdapter{}.write_u8("ota_state", "phase", 0U));
+            static_cast<void>(persist_update_phase(0U));
         }
     }
     UpdateControllerTargetPort controller_port;

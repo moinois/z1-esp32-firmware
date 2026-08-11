@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include "esp_err.h"
 
 namespace firmware::target {
 
@@ -21,6 +22,13 @@ struct NvsStringRead {
 struct NvsU64Read {
     NvsReadState state = NvsReadState::failure;
     std::uint64_t value = 0U;
+};
+
+enum class NvsMutationStage { none, open, mutation, commit };
+struct NvsMutationResult {
+    NvsMutationStage stage = NvsMutationStage::none;
+    esp_err_t error = ESP_OK;
+    bool succeeded() const { return stage == NvsMutationStage::none; }
 };
 
 /// Reads and writes NVS values while keeping namespace/key handling centralized.
@@ -42,6 +50,9 @@ public:
                    std::uint64_t value) const;
     bool write_u8(std::string_view name_space, std::string_view key,
                   std::uint8_t value) const;
+    NvsMutationResult write_u8_detailed(std::string_view name_space,
+                                        std::string_view key,
+                                        std::uint8_t value) const;
     bool write_i64(std::string_view name_space, std::string_view key,
                    std::int64_t value) const;
     /// Erases one key and distinguishes missing keys from storage failures.

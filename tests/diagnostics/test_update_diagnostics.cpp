@@ -45,3 +45,10 @@ TEST_CASE(diag_032_formats_ota_errors_as_unpadded_lowercase_hex) {
     REQUIRE_EQ(firmware::application::ota_failure_diagnostic(0x10a),
                std::string("ESP32 OTA failed: 0x10a"));
 }
+
+TEST_CASE(diag_032_formats_update_nvs_failures_exactly) {
+    REQUIRE_EQ(firmware::application::update_nvs_open_failure("ESP_FAIL"),
+               std::string("ota nvs open failed: ESP_FAIL"));
+    REQUIRE_EQ(firmware::application::update_nvs_save_failure(3U, "ESP_FAIL"),
+               std::string("ota nvs save phase 3 failed: ESP_FAIL"));
+}

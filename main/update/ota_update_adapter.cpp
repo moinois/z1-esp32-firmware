@@ -9,6 +9,7 @@
 #include "controller_command_loop.hpp"
 #include "nvs_key_value_adapter.hpp"
 #include "runtime_status_adapter.hpp"
+#include "update_phase_persistence.hpp"
 
 #include "core/protocol/bytes.hpp"
 #include "application/controller/controller_command_frames.hpp"
@@ -31,7 +32,7 @@ void log_ota_failure(esp_err_t error) {
 
 void OtaUpdateAdapter::publish_phase(std::uint8_t phase) {
     publish_runtime_update_phase(phase);
-    static_cast<void>(NvsKeyValueAdapter{}.write_u8("ota_state", "phase", phase));
+    static_cast<void>(persist_update_phase(phase));
     ESP_LOGI(tag, "update phase %u", static_cast<unsigned>(phase));
 }
 

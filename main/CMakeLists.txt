@@ -60,6 +60,7 @@ idf_component_register(
         "provisioning/blufi_callback_adapter.cpp"
         "update/esp_image_validator.cpp"
         "update/ota_update_adapter.cpp"
+        "update/update_phase_persistence.cpp"
         "update/firmware_update_adapter.cpp"
         "transport/tcp_control_adapter.cpp"
         "media/recording_request_state.cpp"
