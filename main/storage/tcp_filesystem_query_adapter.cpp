@@ -65,8 +65,12 @@ TcpDirectoryListAdapter::list_directory(std::string_view path) {
     return entries;
 }
 
-void TcpDirectoryListAdapter::send(firmware::core::Frame frame) {
-    static_cast<void>(session_.queue_frame(frame));
+bool TcpDirectoryListAdapter::send(firmware::core::Frame frame) {
+    return session_.queue_frame(frame);
+}
+
+void TcpDirectoryListAdapter::log_warning(std::string_view message) {
+    ESP_LOGW("APP_FILE", "%.*s", static_cast<int>(message.size()), message.data());
 }
 
 TcpFileHashAdapter::TcpFileHashAdapter(

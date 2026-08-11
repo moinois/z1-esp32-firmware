@@ -19,7 +19,8 @@ public:
 
     std::optional<std::vector<firmware::application::DirectoryEntry>> list_directory(
         std::string_view path) override;
-    void send(firmware::core::Frame frame) override;
+    bool send(firmware::core::Frame frame) override;
+    void log_warning(std::string_view message) override;
 
 private:
     firmware::application::TcpClientSession& session_;

@@ -54,7 +54,8 @@ std::string format_timestamp(const UtcFileTime& time) {
 }
 
 // Creates one entry line or rejects an entry that cannot be represented.
-core::ByteVector format_line(const DirectoryEntry& entry, bool include_details) {
+core::ByteVector format_line(const DirectoryEntry& entry, bool include_details,
+                             DirectoryListPort& port) {
     if (!entry.metadata_available || !visible_name(entry.name)) {
         return {};
     }
@@ -77,24 +78,30 @@ core::ByteVector format_line(const DirectoryEntry& entry, bool include_details) 
     line.push_back('\r');
     line.push_back('\n');
     if (line.size() >= line_size_limit) {
+        port.log_warning("Output string too long, truncated");
         return {};
     }
     return line;
 }
 
 // Sends a nonempty listing chunk and clears its retained storage.
-void flush_chunk(core::ByteVector& chunk, DirectoryListPort& port) {
+void flush_chunk(core::ByteVector& chunk, DirectoryListPort& port,
+                 std::string_view failure_message) {
     if (chunk.empty()) {
         return;
     }
-    port.send({core::protocol::text_response, std::move(chunk)});
+    if (!port.send({core::protocol::text_response, std::move(chunk)})) {
+        port.log_warning(failure_message);
+    }
     chunk.clear();
 }
 
 // Sends the mandatory successful terminal response for every listing attempt.
 void send_completion(DirectoryListPort& port) {
-    port.send({core::protocol::operation_success,
-               {completion_message.begin(), completion_message.end()}});
+    if (!port.send({core::protocol::operation_success,
+                    {completion_message.begin(), completion_message.end()}})) {
+        port.log_warning("ls: xRx2ControllerQueue send timeout (LOAD_FINISH)");
+    }
 }
 
 }  // namespace
@@ -114,16 +121,23 @@ void DirectoryListing::execute(core::BytesView argument, DirectoryListPort& port
     core::ByteVector chunk;
     chunk.reserve(maximum_supported_chunk_payload_size);
     for (const DirectoryEntry& entry : *entries) {
-        core::ByteVector line = format_line(entry, parsed->include_details);
+        const std::string entry_path = parsed->path + "/" + entry.name;
+        if (entry_path.size() >= line_size_limit) {
+            port.log_warning("Path too long, truncated: " + entry_path);
+            continue;
+        }
+        core::ByteVector line = format_line(entry, parsed->include_details, port);
         if (line.empty()) {
             continue;
         }
         chunk.insert(chunk.end(), line.begin(), line.end());
         if (chunk.size() > preferred_chunk_flush_size) {
-            flush_chunk(chunk, port);
+            flush_chunk(chunk, port,
+                        "ls: xRx2ControllerQueue send timeout, drop partial chunk");
         }
     }
-    flush_chunk(chunk, port);
+    flush_chunk(chunk, port,
+                "ls: xRx2ControllerQueue send timeout (tail LOAD_INFO)");
     send_completion(port);
 }
 

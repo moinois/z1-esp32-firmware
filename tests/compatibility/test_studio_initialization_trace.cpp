@@ -105,9 +105,11 @@ public:
             : std::nullopt;
     }
 
-    void send(Frame frame) override {
+    bool send(Frame frame) override {
         sent.push_back(std::move(frame));
+        return true;
     }
+    void log_warning(std::string_view) override {}
 
     bool storage_available = true;
     std::vector<Frame> sent;

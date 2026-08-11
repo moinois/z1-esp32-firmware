@@ -913,11 +913,13 @@ public:
         return entries;
     }
 
-    void send(firmware::core::Frame frame) override {
+    bool send(firmware::core::Frame frame) override {
         const auto encoded = firmware::core::encode_frame(frame);
-        if (!encoded.empty()) {
-            static_cast<void>(protocol_state.transmit_queue().enqueue(encoded));
-        }
+        return !encoded.empty() && protocol_state.transmit_queue().enqueue(encoded);
+    }
+
+    void log_warning(std::string_view message) override {
+        ESP_LOGW("APP_FILE", "%.*s", static_cast<int>(message.size()), message.data());
     }
 };
 

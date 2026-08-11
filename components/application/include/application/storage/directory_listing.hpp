@@ -42,7 +42,9 @@ public:
         std::string_view path) = 0;
 
     /// Sends one response to the command's destination selected by its adapter.
-    virtual void send(core::Frame frame) = 0;
+    virtual bool send(core::Frame frame) = 0;
+    /// Emits one already-formatted APP_FILE warning.
+    virtual void log_warning(std::string_view message) = 0;
 };
 
 /// Formats and chunks one complete `ls` operation.
