@@ -20,6 +20,7 @@ set(APPLICATION_SOURCES
     src/configuration/configuration_get.cpp
     src/configuration/configuration_set.cpp
     src/connectivity/connectivity_startup.cpp
+    src/connectivity/access_point_command.cpp
     src/storage/directory_listing.cpp
     src/diagnostics/diagnostic_capture.cpp
     src/update/direct_application_update.cpp

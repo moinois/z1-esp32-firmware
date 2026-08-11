@@ -27,6 +27,7 @@ add_executable(
     configuration/test_configuration_get.cpp
     configuration/test_configuration_set.cpp
     connectivity/test_connectivity_startup.cpp
+    connectivity/test_access_point_command.cpp
     storage/test_directory_listing.cpp
     diagnostics/test_diagnostic_capture.cpp
     diagnostics/test_diagnostic_log_writer.cpp
