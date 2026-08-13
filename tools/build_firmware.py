@@ -136,10 +136,13 @@ def write_build_selection(
     lines.append("CONFIG_LOG_DEFAULT_LEVEL_WARN=y" if release else "# CONFIG_LOG_DEFAULT_LEVEL_WARN is not set")
     lines.append("CONFIG_LOG_DEFAULT_LEVEL=2" if release else "# CONFIG_LOG_DEFAULT_LEVEL is not set")
     lines.append(f'CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="{partition_table}"')
-    lines.append("CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y" if compact else "# CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT is not set")
-    lines.append("CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT=y" if compact else "# CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT is not set")
-    lines.append("CONFIG_BT_STACK_NO_LOG=y" if compact else "# CONFIG_BT_STACK_NO_LOG is not set")
-    lines.append("CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y" if compact else "# CONFIG_BOOTLOADER_LOG_LEVEL_WARN is not set")
+    # Production-safe size reductions are part of every release; compact adds
+    # only explicitly experimental profile extensions.
+    release_size_flags = release or compact
+    lines.append("CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y" if release_size_flags else "# CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT is not set")
+    lines.append("CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT=y" if release_size_flags else "# CONFIG_COMPILER_OPTIMIZATION_CHECKS_SILENT is not set")
+    lines.append("CONFIG_BT_STACK_NO_LOG=y" if release_size_flags else "# CONFIG_BT_STACK_NO_LOG is not set")
+    lines.append("CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y" if release_size_flags else "# CONFIG_BOOTLOADER_LOG_LEVEL_WARN is not set")
     # The attached sensor is identified as OV3660. Keep its driver and omit
     # unrelated esp32-camera sensor implementations from compact images.
     camera_profiles = load_camera_profiles(

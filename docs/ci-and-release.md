@@ -70,10 +70,9 @@ selection.
 `tools/build_firmware.py` writes an auditable `hardware-selection.json` file.
 Development builds use `partitions-dev.csv`; release and ordinary specification
 builds use the normative `partitions.csv`. Release images must fit its original
-OTA slot size; `--compact` is the release size-reduction profile used for that
-purpose and
-is valid only together with `--release`; the published release workflow enables
-it so the image fits the normative OTA slots. The pull-request CI builds the
-regular live profile as an additional size/regression signal. `--mainboard-version`
+OTA slot size. The standard `--release` profile includes the production-safe
+size reductions required for that limit; `--compact` is an optional, auditable
+extension and is not required for a valid release. The pull-request CI builds
+the regular live profile as an additional size/regression signal. `--mainboard-version`
 is package metadata and does not change the
 human-readable firmware version returned by the device.
