@@ -7,7 +7,9 @@
       "generator": "Ninja",
       "binaryDir": "/private/tmp/z1-mainboard-host-build",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_OSX_SYSROOT": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "CMAKE_CXX_FLAGS": "-stdlib=libc++ -isystem /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1"
       }
     },
     {
@@ -27,7 +29,9 @@
       "generator": "Ninja",
       "binaryDir": "/private/tmp/z1-mainboard-host-release-build",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_SYSROOT": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "CMAKE_CXX_FLAGS": "-stdlib=libc++ -isystem /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1"
       }
     }
   ],

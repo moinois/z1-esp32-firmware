@@ -503,10 +503,11 @@ This is a CMake host build only. It does not select the ESP32 release profile,
 the firmware partition table, or the `--release` packaging mode; those remain
 the responsibility of `tools/build_firmware.py`.
 
-The macOS preset includes the installed Command Line Tools libc++ include path
-explicitly because that installation does not expose the path automatically to
-CMake. Host build output is written under `/private/tmp`, not into the source
-repository.
+The macOS presets select the active Command Line Tools macOS SDK explicitly so
+Apple Clang can find its libc++ headers (`<array>`, `<cstddef>`, and friends).
+If that SDK path does not exist, install or repair Xcode Command Line Tools;
+do not work around it by adding random system include directories. Host build
+output is written under `/private/tmp`, not into the source repository.
 
 ## Building the ESP32-S3 firmware
 

@@ -53,6 +53,11 @@ ctest --preset host-tests-release
 This preset must not be confused with the ESP32 `--release` build flag: it only
 sets `CMAKE_BUILD_TYPE=Release` for host C++ tests.
 
+The macOS presets set `CMAKE_OSX_SYSROOT` to the Command Line Tools SDK so the
+system libc++ headers are available to Apple Clang. A missing SDK indicates a
+local Xcode Command Line Tools installation problem, not a project dependency;
+repair the tools installation before running the presets.
+
 ## Published releases
 
 `.github/workflows/release-firmware.yml` runs only when a GitHub Release is
