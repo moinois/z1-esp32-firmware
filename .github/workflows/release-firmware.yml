@@ -164,6 +164,7 @@ jobs:
           python3 tools/build_firmware.py \
             --live \
             --release \
+            --compact \
             --mainboard-version "$MAINBOARD_VERSION" \
             --build-dir build
 
