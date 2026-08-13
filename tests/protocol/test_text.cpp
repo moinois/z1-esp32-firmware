@@ -2,6 +2,8 @@
 #include "test.hpp"
 #include "core/protocol/text.hpp"
 
+#include <algorithm>
+
 using firmware::core::ByteVector;
 
 TEST_CASE(esc_001_escape_replacement_is_one_for_one_and_not_recursive) {
