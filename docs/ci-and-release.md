@@ -76,3 +76,9 @@ extension and is not required for a valid release. The pull-request CI builds
 the regular live profile as an additional size/regression signal. `--mainboard-version`
 is package metadata and does not change the
 human-readable firmware version returned by the device.
+
+The development table is not an OTA-compatible substitute for the normative
+table. Moving a device between development and release layouts requires one
+full USB/serial flash to install the matching partition table; different
+offsets may erase or make existing data unavailable. CI builds both profiles,
+while the published release workflow uses only the live release profile.

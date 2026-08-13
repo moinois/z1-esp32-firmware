@@ -155,6 +155,17 @@ Use `idf.py size-components` and `idf.py size-files` on the release build before
 publishing it. The generated `hardware-selection.json` records that the build
 was a release and that no mocks were selected.
 
+### Development partition warning
+
+`tools/build_firmware.py --live` and the mock profiles are development builds.
+They use `partitions-dev.csv`, which is intentionally larger than the
+specification/release layout and can produce a larger image. Before using a
+development image on a device previously flashed with a release layout, do one
+complete USB/serial flash with `--flash` so the development partition table is
+written. The first flash may erase or invalidate existing data because the
+partition offsets differ. Use `--release` for the normative layout and OTA
+images.
+
 ## Package mainboard firmware
 
 `package_firmware.py` wraps a bootable ESP32-S3 application image in the

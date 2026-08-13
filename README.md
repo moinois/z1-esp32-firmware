@@ -511,6 +511,16 @@ The application image is produced at:
 build/mainboard_firmware.bin
 ```
 
+The build helper defaults to a development profile: without `--release`,
+`tools/build_firmware.py` selects `partitions-dev.csv` and may produce a larger
+image than a release build. A device coming from the release layout must be
+flashed once over the full USB/serial flash connection so the development
+partition table is installed; this can erase or invalidate existing data when
+the offsets change. Use `--release` for the normative partition table and
+OTA-compatible images. A direct `idf.py build` uses ESP-IDF project defaults;
+use the helper when explicit profile selection and its audit manifest are
+required.
+
 Create a specification-compliant mainboard-only aggregate update package with:
 
 ```sh
