@@ -12,7 +12,7 @@ import pytest
 def _diagnostic_port() -> str | None:
     configured = os.getenv("Z1_HIL_SERIAL")
     if configured:
-        return configured
+        return configured if os.path.exists(configured) else None
     try:
         from serial.tools import list_ports  # type: ignore[import-not-found]
     except ImportError:

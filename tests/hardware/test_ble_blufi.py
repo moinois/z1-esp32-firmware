@@ -753,6 +753,8 @@ def test_blufi_recovers_advertising_after_target_reset() -> None:
     serial_port = os.getenv("Z1_HIL_SERIAL")
     if not serial_port:
         pytest.skip("set Z1_HIL_SERIAL for BLE reset recovery validation")
+    if not os.path.exists(serial_port):
+        pytest.skip(f"configured diagnostic port is unavailable: {serial_port}")
 
     async def validate() -> None:
         import serial
