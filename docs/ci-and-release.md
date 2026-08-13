@@ -40,6 +40,19 @@ python3 tools/build_firmware.py --live --build-dir build-ci-live
 python3 tools/build_firmware.py --mock-all --build-dir build-ci-mock
 ```
 
+The CMake `host-tests-release` preset is available for an optimized portable
+regression run, but CI intentionally keeps the ordinary host test and coverage
+profiles separate. It is invoked with:
+
+```sh
+cmake --preset host-tests-release
+cmake --build --preset host-tests-release
+ctest --preset host-tests-release
+```
+
+This preset must not be confused with the ESP32 `--release` build flag: it only
+sets `CMAKE_BUILD_TYPE=Release` for host C++ tests.
+
 ## Published releases
 
 `.github/workflows/release-firmware.yml` runs only when a GitHub Release is

@@ -491,6 +491,18 @@ cmake --build --preset host-tests
 ctest --preset host-tests
 ```
 
+For an optimized host regression run, use the separate Release preset:
+
+```sh
+cmake --preset host-tests-release
+cmake --build --preset host-tests-release
+ctest --preset host-tests-release
+```
+
+This is a CMake host build only. It does not select the ESP32 release profile,
+the firmware partition table, or the `--release` packaging mode; those remain
+the responsibility of `tools/build_firmware.py`.
+
 The macOS preset includes the installed Command Line Tools libc++ include path
 explicitly because that installation does not expose the path automatically to
 CMake. Host build output is written under `/private/tmp`, not into the source

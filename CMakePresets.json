@@ -20,6 +20,15 @@
         "CMAKE_CXX_FLAGS": "-O0 -g -fprofile-instr-generate -fcoverage-mapping",
         "CMAKE_EXE_LINKER_FLAGS": "-fprofile-instr-generate"
       }
+    },
+    {
+      "name": "host-tests-release",
+      "displayName": "Host unit tests (Release)",
+      "generator": "Ninja",
+      "binaryDir": "/private/tmp/z1-mainboard-host-release-build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
@@ -30,6 +39,10 @@
     {
       "name": "host-coverage",
       "configurePreset": "host-coverage"
+    },
+    {
+      "name": "host-tests-release",
+      "configurePreset": "host-tests-release"
     }
   ],
   "testPresets": [
@@ -48,6 +61,13 @@
       },
       "environment": {
         "LLVM_PROFILE_FILE": "${sourceDir}/build/host-coverage/coverage-%p.profraw"
+      }
+    },
+    {
+      "name": "host-tests-release",
+      "configurePreset": "host-tests-release",
+      "output": {
+        "outputOnFailure": true
       }
     }
   ]
