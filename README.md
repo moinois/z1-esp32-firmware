@@ -480,7 +480,8 @@ When using the ESP-IDF tool installation, load its toolchain environment first
 so CMake and Ninja are available in `PATH`:
 
 ```sh
-source /path/to/your/esp-idf/export.sh
+export ESP_IDF_DIR="${ESP_IDF_DIR:-$HOME/.espressif/v5.4.4/esp-idf}"
+source "$ESP_IDF_DIR/export.sh"
 ```
 
 From this repository:
@@ -515,7 +516,8 @@ Activate ESP-IDF, then use the repository build helper. It selects the hardware
 profile, partition table, Web UI source, and writes an audit manifest:
 
 ```sh
-source /path/to/your/esp-idf/export.sh
+export ESP_IDF_DIR="${ESP_IDF_DIR:-$HOME/.espressif/v5.4.4/esp-idf}"
+source "$ESP_IDF_DIR/export.sh"
 python3 tools/build_firmware.py --live --build-dir build
 ```
 
@@ -599,7 +601,8 @@ The target defaults and partition table are configured for the 16 MB flash and
 the serial device reported by macOS:
 
 ```sh
-source /path/to/your/esp-idf/export.sh
+export ESP_IDF_DIR="${ESP_IDF_DIR:-$HOME/.espressif/v5.4.4/esp-idf}"
+source "$ESP_IDF_DIR/export.sh"
 idf.py -p /dev/cu.usbmodem1234561 flash monitor
 ```
 

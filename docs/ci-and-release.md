@@ -35,7 +35,8 @@ The equivalent local commands are:
 ```sh
 python3 tools/host_coverage.py
 python3 -m pytest tools/tests -q
-source /path/to/your/esp-idf/export.sh
+export ESP_IDF_DIR="${ESP_IDF_DIR:-$HOME/.espressif/v5.4.4/esp-idf}"
+source "$ESP_IDF_DIR/export.sh"
 python3 tools/build_firmware.py --live --build-dir build-ci-live
 python3 tools/build_firmware.py --mock-all --build-dir build-ci-mock
 ```

@@ -65,7 +65,8 @@ reusable generated build directory. It discovers supported adapter names from
 build profile.
 
 ```text
-source /path/to/your/esp-idf/export.sh
+export ESP_IDF_DIR="${ESP_IDF_DIR:-$HOME/.espressif/v5.4.4/esp-idf}"
+source "$ESP_IDF_DIR/export.sh"
 python3 tools/build_firmware.py --live
 python3 tools/build_firmware.py --mock sd
 python3 tools/build_firmware.py --mock-all
