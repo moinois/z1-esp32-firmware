@@ -462,7 +462,7 @@ host dependency graph.
 
 - macOS development tools with a C++17 compiler
 - CMake and Ninja
-- ESP-IDF 5.4.1 installed for ESP32-S3
+- ESP-IDF 5.4.x installed for ESP32-S3 (5.4.1 is used by CI)
 - an activated ESP-IDF shell (`IDF_PATH` and tool paths exported)
 
 Verify the target environment with:
@@ -480,7 +480,7 @@ When using the ESP-IDF tool installation, load its toolchain environment first
 so CMake and Ninja are available in `PATH`:
 
 ```sh
-source /Users/moinois/esp/esp-idf/export.sh
+source /path/to/your/esp-idf/export.sh
 ```
 
 From this repository:
@@ -515,7 +515,7 @@ Activate ESP-IDF, then use the repository build helper. It selects the hardware
 profile, partition table, Web UI source, and writes an audit manifest:
 
 ```sh
-source /Users/moinois/esp/esp-idf/export.sh
+source /path/to/your/esp-idf/export.sh
 python3 tools/build_firmware.py --live --build-dir build
 ```
 

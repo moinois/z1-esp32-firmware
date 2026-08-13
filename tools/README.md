@@ -65,7 +65,7 @@ reusable generated build directory. It discovers supported adapter names from
 build profile.
 
 ```text
-source /Users/moinois/esp/esp-idf/export.sh
+source /path/to/your/esp-idf/export.sh
 python3 tools/build_firmware.py --live
 python3 tools/build_firmware.py --mock sd
 python3 tools/build_firmware.py --mock-all

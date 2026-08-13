@@ -35,7 +35,7 @@ The equivalent local commands are:
 ```sh
 python3 tools/host_coverage.py
 python3 -m pytest tools/tests -q
-source /path/to/esp-idf/export.sh
+source /path/to/your/esp-idf/export.sh
 python3 tools/build_firmware.py --live --build-dir build-ci-live
 python3 tools/build_firmware.py --mock-all --build-dir build-ci-mock
 ```

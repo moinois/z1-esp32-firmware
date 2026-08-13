@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -315,11 +316,20 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     command.append("flash" if args.flash else "build")
 
-    if shutil.which("idf.py") is None and idf_export is not None:
-        command = ["bash", "-lc", f"source {idf_export} >/dev/null && exec \"$@\"", "build_firmware", *command]
-    elif shutil.which("idf.py") is None:
-        print("idf.py is unavailable and no ESP-IDF export.sh was found.", file=sys.stderr)
-        return 2
+    if shutil.which("idf.py") is None:
+        # ESP-IDF activation scripts commonly define idf.py as a shell
+        # function. Resolve that supported environment directly instead of
+        # requiring a runnable `idf.py` file in PATH.
+        idf_path = os.environ.get("IDF_PATH")
+        idf_python = os.environ.get("IDF_PYTHON_ENV_PATH")
+        if idf_path and idf_python:
+            command[0] = str(Path(idf_python) / "bin/python")
+            command.insert(1, str(Path(idf_path) / "tools/idf.py"))
+        elif idf_export is not None:
+            command = ["bash", "-lc", f"source {idf_export} >/dev/null && exec \"$@\"", "build_firmware", *command]
+        else:
+            print("idf.py is unavailable; activate ESP-IDF first (IDF_PATH and IDF_PYTHON_ENV_PATH).", file=sys.stderr)
+            return 2
     build_result = subprocess.run(command, cwd=root, check=False)
     if build_result.returncode != 0:
         return build_result.returncode
