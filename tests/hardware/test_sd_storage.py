@@ -112,8 +112,8 @@ def test_sd_root_can_be_listed(sd_client, sd_fixture) -> None:
 def test_temporary_directory_create_and_remove(sd_client, sd_fixture) -> None:
     """Creates and removes a unique directory after explicit mutation opt-in."""
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
-    # The product uses FAT short-name mode; keep the unique directory component
-    # within the eight-character 8.3 base-name limit.
+    # Keep the generated directory compact so the response remains easy to
+    # inspect; current SD-009 permits long names and does not require 8.3.
     path = f"/Z1{uuid.uuid4().hex[:6].upper()}"
     try:
         created = sd_client.exchange(

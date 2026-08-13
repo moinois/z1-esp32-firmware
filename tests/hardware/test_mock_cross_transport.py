@@ -157,10 +157,10 @@ def test_configuration_get_and_set_are_shared_between_usb_and_tcp(
 @pytest.mark.requirement("CFG-004")
 @pytest.mark.requirement("CFG-005")
 @pytest.mark.requirement("CFG-006")
-def test_configuration_default_and_restore_expose_83_filename_conflict(
+def test_configuration_default_and_restore_supports_long_filename(
     usb_client, tcp_host: str, sd_fixture
 ) -> None:
-    """Runs default/restore while retaining the normative 8.3 conflict."""
+    """Verifies CFG-001 using the current SD-009 long-filename policy."""
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     initial = b"MAINBOARD_HILVALUE=snapshot\n"
@@ -168,11 +168,6 @@ def test_configuration_default_and_restore_expose_83_filename_conflict(
         upload_file(usb_client, "/config.txt", initial)
         saved = usb_client.exchange(GENERAL_COMMAND, b"config-default", 5.0)
         payload = _payload(saved)
-        if b"Default file not found or created fail" in payload:
-            pytest.xfail(
-                "SD-009 disables long filenames but CFG-001 requires "
-                "/sd/config.default, whose extension is not 8.3-compatible"
-            )
         assert b"Settings save as default complete." in payload
 
         usb_client.exchange(

@@ -221,8 +221,10 @@ mutating configuration request. The report is
 `build/hil-tcp-permanent-workers.json`.
 
 The final all-mock regression then completed all 94 collected cases in 1312.56
-seconds: 66 PASS, 27 capability/safety SKIP, and the one documented
-`config.default`/8.3 XFAIL, with no FAIL. This single run includes the 20-cycle
+seconds: 66 PASS, 27 capability/safety SKIP, and the historical
+`config.default`/8.3 XFAIL, with no FAIL. The XFAIL is no longer valid against
+the current SD-009 long-filename policy and must not be used for current
+conformance results. This single run includes the 20-cycle
 mock-SD endurance case, latched storage faults, controller and camera mocks,
 80-session TCP churn, USB/TCP/UDP/HTTP concurrency, WLAN scan recovery, web UI,
 and mutating configuration/storage paths. The retained report is
@@ -469,7 +471,8 @@ probes the firmware automatically.
 
 On 2026-08-09 an all-mock image was flashed from `build-hil-all`. COM reset and
 boot diagnostics passed 2/2. The applicable native-USB mutating suite produced
-44 PASS, three capability-gated SKIP, and the documented SD-009/CFG-001 XFAIL;
+44 PASS and three capability-gated SKIP; the old SD-009/CFG-001 XFAIL is
+historical and is no longer part of current conformance results;
 the remaining 30-case storage, controller, NVS, Wi-Fi, and USB group passed
 without failure. Destructive HIL then installed the generated 1 MiB SPIFFS
 image, verified runtime/serial/Wi-Fi persistence across a same-image OTA reboot,
@@ -713,8 +716,9 @@ through USB; and an active USB upload rejected TCP before cancel released the
 owner for a successful persistent-socket TCP upload. Three cases passed. The
 fourth was an explicit XFAIL under the former SD-009 short-name policy,
 while CFG-001 requires `/sd/config.default`, whose seven-character extension
-could not be created by that FAT policy. No implementation policy was changed
-to hide the conflict in that historical run. The report is
+could not be created by that former FAT policy. The current SD-009 allows the
+name, so the test is now a positive conformance case. No implementation policy
+was changed to hide the conflict in that historical run. The report is
 `build/hil-mock-cross-transport-final.json`.
 
 The inverse ownership case passed separately: a persistent TCP upload retained
