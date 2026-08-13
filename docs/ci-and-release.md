@@ -68,8 +68,9 @@ selection.
 ## Build profiles and partitions
 
 `tools/build_firmware.py` writes an auditable `hardware-selection.json` file.
-Development builds use `partitions-dev.csv`; release builds use the normative
-`partitions.csv`. `--compact` is an experimental size-reduction profile and
+Development builds use `partitions-dev.csv`; release and ordinary specification
+builds use the normative `partitions.csv` with two 2 MiB OTA slots and a 1 MiB
+SPIFFS volume. `--compact` is an experimental size-reduction profile and
 is valid only together with `--release`; it is not enabled by either GitHub
 workflow. `--mainboard-version` is package metadata and does not change the
 human-readable firmware version returned by the device.

@@ -45,6 +45,14 @@ class BuildFirmwareTests(unittest.TestCase):
         self.assertEqual(profiles["compact"], {"OV3660"})
         self.assertTrue(profiles["release"] <= profiles["all"])
 
+    def test_normative_partition_table_keeps_two_megabyte_ota_slots(self) -> None:
+        table = (Path(__file__).resolve().parents[2] / "partitions.csv").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("ota_0,     app,  ota_0,   0x020000, 0x200000,", table)
+        self.assertIn("ota_1,     app,  ota_1,   0x220000, 0x200000,", table)
+        self.assertIn("spiffs,    data, spiffs,  0x420000, 0x100000,", table)
+
     def test_selected_mock_explicitly_disables_every_other_adapter(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)
