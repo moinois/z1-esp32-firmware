@@ -58,6 +58,11 @@ system libc++ headers are available to Apple Clang. A missing SDK indicates a
 local Xcode Command Line Tools installation problem, not a project dependency;
 repair the tools installation before running the presets.
 
+The firmware helper resolves an activated ESP-IDF installation from the local
+`IDF_PATH` and `IDF_PYTHON_ENV_PATH` variables. It invokes
+`$IDF_PYTHON_ENV_PATH/bin/python $IDF_PATH/tools/idf.py` when `idf.py` is only a
+shell function, so the installation path does not need to be hard-coded.
+
 ## Published releases
 
 `.github/workflows/release-firmware.yml` runs only when a GitHub Release is

@@ -92,6 +92,11 @@ python3 tools/build_firmware.py --mock sd --flash \
 The normal `idf.py build` path remains governed by `sdkconfig.defaults`, where
 all mocks are disabled.
 
+After ESP-IDF activation, the helper uses the local `IDF_PATH` and
+`IDF_PYTHON_ENV_PATH` variables to find the SDK script and Python environment.
+This also supports installations where activation defines `idf.py` as a shell
+function rather than placing an executable named `idf.py` in `PATH`.
+
 Mock adapter source files are conditionally added to the target component only
 when their corresponding mock switch is enabled. Live and release builds retain
 only the small no-op fault-state boundaries needed by production code; mock

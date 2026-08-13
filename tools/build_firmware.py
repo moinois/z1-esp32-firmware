@@ -322,9 +322,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         # requiring a runnable `idf.py` file in PATH.
         idf_path = os.environ.get("IDF_PATH")
         idf_python = os.environ.get("IDF_PYTHON_ENV_PATH")
-        if idf_path and idf_python:
-            command[0] = str(Path(idf_python) / "bin/python")
-            command.insert(1, str(Path(idf_path) / "tools/idf.py"))
+        python_candidates = []
+        if idf_python:
+            python_candidates.append(Path(idf_python) / "bin/python")
+        path_python = shutil.which("python3") or shutil.which("python")
+        if path_python:
+            python_candidates.append(Path(path_python))
+        idf_script = Path(idf_path) / "tools/idf.py" if idf_path else None
+        selected_python = next(
+            (candidate for candidate in python_candidates if candidate.is_file()),
+            None,
+        )
+        if idf_script is not None and idf_script.is_file() and selected_python:
+            command[0] = str(selected_python)
+            command.insert(1, str(idf_script))
         elif idf_export is not None:
             command = ["bash", "-lc", f"source {idf_export} >/dev/null && exec \"$@\"", "build_firmware", *command]
         else:
