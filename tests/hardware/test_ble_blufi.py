@@ -12,6 +12,8 @@ from typing import Any
 
 import pytest
 
+from tests.hardware.hil_protocol import GENERAL_COMMAND
+
 BLUFI_NAME_PREFIX = "MK_"
 BLUFI_SERVICE = "0000ffff-0000-1000-8000-00805f9b34fb"
 BLUFI_WRITE = "0000ff01-0000-1000-8000-00805f9b34fb"
@@ -719,11 +721,15 @@ def test_blufi_provisions_declared_wifi_credentials() -> None:
 @pytest.mark.readonly
 @pytest.mark.ble
 @pytest.mark.http
-def test_blufi_remains_responsive_during_http_diagnostics() -> None:
+@pytest.mark.usb
+@pytest.mark.requirement("BLE-013")
+@pytest.mark.requirement("USB-004")
+@pytest.mark.requirement("WEB-001")
+def test_blufi_remains_responsive_during_usb_http_and_wifi_diagnostics(
+    usb_client, tcp_host: str
+) -> None:
+    """Keeps BLE, USB and HTTP/Wi-Fi diagnostics responsive concurrently."""
     _require_ble_fixture()
-    host = os.getenv("Z1_HIL_HOST")
-    if not host:
-        pytest.skip("set Z1_HIL_HOST for concurrent BLE/HTTP validation")
 
     async def validate() -> None:
         from bleak import BleakClient
@@ -732,13 +738,17 @@ def test_blufi_remains_responsive_during_http_diagnostics() -> None:
         async with BleakClient(device, timeout=10.0) as client:
             key = await _negotiate_security(client)
             http_reads = asyncio.gather(
-                *(asyncio.to_thread(_wifi_diagnostics, host) for _ in range(8))
+                *(asyncio.to_thread(_wifi_diagnostics, tcp_host) for _ in range(8))
+            )
+            usb_read = asyncio.to_thread(
+                lambda: bool(usb_client.exchange(GENERAL_COMMAND, b"ftype /", 5.0))
             )
             protected = await _request_frame(client, b"\x14\x00\x03\x00")
             payload = _decrypt_protected_frame(protected, 0x0F, key, sequence=1)
-            diagnostics = await http_reads
+            diagnostics, usb_ok = await asyncio.gather(http_reads, usb_read)
             assert len(payload) >= 3
             assert all(isinstance(item, dict) for item in diagnostics)
+            assert usb_ok
 
     asyncio.run(validate())
 
