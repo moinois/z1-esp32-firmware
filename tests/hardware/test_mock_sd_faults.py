@@ -24,11 +24,14 @@ def _payload(frames) -> bytes:
 def _control(client, action: str) -> bytes:
     """Applies one mock-SD action and returns its exact text response."""
 
-    return _payload(
-        client.exchange(
-            GENERAL_COMMAND, f"mock-sd {action}".encode("ascii"), 5.0
-        )
+    frames = client.exchange(
+        GENERAL_COMMAND, f"mock-sd {action}".encode("ascii"), 5.0
     )
+    response = next(
+        (frame.payload for frame in frames if frame.payload.startswith(b"mock-sd ")),
+        None,
+    )
+    return response if response is not None else _payload(frames)
 
 
 @pytest.mark.hardware

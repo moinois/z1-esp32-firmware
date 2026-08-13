@@ -70,6 +70,27 @@ def _required_frame(frames, frame_type: int):
     )
 
 
+def _await_upload_request(connection: socket.socket, frames, timeout: float = 7.0):
+    """Waits past normative HFT-022 retry notices for the next data request."""
+
+    deadline = time.monotonic() + timeout
+    collected = list(frames)
+    while time.monotonic() < deadline:
+        requested = _required_frame(collected, FILE_DATA)
+        if requested is not None:
+            return requested
+        if not any(
+            frame.frame_type == FILE_RETRY
+            and frame.payload == b"Info: need retry!"
+            for frame in collected
+        ):
+            return None
+        collected.extend(
+            receive_tcp_frames(connection, min(1.0, deadline - time.monotonic()))
+        )
+    return _required_frame(collected, FILE_DATA)
+
+
 @pytest.mark.hardware
 @pytest.mark.readonly
 @pytest.mark.sd
@@ -272,7 +293,7 @@ def test_large_tcp_upload_resumes_after_connection_loss(
                 FILE_DATA,
                 sequence.to_bytes(4, "big") + blocks[sequence - 1],
             )
-            request = _required_frame(responses, FILE_DATA)
+            request = _await_upload_request(connection, responses)
             assert request is not None, [
                 (frame.frame_type, frame.payload) for frame in responses
             ]
@@ -299,7 +320,7 @@ def test_large_tcp_upload_resumes_after_connection_loss(
                 sequence.to_bytes(4, "big") + blocks[sequence - 1],
             )
             if sequence < len(blocks):
-                request = _required_frame(responses, FILE_DATA)
+                request = _await_upload_request(connection, responses)
                 assert request is not None, [
                     (frame.frame_type, frame.payload) for frame in responses
                 ]

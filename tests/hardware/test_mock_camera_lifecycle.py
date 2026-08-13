@@ -104,9 +104,12 @@ def test_mock_camera_repeated_start_stop_resolution_and_disconnect(
     if os.getenv("Z1_HIL_MOCK_CAMERA") != "1":
         pytest.skip("mock camera not declared with Z1_HIL_MOCK_CAMERA=1")
     for cycle, resolution in enumerate((1, 10, 15, 4, 12)):
-        _set_resolution(tcp_host, resolution)
+        # LIVE-010 initializes camera capability lazily on the first video
+        # WebSocket request. The resolution endpoint must therefore be used
+        # after opening the socket; before that, sensor rejection is normative.
         connection = _open_video_socket(tcp_host)
         try:
+            _set_resolution(tcp_host, resolution)
             _send_text(connection, b"start_stream")
             for _ in range(3):
                 opcode, payload = _receive_frame(connection)

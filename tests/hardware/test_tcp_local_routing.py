@@ -38,6 +38,7 @@ def _matching_payload(frames: list[ReceivedFrame], frame_type: int) -> bytes:
 @pytest.mark.controller
 @pytest.mark.requirement("CMD-004")
 @pytest.mark.requirement("ROUTE-001")
+@pytest.mark.requirement("ROUTE-004")
 @pytest.mark.requirement("ROUTE-018")
 @pytest.mark.requirement("REC-001")
 @pytest.mark.requirement("RUN-010")
@@ -90,10 +91,15 @@ def test_tcp_controller_bridge_returns_controller_originated_reply(
     if os.getenv("Z1_HIL_MOCK_CONTROLLER") != "1":
         pytest.skip("controller bridge validation requires the controller mock")
 
-    # This command is forwarded to the selected controller and deliberately
-    # has no immediate host response. The mock injects an sn-get back through
-    # the production UART decoder, then records the mainboard's framed reply.
-    assert _exchange(tcp_host, GENERAL_COMMAND, b"mock-command sn-get", 1.0) == []
+    # The mock injects sn-get through the production UART decoder. ROUTE-004
+    # broadcasts that otherwise-unconsumed controller frame unchanged, while
+    # the local serial service independently returns its answer over UART.
+    broadcast = _exchange(
+        tcp_host, GENERAL_COMMAND, b"mock-command sn-get", 1.0
+    )
+    assert [(frame.frame_type, frame.payload) for frame in broadcast] == [
+        (GENERAL_COMMAND, b"sn-get")
+    ]
 
     deadline = time.monotonic() + 5.0
     while time.monotonic() < deadline:

@@ -32,9 +32,10 @@ def test_http_repeated_concurrent_requests_remain_available(tcp_host: str) -> No
 
 
 @pytest.mark.hardware
-@pytest.mark.readonly
+@pytest.mark.destructive
 @pytest.mark.http
 @pytest.mark.requirement("WEBUP-002")
+@pytest.mark.requirement("WEBUP-004")
 def test_interrupted_multipart_request_does_not_wedge_http(tcp_host: str) -> None:
     request = (
         "POST /update HTTP/1.1\r\n"

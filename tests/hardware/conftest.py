@@ -19,6 +19,9 @@ from tests.hardware.hil_protocol import (
 )
 
 
+_native_usb_seen = False
+
+
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Registers the optional requirement-level JSON evidence destination."""
 
@@ -96,9 +99,16 @@ def pytest_sessionfinish(session: pytest.Session) -> None:
 def usb_device() -> Iterator[Any]:
     """Provides a fresh handle because USB-reset tests invalidate old handles."""
 
+    global _native_usb_seen
     device, reason = find_native_usb_device()
+    if device is None and _native_usb_seen:
+        deadline = time.monotonic() + 15.0
+        while device is None and time.monotonic() < deadline:
+            time.sleep(0.25)
+            device, reason = find_native_usb_device()
     if device is None:
         pytest.skip(reason or "native USB device unavailable")
+    _native_usb_seen = True
     try:
         yield device
     finally:
@@ -213,7 +223,7 @@ def camera_fixture(tcp_host: str) -> None:
         connection.close()
     if response.status == 200:
         return
-    if response.status == 500 and body == b"Failed to set framesize":
+    if response.status == 400 and body == b"Failed to set framesize":
         pytest.skip("camera module not detected by the firmware")
     pytest.fail(
         f"unexpected camera capability response: HTTP {response.status} {body!r}"

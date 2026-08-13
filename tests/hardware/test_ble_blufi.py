@@ -276,15 +276,23 @@ async def _negotiate_security(client: Any) -> bytes:
 
 
 def _wifi_diagnostics(host: str) -> dict[str, Any]:
-    connection = http.client.HTTPConnection(host, 80, timeout=3.0)
-    try:
-        connection.request("GET", "/api/wifi/diagnostics")
-        response = connection.getresponse()
-        body = response.read()
-        assert response.status == 200
-        return json.loads(body)
-    finally:
-        connection.close()
+    """Reads diagnostics with bounded whole-request transport recovery."""
+
+    for attempt in range(3):
+        connection = http.client.HTTPConnection(host, 80, timeout=3.0)
+        try:
+            connection.request("GET", "/api/wifi/diagnostics")
+            response = connection.getresponse()
+            body = response.read()
+            assert response.status == 200
+            return json.loads(body)
+        except OSError:
+            if attempt == 2:
+                raise
+            time.sleep(0.25)
+        finally:
+            connection.close()
+    raise AssertionError("unreachable diagnostics retry state")
 
 
 def _assert_wifi_records(payload: bytes) -> None:

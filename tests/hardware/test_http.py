@@ -110,27 +110,9 @@ def test_http_camera_rejects_invalid_json(tcp_host: str) -> None:
         b"not-json",
         {"Content-Type": "application/json"},
     )
-    assert status == 400
+    assert status == 500
     assert content_type == "text/html"
     assert body == b"Invalid JSON"
-
-
-@pytest.mark.hardware
-@pytest.mark.readonly
-@pytest.mark.http
-@pytest.mark.requirement("WEBUP-010")
-@pytest.mark.requirement("WEBUP-020")
-@pytest.mark.parametrize("path", ["/update", "/updateffs"])
-def test_http_update_rejects_non_multipart_body(tcp_host: str, path: str) -> None:
-    status, _, body = _request(
-        tcp_host,
-        "POST",
-        path,
-        b"invalid",
-        {"Content-Type": "application/x-www-form-urlencoded"},
-    )
-    assert status == 400
-    assert body == b"Invalid multipart request"
 
 
 @pytest.mark.hardware

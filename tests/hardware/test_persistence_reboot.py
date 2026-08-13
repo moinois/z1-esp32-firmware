@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import time
 import urllib.request
+import urllib.error
 
 import pytest
 
@@ -63,6 +64,25 @@ def _wait_for_usb(timeout_seconds: float = 20.0) -> UsbProtocolClient:
     pytest.fail("native USB protocol did not recover after OTA reboot")
 
 
+def _wait_for_wifi_diagnostics(host: str, timeout_seconds: float = 45.0) -> dict:
+    """Waits for post-reboot association, DHCP, and the HTTP service in order."""
+
+    deadline = time.monotonic() + timeout_seconds
+    last_error: Exception | None = None
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(
+                f"http://{host}/api/wifi/diagnostics", timeout=2.0
+            ) as response:
+                diagnostics = json.load(response)
+            if diagnostics.get("connected") is True:
+                return diagnostics
+        except (OSError, urllib.error.URLError, json.JSONDecodeError) as error:
+            last_error = error
+        time.sleep(0.25)
+    pytest.fail(f"Wi-Fi diagnostics did not recover after OTA reboot: {last_error}")
+
+
 @pytest.mark.hardware
 @pytest.mark.destructive
 @pytest.mark.tcp
@@ -114,8 +134,10 @@ def test_runtime_identity_and_wifi_persist_across_ota_reboot(tcp_host: str) -> N
         image_path.read_bytes(),
         image_path.name,
     )
-    assert status == 200
-    assert body == b"Firmware upgrade finished. The system will reboot in 2 seconds..."
+    assert (status, body) == (
+        200,
+        b"Firmware upgrade finished. The system will reboot in 2 seconds...",
+    )
     restored = wait_for_usb_service_restart(previous_usb)
     after = _runtime(restored)
     assert after[0] == before[0]
@@ -123,9 +145,6 @@ def test_runtime_identity_and_wifi_persist_across_ota_reboot(tcp_host: str) -> N
     assert after[2] == before[2]
     assert _payload(restored, b"sn-get") == serial_before
 
-    with urllib.request.urlopen(
-        f"http://{tcp_host}/api/wifi/diagnostics", timeout=5.0
-    ) as response:
-        diagnostics = json.load(response)
+    diagnostics = _wait_for_wifi_diagnostics(tcp_host)
     assert diagnostics["associations"] >= 1
     assert diagnostics["addresses_acquired"] >= 1

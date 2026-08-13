@@ -287,6 +287,21 @@ def test_controller_uart_remains_live_during_host_file_transfer(
     path = "/CXFER.BIN"
     content = b"controller-traffic-during-host-transfer"
     connection = socket.create_connection((tcp_host, 2222), timeout=5.0)
+    cancelled = False
+
+    def cancel_transfer(active: socket.socket) -> bool:
+        """Waits through unrelated broadcasts until cancel is terminal."""
+
+        active.sendall(encode_frame(FILE_CANCEL, b""))
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline:
+            if any(
+                frame.frame_type == FILE_CANCEL
+                for frame in receive_tcp_frames(active, 1.0)
+            ):
+                return True
+        return False
+
     try:
         connection.sendall(
             encode_frame(FILE_COMMAND, f"upload {path}".encode("ascii"))
@@ -308,13 +323,19 @@ def test_controller_uart_remains_live_during_host_file_transfer(
         else:
             pytest.fail("controller UART did not reply while TCP owned file transfer")
 
-        connection.sendall(encode_frame(FILE_CANCEL, b""))
-        assert any(
-            frame.frame_type == FILE_CANCEL
-            for frame in receive_tcp_frames(connection, 5.0)
-        )
+        cancelled = cancel_transfer(connection)
+        assert cancelled
     finally:
         connection.close()
+        if not cancelled:
+            try:
+                with socket.create_connection(
+                    (tcp_host, 2222), timeout=5.0
+                ) as cleanup:
+                    cleanup.settimeout(1.0)
+                    cancel_transfer(cleanup)
+            except OSError:
+                pass
         try:
             usb_client.exchange(GENERAL_COMMAND, b"rm /CXFER.BIN", 4.0)
         except Exception:
