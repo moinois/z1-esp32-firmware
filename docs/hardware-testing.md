@@ -803,11 +803,11 @@ served the complete local asset in 10.71 seconds; the report is
 into larger transport writes transferred only 11,214 of 106,343 bytes in 15
 seconds, so that unproven implementation was removed before commit.
 
-Portable coverage was regenerated on 2026-08-11 after global host-output,
+Portable coverage was regenerated on 2026-08-13 after global host-output,
 streamed-play resource/diagnostic, controller-transfer allocation, and listing
 allocation work. All 844 host tests passed with 96.22 percent line (9262/9626),
 98.51 percent function (924/938), and 86.72 percent branch (3840/4428)
-coverage; all 42 Python tooling tests also passed. The larger denominator now
+coverage; all 49 Python tooling tests also passed. The larger denominator now
 includes the subsequently added production policies and public inline methods,
 so the percentages are not directly comparable to the earlier 8151-line
 snapshot. USB production policy remains at 100 percent line coverage for

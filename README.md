@@ -316,7 +316,7 @@ The first core-to-periphery development slice contains:
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 844 C++ tests, and the Python tooling suite has 42
+The current host suite has 844 C++ tests, and the Python tooling suite has 49
 tests. The latest portable coverage report is 96.22% lines, 98.51% functions,
 and 86.72% branches; regenerate it with `python3 tools/host_coverage.py`.
 The firmware also builds successfully as an ESP32-S3 application using ESP-IDF
@@ -328,6 +328,10 @@ The source layout and API-comment organization are mapped in the
 Generate the local Doxygen site with `doxygen docs/Doxyfile`.
 Optional physical verification is provided by the
 [`hardware-in-the-loop suite`](docs/hardware-testing.md).
+GitHub pull requests and pushes to `main` run the host suite plus live and
+all-mock ESP-IDF builds; the published-release workflow builds and attaches
+release binaries and publishes the coverage badge. See
+[`docs/ci-and-release.md`](docs/ci-and-release.md).
 
 ## Architecture
 

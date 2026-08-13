@@ -1,5 +1,10 @@
 # Host provisioning tools
 
+The repository's GitHub build setup is documented in
+[`docs/ci-and-release.md`](../docs/ci-and-release.md). Pull requests and pushes
+to `main` run host tests/coverage plus live and all-mock ESP-IDF builds; a
+published GitHub Release additionally packages and attaches firmware images.
+
 `provision_wifi.py` sends a WLAN credential-save command through the ESP32-S3
 native USB vendor interface. Credentials are supplied at runtime and are not
 stored in the repository.
