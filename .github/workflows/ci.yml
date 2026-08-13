@@ -28,7 +28,7 @@ jobs:
       - name: Install host toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install --yes clang llvm cmake ninja-build python3-pip
+          sudo apt-get install --yes clang llvm cmake ninja-build python3-pytest
 
       - name: Run host coverage
         run: python3 tools/host_coverage.py

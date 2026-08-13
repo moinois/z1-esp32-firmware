@@ -13,6 +13,10 @@ The first-party checkout and artifact actions use their Node.js 24-based
 releases (`actions/checkout@v5` and `actions/upload-artifact@v5`), avoiding the
 deprecated Node.js 20 action runtime.
 
+The host job installs the distribution `python3-pytest` package explicitly;
+`python3 -m pytest tools/tests -q` therefore does not depend on a preinstalled
+runner module or on pip network access.
+
 * **Host tests and coverage** installs Clang/LLVM, CMake, and Ninja, runs
   `python3 tools/host_coverage.py` (the complete C++ host suite), runs
   `python3 -m pytest tools/tests -q`, and uploads the HTML/JSON coverage
