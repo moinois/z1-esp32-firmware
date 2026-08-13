@@ -221,10 +221,10 @@ mutating configuration request. The report is
 `build/hil-tcp-permanent-workers.json`.
 
 The final all-mock regression then completed all 94 collected cases in 1312.56
-seconds: 66 PASS, 27 capability/safety SKIP, and the historical
-`config.default`/8.3 XFAIL, with no FAIL. The XFAIL is no longer valid against
-the current SD-009 long-filename policy and must not be used for current
-conformance results. This single run includes the 20-cycle
+seconds: 66 PASS, 27 capability/safety SKIP, with no FAIL. The historical
+`config.default`/8.3 XFAIL is no longer valid against the current SD-009
+long-filename policy and must not be used for current conformance results. This
+single run includes the 20-cycle
 mock-SD endurance case, latched storage faults, controller and camera mocks,
 80-session TCP churn, USB/TCP/UDP/HTTP concurrency, WLAN scan recovery, web UI,
 and mutating configuration/storage paths. The retained report is
