@@ -511,11 +511,12 @@ output is written under `/private/tmp`, not into the source repository.
 
 ## Building the ESP32-S3 firmware
 
-Activate ESP-IDF, then run:
+Activate ESP-IDF, then use the repository build helper. It selects the hardware
+profile, partition table, Web UI source, and writes an audit manifest:
 
 ```sh
-idf.py set-target esp32s3
-idf.py build
+source /Users/moinois/esp/esp-idf/export.sh
+python3 tools/build_firmware.py --live --build-dir build
 ```
 
 The application image is produced at:
@@ -524,23 +525,52 @@ The application image is produced at:
 build/mainboard_firmware.bin
 ```
 
-The build helper defaults to a development profile: without `--release`,
-`tools/build_firmware.py` selects `partitions-dev.csv` and may produce a larger
-image than a release build. A device coming from the release layout must be
-flashed once over the full USB/serial flash connection so the development
-partition table is installed; this can erase or invalidate existing data when
-the offsets change. Use `--release` for the normative partition table and
-OTA-compatible images. A direct `idf.py build` uses ESP-IDF project defaults;
-use the helper when explicit profile selection and its audit manifest are
-required.
+The helper defaults to a development profile: without `--release`, it selects
+`partitions-dev.csv` and may produce a larger image than a release build. A
+device coming from the release layout must be flashed once over the full
+USB/serial flash connection so the development partition table is installed;
+this can erase or invalidate existing data when offsets change. Use
+`--release` for the normative partition table and OTA-compatible images.
 
-Create a specification-compliant mainboard-only aggregate update package with:
+Useful firmware build variants are:
 
 ```sh
-python3 tools/package_firmware.py --mainboard build/mainboard_firmware.bin
+# Development live firmware (larger development partitions)
+python3 tools/build_firmware.py --live --build-dir build-dev
+
+# Development firmware with every implemented mock adapter
+python3 tools/build_firmware.py --mock-all --build-dir build-mock
+
+# Specification/release firmware and aggregate update package
+python3 tools/build_firmware.py --live --release \
+  --mainboard-version 0x00010000 --build-dir build-release
+
+# Optional additional size reductions (still uses the specification table)
+python3 tools/build_firmware.py --live --release --compact \
+  --mainboard-version 0x00010000 --build-dir build-compact
 ```
 
-The result is `build/firmware.bin`; see [`tools/README.md`](tools/README.md) for
+Flash a selected build explicitly when the partition table must be written:
+
+```sh
+python3 tools/build_firmware.py --live --flash \
+  --port /dev/cu.usbmodem1234561 --build-dir build-dev
+```
+
+The generated application image is named by ESP-IDF in
+`<build-dir>/project_description.json`; for the current target it is normally
+`<build-dir>/mainboard_firmware.bin`. Release mode additionally creates
+`<build-dir>/firmware.bin`.
+
+For a manually built application image, create a specification-compliant
+mainboard-only aggregate update package with:
+
+```sh
+python3 tools/package_firmware.py --mainboard build-dev/mainboard_firmware.bin
+```
+
+The result is `build-dev/firmware.bin`; release builds create this package
+automatically. See [`tools/README.md`](tools/README.md) for
 version metadata and alternate paths.
 
 ## Running hardware-in-the-loop tests
