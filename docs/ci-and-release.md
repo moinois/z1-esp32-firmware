@@ -9,6 +9,10 @@ request or a push to `main`.
 `.github/workflows/ci.yml` runs for pushes to `main`, all pull requests, and a
 manual `workflow_dispatch`. It contains two independent jobs:
 
+The first-party checkout and artifact actions use their Node.js 24-based
+releases (`actions/checkout@v5` and `actions/upload-artifact@v5`), avoiding the
+deprecated Node.js 20 action runtime.
+
 * **Host tests and coverage** installs Clang/LLVM, CMake, and Ninja, runs
   `python3 tools/host_coverage.py` (the complete C++ host suite), runs
   `python3 -m pytest tools/tests -q`, and uploads the HTML/JSON coverage

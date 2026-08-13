@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Check out release source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.release.tag_name }}
           fetch-depth: 0
@@ -57,7 +57,7 @@ jobs:
           PY
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-${{ github.event.release.tag_name }}
           path: build/host-coverage/coverage/
@@ -95,7 +95,7 @@ jobs:
 
     steps:
       - name: Check out release source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.release.tag_name }}
           fetch-depth: 0
@@ -191,7 +191,7 @@ jobs:
           sha256sum dist/*.bin > dist/SHA256SUMS.txt
 
       - name: Upload workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: firmware-${{ github.event.release.tag_name }}
           path: dist/
