@@ -1,0 +1,90 @@
+name: Continuous integration
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-tests:
+    name: Host tests and coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install host toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes clang llvm cmake ninja-build python3-pip
+
+      - name: Run host coverage
+        run: python3 tools/host_coverage.py
+
+      - name: Run Python tooling tests
+        run: python3 -m pytest tools/tests -q
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ github.sha }}
+          path: build/host-coverage/coverage/
+          if-no-files-found: error
+          retention-days: 14
+
+  firmware-build:
+    name: ESP-IDF firmware build
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v5.4.1
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: live
+            build_dir: build-ci-live
+            arguments: --live
+          - profile: mock-all
+            build_dir: build-ci-mock
+            arguments: --mock-all
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build ${{ matrix.profile }} firmware
+        shell: bash
+        env:
+          BUILD_DIR: ${{ matrix.build_dir }}
+          BUILD_ARGUMENTS: ${{ matrix.arguments }}
+        run: |
+          set -euo pipefail
+          source /opt/esp/idf/export.sh
+          python3 tools/build_firmware.py \
+            $BUILD_ARGUMENTS \
+            --build-dir "$BUILD_DIR"
+
+      - name: Upload build metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-build-${{ matrix.profile }}-${{ github.sha }}
+          path: |
+            ${{ matrix.build_dir }}/project_description.json
+            ${{ matrix.build_dir }}/hardware-selection.json
+          if-no-files-found: error
+          retention-days: 14
