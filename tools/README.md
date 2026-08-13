@@ -23,6 +23,7 @@ follow the safety gates in `docs/hardware-testing.md`:
 ```text
 python3 -m pip install -r requirements-hil.txt
 python3 -m pytest tests/hardware
+```
 
 For a complete HIL run, execute the groups sequentially so reset and OTA
 tests cannot leave a transport handle open for the next group:
@@ -35,7 +36,6 @@ python3 tools/run_hil_isolated.py
 The runner waits for each pytest process to exit and stops before starting the
 next group if a timeout or failure occurs. Reconnect or re-enumerate USB/COM
 between groups when a reset or OTA test intentionally disconnects the target.
-```
 
 On macOS, connect the board's `USB` connector, not only the `COM` connector.
 The native firmware interface has VID `0x303a` and PID `0x4002`.
