@@ -599,7 +599,7 @@ The target defaults and partition table are configured for the 16 MB flash and
 the serial device reported by macOS:
 
 ```sh
-source /Users/moinois/esp/esp-idf/export.sh
+source /path/to/your/esp-idf/export.sh
 idf.py -p /dev/cu.usbmodem1234561 flash monitor
 ```
 

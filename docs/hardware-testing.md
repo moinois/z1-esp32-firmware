@@ -166,7 +166,7 @@ discovers available mock switches from Kconfig and supports any combination in
 the standard reusable `build/` tree:
 
 ```sh
-source /Users/moinois/esp/esp-idf/export.sh
+source /path/to/your/esp-idf/export.sh
 python3 tools/build_firmware.py --mock sd
 python3 tools/build_firmware.py --mock camera
 python3 tools/build_firmware.py --mock controller
