@@ -99,30 +99,10 @@ def _exchange_until_terminal(
 @pytest.mark.mutating
 @pytest.mark.usb
 @pytest.mark.wifi
-@pytest.mark.requirement("NET-010")
-@pytest.mark.requirement("NET-022")
-def test_wifi_credentials_can_be_saved(usb_client) -> None:
-    """Verifies only the NVS-save operation selected by the `-s` switch."""
-
-    ssid = os.getenv("Z1_HIL_WIFI_SSID")
-    password = os.getenv("Z1_HIL_WIFI_PASSWORD")
-    if not ssid or password is None:
-        pytest.skip("set Z1_HIL_WIFI_SSID and Z1_HIL_WIFI_PASSWORD")
-    command = f"wlan -s {ssid} {password}".encode("utf-8")
-    frames = _exchange_until_terminal(usb_client, command, 5.0)
-    terminal = next(frame for frame in frames if frame.frame_type in (0x84, 0x85))
-    assert terminal.frame_type == 0x84, frames
-    assert terminal.payload == b"ok\r\n"
-
-
-@pytest.mark.hardware
-@pytest.mark.mutating
-@pytest.mark.usb
-@pytest.mark.wifi
 @pytest.mark.requirement("NET-022")
 @pytest.mark.requirement("NET-044")
 def test_wifi_credentials_can_connect(usb_client, tcp_host: str) -> None:
-    """Verifies association and IP acquisition separately from NVS saving."""
+    """Verifies manual association and IP acquisition through `wlan`."""
 
     ssid = os.getenv("Z1_HIL_WIFI_SSID")
     password = os.getenv("Z1_HIL_WIFI_PASSWORD")

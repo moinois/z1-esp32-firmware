@@ -83,6 +83,55 @@ The run skipped COM diagnostics while native USB was connected, mock-only
 controller and camera cases, the unavailable CAN fixture, and an optional
 private static-asset check. None of these skips is conformance evidence.
 
+## Reversible pre-installation baseline
+
+Additional USB-only checks were run before replacing the factory image. They
+were restricted to changes whose original value or complete cleanup could be
+verified:
+
+- the 106343-byte `/js/BSO9Vk.js` factory asset completed without an HTTP
+  transport stall;
+- a unique directory could be created, listed, and removed below `/sd`;
+- a normative 16384-byte USB upload to `/sd` completed, downloaded
+  byte-identically, and left no target or MD5-sidecar artifact after cleanup;
+- SoftAP SSID, password, and enable state were read before mutation, changed,
+  restored, and re-read successfully;
+- native USB recovered after a bus reset and discarded a deliberately partial
+  receive frame across a second reset;
+- physical camera streaming, HTTP, USB, and controller reads remained usable
+  together after station recovery; and
+- `/sd/config.txt` remained byte-identical to the pre-test backup: 5791 bytes,
+  MD5 `f55bf8ae0242dd735b79580b7cdb3d5c`.
+
+The factory firmware resolved absolute `/name` paths against the filesystem
+root, as HFT-004 specifies, and required `/sd/name` to address the card. The
+project's additional user-path sandbox deliberately maps host paths beneath
+`/sd`; consequently its sandbox-specific physical tests are not valid factory
+baseline cases without changing their paths.
+
+The factory upload followed HFTU-003: the host sent `0xb1` immediately after
+the accepted start and the firmware replied with `0xb2`. The repository HIL
+upload helper currently also accepts a non-normative target `0xb1` prompt before
+sending the host MD5 packet, so it was not used for this factory upload.
+
+An obsolete HIL case sent `wlan -s`, but the current NET-041 defines only `-d`
+and `-e`; `-s` is parsed as an SSID rather than a save option. The case has been
+removed. A following manual reconnect initially failed and temporarily stopped
+ports 80, 82, and 2222, then succeeded on a bounded USB retry using the original
+credentials. All three services and the original station address were verified
+after recovery.
+
+Two camera cases run back-to-back exposed a short ownership recovery window:
+the immediate successor WebSocket closed before its first frame, whereas the
+same combined camera/USB/HTTP/controller case passed after a two-second pause.
+This is retained as a factory stability observation, not yet classified as a
+normative violation.
+
+No OTA, SPIFFS replacement, partition-table write, NVS fault injection,
+recording command, motion command, or CAN transmission was attempted. Exact
+factory restoration after those operations is not available through the
+current fixture.
+
 ## Conclusion
 
 The physical fixture is suitable for validating repository firmware across

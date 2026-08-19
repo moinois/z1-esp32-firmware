@@ -661,12 +661,12 @@ ended with the exact terminal failure `ESP-IDF disconnect reason=4`
 (`WIFI_REASON_ASSOC_EXPIRE`/inactivity). This separates current RF association
 failure from the earlier TCP slot-capacity fix.
 
-That run also found a HIL semantic error: `wlan -s` only saves credentials and
-does not initiate association. The fixture now verifies its exact `0x84 ok`
-terminal response separately from a manual `wlan <ssid> <password>` connection,
-which must report an IP and start HTTP before it can pass. Saving the declared
-`Away` credentials passed; the separate association test retained the reason-4
-failure as evidence. With Wi-Fi unavailable, ten independent native-USB and
+That historical run treated `wlan -s` as a save-only command. The current
+specification no longer defines that option: NET-041 recognizes only `-d` and
+`-e`, and successful `wlan <ssid> <password>` association persists credentials
+under NET-012. The obsolete save-only HIL case has therefore been removed; the
+remaining mutation test requires the normative IP and terminal responses plus
+HTTP recovery. With Wi-Fi unavailable, ten independent native-USB and
 mock-SD cases passed in 209.78 seconds, including repeated requests, malformed
 input recovery, file mutations, MD5/cache behavior, logging, cancellation, and
 mock-volume exhaustion/recovery. The report is
