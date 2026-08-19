@@ -20,7 +20,7 @@ camera, and motion-controller communication. The JSON evidence is generated
 locally as `build/hil-physical-readonly-20260819.json` and is intentionally not
 treated as evidence for a repository-built firmware image.
 
-## Confirmed specification difference
+## Confirmed specification differences
 
 ### WEB-020 — invalid camera-resolution JSON status (resolved by specification)
 
@@ -46,6 +46,13 @@ WEB-020 now requires HTTP 400 with the exact body `Invalid JSON`. The observed
 factory response therefore agrees with the current specification. Earlier
 revisions of this document recorded a difference while WEB-020 still required
 HTTP 500.
+
+### APQ-001/APQ-002 — query response labels
+
+For `M482.0` and `M483.0`, the factory firmware returned `STA param[0]:...`
+and `AP param[0]:...`. The current APQ requirements instead prescribe the
+literal command labels `M482 param[0]:...` and `M483 param[0]:...`. The
+repository implementation and HIL retain the normative command labels.
 
 ## Observed test differences that are not specification violations
 
@@ -106,6 +113,13 @@ verified:
   together after station recovery; and
 - `/sd/config.txt` remained byte-identical to the pre-test backup: 5791 bytes,
   MD5 `f55bf8ae0242dd735b79580b7cdb3d5c`.
+
+A later non-destructive rerun completed six of seven unique-name SD mutations:
+directory create/remove, directory rename, upload/download/MD5/rename cleanup,
+TCP reconnect continuation, gcode-cache isolation, and concurrent TCP listing
+during USB upload. The canceled-upload case removed its temporary file and left
+no MD5 sidecar, but the factory firmware omitted the expected `0xb5` cancel
+reply. This is retained as an observation because the cleanup semantics passed.
 
 The factory firmware resolved absolute `/name` paths against the filesystem
 root, as HFT-004 specifies, and required `/sd/name` to address the card. The

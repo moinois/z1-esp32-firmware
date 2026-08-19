@@ -25,6 +25,29 @@ def _payload_for(frames, frame_type: int) -> bytes:
     return frame.payload
 
 
+def _version_payload(usb_client) -> bytes:
+    """Ignores retained console output until the controller version arrives."""
+
+    observed = []
+    for _ in range(2):
+        observed.extend(usb_client.exchange(GENERAL_COMMAND, b"version", 5.0))
+        version = next(
+            (
+                item.payload
+                for item in observed
+                if item.frame_type == 0x90
+                and re.fullmatch(rb"version = \d+(?:\.\d+)+\n", item.payload)
+            ),
+            None,
+        )
+        if version is not None:
+            return version
+    pytest.fail(
+        "no controller version response: "
+        + repr([(hex(item.frame_type), item.payload) for item in observed])
+    )
+
+
 @pytest.mark.hardware
 @pytest.mark.readonly
 @pytest.mark.usb
@@ -35,9 +58,7 @@ def test_physical_controller_reports_version_status_and_diagnostics(usb_client) 
     """Proves bidirectional UART composition without issuing motion commands."""
 
     _require_physical_controller()
-    version = _payload_for(
-        usb_client.exchange(GENERAL_COMMAND, b"version", 5.0), 0x90
-    )
+    version = _version_payload(usb_client)
     assert re.fullmatch(rb"version = \d+(?:\.\d+)+\n", version), version
 
     status = _payload_for(usb_client.exchange(SINGLE_COMMAND, b"?", 5.0), 0x81)

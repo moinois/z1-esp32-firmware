@@ -508,6 +508,20 @@ cycles passed 25 physical executions, ten transport-stress cases passed in
 factory-only evidence remains in
 [`factory-firmware-spec-differences.md`](factory-firmware-spec-differences.md).
 
+A later safe rerun against the still-installed factory image used physical USB,
+Wi-Fi, BLE, SD, camera, and controller fixtures. The non-BLE read-only profile
+passed 30 cases, skipped eight unavailable/optional fixtures, and exposed five
+known factory/local differences: the local diagnostics endpoint, project WebUI
+markers, normative M482/M483 labels, and the camera ownership recovery window.
+Thirteen isolated BLE cases passed; protected-status and concurrent protected
+status stopped at the already documented, specification-permitted BLUFI error
+8. Six of seven unique-name SD mutations passed, and the seventh cleaned its
+data and sidecar despite an omitted cancel reply. Same-credential USB Wi-Fi
+provisioning passed. No OTA, SPIFFS, partition, motion, recording, CAN, or
+configuration-file mutation was attempted. Physical controller verification
+now ignores unrelated retained `0x90` console output and passed both tests on
+rerun.
+
 On 2026-08-09 an all-mock image was flashed from `build-hil-all`. COM reset and
 boot diagnostics passed 2/2. The applicable native-USB mutating suite produced
 44 PASS and three capability-gated SKIP; the old SD-009/CFG-001 XFAIL is
