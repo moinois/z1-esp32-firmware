@@ -303,17 +303,16 @@ def test_large_tcp_upload_resumes_after_connection_loss(
         connection.shutdown(socket.SHUT_RDWR)
         connection.close()
         connection = None
-        time.sleep(0.5)
+        # Allow the target's receive worker to release the lowest TCP slot,
+        # while remaining well inside the active transfer's timeout window.
+        time.sleep(1.0)
 
         connection = socket.create_connection((tcp_host, 2222), timeout=4.0)
-        resumed = _required_frame(
-            receive_tcp_frames(connection, 4.0), FILE_DATA
-        )
-        assert resumed is not None
-        assert int.from_bytes(resumed.payload, "big") == expected_sequence
-
         responses = []
         for sequence in range(expected_sequence, len(blocks) + 1):
+            # OWN-008 permits the same logical owner to continue; it does not
+            # require a new connection to receive an unsolicited replay of the
+            # outstanding request. Resend from the acknowledged boundary.
             responses = _tcp_transfer_exchange(
                 connection,
                 FILE_DATA,

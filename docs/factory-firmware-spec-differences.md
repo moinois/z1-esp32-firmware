@@ -94,6 +94,9 @@ verified:
 - a unique directory could be created, listed, and removed below `/sd`;
 - a normative 16384-byte USB upload to `/sd` completed, downloaded
   byte-identically, and left no target or MD5-sidecar artifact after cleanup;
+- a TCP upload survived a socket disconnect when the host reconnected on the
+  same logical slot and resent the outstanding block from the acknowledged
+  boundary, then completed byte-identically and was removed;
 - SoftAP SSID, password, and enable state were read before mutation, changed,
   restored, and re-read successfully;
 - native USB recovered after a bus reset and discarded a deliberately partial
@@ -126,6 +129,13 @@ the immediate successor WebSocket closed before its first frame, whereas the
 same combined camera/USB/HTTP/controller case passed after a two-second pause.
 This is retained as a factory stability observation, not yet classified as a
 normative violation.
+
+Waiting passively after a TCP upload reconnect produced no unsolicited replay
+of the outstanding `0xb3` request and eventually reached the normal transfer
+timeout. OWN-008 requires only that the same logical owner may continue. When
+the host instead resent the outstanding sequence immediately, the factory
+firmware accepted it and completed the transfer. The HIL case now models that
+host-driven continuation rather than requiring behavior absent from the spec.
 
 No OTA, SPIFFS replacement, partition-table write, NVS fault injection,
 recording command, motion command, or CAN transmission was attempted. Exact
