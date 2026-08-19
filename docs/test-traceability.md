@@ -55,7 +55,7 @@ Portable startup and adapter-selection cases are in `tests/runtime/` and
 | Test group | What it verifies | Requirements |
 |---|---|---|
 | `tests/storage/test_file_transfer_paths.cpp`, `test_file_transfer_admission.cpp` | Root-relative path normalization, literal `gcodes/` cache paths, owner admission, pending starts, and release ordering. | HFT-001–HFT-014, HFT-020–HFT-025, OWN-001–OWN-008 |
-| `tests/storage/test_file_upload.cpp`, `test_file_download.cpp`, `test_file_hash_command.cpp` | Upload/download framing, retries, MD5 sidecars, missing/invalid metadata, offsets, and terminal responses. | HFTU-001–HFTU-010, HFTD-001–HFTD-009, FILE-027–FILE-029 |
+| `tests/storage/test_file_upload.cpp`, `test_file_download.cpp`, `test_file_hash_command.cpp` | Upload/download framing, retries, MD5 sidecars, signed dynamic geometry, modulo data offsets, omitted responses, queue-full diagnostics, missing/invalid metadata, and terminal responses. | HFTU-001–HFTU-010, HFTD-001–HFTD-010, DIAG-039, FILE-027–FILE-029 |
 | `tests/hardware/test_sd_storage.py`, `test_file_transfer_recovery.py`, `test_mock_transfer_errors.py` | Target round trips, large frames, retries after silence, cancellation cleanup, MD5 recovery, path confinement, and owner reuse. | HFT-004, HFT-010–HFT-011, HFT-020–HFT-025, HFTU-001–HFTU-010, HFTD-001–HFTD-009, OWN-003, OWN-008 |
 
 ## 06 — Storage and configuration

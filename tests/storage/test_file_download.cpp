@@ -55,9 +55,14 @@ public:
     }
 
     // Opens the selected transfer file and returns its configured size.
-    std::optional<std::uint64_t> open_file(std::string_view path) override {
+    std::optional<std::int64_t> open_file(std::string_view path) override {
         opened_path = path;
         return opened_size;
+    }
+
+    std::int64_t file_size() override {
+        ++size_query_count;
+        return current_size;
     }
 
     // Records one offset read and returns configured content.
@@ -101,7 +106,8 @@ public:
     std::optional<std::string> calculated_md5 =
         std::string("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
     std::optional<ByteVector> cache_content;
-    std::optional<std::uint64_t> opened_size = 16385U;
+    std::optional<std::int64_t> opened_size = 16385;
+    std::int64_t current_size = 16385;
     std::optional<ByteVector> read_content = ByteVector({1U, 2U, 3U});
     bool compressed_exists = false;
     bool workspace_available = true;
@@ -114,6 +120,7 @@ public:
     std::size_t read_maximum = 0U;
     std::size_t requested_workspace = 0U;
     std::size_t read_count = 0U;
+    std::size_t size_query_count = 0U;
     std::size_t close_count = 0U;
     std::vector<firmware::application::FileTransferDiagnostic> diagnostics;
     std::size_t release_count = 0U;
@@ -213,6 +220,30 @@ TEST_CASE(hftd_005_md5_and_geometry_requests_reply_and_geometry_rounds_up) {
     REQUIRE_EQ(port.sent[1], Frame({0xB2U, {0U, 0U, 0U, 3U, 0x20U, 0U}}));
 }
 
+TEST_CASE(hftd_005_geometry_recalculates_signed_file_size_for_requests_and_retries) {
+    FileDownload download;
+    FakeDownloadPort port;
+    REQUIRE(download.start(owner, "/sd/job", 0U, port));
+
+    port.current_size = 8192;
+    download.handle({0xB2U, {}}, 1U, port);
+    REQUIRE_EQ(port.sent.back(), Frame({0xB2U, {0U, 0U, 0U, 1U, 0x20U, 0U}}));
+
+    port.current_size = 8193;
+    download.handle({0xB6U, {}}, 2U, port);
+    REQUIRE_EQ(port.sent.back(), Frame({0xB2U, {0U, 0U, 0U, 2U, 0x20U, 0U}}));
+    REQUIRE_EQ(port.size_query_count, 2U);
+
+    port.current_size = -1;
+    download.handle({0xB2U, {}}, 3U, port);
+    REQUIRE_EQ(port.sent.back(), Frame({0xB2U, {0U, 0U, 0U, 0U, 0x20U, 0U}}));
+
+    port.current_size = -8193;
+    download.handle({0xB2U, {}}, 4U, port);
+    REQUIRE_EQ(port.sent.back(),
+               Frame({0xB2U, {0xffU, 0xffU, 0xffU, 0xffU, 0x20U, 0U}}));
+}
+
 TEST_CASE(hftd_006_data_uses_one_based_sequence_and_8192_byte_blocks) {
     FileDownload download;
     FakeDownloadPort port;
@@ -242,7 +273,7 @@ TEST_CASE(diag_039_failed_prepared_download_delivery_emits_exact_warning) {
     REQUIRE(download.active());
 }
 
-TEST_CASE(hftd_007_empty_block_and_workspace_failure_abort_with_exact_errors) {
+TEST_CASE(hftd_007_empty_block_aborts_but_unformable_response_is_silently_omitted) {
     FileDownload empty_download;
     FakeDownloadPort empty_port;
     empty_port.read_content = ByteVector{};
@@ -256,9 +287,18 @@ TEST_CASE(hftd_007_empty_block_and_workspace_failure_abort_with_exact_errors) {
     FakeDownloadPort memory_port;
     memory_port.workspace_available = false;
     REQUIRE(memory_download.start(owner, "/sd/job", 0U, memory_port));
+    const std::size_t sent_before = memory_port.sent.size();
     memory_download.handle({0xB3U, {0U, 0U, 0U, 1U}}, 1U, memory_port);
-    REQUIRE_EQ(text(memory_port.sent.back().payload),
-               std::string("Error: download_command Memory allocation failed!"));
+    REQUIRE(memory_download.active());
+    REQUIRE_EQ(memory_port.read_count, 1U);
+    REQUIRE_EQ(memory_port.sent.size(), sent_before);
+    REQUIRE(memory_port.diagnostics.empty());
+
+    memory_port.workspace_available = true;
+    memory_port.read_content = ByteVector({9U});
+    memory_download.handle({0xB6U, {}}, 2U, memory_port);
+    REQUIRE_EQ(memory_port.read_count, 2U);
+    REQUIRE_EQ(memory_port.sent.back().payload, ByteVector({0U, 0U, 0U, 1U, 9U}));
 }
 
 TEST_CASE(hftd_006_invalid_sequences_reads_and_oversized_blocks_are_bounded) {
@@ -274,14 +314,18 @@ TEST_CASE(hftd_006_invalid_sequences_reads_and_oversized_blocks_are_bounded) {
     FakeDownloadPort zero_port;
     REQUIRE(zero_sequence.start(owner, "/sd/job", 0U, zero_port));
     zero_sequence.handle({0xB3U, {0U, 0U, 0U, 0U}}, 1U, zero_port);
-    REQUIRE(!zero_sequence.active());
+    REQUIRE(zero_sequence.active());
+    REQUIRE_EQ(zero_port.read_offset, 0xffffe000ULL);
+    REQUIRE_EQ(zero_port.sent.back().payload,
+               ByteVector({0U, 0U, 0U, 0U, 1U, 2U, 3U}));
 
     FileDownload beyond_end;
     FakeDownloadPort beyond_port;
     beyond_port.opened_size = 1U;
     REQUIRE(beyond_end.start(owner, "/sd/job", 0U, beyond_port));
     beyond_end.handle({0xB3U, {0U, 0U, 0U, 2U}}, 1U, beyond_port);
-    REQUIRE(!beyond_end.active());
+    REQUIRE(beyond_end.active());
+    REQUIRE_EQ(beyond_port.read_offset, 8192U);
 
     FileDownload read_failure;
     FakeDownloadPort read_port;

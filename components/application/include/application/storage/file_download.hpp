@@ -33,8 +33,11 @@ public:
     /// Reports whether a mapped compressed sidecar exists.
     virtual bool file_exists(std::string_view path) = 0;
 
-    /// Opens the selected transfer file and returns its byte size.
-    virtual std::optional<std::uint64_t> open_file(std::string_view path) = 0;
+    /// Opens the selected transfer file and returns its signed position-based size.
+    virtual std::optional<std::int64_t> open_file(std::string_view path) = 0;
+
+    /// Recalculates the selected file size from its signed file-position result.
+    virtual std::int64_t file_size() = 0;
 
     /// Reads at most one block from the currently open selected file.
     virtual std::optional<core::ByteVector> read_file(std::uint64_t offset,
@@ -97,7 +100,6 @@ private:
     std::string resolved_path_;
     std::string path_;
     std::string md5_;
-    std::uint64_t file_size_ = 0U;
     std::uint64_t last_activity_milliseconds_ = 0U;
     std::uint32_t last_data_sequence_ = 0U;
     std::uint8_t unexpected_count_ = 0U;

@@ -690,14 +690,17 @@ public:
                S_ISREG(information.st_mode);
     }
 
-    std::optional<std::uint64_t> open_file(std::string_view path) override {
+    std::optional<std::int64_t> open_file(std::string_view path) override {
         if (!file_.open(path, binary_read_mode)) return std::nullopt;
-        return file_.size();
+        return file_.signed_size();
     }
+
+    std::int64_t file_size() override { return file_.signed_size(); }
 
     std::optional<firmware::core::ByteVector> read_file(
         std::uint64_t offset, std::size_t maximum_size) override {
-        return file_.read_at(offset, maximum_size);
+        return file_.read_at_ignoring_seek_failure(
+            static_cast<std::uint32_t>(offset), maximum_size);
     }
 
     bool allocate_response_workspace(std::size_t size) override {

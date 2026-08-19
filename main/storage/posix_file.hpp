@@ -24,9 +24,12 @@ public:
     bool flush_and_sync();
     bool rewind();
     std::optional<std::uint64_t> size();
+    std::int64_t signed_size();
     std::optional<firmware::core::ByteVector> read(std::size_t maximum_size);
     std::optional<firmware::core::ByteVector> read_at(
         std::uint64_t offset, std::size_t maximum_size);
+    std::optional<firmware::core::ByteVector> read_at_ignoring_seek_failure(
+        std::uint32_t offset, std::size_t maximum_size);
     bool write_all(firmware::core::BytesView data);
     std::FILE* get() const;
 

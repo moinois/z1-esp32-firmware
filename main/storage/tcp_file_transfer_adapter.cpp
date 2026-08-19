@@ -117,15 +117,18 @@ bool TcpFileDownloadAdapter::file_exists(std::string_view path) {
     return false;
 }
 
-std::optional<std::uint64_t> TcpFileDownloadAdapter::open_file(
+std::optional<std::int64_t> TcpFileDownloadAdapter::open_file(
     std::string_view path) {
     if (!file_.open(path, "rb")) return std::nullopt;
-    return file_.size();
+    return file_.signed_size();
 }
+
+std::int64_t TcpFileDownloadAdapter::file_size() { return file_.signed_size(); }
 
 std::optional<firmware::core::ByteVector> TcpFileDownloadAdapter::read_file(
     std::uint64_t offset, std::size_t maximum_size) {
-    return file_.read_at(offset, maximum_size);
+    return file_.read_at_ignoring_seek_failure(
+        static_cast<std::uint32_t>(offset), maximum_size);
 }
 
 bool TcpFileDownloadAdapter::allocate_response_workspace(std::size_t size) {

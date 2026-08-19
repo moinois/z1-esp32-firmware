@@ -52,7 +52,8 @@ public:
     std::optional<firmware::core::ByteVector> read_cache(
         std::string_view path, std::size_t maximum_size) override;
     bool file_exists(std::string_view path) override;
-    std::optional<std::uint64_t> open_file(std::string_view path) override;
+    std::optional<std::int64_t> open_file(std::string_view path) override;
+    std::int64_t file_size() override;
     std::optional<firmware::core::ByteVector> read_file(
         std::uint64_t offset, std::size_t maximum_size) override;
     bool allocate_response_workspace(std::size_t size) override;

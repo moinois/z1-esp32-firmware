@@ -65,6 +65,16 @@ std::optional<std::uint64_t> PosixFile::size() {
     return static_cast<std::uint64_t>(value);
 }
 
+std::int64_t PosixFile::signed_size() {
+    if (file_ == nullptr || std::fseek(file_, 0L, SEEK_END) != 0) {
+        if (!path_.empty()) log_sd_access_failure("size file", path_, errno);
+        return -1;
+    }
+    const long value = std::ftell(file_);
+    static_cast<void>(rewind());
+    return static_cast<std::int64_t>(value);
+}
+
 std::optional<firmware::core::ByteVector> PosixFile::read(
     std::size_t maximum_size) {
     if (file_ == nullptr) return std::nullopt;
@@ -84,6 +94,16 @@ std::optional<firmware::core::ByteVector> PosixFile::read_at(
         std::fseek(file_, static_cast<long>(offset), SEEK_SET) != 0) {
         if (!path_.empty()) log_sd_access_failure("seek file", path_, errno);
         return std::nullopt;
+    }
+    return read(maximum_size);
+}
+
+std::optional<firmware::core::ByteVector> PosixFile::read_at_ignoring_seek_failure(
+    std::uint32_t offset, std::size_t maximum_size) {
+    if (file_ == nullptr) return std::nullopt;
+    if (offset <= static_cast<std::uint32_t>(LONG_MAX) &&
+        std::fseek(file_, static_cast<long>(offset), SEEK_SET) != 0 && !path_.empty()) {
+        log_sd_access_failure("seek file", path_, errno);
     }
     return read(maximum_size);
 }

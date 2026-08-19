@@ -19,8 +19,6 @@ constexpr std::size_t maximum_error_path_size = 240U;
 constexpr std::uint8_t maximum_unexpected_packets = 51U;
 constexpr std::string_view default_md5 = "82df799dde08f3d86839e24cb97e74d4";
 constexpr std::string_view timeout_error = "Error: Machine received cmd timeout!";
-constexpr std::string_view allocation_error =
-    "Error: download_command Memory allocation failed!";
 constexpr std::string_view excessive_error =
     "Error: Machine received too many wrong command!";
 
@@ -95,7 +93,6 @@ bool FileDownload::start(const HostIdentity& owner, std::string path,
         return false;
     }
 
-    file_size_ = *opened_size;
     last_activity_milliseconds_ = now_milliseconds;
     unexpected_count_ = 0U;
     active_ = true;
@@ -182,7 +179,10 @@ void FileDownload::send_md5(FileDownloadPort& port) {
 }
 
 void FileDownload::send_geometry(FileDownloadPort& port) {
-    const std::uint64_t count = (file_size_ + block_size - 1U) / block_size;
+    const std::int64_t size = port.file_size();
+    const std::int64_t signed_block_size = static_cast<std::int64_t>(block_size);
+    const std::int64_t count =
+        size / signed_block_size + (size % signed_block_size > 0 ? 1 : 0);
     core::ByteVector payload = encode_u32(static_cast<std::uint32_t>(count));
     payload.push_back(static_cast<std::uint8_t>(block_size >> 8U));
     payload.push_back(static_cast<std::uint8_t>(block_size));
@@ -193,20 +193,16 @@ void FileDownload::send_geometry(FileDownloadPort& port) {
 }
 
 void FileDownload::send_data(std::uint32_t sequence, FileDownloadPort& port) {
-    if (sequence == 0U || !port.allocate_response_workspace(response_workspace_size)) {
-        abort(sequence == 0U ? timeout_error : allocation_error, port);
-        return;
-    }
-    const std::uint64_t offset = static_cast<std::uint64_t>(sequence - 1U) * block_size;
-    if (offset >= file_size_) {
-        abort(timeout_error, port);
-        return;
-    }
+    const std::uint32_t offset =
+        (sequence - 1U) * static_cast<std::uint32_t>(block_size);
+    last_data_sequence_ = sequence;
+    last_response_ = LastResponse::data;
     auto data = port.read_file(offset, block_size);
     if (!data.has_value() || data->empty()) {
         abort(timeout_error, port);
         return;
     }
+    if (!port.allocate_response_workspace(response_workspace_size)) return;
     if (data->size() > block_size) {
         data->resize(block_size);
     }
@@ -216,8 +212,6 @@ void FileDownload::send_data(std::uint32_t sequence, FileDownloadPort& port) {
     if (!port.send(owner_, retained_response_)) {
         port.diagnose(download_delivery_drop_diagnostic());
     }
-    last_data_sequence_ = sequence;
-    last_response_ = LastResponse::data;
     unexpected_count_ = 0U;
 }
 
@@ -226,7 +220,11 @@ void FileDownload::retry_last(FileDownloadPort& port) {
         send_data(last_data_sequence_, port);
         return;
     }
-    if (last_response_ == LastResponse::md5 || last_response_ == LastResponse::geometry) {
+    if (last_response_ == LastResponse::geometry) {
+        send_geometry(port);
+        return;
+    }
+    if (last_response_ == LastResponse::md5) {
         port.send(owner_, retained_response_);
         unexpected_count_ = 0U;
         return;

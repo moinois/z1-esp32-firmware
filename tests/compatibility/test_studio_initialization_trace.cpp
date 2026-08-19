@@ -58,10 +58,14 @@ public:
         return false;
     }
 
-    std::optional<std::uint64_t> open_file(std::string_view) override {
+    std::optional<std::int64_t> open_file(std::string_view) override {
         return storage_available
-            ? std::optional<std::uint64_t>(config.size())
+            ? std::optional<std::int64_t>(config.size())
             : std::nullopt;
+    }
+
+    std::int64_t file_size() override {
+        return static_cast<std::int64_t>(config.size());
     }
 
     std::optional<ByteVector> read_file(std::uint64_t offset,

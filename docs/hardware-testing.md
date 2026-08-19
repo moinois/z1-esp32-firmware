@@ -815,8 +815,9 @@ observes the framed UART reply in controller diagnostics. The report is
 the real ESP timer: ten seconds of inactivity produces the exact terminal
 timeout, preserves the source, releases global ownership, and permits a new
 upload/download. Separate malformed-protocol injection sends 51 empty data
-frames and then sequence zero in a fresh session; both exact abort paths and
-subsequent source download pass. Reports are `build/hil-download-timeout.json`
+frames and then sequence zero in a fresh session; its modulo-wrapped offset
+produced an empty read, so both exact abort paths and the subsequent source
+download pass. Reports are `build/hil-download-timeout.json`
 and `build/hil-download-errors.json`.
 
 An alternate local Web UI trace was analysed on 2026-08-08 without adding its
