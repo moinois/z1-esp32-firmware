@@ -110,7 +110,7 @@ def test_http_camera_rejects_invalid_json(tcp_host: str) -> None:
         b"not-json",
         {"Content-Type": "application/json"},
     )
-    assert status == 500
+    assert status == 400
     assert content_type == "text/html"
     assert body == b"Invalid JSON"
 

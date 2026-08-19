@@ -480,8 +480,8 @@ laser, file-write, configuration-write, or update commands.
 
 The same machine then ran the complete read-only selection against its installed
 Makera factory firmware `0.1.13`: 41 passed, 7 failed, 7 skipped, and 60 were
-deselected. Only WEB-020's HTTP 400 instead of specified HTTP 500 was a
-confirmed specification difference. BLUFI error 8 is permitted by BLESEC-002;
+deselected. WEB-020 now specifies the observed HTTP 400 response, so this is no
+longer a confirmed specification difference. BLUFI error 8 is permitted by BLESEC-002;
 the Wi-Fi diagnostics endpoint and project Web UI asset markers are local
 extensions; and the UDP bind failure passed on isolated rerun. See
 [`factory-firmware-spec-differences.md`](factory-firmware-spec-differences.md).

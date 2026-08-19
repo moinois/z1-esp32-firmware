@@ -22,7 +22,7 @@ treated as evidence for a repository-built firmware image.
 
 ## Confirmed specification difference
 
-### WEB-020 — invalid camera-resolution JSON status
+### WEB-020 — invalid camera-resolution JSON status (resolved by specification)
 
 The request:
 
@@ -42,9 +42,10 @@ Content-Type: text/html
 Invalid JSON
 ```
 
-WEB-020 requires HTTP 500 with the exact body `Invalid JSON`. The body matches,
-but the status code does not. This is a confirmed behavioral difference between
-the installed factory firmware and the current specification.
+WEB-020 now requires HTTP 400 with the exact body `Invalid JSON`. The observed
+factory response therefore agrees with the current specification. Earlier
+revisions of this document recorded a difference while WEB-020 still required
+HTTP 500.
 
 ## Observed test differences that are not specification violations
 
@@ -171,7 +172,7 @@ isolated native-USB bus resets also re-enumerated and recovered successfully.
 
 The physical fixture is suitable for validating repository firmware across
 USB, Wi-Fi, BLE, SD, camera, and controller paths. For the factory firmware,
-the only confirmed difference found by this regression is WEB-020's HTTP status
+the former WEB-020 HTTP-status difference is resolved by the current specification
 for invalid JSON. A new run after flashing a repository-built release is
 required before any of these physical results can be attributed to this
 implementation.

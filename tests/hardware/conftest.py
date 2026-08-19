@@ -223,7 +223,7 @@ def camera_fixture(tcp_host: str) -> None:
         connection.close()
     if response.status == 200:
         return
-    if response.status == 400 and body == b"Failed to set framesize":
+    if response.status == 500 and body == b"Failed to set framesize":
         pytest.skip("camera module not detected by the firmware")
     pytest.fail(
         f"unexpected camera capability response: HTTP {response.status} {body!r}"
