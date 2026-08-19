@@ -1262,8 +1262,15 @@ void usb_receive_task(void* /* unused */) {
 ///
 /// @param frame Complete decoded file-transfer frame from the USB host.
 void handle_usb_file_transfer(const firmware::core::Frame& frame) {
-    if (usb_file_mutex == nullptr ||
-        xSemaphoreTake(usb_file_mutex, portMAX_DELAY) != pdTRUE) {
+    if (usb_file_mutex == nullptr) {
+        if (frame.type == firmware::core::protocol::file_command) {
+            const auto diagnostic = firmware::application::
+                file_transfer_request_storage_unavailable_diagnostic();
+            ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+        }
+        return;
+    }
+    if (xSemaphoreTake(usb_file_mutex, portMAX_DELAY) != pdTRUE) {
         return;
     }
     const std::uint64_t now =

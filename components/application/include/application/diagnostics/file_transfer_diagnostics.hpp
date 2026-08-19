@@ -28,6 +28,9 @@ FileTransferDiagnostic non_owner_file_data_diagnostic(
 /// Returns the exact DIAG-039 fifth-start rejection warning.
 FileTransferDiagnostic file_transfer_start_queue_full_diagnostic();
 
+/// Returns the exact DIAG-027 unavailable request-storage error.
+FileTransferDiagnostic file_transfer_request_storage_unavailable_diagnostic();
+
 /// Returns the exact DIAG-039 prepared-download delivery warning.
 FileTransferDiagnostic download_delivery_drop_diagnostic();
 

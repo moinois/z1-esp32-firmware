@@ -42,6 +42,14 @@ TEST_CASE(diag_039_file_queue_diagnostics_are_exact) {
                std::string("download: xFileTransferQueue full, drop chunk"));
 }
 
+TEST_CASE(diag_027_unavailable_start_storage_uses_exact_error) {
+    const auto diagnostic = firmware::application::
+        file_transfer_request_storage_unavailable_diagnostic();
+    REQUIRE_EQ(diagnostic.tag, std::string_view("APP_FILE"));
+    REQUIRE_EQ(diagnostic.message,
+               std::string("文件传输队列未初始化，忽略请求"));
+}
+
 TEST_CASE(diag_040_path_resolution_diagnostics_are_exact) {
     using firmware::application::PathResolutionDiagnostic;
     using firmware::application::path_resolution_diagnostic;

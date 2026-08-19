@@ -50,4 +50,12 @@ std::vector<ControllerTransferDiagnostic> controller_transfer_layout_diagnostics
 /// Formats the DIAG-038 warning emitted when the controller output FIFO is full.
 std::string controller_queue_full_diagnostic(std::uint8_t frame_type);
 
+/// Formats the DIAG-021 receive-side overflow warning for one family inbox.
+std::string controller_receive_queue_full_diagnostic(
+    std::uint8_t frame_type, std::uint64_t microseconds,
+    std::size_t pending_frames);
+
+/// Returns the DIAG-021 warning for a purged ordinary controller broadcast.
+std::string_view controller_host_output_purge_diagnostic();
+
 }  // namespace firmware::application

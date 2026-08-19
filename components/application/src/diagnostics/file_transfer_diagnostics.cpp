@@ -54,6 +54,10 @@ FileTransferDiagnostic file_transfer_start_queue_full_diagnostic() {
     return {"APP_FILE", "文件传输请求队列已满，丢弃"};
 }
 
+FileTransferDiagnostic file_transfer_request_storage_unavailable_diagnostic() {
+    return {"APP_FILE", "文件传输队列未初始化，忽略请求"};
+}
+
 FileTransferDiagnostic download_delivery_drop_diagnostic() {
     return {"APP_FILE", "download: xFileTransferQueue full, drop chunk"};
 }

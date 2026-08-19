@@ -35,6 +35,20 @@ TEST_CASE(diag_038_formats_controller_queue_full_type_as_two_uppercase_hex_digit
                std::string("TxQueue full, drop frame type=0xF3"));
 }
 
+TEST_CASE(diag_021_formats_each_controller_receive_overflow) {
+    using firmware::application::controller_receive_queue_full_diagnostic;
+    REQUIRE_EQ(controller_receive_queue_full_diagnostic(0xc2U, 1U, 32U),
+               std::string("LFU接收队列已满,丢弃数据"));
+    REQUIRE_EQ(controller_receive_queue_full_diagnostic(0xd3U, 1U, 32U),
+               std::string("CFG接收队列已满,丢弃数据"));
+    REQUIRE_EQ(controller_receive_queue_full_diagnostic(0xe4U, 1U, 32U),
+               std::string("FAC接收队列已满,丢弃数据"));
+    REQUIRE_EQ(controller_receive_queue_full_diagnostic(0xf5U, 123U, 32U),
+               std::string("PLAYQ_DROP us=123 ty=0xF5 qw=32"));
+    REQUIRE_EQ(firmware::application::controller_host_output_purge_diagnostic(),
+               std::string_view("到Controller的转发接收队列已满，丢弃数据，清空队列"));
+}
+
 TEST_CASE(diag_035_and_036_format_sent_failures_and_layout_details) {
     using firmware::application::controller_transfer_diagnostic;
     REQUIRE_EQ(controller_transfer_diagnostic(

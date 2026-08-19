@@ -28,6 +28,7 @@
 #include "esp_log.h"
 
 #include "application/controller/controller_frame_forwarder.hpp"
+#include "application/controller/controller_transfer.hpp"
 #include "application/diagnostics/controller_diagnostics.hpp"
 #include "application/controller/controller_query.hpp"
 #include "application/controller/controller_link.hpp"
@@ -50,7 +51,9 @@ namespace {
 constexpr char controller_uart_tag[] = "uart_task";
 constexpr std::size_t controller_read_buffer_size = 256U;
 constexpr std::uint32_t controller_task_stack_size = 6144U;
+constexpr std::uint32_t controller_consumer_stack_size = 4096U;
 constexpr UBaseType_t controller_task_priority = 5U;
+constexpr TickType_t controller_consumer_poll_ticks = pdMS_TO_TICKS(1U);
 
 // Writes one complete frame and emits the specified diagnostic on failure.
 void write_controller_frame(ControllerChannelAdapter& channel,
@@ -66,6 +69,107 @@ SemaphoreHandle_t controller_forwarder_mutex = nullptr;
 firmware::application::ControllerFirmwareTransfer* active_firmware = nullptr;
 firmware::application::ControllerConfigTransfer* active_configuration = nullptr;
 firmware::application::ControllerFactoryTransfer* active_factory = nullptr;
+firmware::application::ControllerTransferInbox firmware_inbox(
+    firmware::core::protocol::firmware_family);
+firmware::application::ControllerTransferInbox configuration_inbox(
+    firmware::core::protocol::configuration_family);
+firmware::application::ControllerTransferInbox factory_inbox(
+    firmware::core::protocol::factory_family);
+firmware::application::ControllerTransferInbox play_inbox(
+    firmware::core::protocol::play_family);
+SemaphoreHandle_t firmware_inbox_mutex = nullptr;
+SemaphoreHandle_t configuration_inbox_mutex = nullptr;
+SemaphoreHandle_t factory_inbox_mutex = nullptr;
+SemaphoreHandle_t play_inbox_mutex = nullptr;
+
+bool enqueue_controller_inbox(
+    firmware::application::ControllerTransferInbox& inbox,
+    SemaphoreHandle_t mutex, const firmware::core::Frame& frame) {
+    if (mutex == nullptr || xSemaphoreTake(mutex, portMAX_DELAY) != pdTRUE) {
+        return false;
+    }
+    const std::size_t pending = inbox.pending();
+    const bool queued = inbox.enqueue(frame);
+    if (!queued && pending >= 32U) {
+        const auto message = firmware::application::
+            controller_receive_queue_full_diagnostic(
+                frame.type, static_cast<std::uint64_t>(esp_timer_get_time()),
+                pending);
+        ESP_LOGW(controller_uart_tag, "%s", message.c_str());
+    }
+    xSemaphoreGive(mutex);
+    return queued;
+}
+
+std::optional<firmware::core::Frame> take_controller_inbox(
+    firmware::application::ControllerTransferInbox& inbox,
+    SemaphoreHandle_t mutex) {
+    if (mutex == nullptr || xSemaphoreTake(mutex, portMAX_DELAY) != pdTRUE) {
+        return std::nullopt;
+    }
+    auto frame = inbox.take_ready(
+        static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL));
+    xSemaphoreGive(mutex);
+    return frame;
+}
+
+void firmware_transfer_task(void*) {
+    ControllerTransferAdapter port(HardwareAdapterFactory::controller_channel());
+    static firmware::application::ControllerFirmwareTransfer transfer;
+    active_firmware = &transfer;
+    for (;;) {
+        if (auto frame = take_controller_inbox(firmware_inbox,
+                                               firmware_inbox_mutex)) {
+            transfer.handle(*frame,
+                            static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL),
+                            port);
+        }
+        vTaskDelay(controller_consumer_poll_ticks);
+    }
+}
+
+void configuration_transfer_task(void*) {
+    ControllerTransferAdapter port(HardwareAdapterFactory::controller_channel());
+    static firmware::application::ControllerConfigTransfer transfer;
+    active_configuration = &transfer;
+    for (;;) {
+        if (auto frame = take_controller_inbox(configuration_inbox,
+                                               configuration_inbox_mutex)) {
+            transfer.handle(*frame, port);
+        }
+        vTaskDelay(controller_consumer_poll_ticks);
+    }
+}
+
+void factory_transfer_task(void*) {
+    ControllerTransferAdapter port(HardwareAdapterFactory::controller_channel());
+    static firmware::application::ControllerFactoryTransfer transfer;
+    active_factory = &transfer;
+    for (;;) {
+        if (auto frame = take_controller_inbox(factory_inbox,
+                                               factory_inbox_mutex)) {
+            transfer.handle(*frame, port);
+        }
+        vTaskDelay(controller_consumer_poll_ticks);
+    }
+}
+
+void play_transfer_task(void*) {
+    auto& play_session = shared_play_session();
+    firmware::application::PlayController controller(play_session);
+    ControllerPlayAdapter port(HardwareAdapterFactory::controller_channel());
+    for (;;) {
+        if (auto frame = take_controller_inbox(play_inbox, play_inbox_mutex)) {
+            port.diagnose(firmware::application::playback_dequeue_diagnostic(
+                static_cast<std::uint64_t>(esp_timer_get_time()), frame->type,
+                frame->payload));
+            controller.handle(
+                *frame,
+                static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL), port);
+        }
+        vTaskDelay(controller_consumer_poll_ticks);
+    }
+}
 
 bool enqueue_controller_frame_impl(const firmware::core::Frame& frame,
                                    bool diagnose_capacity) {
@@ -115,16 +219,6 @@ void controller_command_task(void*) {
     ControllerRuntimeCommandAdapter runtime_port(channel);
     firmware::application::RuntimeCommandService runtime_service(runtime_port);
     RecordingRequestState recording_state;
-    ControllerTransferAdapter transfer_port(channel);
-    firmware::application::ControllerFirmwareTransfer firmware_transfer;
-    firmware::application::ControllerConfigTransfer config_transfer;
-    firmware::application::ControllerFactoryTransfer factory_transfer;
-    active_firmware = &firmware_transfer;
-    active_configuration = &config_transfer;
-    active_factory = &factory_transfer;
-    auto& play_session = shared_play_session();
-    firmware::application::PlayController play_controller(play_session);
-    ControllerPlayAdapter play_port(channel);
     firmware::core::StreamDecoder decoder(
         firmware::core::StreamPolicy::controller_uart());
     firmware::application::LocalCommandQueue local_commands;
@@ -159,9 +253,16 @@ void controller_command_task(void*) {
                 static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL));
             const auto route = shared_host_router().from_controller(frame);
             if (route.has(firmware::application::RouteTarget::broadcast)) {
-                static_cast<void>(broadcast_host_frame(
+                const auto admission = admit_host_broadcast(
                     frame,
-                    firmware::application::HostOutputSource::motion_board_unchanged));
+                    firmware::application::HostOutputSource::motion_board_unchanged);
+                if (admission == firmware::application::
+                                     HostOutputAdmission::purged_at_capacity) {
+                    ESP_LOGW(controller_uart_tag, "%s",
+                             firmware::application::
+                                 controller_host_output_purge_diagnostic()
+                                     .data());
+                }
             }
             if (frame.type == firmware::core::protocol::machine_status) {
                 shared_controller_snapshots().update_status(frame.payload);
@@ -177,27 +278,23 @@ void controller_command_task(void*) {
             const std::uint8_t family =
                 frame.type & firmware::core::protocol::family_mask;
             if (family == firmware::core::protocol::firmware_family) {
-                firmware_transfer.handle(
-                    frame, static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL),
-                    transfer_port);
+                static_cast<void>(enqueue_controller_inbox(
+                    firmware_inbox, firmware_inbox_mutex, frame));
                 continue;
             }
             if (family == firmware::core::protocol::configuration_family) {
-                config_transfer.handle(frame, transfer_port);
+                static_cast<void>(enqueue_controller_inbox(
+                    configuration_inbox, configuration_inbox_mutex, frame));
                 continue;
             }
             if (family == firmware::core::protocol::factory_family) {
-                factory_transfer.handle(frame, transfer_port);
+                static_cast<void>(enqueue_controller_inbox(
+                    factory_inbox, factory_inbox_mutex, frame));
                 continue;
             }
             if (family == firmware::core::protocol::play_family) {
-                play_port.diagnose(
-                    firmware::application::playback_dequeue_diagnostic(
-                        static_cast<std::uint64_t>(esp_timer_get_time()),
-                        frame.type, frame.payload));
-                play_controller.handle(
-                    frame, static_cast<std::uint64_t>(esp_timer_get_time() / 1000LL),
-                    play_port);
+                static_cast<void>(enqueue_controller_inbox(
+                    play_inbox, play_inbox_mutex, frame));
                 continue;
             }
             dispatcher.dispatch(frame);
@@ -253,9 +350,34 @@ void ControllerCommandLoop::start() {
     if (controller_forwarder_mutex == nullptr) {
         return;
     }
-    xTaskCreate(controller_command_task, "controller_commands",
-                controller_task_stack_size, nullptr, controller_task_priority,
-                nullptr);
+    firmware_inbox_mutex = xSemaphoreCreateMutex();
+    configuration_inbox_mutex = xSemaphoreCreateMutex();
+    factory_inbox_mutex = xSemaphoreCreateMutex();
+    play_inbox_mutex = xSemaphoreCreateMutex();
+    if (firmware_inbox_mutex != nullptr) {
+        static_cast<void>(xTaskCreate(
+            firmware_transfer_task, "controller_fw", controller_consumer_stack_size,
+            nullptr, controller_task_priority, nullptr));
+    }
+    if (configuration_inbox_mutex != nullptr) {
+        static_cast<void>(xTaskCreate(
+            configuration_transfer_task, "controller_cfg",
+            controller_consumer_stack_size, nullptr, controller_task_priority,
+            nullptr));
+    }
+    if (factory_inbox_mutex != nullptr) {
+        static_cast<void>(xTaskCreate(
+            factory_transfer_task, "controller_fac", controller_consumer_stack_size,
+            nullptr, controller_task_priority, nullptr));
+    }
+    if (play_inbox_mutex != nullptr) {
+        static_cast<void>(xTaskCreate(
+            play_transfer_task, "controller_play", controller_consumer_stack_size,
+            nullptr, controller_task_priority, nullptr));
+    }
+    static_cast<void>(xTaskCreate(
+        controller_command_task, "controller_commands", controller_task_stack_size,
+        nullptr, controller_task_priority, nullptr));
 }
 
 bool enqueue_controller_frame(const firmware::core::Frame& frame) {

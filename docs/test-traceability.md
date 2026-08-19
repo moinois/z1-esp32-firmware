@@ -46,7 +46,7 @@ Portable startup and adapter-selection cases are in `tests/runtime/` and
 | Test group | What it verifies | Requirements |
 |---|---|---|
 | `tests/controller/test_controller_query.cpp`, `test_controller_link.cpp`, `test_controller_snapshots.cpp` | Periodic queries, link activity, snapshot retention, and status formatting. | LPC-001–LPC-003, STAT-001–STAT-010, UART-003–UART-009 |
-| `tests/controller/test_controller_*_transfer.cpp` | Firmware, configuration, and factory transfer state machines; retained and malformed geometry; low-32-bit addressing; pre-read allocation; zero-size panic policy; response failures; cancellation; frame-driven timeout; and staged-file handling. | LPC-010–LPC-019, LPCFW-001–LPCFW-006, LPCCFG-001–LPCCFG-006, LPCFAC-001–LPCFAC-005, UPD-053–UPD-054 |
+| `tests/controller/test_controller_*_transfer.cpp`, `tests/diagnostics/test_controller_diagnostics.cpp` | Per-family inbox bounds and diagnostics; firmware, configuration, and factory state machines; retained and malformed geometry; low-32-bit addressing; pre-read allocation; zero-size panic policy; response failures; cancellation; frame-driven timeout; and staged-file handling. | BOOT-012, DIAG-021, LPC-010–LPC-019, LPCFW-001–LPCFW-006, LPCCFG-001–LPCCFG-006, LPCFAC-001–LPCFAC-005, UPD-053–UPD-054 |
 | `tests/hardware/test_optional_fixtures.py` | Fragmented mock-controller reads and all three transfer families through the target composition. | LPC-010–LPC-019, LPCFW-001–LPCFW-006, LPCCFG-001–LPCCFG-006, LPCFAC-001–LPCFAC-005 |
 | `tests/hardware/test_physical_controller.py` | Reads physical controller version, status, and diagnostics over USB, then repeats safe status queries to detect stalled UART routing. | LPC-001, UART-003 |
 

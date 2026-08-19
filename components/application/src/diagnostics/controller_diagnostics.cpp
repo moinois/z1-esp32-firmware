@@ -138,4 +138,32 @@ std::string controller_queue_full_diagnostic(std::uint8_t frame_type) {
     return output;
 }
 
+std::string controller_receive_queue_full_diagnostic(
+    std::uint8_t frame_type, std::uint64_t microseconds,
+    std::size_t pending_frames) {
+    switch (frame_type & 0xf0U) {
+        case 0xc0U:
+            return "LFU接收队列已满,丢弃数据";
+        case 0xd0U:
+            return "CFG接收队列已满,丢弃数据";
+        case 0xe0U:
+            return "FAC接收队列已满,丢弃数据";
+        case 0xf0U: {
+            char output[96]{};
+            std::snprintf(output, sizeof(output),
+                          "PLAYQ_DROP us=%llu ty=0x%02X qw=%u",
+                          static_cast<unsigned long long>(microseconds),
+                          static_cast<unsigned>(frame_type),
+                          static_cast<unsigned>(pending_frames));
+            return output;
+        }
+        default:
+            return {};
+    }
+}
+
+std::string_view controller_host_output_purge_diagnostic() {
+    return "到Controller的转发接收队列已满，丢弃数据，清空队列";
+}
+
 }  // namespace firmware::application
