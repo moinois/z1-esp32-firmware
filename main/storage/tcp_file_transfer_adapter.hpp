@@ -34,6 +34,7 @@ public:
     bool rename_file(std::string_view source, std::string_view destination) override;
     void send(const firmware::application::HostIdentity& host,
               firmware::core::Frame frame) override;
+    void delay(std::uint32_t milliseconds) override;
     void release_ownership() override;
 
 private:

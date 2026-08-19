@@ -769,7 +769,7 @@ void serve_tcp_client(TcpClientContext* context) {
         fd_set readable;
         FD_ZERO(&readable);
         FD_SET(client, &readable);
-        timeval poll_interval{0, 50'000};
+        timeval poll_interval{0, 10'000};
         const int readiness = select(client + 1, &readable, nullptr, nullptr,
                                      &poll_interval);
         if (readiness < 0) {
@@ -828,8 +828,6 @@ void serve_tcp_client(TcpClientContext* context) {
             handle_tcp_local_frame(session, *local_frame, &m942_worker);
             vTaskDelay(pdMS_TO_TICKS(10U));
         }
-        transfer_runtime.poll(
-            static_cast<std::uint64_t>(esp_timer_get_time() / 1000));
         if (!drain_tcp_transmit_queue(client, session)) {
             break;
         }

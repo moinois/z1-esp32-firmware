@@ -119,9 +119,8 @@ def upload_file(
     data: bytes,
     *,
     block_size: int = 1024,
-    # The target repeats an outstanding upload prompt after just over five
-    # seconds. Keep the host window above that boundary so a delayed USB
-    # response does not leave the target owner active while the test retries.
+    # Keep a generous host window so a delayed USB response does not leave the
+    # target owner active while the test retries.
     timeout_seconds: float = 6.0,
 ) -> None:
     """Uploads bytes while following target-requested one-based sequencing."""

@@ -76,7 +76,7 @@ def _clear_stale_tcp_transfer(tcp_host: str) -> None:
 @pytest.mark.requirement("HFT-020")
 @pytest.mark.requirement("HFT-021")
 @pytest.mark.requirement("HFT-022")
-def test_tcp_upload_retries_after_temporary_network_silence(
+def test_tcp_upload_resumes_after_temporary_network_silence_without_retry(
     tcp_host: str, sd_fixture
 ) -> None:
     """Continues one upload after a six-second host/network pause."""
@@ -102,11 +102,10 @@ def test_tcp_upload_retries_after_temporary_network_silence(
         requested = _expect(connection, FILE_DATA)
         assert requested.payload == (1).to_bytes(4, "big")
 
-        # HFT-022 requires a retry at 5.010 seconds. Six seconds models a short
-        # Wi-Fi outage while remaining below HFT-021's nine-second abort limit.
+        # Continuous silence must not produce the retry notice before the
+        # nine-second inactivity deadline. Six seconds models a short Wi-Fi
+        # outage while leaving enough margin for the host to resume.
         time.sleep(6.0)
-        retry = _expect(connection, FILE_RETRY, timeout=2.0)
-        assert retry.payload == b"Info: need retry!"
 
         connection.sendall(
             encode_frame(FILE_DATA, (1).to_bytes(4, "big") + content)

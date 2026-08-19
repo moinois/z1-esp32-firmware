@@ -13,9 +13,10 @@ namespace firmware::application {
 namespace {
 
 constexpr std::size_t sequence_size = core::protocol::big_endian_u32_size;
-constexpr std::uint64_t timed_retry_interval_milliseconds = 5010U;
-constexpr std::uint8_t packets_per_retry_cycle = 51U;
-constexpr std::uint8_t maximum_retry_cycles = 51U;
+constexpr std::uint32_t nominal_cycle_delay_milliseconds = 10U;
+constexpr std::uint16_t unmatched_packets_per_repetition = 51U;
+constexpr std::uint16_t silent_intervals_per_retry = 501U;
+constexpr std::uint8_t maximum_retry_count = 51U;
 constexpr std::uint32_t parent_directory_mode = 0777U;
 constexpr std::string_view timeout_message = "Info: Machine receive file time out!";
 constexpr std::string_view excessive_retry_message =
@@ -95,12 +96,9 @@ bool FileUpload::start(const HostIdentity& owner, std::string path,
     const bool primary_open = port.open_primary(target_path_);
     const bool md5_open = primary_open && port.open_md5(md5_path_);
     if (!primary_open || !md5_open) {
-        if (primary_open) {
-            port.close_files();
-            static_cast<void>(port.remove_file(target_path_));
-        }
+        const std::string_view failed_path = primary_open ? md5_path_ : target_path_;
         port.send(owner_, {core::protocol::file_cancel,
-                           path_message("Error: failed to open file [", logical_path_, "]!")});
+                           path_message("Error: failed to open file [", failed_path, "]!")});
         port.release_ownership();
         return false;
     }
@@ -108,9 +106,8 @@ bool FileUpload::start(const HostIdentity& owner, std::string path,
     expected_ = ExpectedPacket::md5;
     requested_sequence_ = 1U;
     announced_frame_count_ = 0U;
-    reset_retry_counters();
+    reset_retry_history();
     last_activity_milliseconds_ = now_milliseconds;
-    next_timed_retry_milliseconds_ = now_milliseconds + timed_retry_interval_milliseconds;
     active_ = true;
     return true;
 }
@@ -122,7 +119,6 @@ void FileUpload::handle(const core::Frame& frame,
         return;
     }
     last_activity_milliseconds_ = now_milliseconds;
-    next_timed_retry_milliseconds_ = now_milliseconds + timed_retry_interval_milliseconds;
     if (frame.type == core::protocol::file_cancel) {
         cancel(port);
         return;
@@ -150,23 +146,22 @@ void FileUpload::handle(const core::Frame& frame,
     } else {
         record_unexpected(port);
     }
+    if (active_) finish_cycle(now_milliseconds, port);
 }
 
 void FileUpload::poll(std::uint64_t now_milliseconds, FileUploadPort& port) {
     if (!active_) {
         return;
     }
-    if (now_milliseconds - last_activity_milliseconds_ >
-        core::file_transfer_limits::inactivity_timeout_milliseconds) {
-        abort(timeout_message, port);
-        return;
-    }
-    if (now_milliseconds >= next_timed_retry_milliseconds_) {
+    ++unsuccessful_receive_history_;
+    port.delay(nominal_cycle_delay_milliseconds);
+    check_terminal_limits(now_milliseconds, port);
+    if (!active_) return;
+    if (unsuccessful_receive_history_ >= silent_intervals_per_retry) {
         emit_timed_retry(port);
-        const std::uint64_t periods =
-            ((now_milliseconds - next_timed_retry_milliseconds_) /
-             timed_retry_interval_milliseconds) + 1U;
-        next_timed_retry_milliseconds_ += periods * timed_retry_interval_milliseconds;
+        unsuccessful_receive_history_ = 0U;
+        port.delay(nominal_cycle_delay_milliseconds);
+        check_terminal_limits(now_milliseconds, port);
     }
 }
 
@@ -193,7 +188,6 @@ void FileUpload::accept_md5(core::BytesView payload, FileUploadPort& port) {
         {payload.data(), core::file_transfer_limits::md5_text_size}));
     port.send(owner_, {core::protocol::file_geometry, {}});
     expected_ = ExpectedPacket::geometry;
-    reset_retry_counters();
 }
 
 void FileUpload::accept_geometry(core::BytesView payload, FileUploadPort& port) {
@@ -201,7 +195,6 @@ void FileUpload::accept_geometry(core::BytesView payload, FileUploadPort& port) 
     requested_sequence_ = 1U;
     port.send(owner_, {core::protocol::file_data, encode_u32(requested_sequence_)});
     expected_ = ExpectedPacket::data;
-    reset_retry_counters();
 }
 
 void FileUpload::accept_data(core::BytesView payload, FileUploadPort& port) {
@@ -212,11 +205,11 @@ void FileUpload::accept_data(core::BytesView payload, FileUploadPort& port) {
         port.send(owner_, {core::protocol::file_retry, {error.begin(), error.end()}});
         return;
     }
-    reset_retry_counters();
     if (requested_sequence_ >= announced_frame_count_) {
         complete(port);
         return;
     }
+    reset_retry_history();
     ++requested_sequence_;
     port.send(owner_, {core::protocol::file_data, encode_u32(requested_sequence_)});
 }
@@ -254,15 +247,30 @@ void FileUpload::cancel(FileUploadPort& port) {
 }
 
 void FileUpload::record_unexpected(FileUploadPort& port) {
-    ++consecutive_unexpected_;
-    if (consecutive_unexpected_ < packets_per_retry_cycle) {
+    ++unsuccessful_receive_history_;
+    if (unsuccessful_receive_history_ < unmatched_packets_per_repetition) {
         return;
     }
-    consecutive_unexpected_ = 0U;
+    unsuccessful_receive_history_ = 0U;
     emit_current_request(port);
-    ++retry_cycles_;
-    if (retry_cycles_ >= maximum_retry_cycles) {
+    ++retry_count_;
+}
+
+void FileUpload::finish_cycle(std::uint64_t now_milliseconds,
+                              FileUploadPort& port) {
+    port.delay(nominal_cycle_delay_milliseconds);
+    check_terminal_limits(now_milliseconds, port);
+}
+
+void FileUpload::check_terminal_limits(std::uint64_t now_milliseconds,
+                                       FileUploadPort& port) {
+    if (retry_count_ >= maximum_retry_count) {
         abort(excessive_retry_message, port);
+        return;
+    }
+    if (now_milliseconds - last_activity_milliseconds_ >
+        core::file_transfer_limits::inactivity_timeout_milliseconds) {
+        abort(timeout_message, port);
     }
 }
 
@@ -283,10 +291,7 @@ void FileUpload::emit_current_request(FileUploadPort& port) {
 void FileUpload::emit_timed_retry(FileUploadPort& port) {
     constexpr std::string_view message = "Info: need retry!";
     port.send(owner_, {core::protocol::file_retry, {message.begin(), message.end()}});
-    ++retry_cycles_;
-    if (retry_cycles_ >= maximum_retry_cycles) {
-        abort(excessive_retry_message, port);
-    }
+    ++retry_count_;
 }
 
 void FileUpload::abort(std::string_view message, FileUploadPort& port) {
@@ -304,9 +309,9 @@ void FileUpload::cleanup(bool remove_files, FileUploadPort& port) {
     port.release_ownership();
 }
 
-void FileUpload::reset_retry_counters() {
-    consecutive_unexpected_ = 0U;
-    retry_cycles_ = 0U;
+void FileUpload::reset_retry_history() {
+    unsuccessful_receive_history_ = 0U;
+    retry_count_ = 0U;
 }
 
 }  // namespace firmware::application

@@ -4,6 +4,8 @@
 
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "application/transport/tcp_client_session.hpp"
 
 #include <cstdio>
@@ -79,6 +81,10 @@ void TcpFileUploadAdapter::send(const firmware::application::HostIdentity&,
     if (session_ != nullptr) {
         static_cast<void>(session_->queue_frame(frame));
     }
+}
+
+void TcpFileUploadAdapter::delay(std::uint32_t milliseconds) {
+    vTaskDelay(pdMS_TO_TICKS(milliseconds));
 }
 
 void TcpFileUploadAdapter::release_ownership() {}

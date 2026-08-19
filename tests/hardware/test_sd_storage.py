@@ -53,9 +53,8 @@ def _tcp_transfer_exchange(
     """Sends one transfer frame on an intentionally persistent TCP socket."""
 
     connection.sendall(encode_frame(frame_type, payload))
-    # Wait beyond HFT-022's 5.010-second retry boundary. A slow or briefly
-    # unavailable Wi-Fi link must not be declared failed before the firmware
-    # has had a chance to request continuation.
+    # Keep a generous response window for slow or briefly unavailable Wi-Fi;
+    # continuous silence now reaches inactivity rather than a timed retry.
     return receive_tcp_frames(connection, 7.0)
 
 
@@ -71,7 +70,7 @@ def _required_frame(frames, frame_type: int):
 
 
 def _await_upload_request(connection: socket.socket, frames, timeout: float = 7.0):
-    """Waits past normative HFT-022 retry notices for the next data request."""
+    """Waits for the next data request while tolerating retry notices."""
 
     deadline = time.monotonic() + timeout
     collected = list(frames)

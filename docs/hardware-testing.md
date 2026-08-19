@@ -277,15 +277,13 @@ fresh remount and transfer recovery, deterministic 16 KiB read failure,
 failed FAT write and sync operations, cleanup, reformat, and successful reuse.
 The report is retained as `build/hil-mock-sd-faults.json`.
 
-A combined regression on 2026-08-01 exposed a host-fixture edge case when the
-target's 5.010-second HFT-022 timer expired while the final upload block was
-being completed. The target correctly returned `Info: need retry!`, but the HIL
-driver treated that as terminal instead of repeating the current data packet.
-The driver now retries the same block with a bounded attempt count; duplicate
-delivery remains safe through the production sequence handling. The corrected
-run passed all 20 endurance cycles plus unmount/remount and latched read, write,
-and sync recovery in 633.66 seconds. The report is
-`build/hil-mock-sd-retry-fix.json`.
+A combined regression on 2026-08-01 exercised an older timer-based HFT-022
+implementation and taught the HIL driver to tolerate a retry while completing
+the final block. The 2026-08-19 clarification replaced that timer with combined
+10 ms receive-cycle accounting, so the old retry timing is retained only as
+historical evidence. Duplicate delivery remains safe through sequence handling.
+The earlier report is `build/hil-mock-sd-retry-fix.json`; refreshed timing HIL
+is pending.
 
 The all-mock camera profile was target-built and OTA-installed on 2026-08-01.
 HIL completed five resolution changes spanning frame-size values 1 through 15;
@@ -649,7 +647,8 @@ passed. Reports are stored in `build/hil-sd-mock-usb.json` and
 
 Temporary Wi-Fi interruption recovery was physically exercised on 2026-07-30
 against the mock-SD firmware at `192.168.8.119`. One test held an upload idle
-for six seconds and observed the required 5.010-second retry before completing.
+for six seconds and completed after the then-implemented timer retry. The
+current clarified test instead requires no retry during that bounded silence.
 A second test transferred 128 KiB in 8192-byte blocks, deliberately closed TCP
 halfway through, reconnected into the same lowest free logical slot, required
 the target to repeat the outstanding sequence, completed the remaining blocks,
@@ -765,10 +764,9 @@ returned the exact terminal message, preserved its source, released ownership,
 and allowed an immediate successor upload/download. Finally, both absent and
 malformed MD5 sidecars advertised the required fallback digest while retaining
 the original data; a normal re-upload recreated a valid sidecar and restored
-end-to-end digest verification. All three passed in 93.56 seconds. USB could
-not deterministically reach the 51-packet boundary before its timed retry, so
-that counter injection deliberately uses one persistent TCP task rather than
-conflating sequence behavior with USB worker-queue pressure. The report is
+end-to-end digest verification. All three passed in 93.56 seconds. The counter
+injection deliberately uses one persistent TCP task rather than conflating
+sequence behavior with USB worker-queue pressure. The report is
 `build/hil-mock-transfer-errors-final.json`.
 
 NVS boundary fault control is available only in a build selected with

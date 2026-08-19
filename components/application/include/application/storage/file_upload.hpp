@@ -52,6 +52,9 @@ public:
     /// Sends one response to the start request's retained connection identity.
     virtual void send(const HostIdentity& host, core::Frame frame) = 0;
 
+    /// Applies the nominal post-cycle delay required by the upload loop.
+    virtual void delay(std::uint32_t milliseconds) = 0;
+
     /// Releases logical file-transfer ownership after a terminal outcome.
     virtual void release_ownership() = 0;
 };
@@ -89,11 +92,14 @@ private:
     void complete(FileUploadPort& port);
     void cancel(FileUploadPort& port);
     void record_unexpected(FileUploadPort& port);
+    void finish_cycle(std::uint64_t now_milliseconds, FileUploadPort& port);
+    void check_terminal_limits(std::uint64_t now_milliseconds,
+                               FileUploadPort& port);
     void emit_current_request(FileUploadPort& port);
     void emit_timed_retry(FileUploadPort& port);
     void abort(std::string_view message, FileUploadPort& port);
     void cleanup(bool remove_files, FileUploadPort& port);
-    void reset_retry_counters();
+    void reset_retry_history();
 
     HostIdentity owner_;
     std::string resolved_path_;
@@ -101,11 +107,10 @@ private:
     std::string target_path_;
     std::string md5_path_;
     std::uint64_t last_activity_milliseconds_ = 0U;
-    std::uint64_t next_timed_retry_milliseconds_ = 0U;
     std::uint32_t announced_frame_count_ = 0U;
     std::uint32_t requested_sequence_ = 1U;
-    std::uint8_t consecutive_unexpected_ = 0U;
-    std::uint8_t retry_cycles_ = 0U;
+    std::uint16_t unsuccessful_receive_history_ = 0U;
+    std::uint8_t retry_count_ = 0U;
     ExpectedPacket expected_ = ExpectedPacket::md5;
     bool firmware_upload_ = false;
     bool active_ = false;

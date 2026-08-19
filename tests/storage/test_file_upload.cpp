@@ -93,6 +93,10 @@ public:
         sent.push_back(std::move(frame));
     }
 
+    void delay(std::uint32_t milliseconds) override {
+        delays.push_back(milliseconds);
+    }
+
     // Records logical ownership release.
     void release_ownership() override {
         ++release_count;
@@ -120,6 +124,7 @@ public:
     std::vector<ByteVector> md5_writes;
     std::vector<HostIdentity> destinations;
     std::vector<Frame> sent;
+    std::vector<std::uint32_t> delays;
 };
 
 const HostIdentity owner{HostTransport::usb, 0U, 3U};
@@ -153,18 +158,17 @@ TEST_CASE(hftu_001_upload_requires_md5_mapping_and_0777_sidecar_parents) {
     REQUIRE_EQ(valid_port.parent_mode, 0777U);
 }
 
-TEST_CASE(hftu_001_two_file_open_failure_closes_and_removes_only_primary) {
+TEST_CASE(hftu_001_second_open_failure_leaves_primary_open_and_reports_sidecar) {
     FileUpload upload;
     FakeUploadPort port;
     port.md5_opened = false;
 
     REQUIRE(!upload.start(owner, "/sd/file.bin", 0U, port));
 
-    REQUIRE_EQ(port.close_count, 1U);
-    REQUIRE_EQ(port.removed_paths.size(), 1U);
-    REQUIRE_EQ(port.removed_paths.front(), std::string("/sd/file.bin"));
+    REQUIRE_EQ(port.close_count, 0U);
+    REQUIRE(port.removed_paths.empty());
     REQUIRE_EQ(text(port.sent.back().payload),
-               std::string("Error: failed to open file [/sd/file.bin]!"));
+               std::string("Error: failed to open file [/sd/.md5/file.bin]!"));
 }
 
 TEST_CASE(hftu_001_parent_and_primary_open_failures_release_without_false_cleanup) {
@@ -183,6 +187,8 @@ TEST_CASE(hftu_001_parent_and_primary_open_failures_release_without_false_cleanu
     REQUIRE_EQ(primary_port.release_count, 1U);
     REQUIRE_EQ(primary_port.close_count, 0U);
     REQUIRE(primary_port.removed_paths.empty());
+    REQUIRE_EQ(text(primary_port.sent.back().payload),
+               std::string("Error: failed to open file [/sd/file.bin]!"));
 }
 
 TEST_CASE(hftu_002_firmware_upload_uses_partial_path_case_insensitively) {
@@ -233,6 +239,7 @@ TEST_CASE(hftu_005_data_appends_and_requests_until_announced_count) {
     upload.handle({0xB3U, {0U, 0U, 0U, 2U}}, 4U, port);
     REQUIRE_EQ(port.primary_writes.back(), ByteVector{});
     REQUIRE_EQ(port.sent[port.sent.size() - 2U], Frame({0xB4U, {'o', 'k', '\r', '\n'}}));
+    REQUIRE_EQ(port.delays.size(), 3U);
 }
 
 TEST_CASE(hftu_005_zero_announced_count_still_accepts_sequence_one_then_finalizes) {
@@ -261,6 +268,7 @@ TEST_CASE(hftu_006_write_failure_retains_sequence_and_sends_exact_retry_error) {
     REQUIRE_EQ(port.sent.back().type, 0xB6U);
     REQUIRE_EQ(text(port.sent.back().payload), std::string("Error: File Write error!retry..."));
     REQUIRE(upload.active());
+    REQUIRE_EQ(port.delays.back(), 10U);
 }
 
 TEST_CASE(hftu_007_ack_precedes_flush_and_success_release) {
@@ -308,23 +316,45 @@ TEST_CASE(hftu_010_cancel_removes_target_and_md5_then_releases) {
                std::string("Info: Upload canceled by remote!"));
     REQUIRE_EQ(port.removed_paths.size(), 2U);
     REQUIRE_EQ(port.release_count, 1U);
+    REQUIRE(port.delays.empty());
 }
 
-TEST_CASE(hft_022_timed_retry_occurs_at_5010_ms_and_input_restarts_schedule) {
+TEST_CASE(hft_022_timed_retry_uses_501_silent_intervals_and_an_extra_delay) {
     FileUpload upload;
     FakeUploadPort port;
     REQUIRE(upload.start(owner, "/sd/file.bin", 0U, port));
 
-    upload.poll(5009U, port);
+    for (std::size_t interval = 0U; interval < 500U; ++interval) {
+        upload.poll((interval + 1U) * 10U, port);
+    }
     REQUIRE(port.sent.empty());
     upload.poll(5010U, port);
     REQUIRE_EQ(port.sent.back(), Frame({0xB6U, bytes("Info: need retry!")}));
-    upload.handle({0xBFU, {}}, 6000U, port);
-    const std::size_t sent_before = port.sent.size();
-    upload.poll(11009U, port);
-    REQUIRE_EQ(port.sent.size(), sent_before);
-    upload.poll(11010U, port);
-    REQUIRE_EQ(port.sent.back().type, 0xB6U);
+    REQUIRE_EQ(port.delays.size(), 502U);
+}
+
+TEST_CASE(hftu_011_delays_every_nonterminal_cycle_but_not_completion_or_cancel) {
+    FileUpload upload;
+    FakeUploadPort port;
+    REQUIRE(upload.start(owner, "/sd/file.bin", 0U, port));
+
+    accept_md5(upload, port);
+    accept_geometry(upload, port, 2U);
+    upload.handle({0xBFU, {}}, 3U, port);
+    port.primary_write_succeeds = false;
+    upload.handle({0xB3U, {0U, 0U, 0U, 1U, 'x'}}, 4U, port);
+    port.primary_write_succeeds = true;
+    upload.handle({0xB3U, {0U, 0U, 0U, 1U, 'x'}}, 5U, port);
+    REQUIRE_EQ(port.delays, std::vector<std::uint32_t>({10U, 10U, 10U, 10U, 10U}));
+
+    upload.handle({0xB3U, {0U, 0U, 0U, 2U}}, 6U, port);
+    REQUIRE_EQ(port.delays.size(), 5U);
+
+    FileUpload cancelled;
+    FakeUploadPort cancelled_port;
+    REQUIRE(cancelled.start(owner, "/sd/file.bin", 0U, cancelled_port));
+    cancelled.handle({0xB5U, {}}, 1U, cancelled_port);
+    REQUIRE(cancelled_port.delays.empty());
 }
 
 TEST_CASE(hft_020_inactive_operations_are_ignored_and_expired_resume_aborts) {
@@ -406,6 +436,40 @@ TEST_CASE(hft_024_wrong_packets_repeat_geometry_and_abort_after_maximum_cycles) 
         excessive.handle({0xBFU, {}}, count + 1U, excessive_port);
     }
     REQUIRE(!excessive.active());
+    REQUIRE_EQ(excessive_port.sent[excessive_port.sent.size() - 2U],
+               Frame({0xB1U, {}}));
     REQUIRE_EQ(text(excessive_port.sent.back().payload),
                std::string("Info: Machine receive file too many retry error!"));
+}
+
+TEST_CASE(hft_024_and_025_histories_cross_metadata_but_nonfinal_data_resets_them) {
+    FileUpload retained;
+    FakeUploadPort retained_port;
+    REQUIRE(retained.start(owner, "/sd/file.bin", 0U, retained_port));
+    for (std::size_t count = 0U; count < 50U; ++count) {
+        retained.handle({0xBFU, {}}, count + 1U, retained_port);
+    }
+    accept_md5(retained, retained_port, 51U);
+    accept_geometry(retained, retained_port, 2U, 52U);
+    retained.handle({0xBFU, {}}, 53U, retained_port);
+    REQUIRE_EQ(retained_port.sent.back(),
+               Frame({0xB3U, {0U, 0U, 0U, 1U}}));
+
+    FileUpload reset;
+    FakeUploadPort reset_port;
+    REQUIRE(reset.start(owner, "/sd/file.bin", 0U, reset_port));
+    accept_md5(reset, reset_port);
+    accept_geometry(reset, reset_port, 2U);
+    for (std::size_t count = 0U; count < 50U; ++count) {
+        reset.handle({0xBFU, {}}, count + 3U, reset_port);
+    }
+    reset.handle({0xB3U, {0U, 0U, 0U, 1U, 'x'}}, 53U, reset_port);
+    const std::size_t sent_after_data = reset_port.sent.size();
+    for (std::size_t count = 0U; count < 50U; ++count) {
+        reset.handle({0xBFU, {}}, count + 54U, reset_port);
+    }
+    REQUIRE_EQ(reset_port.sent.size(), sent_after_data);
+    reset.handle({0xBFU, {}}, 104U, reset_port);
+    REQUIRE_EQ(reset_port.sent.back(),
+               Frame({0xB3U, {0U, 0U, 0U, 2U}}));
 }

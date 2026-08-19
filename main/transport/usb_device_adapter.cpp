@@ -76,6 +76,7 @@
 #include <ctime>
 #include <optional>
 #include <memory>
+#include <utility>
 #include <atomic>
 #include <cerrno>
 #include <cstdio>
@@ -116,7 +117,7 @@ constexpr std::string_view parent_directory_entry = "..";
 constexpr char directory_separator = '/';
 constexpr std::uint32_t logged_wifi_delay_threshold_milliseconds = 1000U;
 constexpr std::uint32_t local_command_settle_milliseconds = 10U;
-constexpr std::uint32_t file_transfer_poll_milliseconds = 50U;
+constexpr std::uint32_t file_transfer_poll_milliseconds = 10U;
 constexpr UBaseType_t usb_worker_priority = 4U;
 constexpr std::uint32_t usb_transmit_task_stack_size = 4096U;
 constexpr std::uint32_t usb_m942_task_stack_size = 6144U;
@@ -621,6 +622,14 @@ public:
         static_cast<void>(queue_usb_frame(frame));
     }
 
+    void delay(std::uint32_t milliseconds) override {
+        pending_delay_milliseconds_ += milliseconds;
+    }
+
+    std::uint32_t take_pending_delay() {
+        return std::exchange(pending_delay_milliseconds_, 0U);
+    }
+
     void release_ownership() override {}
 
 private:
@@ -646,6 +655,7 @@ private:
     FILE* md5_ = nullptr;
     std::string primary_path_;
     std::string md5_path_;
+    std::uint32_t pending_delay_milliseconds_ = 0U;
 };
 
 UsbFileUploadPort usb_upload_port;
@@ -1363,10 +1373,12 @@ std::optional<firmware::core::Frame> dequeue_usb_file_transfer() {
 /// @param unused FreeRTOS task parameter; shared state is module-owned.
 void usb_file_transfer_task(void* /* unused */) {
     for (;;) {
-        if (auto frame = dequeue_usb_file_transfer(); frame.has_value()) {
+        const auto frame = dequeue_usb_file_transfer();
+        if (frame.has_value()) {
             handle_usb_file_transfer(*frame);
         }
-        if (xSemaphoreTake(usb_file_mutex, portMAX_DELAY) == pdTRUE) {
+        if (!frame.has_value() &&
+            xSemaphoreTake(usb_file_mutex, portMAX_DELAY) == pdTRUE) {
             const std::uint64_t now =
                 static_cast<std::uint64_t>(
                     esp_timer_get_time() / microseconds_per_millisecond);
@@ -1381,7 +1393,10 @@ void usb_file_transfer_task(void* /* unused */) {
             }
             xSemaphoreGive(usb_file_mutex);
         }
-        vTaskDelay(pdMS_TO_TICKS(file_transfer_poll_milliseconds));
+        const std::uint32_t receive_interval =
+            frame.has_value() ? 0U : file_transfer_poll_milliseconds;
+        vTaskDelay(pdMS_TO_TICKS(receive_interval +
+                                 usb_upload_port.take_pending_delay()));
     }
 }
 

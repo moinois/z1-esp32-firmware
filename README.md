@@ -29,7 +29,8 @@ The first core-to-periphery development slice contains:
 - host download with MD5 selection, compressed-sidecar preference, 8192-byte
   blocks, reread retry, terminal reporting, wrong-command limits, and timeout;
 - host upload with dual-file lifecycle, sequenced 8192-byte writes, firmware
-  partial finalization, retry cycles, cancellation cleanup, and timeout;
+  partial finalization, combined receive-cycle retry accounting, explicit
+  nominal delays, cancellation cleanup, and timeout;
 - target POSIX/mbedTLS file-transfer adapters for cache directories, MD5
   calculation, file I/O, and queued TCP response frames;
 - per-TCP-session transfer dispatch with monotonic runtime polling and
