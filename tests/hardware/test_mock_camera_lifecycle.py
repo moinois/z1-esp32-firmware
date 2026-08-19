@@ -6,69 +6,18 @@ from concurrent.futures import ThreadPoolExecutor
 import http.client
 import json
 import os
-import socket
 
 import pytest
 
 from tests.hardware.hil_protocol import GENERAL_COMMAND, TcpProtocolClient
+from tests.hardware.hil_websocket import (
+    open_video_socket as _open_video_socket,
+    receive_frame as _receive_frame,
+    send_text as _send_text,
+)
 
 
 JPEG = b"\xff\xd8\xff\xd9"
-
-
-def _read_exact(connection: socket.socket, size: int) -> bytes:
-    """Reads one exact WebSocket field or fails on premature close."""
-
-    result = bytearray()
-    while len(result) < size:
-        block = connection.recv(size - len(result))
-        assert block, "WebSocket closed before a complete frame arrived"
-        result.extend(block)
-    return bytes(result)
-
-
-def _receive_frame(connection: socket.socket) -> tuple[int, bytes]:
-    """Decodes one unmasked server WebSocket frame."""
-
-    first, second = _read_exact(connection, 2)
-    opcode = first & 0x0F
-    assert second & 0x80 == 0
-    length = second & 0x7F
-    if length == 126:
-        length = int.from_bytes(_read_exact(connection, 2), "big")
-    elif length == 127:
-        length = int.from_bytes(_read_exact(connection, 8), "big")
-    return opcode, _read_exact(connection, length)
-
-
-def _send_text(connection: socket.socket, payload: bytes) -> None:
-    """Sends one masked client text frame with a deterministic mask."""
-
-    assert len(payload) < 126
-    mask = b"\x12\x34\x56\x78"
-    encoded = bytes(value ^ mask[index % 4] for index, value in enumerate(payload))
-    connection.sendall(bytes((0x81, 0x80 | len(payload))) + mask + encoded)
-
-
-def _open_video_socket(host: str) -> socket.socket:
-    """Completes the RFC 6455 upgrade against the dedicated video server."""
-
-    connection = socket.create_connection((host, 82), timeout=5.0)
-    connection.settimeout(5.0)
-    request = (
-        "GET /ws_video HTTP/1.1\r\n"
-        f"Host: {host}:82\r\n"
-        "Connection: Upgrade\r\n"
-        "Upgrade: websocket\r\n"
-        "Sec-WebSocket-Version: 13\r\n"
-        "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n"
-    ).encode("ascii")
-    connection.sendall(request)
-    response = bytearray()
-    while b"\r\n\r\n" not in response:
-        response.extend(connection.recv(1024))
-    assert response.startswith(b"HTTP/1.1 101")
-    return connection
 
 
 def _set_resolution(host: str, value: int) -> None:

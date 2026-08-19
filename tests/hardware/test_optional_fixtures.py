@@ -28,18 +28,6 @@ from tools.wifi_provision_protocol import encode_frame
 
 @pytest.mark.hardware
 @pytest.mark.readonly
-@pytest.mark.can
-@pytest.mark.controller
-@pytest.mark.requirement("LPC-001")
-@pytest.mark.requirement("UART-003")
-def test_controller_fixture_declares_connection() -> None:
-    if os.getenv("Z1_HIL_CONTROLLER") != "1":
-        pytest.skip("external controller fixture not declared with Z1_HIL_CONTROLLER=1")
-    pytest.skip("controller fixture driver is not implemented yet")
-
-
-@pytest.mark.hardware
-@pytest.mark.readonly
 @pytest.mark.controller
 def test_mock_controller_populates_runtime_snapshots(usb_client) -> None:
     """Exercises controller routing without claiming physical UART conformance."""

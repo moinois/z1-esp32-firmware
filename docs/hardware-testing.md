@@ -465,10 +465,17 @@ operation, HTTP/WebSocket concurrency and interruption recovery, Wi-Fi scan and
 diagnostics, runtime reads, an explicitly gated recoverable filesystem
 operation, native USB reset, Wi-Fi persistence, destructive delayed-chunk OTA,
 and SPIFFS replacement. SD tests require an explicitly declared reader/card because protocol
-completion alone cannot prove a mount. Controller, CAN, BLE, RF-control, and
-recording still need dedicated fixture drivers. Capability-gate tests document
-missing controller, CAN, BLE, and camera fixtures as skips; the camera gate
-probes the firmware automatically.
+completion alone cannot prove a mount. Physical controller
+version/status/diagnostic reads, BLE, camera detection, and camera streaming
+now have dedicated fixture coverage. CAN, RF-control, motion, and recording
+still need controlled fixture drivers; unavailable capabilities remain skips.
+
+On 2026-08-19 a complete Makera Z1 fixture passed six new read-only cases:
+physical controller version/status/diagnostics plus ten repeated queries,
+physical `/sd/config.txt` listing/download with MD5 and identical USB/TCP
+content, real JPEG streaming across disconnect/reconnect, and simultaneous
+camera, HTTP, USB, and controller reads. The tests issue no motion, spindle,
+laser, file-write, configuration-write, or update commands.
 
 On 2026-08-09 an all-mock image was flashed from `build-hil-all`. COM reset and
 boot diagnostics passed 2/2. The applicable native-USB mutating suite produced

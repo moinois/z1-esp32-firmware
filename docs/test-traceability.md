@@ -48,6 +48,7 @@ Portable startup and adapter-selection cases are in `tests/runtime/` and
 | `tests/controller/test_controller_query.cpp`, `test_controller_link.cpp`, `test_controller_snapshots.cpp` | Periodic queries, link activity, snapshot retention, and status formatting. | LPC-001–LPC-003, STAT-001–STAT-010, UART-003–UART-009 |
 | `tests/controller/test_controller_*_transfer.cpp` | Firmware, configuration, and factory transfer state machines, malformed geometry, cancellation, timeout, and staged-file handling. | LPC-010–LPC-019, LPCFW-001–LPCFW-006, LPCCFG-001–LPCCFG-006, LPCFAC-001–LPCFAC-005 |
 | `tests/hardware/test_optional_fixtures.py` | Fragmented mock-controller reads and all three transfer families through the target composition. | LPC-010–LPC-019, LPCFW-001–LPCFW-006, LPCCFG-001–LPCCFG-006, LPCFAC-001–LPCFAC-005 |
+| `tests/hardware/test_physical_controller.py` | Reads physical controller version, status, and diagnostics over USB, then repeats safe status queries to detect stalled UART routing. | LPC-001, UART-003 |
 
 ## 05 — Host file transfer
 
@@ -67,6 +68,7 @@ Portable startup and adapter-selection cases are in `tests/runtime/` and
 | `tests/configuration/test_configuration_files.cpp`, `test_configuration_document.cpp`, `test_configuration_get.cpp`, `test_configuration_set.cpp` | Bytewise config copies, long filename `config.default`, parsing, namespaces, hashes, and bounded responses. | CFG-001–CFG-006, CFG-010, CFG-015–CFG-016, CFG-020–CFG-023, CFG-030–CFG-034 |
 | `tests/hardware/test_mock_cross_transport.py::test_configuration_default_and_restore_supports_long_filename` | Positive target verification of `/sd/config.default` under current SD-009 long-filename policy. | SD-009, CFG-001, CFG-004–CFG-006 |
 | `tests/hardware/test_mock_sd_faults.py`, `test_sd_storage.py` | Mock volume lifecycle, latched media faults, full-volume recovery, diagnostics, and transfer cleanup. | SD-001–SD-010, FILE-010, FILE-015, LOG-001–LOG-006 |
+| `tests/hardware/test_physical_sd_readonly.py` | Lists the installed card, downloads its existing configuration with MD5 verification, and compares USB and TCP bytes without writing media. | SD-001, CFG-001, HFTD-001 |
 
 ## 07 — Connectivity
 
@@ -84,6 +86,7 @@ Portable startup and adapter-selection cases are in `tests/runtime/` and
 | `tests/media/test_avi_writer.cpp`, `test_recording_policy.cpp` | AVI structure, frame/index accounting, recording names, intervals, and active-state policy. | AVI-010–AVI-013, REC-001–REC-010 |
 | `tests/media/test_preview_*.cpp` | Preview path validation, command/session policy, metadata, frame pacing, cancellation, and WebSocket input. | PREV-001–PREV-029, WEB-003, WEB-008 |
 | `tests/hardware/test_mock_camera_lifecycle.py` | Camera resolution, WebSocket frame lifecycle, disconnect, successor sessions, and concurrent HTTP/TCP use with the mock. | CAM-001–CAM-015, PREV-001–PREV-029 |
+| `tests/hardware/test_physical_camera.py` | Receives physical JPEG frames across reconnects and verifies streaming alongside HTTP, USB, and physical-controller status traffic. | HW-040, LIVE-001, LIVE-005, USB-004, UART-003 |
 | `tests/hardware/test_web_ui.py`, `test_http.py`, `test_http_stress.py` | Static assets, MIME types, configuration API, validation, concurrency, and interrupted requests. | WEB-001–WEB-020, WEBUP-002, WEBUP-004, CFG-020–CFG-034 |
 
 ## 09 — Firmware update
