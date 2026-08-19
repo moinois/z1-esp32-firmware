@@ -38,6 +38,7 @@
 
 #include "application/web/web_volume_startup.hpp"
 #include "application/connectivity/connectivity_startup.hpp"
+#include "application/runtime/persistent_store_initialization.hpp"
 #include "core/network/network_policy.hpp"
 
 #include <array>
@@ -63,30 +64,42 @@ std::string configured_machine_name() {
     return firmware::core::derive_machine_name(lines, station_mac);
 }
 
-// Initializes NVS with the erase-and-retry recovery required during early boot.
-bool initialize_persistent_store() {
-    esp_err_t result = nvs_flash_init();
-    if (result == ESP_ERR_NVS_NO_FREE_PAGES || result == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+class PersistentStoreInitializationAdapter final
+    : public firmware::application::PersistentStoreInitializationPort {
+public:
+    firmware::application::PersistentStoreInitializationResult initialize() override {
+        last_result_ = nvs_flash_init();
+        if (last_result_ == ESP_OK) {
+            return firmware::application::PersistentStoreInitializationResult::success;
+        }
+        if (last_result_ == ESP_ERR_NVS_NO_FREE_PAGES) {
+            return firmware::application::
+                PersistentStoreInitializationResult::exhausted_pages;
+        }
+        if (last_result_ == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+            return firmware::application::
+                PersistentStoreInitializationResult::incompatible_version;
+        }
+        return firmware::application::
+            PersistentStoreInitializationResult::other_failure;
+    }
+
+    bool erase() override { return nvs_flash_erase() == ESP_OK; }
+
+    void report_exhausted_recovery() override {
         ESP_LOGW(tag, "NVS分区需要擦除，正在擦除...");
-        result = nvs_flash_erase();
-        if (result == ESP_OK) {
-            result = nvs_flash_init();
-        }
-    } else if (result != ESP_OK) {
-        ESP_LOGE(tag, "NVS初始化失败: %s (0x%x)", esp_err_to_name(result), static_cast<unsigned>(result));
+    }
+
+    void report_general_recovery() override {
+        ESP_LOGE(tag, "NVS初始化失败: %s (0x%x)",
+                 esp_err_to_name(last_result_),
+                 static_cast<unsigned>(last_result_));
         ESP_LOGW(tag, "尝试擦除NVS分区并重新初始化...");
-        result = nvs_flash_erase();
-        if (result == ESP_OK) {
-            result = nvs_flash_init();
-        }
     }
-    if (result != ESP_OK) {
-        ESP_LOGE(tag, "NVS初始化仍然失败，系统无法继续运行");
-        return false;
-    }
-    ESP_LOGI(tag, "NVS初始化成功");
-    return true;
-}
+
+private:
+    esp_err_t last_result_ = ESP_OK;
+};
 
 // Toggles the active-high heartbeat output once per second for the lifetime of the firmware.
 void heartbeat_task(void*) {
@@ -111,10 +124,14 @@ void start_heartbeat() {
 
 extern "C" void app_main() {
     ESP_LOGW(tag, "Reset reason=%d", static_cast<int>(esp_reset_reason()));
-    if (!initialize_persistent_store()) {
+    PersistentStoreInitializationAdapter persistent_store;
+    if (!firmware::application::initialize_persistent_store(persistent_store)) {
+        ESP_LOGE(tag, "NVS初始化仍然失败，系统无法继续运行");
         ESP_LOGE(tag, "Restarting because NVS initialization failed");
         esp_restart();
+        return;
     }
+    ESP_LOGI(tag, "NVS初始化成功");
     const std::string persisted_wifi_log =
         firmware::target::wifi_diagnostic_log().read();
     if (!persisted_wifi_log.empty()) {

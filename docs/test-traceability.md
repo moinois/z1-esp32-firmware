@@ -18,6 +18,7 @@ variants, the variants are grouped under one description.
 | `tests/hardware/test_diagnostics.py::test_diagnostic_serial_port_is_detectable` | Detects the application diagnostic serial fixture without confusing it with the bootloader port. | HW-001, DIAG-001 |
 | `tests/hardware/test_diagnostics.py::test_reset_emits_healthy_boot_diagnostics` | Resets the target, captures the boot/application log, and rejects panic, watchdog, or stack-failure signatures. | BOOT-001, DIAG-001 |
 | `tests/hardware/test_persistence_reboot.py::test_runtime_identity_and_wifi_persist_across_ota_reboot` | Confirms identity, first-boot state, runtime values, and station credentials survive an OTA reboot. | BOOT-001–BOOT-003, RUN-010, RUN-030–RUN-032, RUN-043, NET-010, NET-017 |
+| `tests/runtime/test_persistent_store_initialization.cpp` | Verifies the bounded two-round exhausted/version recovery, fatal first erase failure, and final initialization after a failed general-recovery erase. | BOOT-001–BOOT-003, BOOT-015 |
 
 Portable startup and adapter-selection cases are in `tests/runtime/` and
 `tests/connectivity/`, especially `test_hardware_adapter_selection.cpp`,

@@ -92,6 +92,7 @@ set(APPLICATION_SOURCES
     src/runtime/runtime_commands.cpp
     src/runtime/runtime_counters.cpp
     src/runtime/runtime_status.cpp
+    src/runtime/persistent_store_initialization.cpp
     src/storage/sd_card_lifecycle.cpp
     src/runtime/serial_number.cpp
     src/connectivity/station_connection.cpp

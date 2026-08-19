@@ -347,9 +347,9 @@ void ControllerCommandLoop::start() {
     if (controller_forwarder_mutex == nullptr) {
         controller_forwarder_mutex = xSemaphoreCreateMutex();
     }
-    if (controller_forwarder_mutex == nullptr) {
-        return;
-    }
+    // BOOT-013 makes controller transmit and every receive consumer
+    // independent startup attempts. A missing forwarder mutex disables output
+    // admission, but must not prevent UART receive or family retention.
     firmware_inbox_mutex = xSemaphoreCreateMutex();
     configuration_inbox_mutex = xSemaphoreCreateMutex();
     factory_inbox_mutex = xSemaphoreCreateMutex();
