@@ -2,6 +2,7 @@
 #include "camera_adapter.hpp"
 
 #include "esp_camera.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 
 #include "application/camera/camera_hardware_config.hpp"
@@ -16,6 +17,10 @@ namespace firmware::target {
 namespace {
 
 constexpr char tag[] = "CAMERA";
+// LIVE-010 delays driver startup until the first video client. Hold one early
+// internal DMA block so unrelated service allocation cannot fragment every
+// block large enough for the camera driver before that normative trigger.
+constexpr std::size_t late_camera_dma_reservation_size = 16U * 1024U;
 // Maps the portable CAM-001 dimension table to esp32-camera frame-size values.
 constexpr std::array<framesize_t, 15U> frame_sizes{
     FRAMESIZE_QQVGA, FRAMESIZE_128X128, FRAMESIZE_QCIF, FRAMESIZE_HQVGA,
@@ -62,10 +67,22 @@ camera_config_t make_camera_config() {
 
 }  // namespace
 
+CameraAdapter::CameraAdapter()
+    : dma_reservation_(heap_caps_malloc(late_camera_dma_reservation_size,
+                                        MALLOC_CAP_DMA)) {
+    if (dma_reservation_ == nullptr) {
+        ESP_LOGW(tag, "Could not reserve late camera DMA memory");
+    }
+}
+
 bool CameraAdapter::initialize() {
     if (initialized_) {
         return true;
     }
+    // Release immediately before esp_camera_init so the driver receives the
+    // contiguous block without initializing the sensor before LIVE-010 allows.
+    heap_caps_free(dma_reservation_);
+    dma_reservation_ = nullptr;
     const auto& camera_settings = load_camera_settings();
     const auto config = make_camera_config();
     const esp_err_t result = esp_camera_init(&config);
@@ -119,10 +136,14 @@ bool CameraAdapter::set_frame_dimensions(
 
 std::optional<firmware::core::ByteVector> CameraAdapter::capture_jpeg() {
     camera_fb_t* frame = esp_camera_fb_get();
-    if (frame == nullptr || frame->format != PIXFORMAT_JPEG) {
-        if (frame != nullptr) {
-            esp_camera_fb_return(frame);
-        }
+    if (frame == nullptr) {
+        ESP_LOGW(tag, "Camera capture returned no frame");
+        return std::nullopt;
+    }
+    if (frame->format != PIXFORMAT_JPEG) {
+        ESP_LOGW(tag, "Camera capture returned unexpected format: %d",
+                 static_cast<int>(frame->format));
+        esp_camera_fb_return(frame);
         return std::nullopt;
     }
     firmware::core::ByteVector jpeg(frame->buf, frame->buf + frame->len);

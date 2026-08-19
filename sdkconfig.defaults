@@ -11,6 +11,14 @@ CONFIG_SPIRAM=y
 CONFIG_SPIRAM_MODE_OCT=y
 CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_SPIRAM_MEMTEST=y
+# Let ordinary malloc allocations use PSRAM regardless of size. Components
+# that require internal or DMA-capable storage request those capabilities
+# explicitly, while this policy leaves their reserved internal heap intact.
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0
+# LIVE-010 initializes the camera after networking and USB are already active.
+# Bound each internal camera DMA allocation so late startup does not depend on
+# finding the driver's larger default block in a fragmented internal DMA heap.
+CONFIG_CAMERA_DMA_BUFFER_SIZE_MAX=8192
 CONFIG_SECURE_BOOT=n
 CONFIG_SECURE_FLASH_ENC_ENABLED=n
 CONFIG_NVS_ENCRYPTION=n

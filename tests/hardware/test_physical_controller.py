@@ -26,7 +26,7 @@ def _payload_for(frames, frame_type: int) -> bytes:
 
 
 def _version_payload(usb_client) -> bytes:
-    """Ignores retained console output until the controller version arrives."""
+    """Ignores retained output until the normative text response arrives."""
 
     observed = []
     for _ in range(2):
@@ -35,7 +35,7 @@ def _version_payload(usb_client) -> bytes:
             (
                 item.payload
                 for item in observed
-                if item.frame_type == 0x90
+                if item.frame_type == 0x83
                 and re.fullmatch(rb"version = \d+(?:\.\d+)+\n", item.payload)
             ),
             None,

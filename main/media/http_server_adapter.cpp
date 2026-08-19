@@ -122,6 +122,9 @@ struct LiveControlRequest {
 
 QueueHandle_t live_control_queue = nullptr;
 
+bool submit_live_control(httpd_handle_t handle, int socket_id,
+                         LiveControlRequestAction action);
+
 // Owns one continuous live-camera stream until ownership is revoked.
 struct LiveStreamTaskContext {
     httpd_handle_t handle;
@@ -171,6 +174,12 @@ void live_stream_task(void* parameter) {
            context->generation) {
         TickType_t capture_started = xTaskGetTickCount();
         if (!send_live_frame(context->handle, context->socket_id)) {
+            // LIVE-004 stops ownership as well as the transport. Queue the
+            // state transition before closing so a reused descriptor cannot
+            // inherit a dead stream and suppress its own start request.
+            static_cast<void>(submit_live_control(
+                context->handle, context->socket_id,
+                LiveControlRequestAction::stop));
             if (httpd_ws_get_fd_info(context->handle, context->socket_id) ==
                 HTTPD_WS_CLIENT_WEBSOCKET) {
                 static_cast<void>(httpd_sess_trigger_close(

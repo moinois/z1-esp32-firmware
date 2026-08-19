@@ -8,6 +8,9 @@ namespace firmware::target {
 /// Owns the physical camera driver while exposing the portable resolution port.
 class CameraAdapter final : public CameraHardwareAdapter {
 public:
+    /// Reserves the late camera startup's DMA memory before other services fragment it.
+    CameraAdapter();
+
     /// Initializes the configured JPEG DVP camera and sensor orientation.
     bool initialize() override;
 
@@ -28,6 +31,7 @@ public:
     const firmware::application::CameraSettings& settings() const override;
 
 private:
+    void* dma_reservation_ = nullptr;
     bool initialized_ = false;
 };
 

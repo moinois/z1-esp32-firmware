@@ -467,6 +467,16 @@ returns a deterministic marker-only JPEG frame so target WebSocket and recording
 composition can run without probing camera pins. This is protocol-fixture data,
 not a simulation of sensor pixels or timing.
 
+The physical adapter keeps sensor initialization lazy as required by LIVE-010,
+but reserves one 16 KiB internal DMA-capable block while the boot heap is still
+contiguous. It releases that block immediately before `esp_camera_init`. Camera
+DMA allocations are individually bounded to 8 KiB, and ordinary `malloc`
+allocations may use PSRAM at every size; components that require internal or DMA
+memory continue to request those capabilities explicitly. This prevents late
+camera initialization from depending on a fragmented internal heap without
+starving native USB. USB reception retains its normative BOOT-012 position after
+the earlier frame destinations have attempted startup.
+
 The controller implementation selects a shared byte-channel interface in the
 same factory. Its deterministic mock consumes and emits production-framed
 controller messages, allowing the real scheduler, decoder, snapshot store, and

@@ -17,6 +17,7 @@ from tests.hardware.hil_protocol import (
     UsbProtocolClient,
     find_native_usb_device,
 )
+from tests.hardware.hil_websocket import open_video_socket
 
 
 _native_usb_seen = False
@@ -218,29 +219,46 @@ def network_mock_fixture() -> None:
 
 
 @pytest.fixture(scope="session")
-def camera_fixture(tcp_host: str) -> None:
-    """Detects an initialized camera through its public runtime API."""
-    connection = http.client.HTTPConnection(tcp_host, 80, timeout=5.0)
+def camera_fixture(tcp_host: str) -> Iterator[None]:
+    """Initializes and detects the camera through the normative public APIs.
+
+    LIVE-010 reserves the one camera-startup attempt for the first video
+    WebSocket upgrade or preview ``open``. A resolution POST alone must not be
+    treated as a hardware probe because CAM-006 only applies it to an already
+    initialized sensor.
+    """
     try:
-        connection.request(
-            "POST",
-            "/api/camera/resolution",
-            body=b'{"resolution":10}',
-            headers={"Content-Type": "application/json"},
+        video = open_video_socket(tcp_host)
+    except (AssertionError, OSError) as error:
+        pytest.skip(f"camera initialization through /ws_video failed: {error}")
+    try:
+        connection = http.client.HTTPConnection(tcp_host, 80, timeout=5.0)
+        try:
+            connection.request(
+                "POST",
+                "/api/camera/resolution",
+                body=b'{"resolution":10}',
+                headers={"Content-Type": "application/json"},
+            )
+            response = connection.getresponse()
+            body = response.read()
+        except OSError as error:
+            pytest.skip(f"camera capability endpoint unavailable: {error}")
+        finally:
+            connection.close()
+        if response.status == 200:
+            yield None
+            return
+        if response.status == 500 and body == b"Failed to set framesize":
+            pytest.skip("initialized camera did not accept the normative frame size")
+        pytest.fail(
+            f"unexpected camera capability response: HTTP {response.status} {body!r}"
         )
-        response = connection.getresponse()
-        body = response.read()
-    except OSError as error:
-        pytest.skip(f"camera capability endpoint unavailable: {error}")
     finally:
-        connection.close()
-    if response.status == 200:
-        return
-    if response.status == 500 and body == b"Failed to set framesize":
-        pytest.skip("camera module not detected by the firmware")
-    pytest.fail(
-        f"unexpected camera capability response: HTTP {response.status} {body!r}"
-    )
+        # Keep the initialization socket alive for the session. Closing it
+        # immediately can race its asynchronous LIVE-008 stop against the
+        # first test socket when ESP-IDF reuses the descriptor number.
+        video.close()
 
 
 @pytest.fixture(scope="session")

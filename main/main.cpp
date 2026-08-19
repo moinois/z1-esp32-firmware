@@ -156,6 +156,10 @@ extern "C" void app_main() {
     // Install capture before storage startup so early diagnostics are retained.
     static firmware::target::DiagnosticCaptureAdapter diagnostic_capture;
     diagnostic_capture.start();
+    // Construct the live camera adapter while internal DMA memory is still
+    // contiguous. Sensor initialization remains lazy and is triggered only by
+    // LIVE-010 through the video/preview paths.
+    static_cast<void>(firmware::target::HardwareAdapterFactory::camera());
     firmware::target::SdStorageAdapter& sd_storage =
         firmware::target::HardwareAdapterFactory::sd_storage();
     static_cast<void>(sd_storage.mount_for_boot());
@@ -207,6 +211,8 @@ extern "C" void app_main() {
     wlan_events.set_ble_provisioning(&blufi_provisioning);
     tcp_control.start();
     firmware::target::start_tcp_discovery_task();
+    // BOOT-012 requires USB reception to start only after every earlier frame
+    // destination has had its startup attempt and retention policy installed.
     static firmware::target::UsbDeviceAdapter usb_device;
     if (!usb_device.start()) {
         ESP_LOGW(tag, "USB device startup failed; USB remains unavailable");

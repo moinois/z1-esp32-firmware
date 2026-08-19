@@ -660,26 +660,29 @@ interval are included only at the suffix lengths permitted by BWF-002. Clients
 must therefore discover the device by its `MK_` identity rather than require
 the service UUID to be present in every advertisement.
 
-- The HTTP server and SPIFFS static-file support are implemented, but the
-  browser-based configuration interface itself is not. No HTML, CSS, or
-  JavaScript application assets are currently included; its product scope,
-  authentication policy, missing APIs, packaging, and browser tests remain
-  explicit backlog items under `PROJ-WEBUI-001`.
+- The default SPIFFS image includes the browser-based configuration interface
+  and its configuration and diagnostics APIs. Target HIL covers installation,
+  asset delivery, configuration reload/update/persistence, and API errors;
+  automated cross-browser visual and accessibility verification remains under
+  `PROJ-WEBUI-001`.
 
 Most deterministic behavior and target compositions listed above are
-implemented, host-tested where portable, and target-built. Remaining work is
-primarily physical verification and fixture-specific integration: raw
-byte-exact GATT coverage beyond the standard BLUFI callback bridge, controller
-and CAN rigs, RF/coexistence measurements, camera/recording endurance, SD/FAT
-failure injection, resource-exhaustion stress, and long-running timing
-validation. Direct OTA alternation, rollback, previous-partition reuse, and
-recovery after an injected receive timeout have physical HIL evidence.
+implemented, host-tested where portable, and target-built. Physical Z1 evidence
+now covers native USB, Wi-Fi/BLE coexistence, SD reads and recoverable writes,
+the controller link, OV3660 live video, SPIFFS replacement, and OTA reboot and
+timeout recovery. Remaining work is primarily fixture-specific or endurance
+evidence: a driven CAN bus, RF-loss/coexistence measurements, physical
+camera-to-SD recording endurance, injected FAT/media failures,
+resource-exhaustion stress, and long-running timing validation. Direct OTA
+alternation, rollback, previous-partition reuse, and recovery after an injected
+receive timeout have physical HIL evidence.
 
 The optional HIL framework provides USB, TCP, HTTP/WebSocket, Wi-Fi diagnostic,
 BLE/BLUFI, SD/filesystem, and explicitly gated mutating or destructive checks.
 BLE advertising, GATT, encrypted provisioning, cross-transport load, and reset
-recovery have physical evidence. Controller, CAN, camera, SD-dependent, and
-recording tests remain skipped when their fixtures are unavailable.
+recovery have physical evidence. Controller, camera, and SD fixtures have also
+been exercised on a Makera Z1; CAN and physical recording remain gated when
+their dedicated fixtures are unavailable.
 
 ## Conformance policy
 

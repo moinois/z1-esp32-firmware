@@ -496,6 +496,28 @@ extensions; and the UDP bind failure passed on isolated rerun. See
 [`factory-firmware-spec-differences.md`](factory-firmware-spec-differences.md).
 These results validate the fixture, not a repository-built firmware image.
 
+The factory camera image was also used as an A/B diagnostic baseline on
+2026-08-19. The extracted raw application from
+`binaries/firmware-1.1.2.0.1.13.bin` delivered a valid physical OV3660 JPEG,
+proving the sensor, cable, and fixture before the repository image was restored
+by OTA. The repository release image then passed 2/2 physical camera cases,
+including disconnect/successor streaming and simultaneous HTTP, native USB,
+and controller reads. Three repeated BLE/native-USB/eight-client-HTTP/Wi-Fi
+diagnostic load runs passed. The final configuration preserves BOOT-012 USB
+startup ordering, permits ordinary allocations in PSRAM, reserves 16 KiB of
+internal DMA heap until the first LIVE-010 camera initialization, and bounds
+each camera DMA allocation to 8 KiB.
+
+The final isolated physical regression completed with 35 read-only passes,
+27 mutating passes, and two destructive passes, followed by all individually
+isolated BLE cases. Eight read-only and 22 mutating cases were capability-gated
+for unavailable COM, CAN, or mock-only fixtures. Five separately gated native
+USB reset/disconnect/upload-resume cases passed 5/5, and the partial-image OTA
+timeout case passed on isolated rerun. A missing physical `/sd/config.txt` was
+restored from the byte-identical 5791-byte backup before its two read-only SD
+cases passed; this restoration was test-fixture repair rather than generated
+test data.
+
 The factory baseline was extended on 2026-08-19 with physical SD removal and
 reinsertion while native USB remained connected. Absent-card listing produced
 only FILE-015 completion, file type became `nc`, and MD5/download failed while
