@@ -46,14 +46,22 @@ TEST_CASE(route_002_controller_snapshots_are_not_broadcast_directly) {
     REQUIRE(router.from_controller(Frame{0x82, {'d'}}).has(RouteTarget::diagnostic_snapshot));
     REQUIRE(router.from_controller(Frame{0x71, {'v'}}).has(RouteTarget::version_snapshot));
     REQUIRE(!router.from_controller(Frame{0x81, {'s'}}).has(RouteTarget::broadcast));
+
+    for (const auto type : {0x81U, 0x82U, 0x71U}) {
+        const auto empty = router.from_controller(
+            Frame{static_cast<std::uint8_t>(type), {}});
+        REQUIRE(!empty.has(RouteTarget::broadcast));
+    }
 }
 
 TEST_CASE(route_004_other_controller_frames_are_broadcast_unchanged) {
     const Router router;
-    const auto decision = router.from_controller(Frame{0x90, {'x'}});
-
-    REQUIRE(decision.has(RouteTarget::broadcast));
-    REQUIRE_EQ(decision.controller_family, ControllerFamily::none);
+    for (const auto type : {0x01U, 0x70U, 0x72U, 0x80U, 0x90U, 0xBFU}) {
+        const auto decision = router.from_controller(
+            Frame{static_cast<std::uint8_t>(type), {'x'}});
+        REQUIRE(decision.has(RouteTarget::broadcast));
+        REQUIRE_EQ(decision.controller_family, ControllerFamily::none);
+    }
 }
 
 TEST_CASE(route_010_file_start_and_owner_data_enter_file_transfer) {

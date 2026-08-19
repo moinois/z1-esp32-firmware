@@ -4,6 +4,8 @@
 #include "application/controller/controller_snapshots.hpp"
 
 #include <string>
+#include <atomic>
+#include <thread>
 
 using firmware::application::ControllerSnapshots;
 using firmware::core::ByteVector;
@@ -40,6 +42,30 @@ TEST_CASE(stat_001_status_uses_519_while_text_snapshots_retain_528_bytes) {
     REQUIRE_EQ(snapshots.latest_status_size(), 519U);
     REQUIRE_EQ(snapshots.diagnostic_size(), 528U);
     REQUIRE_EQ(snapshots.version_size(), 528U);
+}
+
+TEST_CASE(stat_001_concurrent_status_updates_are_observed_as_indivisible_values) {
+    ControllerSnapshots snapshots;
+    const std::string first = "<FIRSTMARK>";
+    const std::string second = "<SECONDMARK>";
+
+    std::atomic<bool> valid{true};
+    std::thread writer([&] {
+        for (std::size_t iteration = 0U; iteration < 1000U; ++iteration) {
+            snapshots.update_status(bytes(iteration % 2U == 0U ? first : second));
+        }
+    });
+    for (std::size_t iteration = 0U; iteration < 1000U; ++iteration) {
+        const std::string reply = text(snapshots.status_reply({})->payload);
+        const bool contains_first = reply.find("FIRSTMARK") != std::string::npos;
+        const bool contains_second = reply.find("SECONDMARK") != std::string::npos;
+        const bool initial = reply.find("<Idle|") == 0U;
+        if (!initial && contains_first == contains_second) {
+            valid.store(false);
+        }
+    }
+    writer.join();
+    REQUIRE(valid.load());
 }
 
 TEST_CASE(stat_002_empty_status_diagnostic_and_version_updates_are_ignored) {

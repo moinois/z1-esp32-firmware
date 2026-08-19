@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <mutex>
 #include <optional>
 
 namespace firmware::application {
@@ -48,6 +49,7 @@ private:
 
     core::ByteVector latest_status_;
     std::deque<core::ByteVector> pending_statuses_;
+    mutable std::mutex status_mutex_;
     core::ByteVector diagnostic_;
     core::ByteVector version_;
 };

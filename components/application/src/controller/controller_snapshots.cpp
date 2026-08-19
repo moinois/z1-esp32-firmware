@@ -61,6 +61,7 @@ void ControllerSnapshots::update_status(core::BytesView payload) {
     if (payload.size() == 0U) {
         return;
     }
+    const std::lock_guard<std::mutex> lock(status_mutex_);
     latest_status_ = bounded_status_copy(payload);
     if (pending_statuses_.size() == maximum_pending_statuses) {
         pending_statuses_.pop_front();
@@ -77,6 +78,7 @@ void ControllerSnapshots::update_version(core::BytesView payload) {
 }
 
 std::optional<core::Frame> ControllerSnapshots::status_reply(const core::StatusExtension& extension) {
+    const std::lock_guard<std::mutex> lock(status_mutex_);
     core::ByteVector selected = latest_status_;
     if (!pending_statuses_.empty()) {
         selected = pending_statuses_.back();
@@ -142,6 +144,7 @@ core::Frame ControllerSnapshots::version_reply() const {
 }
 
 std::size_t ControllerSnapshots::latest_status_size() const {
+    const std::lock_guard<std::mutex> lock(status_mutex_);
     return latest_status_.size();
 }
 
@@ -154,6 +157,7 @@ std::size_t ControllerSnapshots::version_size() const {
 }
 
 std::size_t ControllerSnapshots::pending_status_count() const {
+    const std::lock_guard<std::mutex> lock(status_mutex_);
     return pending_statuses_.size();
 }
 
