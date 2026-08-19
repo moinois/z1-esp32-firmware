@@ -328,6 +328,10 @@ The source layout and API-comment organization are mapped in the
 Generate the local Doxygen site with `doxygen docs/Doxyfile`.
 Optional physical verification is provided by the
 [`hardware-in-the-loop suite`](docs/hardware-testing.md).
+The observed differences between the current specification and Makera factory
+firmware `0.1.13` are recorded separately in the
+[`factory-firmware comparison`](docs/factory-firmware-spec-differences.md), so
+factory behavior is not mistaken for evidence about this implementation.
 GitHub pull requests and pushes to `main` run the host suite plus live and
 all-mock ESP-IDF builds; the published-release workflow builds and attaches
 release binaries and publishes the coverage badge. See
