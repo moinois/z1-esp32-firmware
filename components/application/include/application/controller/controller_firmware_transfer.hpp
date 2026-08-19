@@ -33,6 +33,9 @@ public:
     /// Returns the current firmware file size or failure.
     virtual std::optional<std::uint64_t> file_size(std::string_view path) = 0;
 
+    /// Triggers the target's fatal zero-size layout behavior.
+    virtual void panic_on_zero_frame_size() = 0;
+
     /// Reopens and reads at most one negotiated block from the requested offset.
     virtual std::optional<core::ByteVector> read_file(std::string_view path,
                                                       std::uint64_t offset,

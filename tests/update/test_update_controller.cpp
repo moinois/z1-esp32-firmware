@@ -129,7 +129,8 @@ TEST_CASE(upd_053_transfer_failures_change_phase_only_when_content_exists) {
     monitor.transfer_failed();
     monitor.transfer_cancelled();
     monitor.transfer_timed_out(true);
-    REQUIRE_EQ(port.calls.size(), 3U);
+    REQUIRE_EQ(port.calls,
+               std::vector<std::string>({"error", "error", "error", "error"}));
 }
 
 TEST_CASE(upd_054_controller_completion_deletes_then_publishes_regardless) {
@@ -144,4 +145,18 @@ TEST_CASE(upd_054_controller_completion_deletes_then_publishes_regardless) {
                std::vector<std::string>({"/sd/lpc1768.bin"}));
     REQUIRE_EQ(port.completion_times,
                std::vector<std::uint64_t>({7000U}));
+}
+
+TEST_CASE(upd_054_completion_without_staged_content_skips_delete_but_republishes) {
+    FakeUpdateControllerPort port;
+    port.staged_exists = false;
+    UpdateControllerMonitor monitor(port);
+
+    monitor.controller_completed(100U);
+    monitor.controller_completed(200U);
+
+    REQUIRE_EQ(port.calls,
+               std::vector<std::string>({"complete", "complete"}));
+    REQUIRE_EQ(port.completion_times,
+               std::vector<std::uint64_t>({100U, 200U}));
 }

@@ -31,6 +31,10 @@ public:
         return size;
     }
 
+    void panic_on_zero_frame_size() override {
+        panic_requested = true;
+    }
+
     // Records one content request and returns the configured read result.
     std::optional<ByteVector> read_file(std::string_view path, std::uint64_t offset,
                                        std::size_t maximum_size) override {
@@ -68,6 +72,7 @@ public:
     bool exists = true;
     bool send_succeeds = true;
     bool allocation_succeeds = true;
+    bool panic_requested = false;
     std::size_t allocation_size = 0U;
     std::optional<std::uint64_t> size = 1025U;
     std::optional<ByteVector> read_result = ByteVector({1U, 2U});
@@ -134,7 +139,8 @@ TEST_CASE(diag_035_firmware_data_retention_failure_is_explicit_and_cancels) {
 
     transfer.handle({0xC3U, {0U, 0U, 0U, 1U}}, 2U, port);
 
-    REQUIRE_EQ(port.allocation_size, 6U);
+    REQUIRE_EQ(port.allocation_size, 516U);
+    REQUIRE_EQ(port.read_count, 0U);
     REQUIRE_EQ(port.diagnostics.back().message,
                std::string("Failed to allocate memory for frame data"));
     REQUIRE_EQ(port.sent.back().type, 0xC5U);
@@ -152,15 +158,19 @@ TEST_CASE(lpcfw_002_geometry_ignores_proposed_count_and_rounds_up_file_blocks) {
     REQUIRE_EQ(transfer.frame_data_size(), 512U);
 }
 
-TEST_CASE(lpc_013_bad_firmware_geometry_sends_error_without_ending_transfer) {
+TEST_CASE(lpcfw_002_zero_size_geometry_panics_without_a_protocol_reply) {
     ControllerFirmwareTransfer transfer;
     FakeFirmwarePort port;
     transfer.handle({0xC1U, {}}, 0U, port);
 
+    const std::size_t sent_before = port.sent.size();
+    const std::size_t events_before = port.events.size();
+
     transfer.handle(geometry(1U, 0U), 1U, port);
 
-    REQUIRE_EQ(port.sent.back().type, 0xC5U);
-    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+    REQUIRE(port.panic_requested);
+    REQUIRE_EQ(port.sent.size(), sent_before);
+    REQUIRE_EQ(port.events.size(), events_before);
     REQUIRE(transfer.active());
 }
 
@@ -215,7 +225,7 @@ TEST_CASE(lpcfw_004_sent_block_publishes_requested_index_and_negotiated_count) {
     REQUIRE_EQ(port.progress_count, 3U);
 }
 
-TEST_CASE(lpc_016_terminal_packets_end_even_an_inactive_transfer_and_clear_geometry) {
+TEST_CASE(lpc_016_and_019_terminal_packets_end_inactive_transfer_and_retain_geometry) {
     ControllerFirmwareTransfer transfer;
     FakeFirmwarePort port;
     transfer.handle(geometry(0U, 100U), 0U, port);
@@ -223,7 +233,7 @@ TEST_CASE(lpc_016_terminal_packets_end_even_an_inactive_transfer_and_clear_geome
     transfer.handle({0xC4U, {}}, 1U, port);
 
     REQUIRE(!transfer.active());
-    REQUIRE_EQ(transfer.frame_data_size(), 0U);
+    REQUIRE_EQ(transfer.frame_data_size(), 100U);
     REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::completed);
 }
 
@@ -281,15 +291,21 @@ TEST_CASE(lpc_016_cancel_ends_transfer_with_cancelled_event) {
     REQUIRE(!transfer.active());
     REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::cancelled);
     REQUIRE_EQ(transfer.frame_count(), 0U);
+
+    transfer.handle({0xC5U, {}}, 2U, port);
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::cancelled);
+    REQUIRE_EQ(port.events.size(), 3U);
 }
 
-TEST_CASE(lpc_013_start_and_geometry_send_failures_publish_errors) {
+TEST_CASE(lpcfw_001_start_reply_failure_stays_visible_without_replacement) {
     ControllerFirmwareTransfer transfer;
     FakeFirmwarePort port;
     port.send_succeeds = false;
 
     transfer.handle({0xC1U, {}}, 0U, port);
-    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::started);
+    REQUIRE_EQ(port.sent.size(), 1U);
+    REQUIRE_EQ(port.sent.back().type, 0xC1U);
     REQUIRE(transfer.active());
 
     port.events.clear();
@@ -298,7 +314,7 @@ TEST_CASE(lpc_013_start_and_geometry_send_failures_publish_errors) {
     REQUIRE_EQ(transfer.frame_data_size(), 100U);
 }
 
-TEST_CASE(lpc_013_geometry_rejects_malformed_missing_oversized_and_overflow) {
+TEST_CASE(lpcfw_002_geometry_retains_proposal_accepts_large_size_and_uses_low_extent) {
     ControllerFirmwareTransfer transfer;
     FakeFirmwarePort port;
 
@@ -306,16 +322,22 @@ TEST_CASE(lpc_013_geometry_rejects_malformed_missing_oversized_and_overflow) {
     REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
 
     port.size = std::nullopt;
-    transfer.handle(geometry(0U, 100U), 0U, port);
+    transfer.handle(geometry(17U, 100U), 0U, port);
     REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+    REQUIRE_EQ(transfer.frame_count(), 17U);
+    REQUIRE_EQ(transfer.frame_data_size(), 100U);
 
-    port.size = 1U;
+    port.size = 2049U;
     transfer.handle(geometry(0U, 1025U), 0U, port);
-    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+    REQUIRE_EQ(port.sent.back(),
+               Frame({0xC2U, {0U, 0U, 0U, 2U, 4U, 1U}}));
 
-    port.size = std::numeric_limits<std::uint64_t>::max();
-    transfer.handle(geometry(0U, 1U), 0U, port);
-    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+    port.size = 0x1'0000'0001ULL;
+    transfer.handle(geometry(0U, 2U), 0U, port);
+    REQUIRE_EQ(transfer.frame_count(), 1U);
+
+    transfer.handle(geometry(0U, 0U), 0U, port);
+    REQUIRE(port.panic_requested);
     REQUIRE_EQ(transfer.frame_count(), 0U);
 }
 
@@ -334,7 +356,25 @@ TEST_CASE(lpc_015_data_rejects_malformed_read_failure_and_send_failure) {
     port.read_result = ByteVector({1U, 2U});
     port.send_succeeds = false;
     transfer.handle({0xC3U, {0U, 0U, 0U, 1U}}, 1U, port);
+    REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::progress);
+}
+
+TEST_CASE(upd_053_short_layout_restarts_wait_but_short_data_ends_it) {
+    ControllerFirmwareTransfer transfer;
+    FakeFirmwarePort port;
+    transfer.handle({0xC1U, {}}, 0U, port);
+
+    transfer.handle({0xC2U, {1U}}, 4999U, port);
+    REQUIRE(transfer.active());
+    REQUIRE_EQ(port.sent[port.sent.size() - 1U].type, 0xC5U);
     REQUIRE_EQ(port.events.back(), FirmwareTransferEvent::error);
+    transfer.handle({0xCFU, {}}, 9998U, port);
+    REQUIRE(transfer.active());
+
+    transfer.handle({0xC3U, {1U}}, 9999U, port);
+    REQUIRE_EQ(port.sent.back().type, 0xC5U);
+    transfer.handle({0xCFU, {}}, 20000U, port);
+    REQUIRE(transfer.active());
 }
 
 TEST_CASE(lpcfw_003_data_is_truncated_to_negotiated_frame_size) {

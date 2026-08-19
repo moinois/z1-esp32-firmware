@@ -12,6 +12,7 @@
 #include "esp_timer.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <climits>
 #include <string>
 #include <sys/stat.h>
@@ -61,17 +62,23 @@ std::optional<std::uint64_t> ControllerTransferAdapter::file_size(
     return static_cast<std::uint64_t>(information.st_size);
 }
 
+void ControllerTransferAdapter::panic_on_zero_frame_size() {
+    std::abort();
+}
+
 std::optional<firmware::core::ByteVector> ControllerTransferAdapter::read_file(
     std::string_view path, std::uint64_t offset, std::size_t maximum_size) {
     if (maximum_size == 0U || offset > static_cast<std::uint64_t>(LONG_MAX)) {
         return std::nullopt;
     }
     std::FILE* file = std::fopen(std::string(path).c_str(), "rb");
-    if (file == nullptr ||
-        std::fseek(file, static_cast<long>(offset), SEEK_SET) != 0) {
-        if (file != nullptr) std::fclose(file);
+    if (file == nullptr) {
         return std::nullopt;
     }
+    // The motion-board protocol deliberately continues after a failed seek.
+    // This mirrors the original firmware: fread() then consumes bytes from
+    // whatever position the C stream retained rather than rejecting the frame.
+    static_cast<void>(std::fseek(file, static_cast<long>(offset), SEEK_SET));
     firmware::core::ByteVector data(maximum_size);
     const std::size_t count = std::fread(data.data(), 1U, maximum_size, file);
     const bool failed = std::ferror(file) != 0;

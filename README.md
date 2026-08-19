@@ -317,7 +317,7 @@ The first core-to-periphery development slice contains:
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 844 C++ tests, and the Python tooling suite has 49
+The current host suite has 847 C++ tests, and the Python tooling suite has 49
 tests. The latest portable coverage report is 96.22% lines, 98.51% functions,
 and 86.72% branches; regenerate it with `python3 tools/host_coverage.py`.
 The firmware also builds successfully as an ESP32-S3 application using ESP-IDF

@@ -48,7 +48,10 @@ void ControllerFirmwareTransfer::handle_start(std::uint64_t now_milliseconds,
         port.diagnose(controller_transfer_diagnostic(
             ControllerTransferFamily::firmware,
             ControllerTransferDiagnosticEvent::missing_content));
-        report_error(port);
+        active_ = false;
+        waiting_ = false;
+        static_cast<void>(port.send(make_transfer_reply(
+            core::protocol::firmware_family, core::protocol::transfer_cancel)));
         return;
     }
 
@@ -60,43 +63,51 @@ void ControllerFirmwareTransfer::handle_start(std::uint64_t now_milliseconds,
     waiting_ = true;
     wait_started_milliseconds_ = now_milliseconds;
     port.publish(FirmwareTransferEvent::started, 0U, frame_count_);
-    if (!port.send(make_transfer_reply(core::protocol::firmware_family,
-                                       core::protocol::transfer_start))) {
-        report_error(port);
-    }
+    static_cast<void>(port.send(make_transfer_reply(
+        core::protocol::firmware_family, core::protocol::transfer_start)));
 }
 
 void ControllerFirmwareTransfer::handle_geometry(core::BytesView payload,
                                                  std::uint64_t now_milliseconds,
                                                  ControllerFirmwarePort& port) {
     const auto proposed = parse_transfer_geometry(payload);
-    const auto file_size = port.file_size(firmware_path);
-    if (!proposed.has_value() || proposed->frame_data_size == 0U ||
-        proposed->frame_data_size > controller_transfer_frame_data_size ||
-        !file_size.has_value()) {
-        if (payload.size() < 6U) port.diagnose(controller_transfer_diagnostic(
+    if (!proposed.has_value()) {
+        port.diagnose(controller_transfer_diagnostic(
             ControllerTransferFamily::firmware,
             ControllerTransferDiagnosticEvent::short_layout));
         port.diagnose(controller_transfer_diagnostic(
             ControllerTransferFamily::firmware,
             ControllerTransferDiagnosticEvent::layout));
         report_error(port);
+        if (active_) {
+            waiting_ = true;
+            wait_started_milliseconds_ = now_milliseconds;
+        }
         return;
     }
 
-    const std::uint64_t blocks =
-        (*file_size + proposed->frame_data_size - 1U) / proposed->frame_data_size;
-    if (blocks > std::numeric_limits<std::uint32_t>::max()) {
-        report_error(port);
-        return;
-    }
-
-    frame_count_ = static_cast<std::uint32_t>(blocks);
+    frame_count_ = proposed->frame_count;
     frame_data_size_ = proposed->frame_data_size;
     if (active_) {
         waiting_ = true;
         wait_started_milliseconds_ = now_milliseconds;
     }
+    const auto file_size = port.file_size(firmware_path);
+    if (!file_size.has_value()) {
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::firmware,
+            ControllerTransferDiagnosticEvent::layout));
+        report_error(port);
+        return;
+    }
+    if (frame_data_size_ == 0U) {
+        port.panic_on_zero_frame_size();
+        return;
+    }
+
+    const std::uint32_t low_size = static_cast<std::uint32_t>(*file_size);
+    frame_count_ = low_size / frame_data_size_ +
+                   static_cast<std::uint32_t>(low_size % frame_data_size_ > 0U);
     if (!port.send(make_transfer_reply(core::protocol::firmware_family,
                                        core::protocol::transfer_geometry,
                                        encode_transfer_geometry(frame_count_,
@@ -117,6 +128,7 @@ void ControllerFirmwareTransfer::handle_data(core::BytesView payload,
         ControllerTransferFamily::firmware,
         ControllerTransferDiagnosticEvent::data));
     const auto request = parse_transfer_data_request(payload);
+    if (active_) waiting_ = false;
     if (!request.has_value()) {
         port.diagnose(controller_transfer_diagnostic(
             ControllerTransferFamily::firmware,
@@ -130,11 +142,17 @@ void ControllerFirmwareTransfer::handle_data(core::BytesView payload,
         ControllerTransferDiagnosticEvent::data_request, request->index));
 
     const std::uint64_t block = request->index <= 1U ? 0U : request->index - 1U;
-    const std::uint64_t offset = block * frame_data_size_;
-    auto data = port.read_file(firmware_path, offset, frame_data_size_);
-    if (active_) {
-        waiting_ = false;
+    const std::uint32_t offset = static_cast<std::uint32_t>(
+        static_cast<std::uint32_t>(block) * frame_data_size_);
+    const std::size_t response_capacity = request->wire_index.size() + frame_data_size_;
+    if (!port.response_data_memory_available(response_capacity)) {
+        port.diagnose(controller_transfer_diagnostic(
+            ControllerTransferFamily::firmware,
+            ControllerTransferDiagnosticEvent::frame_data_allocation_failure));
+        report_error(port);
+        return;
     }
+    auto data = port.read_file(firmware_path, offset, frame_data_size_);
     if (!data.has_value()) {
         report_error(port);
         return;
@@ -148,39 +166,29 @@ void ControllerFirmwareTransfer::handle_data(core::BytesView payload,
     if (data->size() > frame_data_size_) {
         data->resize(frame_data_size_);
     }
-    const std::size_t response_size = request->wire_index.size() + data->size();
-    if (!port.response_data_memory_available(response_size)) {
-        port.diagnose(controller_transfer_diagnostic(
-            ControllerTransferFamily::firmware,
-            ControllerTransferDiagnosticEvent::frame_data_allocation_failure));
-        report_error(port);
-        return;
-    }
-
     core::ByteVector response = request->wire_index;
     response.insert(response.end(), data->begin(), data->end());
+    port.publish(FirmwareTransferEvent::progress, request->index, frame_count_);
     if (!port.send(make_transfer_reply(core::protocol::firmware_family,
                                        core::protocol::transfer_data,
                                        std::move(response)))) {
-        report_error(port);
+        static_cast<void>(port.send(make_transfer_reply(
+            core::protocol::firmware_family, core::protocol::transfer_cancel)));
         return;
     }
-    port.publish(FirmwareTransferEvent::progress, request->index, frame_count_);
 }
 
 void ControllerFirmwareTransfer::finish(FirmwareTransferEvent event,
                                         ControllerFirmwarePort& port) {
     active_ = false;
     waiting_ = false;
-    frame_count_ = 0U;
-    frame_data_size_ = 0U;
     port.publish(event, 0U, 0U);
 }
 
 void ControllerFirmwareTransfer::report_error(ControllerFirmwarePort& port) {
-    port.publish(FirmwareTransferEvent::error, 0U, frame_count_);
     port.send(make_transfer_reply(core::protocol::firmware_family,
                                   core::protocol::transfer_cancel));
+    port.publish(FirmwareTransferEvent::error, 0U, frame_count_);
 }
 
 void ControllerFirmwareTransfer::apply_timeout(std::uint64_t now_milliseconds,

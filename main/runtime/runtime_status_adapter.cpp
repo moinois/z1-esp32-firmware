@@ -79,6 +79,9 @@ void publish_runtime_update_phase(std::uint8_t phase) {
 
 void publish_controller_transfer_status(std::uint8_t phase,
                                         std::uint32_t progress) {
+    if (phase != 4U && controller_success_timer != nullptr) {
+        static_cast<void>(esp_timer_stop(controller_success_timer));
+    }
     update_progress.store(
         static_cast<std::uint8_t>(progress > 100U ? 100U : progress),
         std::memory_order_release);

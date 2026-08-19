@@ -20,6 +20,7 @@ public:
     bool file_exists(std::string_view path) override;
     bool configuration_available() override;
     std::optional<std::uint64_t> file_size(std::string_view path) override;
+    void panic_on_zero_frame_size() override;
     std::optional<firmware::core::ByteVector> read_file(
         std::string_view path, std::uint64_t offset,
         std::size_t maximum_size) override;

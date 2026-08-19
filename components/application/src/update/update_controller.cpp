@@ -40,7 +40,7 @@ void UpdateControllerMonitor::transfer_failed() {
 }
 
 void UpdateControllerMonitor::transfer_cancelled() {
-    publish_failure_if_available();
+    port_.publish_error();
 }
 
 void UpdateControllerMonitor::transfer_timed_out(bool qualifying) {
@@ -51,7 +51,9 @@ void UpdateControllerMonitor::transfer_timed_out(bool qualifying) {
 
 void UpdateControllerMonitor::controller_completed(
     std::uint64_t now_milliseconds) {
-    port_.remove_staged_controller(staged_controller_path);
+    if (port_.staged_controller_exists()) {
+        port_.remove_staged_controller(staged_controller_path);
+    }
     port_.controller_completed(now_milliseconds);
 }
 
