@@ -85,6 +85,7 @@ Portable startup and adapter-selection cases are in `tests/runtime/` and
 |---|---|---|
 | `tests/media/test_avi_writer.cpp`, `test_recording_policy.cpp` | AVI structure, frame/index accounting, recording names, intervals, and active-state policy. | AVI-010–AVI-013, REC-001–REC-010 |
 | `tests/media/test_preview_*.cpp` | Preview path validation, command/session policy, metadata, frame pacing, cancellation, and WebSocket input. | PREV-001–PREV-029, WEB-003, WEB-008 |
+| `tests/hardware/test_physical_preview.py` | Existing physical-SD AVI open, metadata, indexed JPEG delivery, and bounded stop. | PREV-010, PREV-012–PREV-014, PREV-028 |
 | `tests/hardware/test_mock_camera_lifecycle.py` | Camera resolution, WebSocket frame lifecycle, disconnect, successor sessions, and concurrent HTTP/TCP use with the mock. | CAM-001–CAM-015, PREV-001–PREV-029 |
 | `tests/hardware/test_physical_camera.py` | Receives physical JPEG frames across reconnects and verifies streaming alongside HTTP, USB, and physical-controller status traffic. | HW-040, LIVE-001, LIVE-005, USB-004, UART-003 |
 | `tests/hardware/test_web_ui.py`, `test_http.py`, `test_http_stress.py` | Static assets, MIME types, configuration API, validation, concurrency, and interrupted requests. | WEB-001–WEB-020, WEBUP-002, WEBUP-004, CFG-020–CFG-034 |

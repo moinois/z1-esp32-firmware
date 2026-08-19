@@ -48,6 +48,7 @@ USB handle or fixture deadlock from blocking an unattended HIL run forever.
 | `Z1_HIL_OTA_IMAGE` | Valid raw ESP-IDF application image for destructive OTA HIL | unset |
 | `Z1_HIL_SPIFFS_IMAGE` | Valid SPIFFS image for destructive `/updateffs` HIL | unset |
 | `Z1_HIL_WIFI_SSID` | Recovery-safe network used by mutating Wi-Fi HIL | unset |
+| `Z1_HIL_PREVIEW_FILE` | Existing read-only AVI below `/sd/videos` used for physical preview playback | unset |
 | `Z1_HIL_WIFI_PASSWORD` | Password paired with `Z1_HIL_WIFI_SSID` | unset |
 | `Z1_HIL_USB_RESET` | Permits recoverable native USB reset and re-enumeration | disabled |
 | `Z1_HIL_CONTROLLER` | Declares an attached controller fixture | disabled |
@@ -485,6 +486,18 @@ the Wi-Fi diagnostics endpoint and project Web UI asset markers are local
 extensions; and the UDP bind failure passed on isolated rerun. See
 [`factory-firmware-spec-differences.md`](factory-firmware-spec-differences.md).
 These results validate the fixture, not a repository-built firmware image.
+
+The factory baseline was extended on 2026-08-19 with physical SD removal and
+reinsertion while native USB remained connected. Absent-card listing produced
+only FILE-015 completion, file type became `nc`, and MD5/download failed while
+USB, controller, HTTP, video, and TCP stayed available. Reinsertion remounted
+without restart and restored the byte-identical 5791-byte `config.txt` with MD5
+`f55bf8ae0242dd735b79580b7cdb3d5c`. An operator-selected existing AVI then
+passed preview open/meta and three indexed JPEG frames. Five media/controller
+cycles passed 25 physical executions, ten transport-stress cases passed in
+110.04 seconds, and ten isolated native-USB resets all recovered. The detailed
+factory-only evidence remains in
+[`factory-firmware-spec-differences.md`](factory-firmware-spec-differences.md).
 
 On 2026-08-09 an all-mock image was flashed from `build-hil-all`. COM reset and
 boot diagnostics passed 2/2. The applicable native-USB mutating suite produced

@@ -142,6 +142,31 @@ recording command, motion command, or CAN transmission was attempted. Exact
 factory restoration after those operations is not available through the
 current fixture.
 
+## Physical SD removal, preview, and endurance
+
+The physical SD card was removed and reinserted while factory firmware was
+running. With the card absent, `/sd/config.txt` download and MD5 failed,
+`ftype` reported `nc`, and `ls /sd` offered only the FILE-015 completion reply.
+USB, controller, HTTP, video-server, and TCP services remained responsive.
+After reinsertion, the card remounted without a restart, the original directory
+listing returned, and `config.txt` still matched the backup byte for byte.
+
+Existing factory AVI recordings were then exercised through `/ws_preview`.
+Four recordings from different series produced successful `open` responses.
+One valid 300-frame recording returned the specified `open` and `meta` objects
+followed by three indexed JPEG WebSocket messages; the session was stopped
+without modifying the file. The smallest inspected AVI returned the normative
+422 damaged/invalid-format response, demonstrating file-specific validation
+rather than a general preview failure.
+
+Five media/controller endurance cycles completed 25 physical test executions:
+live-camera disconnect/reconnect, concurrent camera/USB/HTTP/controller reads,
+physical AVI preview, and repeated controller queries. All passed when media
+sessions were separated by the observed two-second factory recovery interval.
+A further ten read-only USB/TCP/HTTP transport-stress cases passed in 110.04
+seconds, including four-client waves and capacity recovery. Ten consecutive
+isolated native-USB bus resets also re-enumerated and recovered successfully.
+
 ## Conclusion
 
 The physical fixture is suitable for validating repository firmware across
