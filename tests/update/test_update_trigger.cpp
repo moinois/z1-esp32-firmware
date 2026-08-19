@@ -12,6 +12,8 @@ using firmware::application::UpdateTriggerPort;
 using firmware::application::UpdateTriggerService;
 using firmware::application::UpdateTaskInitialization;
 using firmware::application::UpdateTaskInitializationPort;
+using firmware::application::UpdateMonitorInitialization;
+using firmware::application::UpdateMonitorInitializationPort;
 
 namespace {
 
@@ -50,6 +52,14 @@ public:
     std::vector<bool> start_results;
     std::size_t start_index = 0U;
     std::vector<std::string> calls;
+};
+
+class FakeUpdateMonitorInitializationPort final
+    : public UpdateMonitorInitializationPort {
+public:
+    void start_monitor() override { ++start_count; }
+
+    std::size_t start_count = 0U;
 };
 
 }  // namespace
@@ -148,4 +158,15 @@ TEST_CASE(upd_006_available_later_requests_do_not_reinitialize) {
 
     REQUIRE_EQ(port.calls, std::vector<std::string>(
                                {"start", "started", "trigger", "trigger", "trigger"}));
+}
+
+TEST_CASE(upd_055_monitor_has_exactly_one_startup_attempt) {
+    FakeUpdateMonitorInitializationPort port;
+    UpdateMonitorInitialization initialization(port);
+
+    initialization.start();
+    initialization.start();
+    initialization.start();
+
+    REQUIRE_EQ(port.start_count, 1U);
 }

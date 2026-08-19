@@ -40,4 +40,14 @@ bool UpdateTaskInitialization::try_initialize() {
     return started;
 }
 
+UpdateMonitorInitialization::UpdateMonitorInitialization(
+    UpdateMonitorInitializationPort& port)
+    : port_(port) {}
+
+void UpdateMonitorInitialization::start() {
+    if (!attempted_.exchange(true, std::memory_order_acq_rel)) {
+        port_.start_monitor();
+    }
+}
+
 }  // namespace firmware::application

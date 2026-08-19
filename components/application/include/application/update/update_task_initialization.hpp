@@ -41,4 +41,26 @@ private:
     std::atomic_bool initializing_{false};
 };
 
+/// Isolates creation of the independent staged-controller-image monitor.
+class UpdateMonitorInitializationPort {
+public:
+    virtual ~UpdateMonitorInitializationPort() = default;
+
+    /// Makes the sole resource-allocation and task-creation attempt.
+    virtual void start_monitor() = 0;
+};
+
+/// Enforces UPD-055's one monitor-start attempt per boot.
+class UpdateMonitorInitialization {
+public:
+    explicit UpdateMonitorInitialization(UpdateMonitorInitializationPort& port);
+
+    /// Starts the monitor only on the first call, regardless of its outcome.
+    void start();
+
+private:
+    UpdateMonitorInitializationPort& port_;
+    std::atomic_bool attempted_{false};
+};
+
 }  // namespace firmware::application

@@ -95,6 +95,7 @@ Portable startup and adapter-selection cases are in `tests/runtime/` and
 | Test | What it verifies | Requirements |
 |---|---|---|
 | `tests/update/test_update_*.cpp`, `test_direct_*_update.cpp` | Package parsing, component validation, phase persistence, deletion, rollback, and update orchestration. | UPD-004–UPD-005, UPD-010–UPD-014, UPD-020–UPD-023, UPD-040–UPD-043, UPD-060–UPD-063 |
+| `tests/update/test_update_controller.cpp`, `test_update_trigger.cpp` | Staged-controller reset scheduling, channel suppression, terminal phase transitions, repeat completion, and the independent monitor's one-attempt startup policy. | UPD-053–UPD-055 |
 | `tests/hardware/test_ota.py`, `test_persistence_reboot.py` | Delayed/partial multipart OTA, timeout finalization, SPIFFS replacement, reboot recovery, rollback partition behavior, and persistence. | WEBUP-003, WEBUP-012, WEBUP-020, WEBUP-022, UPD-023, UPD-040–UPD-043 |
 
 ## 10 — Runtime and CAN

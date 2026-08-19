@@ -11,6 +11,7 @@
 #include "update_phase_persistence.hpp"
 
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -34,6 +35,8 @@ namespace {
 
 constexpr char tag[] = "app_upgrade";
 constexpr std::uint32_t update_monitor_interval_milliseconds = 250U;
+constexpr std::uint32_t controller_monitor_stack_size = 4096U;
+constexpr UBaseType_t controller_monitor_task_priority = 4U;
 constexpr std::uint32_t update_task_stack_size = 8192U;
 constexpr UBaseType_t update_task_priority = 4U;
 std::atomic_bool update_requested{false};
@@ -41,6 +44,7 @@ std::atomic<firmware::application::UpdateControllerMonitor*> controller_monitor{
     nullptr};
 
 void update_task(void*);
+void controller_monitor_task(void*);
 
 class UpdateTaskTargetPort final
     : public firmware::application::UpdateTaskInitializationPort {
@@ -295,6 +299,50 @@ void process_update_once() {
     static_cast<void>(application.apply(*package));
 }
 
+void controller_monitor_task(void*) {
+    static UpdateControllerTargetPort controller_port;
+    static firmware::application::UpdateControllerMonitor monitor(controller_port);
+    controller_monitor.store(&monitor, std::memory_order_release);
+    monitor.start(xTaskGetTickCount() * portTICK_PERIOD_MS);
+    for (;;) {
+        monitor.tick(xTaskGetTickCount() * portTICK_PERIOD_MS);
+        vTaskDelay(pdMS_TO_TICKS(update_monitor_interval_milliseconds));
+    }
+}
+
+void start_controller_monitor() {
+    // UPD-055 permits exactly one startup attempt. Keep the stack outside the
+    // internal heap so failure of either resource leaves only this independent
+    // staged-image monitor unavailable for the remainder of the boot.
+    auto* stack = static_cast<StackType_t*>(heap_caps_malloc(
+        controller_monitor_stack_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (stack == nullptr) {
+        ESP_LOGE("MAIN", "为 upgrade_monitor_task 分配 PSRAM 栈失败");
+        return;
+    }
+    static StaticTask_t task_storage;
+    if (xTaskCreateStatic(controller_monitor_task, "upgrade_monitor",
+                          controller_monitor_stack_size, nullptr,
+                          controller_monitor_task_priority, stack,
+                          &task_storage) == nullptr) {
+        ESP_LOGE("MAIN",
+                 "创建 upgrade_monitor_task 任务失败: xTaskCreateStatic 返回 NULL");
+        heap_caps_free(stack);
+    }
+}
+
+class UpdateMonitorTargetPort final
+    : public firmware::application::UpdateMonitorInitializationPort {
+public:
+    void start_monitor() override { start_controller_monitor(); }
+};
+
+firmware::application::UpdateMonitorInitialization& monitor_initialization() {
+    static UpdateMonitorTargetPort port;
+    static firmware::application::UpdateMonitorInitialization initialization(port);
+    return initialization;
+}
+
 void update_task(void*) {
     vTaskDelay(pdMS_TO_TICKS(1000U));
     const auto persisted_phase = NvsKeyValueAdapter{}.read_u8("ota_state", "phase");
@@ -316,12 +364,7 @@ void update_task(void*) {
             static_cast<void>(persist_update_phase(0U));
         }
     }
-    UpdateControllerTargetPort controller_port;
-    firmware::application::UpdateControllerMonitor monitor(controller_port);
-    controller_monitor.store(&monitor, std::memory_order_release);
-    monitor.start(xTaskGetTickCount() * portTICK_PERIOD_MS);
     for (;;) {
-        monitor.tick(xTaskGetTickCount() * portTICK_PERIOD_MS);
         if (update_requested.exchange(false)) {
             ESP_LOGI(tag, "[ota_task] OTA trigger received");
             process_update_once();
@@ -333,6 +376,7 @@ void update_task(void*) {
 }  // namespace
 
 void FirmwareUpdateAdapter::start() {
+    monitor_initialization().start();
     task_initialization().boot();
 }
 
