@@ -17,7 +17,7 @@ from tests.hardware.hil_protocol import GENERAL_COMMAND, TcpProtocolClient
 @pytest.mark.requirement("CFG-001")
 @pytest.mark.requirement("HFTD-001")
 def test_physical_config_is_listed_and_downloads_with_valid_md5(
-    sd_client, sd_fixture
+    sd_client, physical_sd_fixture
 ) -> None:
     """Uses the factory configuration as an existing non-mutating SD fixture."""
 
@@ -40,7 +40,7 @@ def test_physical_config_is_listed_and_downloads_with_valid_md5(
 @pytest.mark.usb
 @pytest.mark.requirement("HFTD-001")
 def test_physical_config_is_identical_over_usb_and_tcp(
-    usb_client, tcp_host: str, sd_fixture
+    usb_client, tcp_host: str, physical_sd_fixture
 ) -> None:
     """Compares both production transport paths without modifying the card."""
 

@@ -216,12 +216,16 @@ def test_native_usb_upload_continues_after_disconnect(
         )
         request = _required_frame(resumed, FILE_DATA)
         assert request.payload == (3).to_bytes(4, "big")
-        completed = client.exchange(
-            FILE_DATA,
-            (3).to_bytes(4, "big") + blocks[2],
-            4.0,
+        # macOS can invalidate even the first successfully claimed libusb
+        # handle after a reset. Release it and rescan between post-reset
+        # packets, mirroring the reconnect behavior expected from a CNC host.
+        client.close()
+        client, completed = _exchange_after_reenumeration(
+            FILE_DATA, (3).to_bytes(4, "big") + blocks[2]
         )
         _required_frame(completed, FILE_COMPLETE)
+        client.close()
+        client = _client_after_reenumeration()
         assert download_file(client, path) == content
     finally:
         try:

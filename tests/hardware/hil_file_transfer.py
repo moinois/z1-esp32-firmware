@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import time
 from typing import List, Protocol
 
 from tests.hardware.hil_protocol import ReceivedFrame
@@ -15,15 +14,31 @@ FILE_DATA = 0xB3
 FILE_COMPLETE = 0xB4
 FILE_CANCEL = 0xB5
 FILE_RETRY = 0xB6
+FILE_SUCCESS = 0x90
 
 
 class FileTransferClient(Protocol):
     """Describes the transport operation required by the transfer driver."""
 
+    def send(self, frame_type: int, payload: bytes) -> None:
+        """Sends one framed packet without waiting for a target response."""
+
+        ...
+
     def exchange(
         self, frame_type: int, payload: bytes, timeout_seconds: float = 3.0
     ) -> List[ReceivedFrame]:
         """Sends one framed phase packet and returns decoded target responses."""
+
+        ...
+
+    def receive(
+        self,
+        timeout_seconds: float = 3.0,
+        *,
+        terminal_types: frozenset[int] | None = None,
+    ) -> List[ReceivedFrame]:
+        """Receives target frames without sending another host packet."""
 
         ...
 
@@ -132,33 +147,35 @@ def upload_file(
         blocks = [b""]
 
     command = f"upload {path}".encode("utf-8")
+    digest = hashlib.md5(data).hexdigest().encode("ascii")
+    # HFTU-003 makes upload admission silent. The first transfer packet is the
+    # host's MD5; waiting for a target-side B1 prompt here would deadlock a
+    # conforming implementation.
+    client.send(FILE_COMMAND, command)
     responses = _exchange_until(
-        client, FILE_COMMAND, command, frozenset({FILE_MD5}), timeout_seconds
+        client, FILE_MD5, digest, frozenset({FILE_GEOMETRY}), timeout_seconds
     )
-    for _ in range(4):
-        if any(response.frame_type == FILE_MD5 for response in responses):
-            break
-        cancellation = next(
-            (response for response in responses if response.frame_type == FILE_CANCEL),
-            None,
-        )
-        if cancellation is None:
-            break
-        # A previous interrupted owner may flush its terminal cancellation on
-        # the next exchange, and completion ownership is released
-        # asynchronously. Reissue the command for a bounded settling window.
-        time.sleep(0.5)
-        responses = _exchange_until(
-            client, FILE_COMMAND, command, frozenset({FILE_MD5}), timeout_seconds
-        )
-    _prompt(responses, FILE_MD5)
-    responses = _exchange_until(
-        client,
-        FILE_MD5,
-        hashlib.md5(data).hexdigest().encode("ascii"),
-        frozenset({FILE_GEOMETRY}),
-        timeout_seconds,
-    )
+    if not any(
+        response.frame_type in {FILE_GEOMETRY, FILE_RETRY, FILE_CANCEL}
+        for response in responses
+    ):
+        # If TRN-006 omitted the B2 acknowledgement, HFTU-024 requires 51
+        # unmatched packets before repeating the currently required request.
+        # Repeat MD5 at a pace that lets the latest-value worker process every
+        # packet; never duplicate the already admitted upload start.
+        for _ in range(51):
+            client.send(FILE_MD5, digest)
+            responses = client.receive(
+                min(timeout_seconds, 0.05),
+                terminal_types=frozenset(
+                    {FILE_GEOMETRY, FILE_CANCEL, FILE_RETRY}
+                ),
+            )
+            if any(
+                frame.frame_type in {FILE_GEOMETRY, FILE_CANCEL, FILE_RETRY}
+                for frame in responses
+            ):
+                break
     _prompt(responses, FILE_GEOMETRY)
     responses = _exchange_until(
         client,
@@ -190,6 +207,15 @@ def upload_file(
             )
         ]
 
+    # B4 acknowledges the final data write, while HFTU-009 releases ownership
+    # and then emits 0x90. Waiting for that protocol event prevents the next
+    # operation from racing finalization or consuming the delayed success frame.
+    released = client.receive(
+        timeout_seconds,
+        terminal_types=frozenset({FILE_SUCCESS, FILE_CANCEL}),
+    )
+    _frame(released, FILE_SUCCESS)
+
 
 def download_file(
     client: FileTransferClient,
@@ -200,13 +226,41 @@ def download_file(
 ) -> bytes:
     """Downloads every announced block and verifies its advertised MD5."""
 
+    command = f"download {path}".encode("utf-8")
     responses = _exchange_until(
         client,
         FILE_COMMAND,
-        f"download {path}".encode("utf-8"),
+        command,
         frozenset({FILE_MD5}),
         timeout_seconds,
     )
+    for _ in range(4):
+        if any(
+            frame.frame_type in {FILE_MD5, FILE_CANCEL} for frame in responses
+        ):
+            break
+        # The initial MD5 is ordinary host output and may be omitted under
+        # TRN-006. HFTD-005 defines B1 as an idempotent request for it.
+        responses = _exchange_until(
+            client,
+            FILE_MD5,
+            b"",
+            frozenset({FILE_MD5}),
+            timeout_seconds,
+        )
+        if any(
+            frame.frame_type in {FILE_MD5, FILE_CANCEL} for frame in responses
+        ):
+            break
+        # If the start itself never reached its bounded worker, retry admission
+        # only after the phase-specific B1 probe established no active download.
+        responses = _exchange_until(
+            client,
+            FILE_COMMAND,
+            command,
+            frozenset({FILE_MD5}),
+            timeout_seconds,
+        )
     advertised_md5 = _frame(responses, FILE_MD5).payload.decode("ascii").lower()
     responses = _exchange_until(
         client,
@@ -215,6 +269,21 @@ def download_file(
         frozenset({FILE_GEOMETRY}),
         timeout_seconds,
     )
+    for _ in range(4):
+        if any(
+            frame.frame_type in {FILE_GEOMETRY, FILE_CANCEL}
+            for frame in responses
+        ):
+            break
+        # Geometry is also ordinary host output under TRN-006. HFTD-005 makes
+        # the empty B2 request safely repeat the recalculated geometry.
+        responses = _exchange_until(
+            client,
+            FILE_GEOMETRY,
+            b"",
+            frozenset({FILE_GEOMETRY}),
+            timeout_seconds,
+        )
     geometry = _frame(responses, FILE_GEOMETRY).payload
     if len(geometry) != 6:
         raise FileTransferError("target returned invalid download geometry")
@@ -232,6 +301,22 @@ def download_file(
             frozenset({FILE_DATA}),
             timeout_seconds,
         )
+        for _ in range(4):
+            if any(
+                frame.frame_type in {FILE_DATA, FILE_CANCEL}
+                for frame in responses
+            ):
+                break
+            # TRN-005 permits a data response to be omitted under output
+            # pressure. HFTD-008 makes B6 the public recovery operation and
+            # requires the target to reread the last requested sequence.
+            responses = _exchange_until(
+                client,
+                FILE_RETRY,
+                b"",
+                frozenset({FILE_DATA}),
+                timeout_seconds,
+            )
         packet = _frame(responses, FILE_DATA).payload
         if len(packet) < 4 or int.from_bytes(packet[:4], "big") != sequence:
             raise FileTransferError(f"target returned invalid download block {sequence}")

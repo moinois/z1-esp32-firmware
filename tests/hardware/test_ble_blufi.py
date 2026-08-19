@@ -7,11 +7,17 @@ import hashlib
 import http.client
 import json
 import os
+from pathlib import Path
 import time
 from typing import Any
 
 import pytest
 
+from tests.hardware.hil_ota import (
+    multipart_upload,
+    open_usb_before_restart,
+    wait_for_usb_service_restart,
+)
 from tests.hardware.hil_protocol import GENERAL_COMMAND
 
 BLUFI_NAME_PREFIX = "MK_"
@@ -754,30 +760,48 @@ def test_blufi_remains_responsive_during_usb_http_and_wifi_diagnostics(
 
 
 @pytest.mark.hardware
-@pytest.mark.mutating
+@pytest.mark.destructive
 @pytest.mark.ble
 @pytest.mark.diagnostics
 @pytest.mark.requirement("BLE-003")
-def test_blufi_recovers_advertising_after_target_reset() -> None:
+def test_blufi_recovers_advertising_after_target_reset(tcp_host: str) -> None:
     _require_ble_fixture()
     serial_port = os.getenv("Z1_HIL_SERIAL")
-    if not serial_port:
-        pytest.skip("set Z1_HIL_SERIAL for BLE reset recovery validation")
-    if not os.path.exists(serial_port):
+    image_name = os.getenv("Z1_HIL_OTA_IMAGE")
+    if serial_port and not os.path.exists(serial_port):
         pytest.skip(f"configured diagnostic port is unavailable: {serial_port}")
+    if not serial_port and not image_name:
+        pytest.skip(
+            "set Z1_HIL_SERIAL or Z1_HIL_OTA_IMAGE for BLE reset recovery"
+        )
+    image_path = Path(image_name) if image_name else None
+    if image_path is not None and not image_path.is_file():
+        pytest.skip(f"OTA image fixture does not exist: {image_path}")
+    previous_usb = open_usb_before_restart() if image_path is not None else None
 
     async def validate() -> None:
-        import serial
         from bleak import BleakClient
 
         def pulse_reset() -> None:
-            with serial.Serial(
-                serial_port, 115200, timeout=0.25, dsrdtr=False, rtscts=False
-            ) as device:
-                device.dtr = False
-                device.rts = True
-                time.sleep(0.1)
-                device.rts = False
+            if serial_port:
+                import serial
+
+                with serial.Serial(
+                    serial_port, 115200, timeout=0.25, dsrdtr=False, rtscts=False
+                ) as device:
+                    device.dtr = False
+                    device.rts = True
+                    time.sleep(0.1)
+                    device.rts = False
+                return
+            assert image_path is not None
+            status, body = multipart_upload(
+                tcp_host, "/update", image_path.read_bytes(), image_path.name
+            )
+            assert (status, body) == (
+                200,
+                b"Firmware upgrade finished. The system will reboot in 2 seconds...",
+            )
 
         device, _ = await _require_blufi()
         disconnected = asyncio.Event()
@@ -787,15 +811,26 @@ def test_blufi_recovers_advertising_after_target_reset() -> None:
             disconnected_callback=lambda _client: disconnected.set(),
         )
         await client.connect()
+        usb_restart = (
+            asyncio.create_task(
+                asyncio.to_thread(wait_for_usb_service_restart, previous_usb)
+            )
+            if previous_usb is not None
+            else None
+        )
         try:
             await _assert_gatt_healthy(client)
             await asyncio.to_thread(pulse_reset)
-            await asyncio.to_thread(_wait_for_diagnostic_port, serial_port)
+            if serial_port:
+                await asyncio.to_thread(_wait_for_diagnostic_port, serial_port)
             await asyncio.wait_for(disconnected.wait(), timeout=10.0)
         finally:
             if client.is_connected:
                 await client.disconnect()
         await asyncio.sleep(6.0)
+        if usb_restart is not None:
+            restored = await usb_restart
+            restored.close()
         assert await asyncio.wait_for(_find_blufi(), timeout=15.0) is not None, (
             "the machine-named BLUFI device did not advertise after target reset"
         )

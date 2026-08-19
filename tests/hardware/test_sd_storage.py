@@ -58,36 +58,65 @@ def _tcp_transfer_exchange(
     return receive_tcp_frames(connection, 7.0)
 
 
-def _required_frame(frames, frame_type: int):
+def _required_frame(frames, frame_type: int, *, allow_prior_cancel: bool = False):
     """Returns one required response and exposes target errors in assertions."""
 
-    errors = [frame.payload for frame in frames if frame.frame_type == FILE_CANCEL]
-    assert not errors, errors[0].decode("utf-8", errors="replace")
-    return next(
+    requested = next(
         (frame for frame in frames if frame.frame_type == frame_type),
         None,
     )
+    if requested is not None and allow_prior_cancel:
+        return requested
+    errors = [frame.payload for frame in frames if frame.frame_type == FILE_CANCEL]
+    assert not errors, errors[0].decode("utf-8", errors="replace")
+    return requested
 
 
-def _await_upload_request(connection: socket.socket, frames, timeout: float = 7.0):
-    """Waits for the next data request while tolerating retry notices."""
+def _await_upload_request(
+    connection: socket.socket,
+    frames,
+    timeout: float = 7.0,
+    *,
+    expected_sequence: int | None = None,
+):
+    """Waits for the requested sequence while tolerating retries and stale output."""
 
     deadline = time.monotonic() + timeout
     collected = list(frames)
     while time.monotonic() < deadline:
-        requested = _required_frame(collected, FILE_DATA)
+        requests = [frame for frame in collected if frame.frame_type == FILE_DATA]
+        requested = next(
+            (
+                frame
+                for frame in requests
+                if expected_sequence is None
+                or int.from_bytes(frame.payload, "big") == expected_sequence
+            ),
+            None,
+        )
         if requested is not None:
             return requested
-        if not any(
+        has_retry = any(
             frame.frame_type == FILE_RETRY
             and frame.payload == b"Info: need retry!"
             for frame in collected
-        ):
+        )
+        # TRN-004 can deliver a request retained for the disconnected slot to
+        # its replacement. Keep receiving when such a stale B3 was observed.
+        if not has_retry and not requests:
             return None
+        collected.clear()
         collected.extend(
             receive_tcp_frames(connection, min(1.0, deadline - time.monotonic()))
         )
-    return _required_frame(collected, FILE_DATA)
+    final_request = _required_frame(collected, FILE_DATA)
+    if final_request is None or expected_sequence is None:
+        return final_request
+    return (
+        final_request
+        if int.from_bytes(final_request.payload, "big") == expected_sequence
+        else None
+    )
 
 
 @pytest.mark.hardware
@@ -249,6 +278,7 @@ def test_large_tcp_upload_resumes_after_connection_loss(
         assert _required_frame(
             receive_tcp_frames(connection, 4.0),
             FILE_GEOMETRY,
+            allow_prior_cancel=True,
         )
         request = _required_frame(
             _tcp_transfer_exchange(
@@ -265,7 +295,9 @@ def test_large_tcp_upload_resumes_after_connection_loss(
                 FILE_DATA,
                 sequence.to_bytes(4, "big") + blocks[sequence - 1],
             )
-            request = _await_upload_request(connection, responses)
+            request = _await_upload_request(
+                connection, responses, expected_sequence=sequence + 1
+            )
             assert request is not None, [
                 (frame.frame_type, frame.payload) for frame in responses
             ]
@@ -291,7 +323,9 @@ def test_large_tcp_upload_resumes_after_connection_loss(
                 sequence.to_bytes(4, "big") + blocks[sequence - 1],
             )
             if sequence < len(blocks):
-                request = _await_upload_request(connection, responses)
+                request = _await_upload_request(
+                    connection, responses, expected_sequence=sequence + 1
+                )
                 assert request is not None, [
                     (frame.frame_type, frame.payload) for frame in responses
                 ]
@@ -499,22 +533,30 @@ def test_full_mock_volume_retries_and_recovers_after_cancel(
 
         write_failure = None
         for sequence in range(1, announced_blocks + 1):
-            responses = usb_client.exchange(
-                FILE_DATA, sequence.to_bytes(4, "big") + block, 4.0
-            )
-            write_failure = next(
-                (
-                    frame
-                    for frame in responses
-                    if frame.frame_type == FILE_RETRY
-                    and b"write error" in frame.payload.lower()
-                ),
-                None,
-            )
+            payload = sequence.to_bytes(4, "big") + block
+            requested = None
+            for _ in range(4):
+                responses = usb_client.exchange(FILE_DATA, payload, 4.0)
+                write_failure = next(
+                    (
+                        frame
+                        for frame in responses
+                        if frame.frame_type == FILE_RETRY
+                        and b"write error" in frame.payload.lower()
+                    ),
+                    None,
+                )
+                if write_failure is not None:
+                    break
+                requested = _required_frame(responses, FILE_DATA)
+                if requested is not None:
+                    break
+                # TRN-005 permits one target response to be omitted. Repeating
+                # the same sequence is the normative HFT-022 recovery and the
+                # target must not append the duplicate block a second time.
             if write_failure is not None:
                 break
-            requested = _required_frame(responses, FILE_DATA)
-            assert requested is not None
+            assert requested is not None, "target did not recover the upload prompt"
             assert int.from_bytes(requested.payload, "big") == sequence + 1
 
         assert write_failure is not None, "mock volume accepted more than 1 MiB"
@@ -527,4 +569,8 @@ def test_full_mock_volume_retries_and_recovers_after_cancel(
         upload_file(usb_client, path, probe)
         assert download_file(usb_client, path) == probe
     finally:
+        # An assertion must not leave global transfer ownership active for the
+        # remainder of the HIL session. Cancellation is harmless after normal
+        # completion and deterministically releases any partial upload.
+        usb_client.exchange(FILE_CANCEL, b"", 4.0)
         _remove(usb_client, path)

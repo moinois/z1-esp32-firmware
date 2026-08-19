@@ -121,7 +121,12 @@ constexpr std::uint32_t file_transfer_poll_milliseconds = 10U;
 constexpr UBaseType_t usb_worker_priority = 4U;
 constexpr std::uint32_t usb_transmit_task_stack_size = 4096U;
 constexpr std::uint32_t usb_m942_task_stack_size = 6144U;
-constexpr std::uint32_t usb_blocking_worker_stack_size = 8192U;
+// Decoding one 8300-byte host frame temporarily retains both raw and decoded
+// representations. Keep that path separate from the smaller FAT/hash worker
+// budget so maximum-size B3 traffic cannot trip the FreeRTOS stack canary.
+constexpr std::uint32_t usb_receive_worker_stack_size = 16384U;
+constexpr std::uint32_t usb_file_worker_stack_size = 12288U;
+constexpr std::uint32_t usb_local_worker_stack_size = 8192U;
 constexpr std::array<std::uint8_t, 18> device_descriptor{
     0x12U, 0x01U, 0x00U, 0x02U, 0x00U, 0x00U, 0x00U, 0x40U,
     0x3aU, 0x30U, 0x02U, 0x40U, 0x00U, 0x01U, 0x01U, 0x02U,
@@ -1674,31 +1679,31 @@ bool UsbDeviceAdapter::start() {
     // preserve internal DMA-capable memory, but retain an internal-memory
     // fallback for boards without usable PSRAM.
     BaseType_t receive_task = xTaskCreateWithCaps(
-        usb_receive_task, "usb_rx", usb_blocking_worker_stack_size, nullptr,
+        usb_receive_task, "usb_rx", usb_receive_worker_stack_size, nullptr,
         usb_worker_priority, nullptr,
         MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (receive_task != pdPASS) {
         receive_task = xTaskCreate(
-            usb_receive_task, "usb_rx", usb_blocking_worker_stack_size,
+            usb_receive_task, "usb_rx", usb_receive_worker_stack_size,
             nullptr, usb_worker_priority, nullptr);
     }
     // File processing needs a larger stack for FAT and hashing. Prefer PSRAM so
     // it does not exhaust internal DMA-capable memory, with the same fallback
     // needed by hardware variants where external allocation is unavailable.
     BaseType_t file_task = xTaskCreateWithCaps(
-        usb_file_transfer_task, "usb_file", usb_blocking_worker_stack_size,
+        usb_file_transfer_task, "usb_file", usb_file_worker_stack_size,
         nullptr, usb_worker_priority, nullptr,
         MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (file_task != pdPASS) {
         file_task = xTaskCreate(
-            usb_file_transfer_task, "usb_file", usb_blocking_worker_stack_size,
+            usb_file_transfer_task, "usb_file", usb_file_worker_stack_size,
             nullptr, usb_worker_priority, nullptr);
     }
     // Runtime commands call time and NVS libc paths that require an internal
     // task stack. Keep the enlarged stack that filesystem commands need, but
     // do not place this mixed command worker in PSRAM.
     const BaseType_t local_task = xTaskCreate(
-        usb_local_command_task, "usb_local", usb_blocking_worker_stack_size,
+        usb_local_command_task, "usb_local", usb_local_worker_stack_size,
         nullptr, usb_worker_priority, nullptr);
     if (receive_task != pdPASS || file_task != pdPASS || local_task != pdPASS) {
         ESP_LOGE(tag,

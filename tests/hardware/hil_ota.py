@@ -168,13 +168,26 @@ def wait_for_usb_service_restart(
         if device is None:
             observed_bus_absence = True
         elif observed_bus_absence:
+            current = None
             try:
                 current = UsbProtocolClient(device)
                 if current.exchange(GENERAL_COMMAND, b"sn-get", 1.0):
-                    return current
-                current.close()
+                    restored = current
+                    current = None
+                    return restored
             except Exception:
                 pass
+            finally:
+                if current is not None:
+                    current.close()
+                else:
+                    try:
+                        usb_util = __import__(
+                            "usb.util", fromlist=["dispose_resources"]
+                        )
+                        usb_util.dispose_resources(device)
+                    except Exception:
+                        pass
         time.sleep(poll_interval_seconds)
     if not old_handle_failed:
         state = "invalidate the old handle"

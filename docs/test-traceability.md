@@ -76,7 +76,7 @@ Portable startup and adapter-selection cases are in `tests/runtime/` and
 | Test group | What it verifies | Requirements |
 |---|---|---|
 | `tests/provisioning/test_blufi_*.cpp` | BLUFI identity, GATT, framing, security, fragmentation, acknowledgements, and product payloads. | BLE-001–BLE-016, BLESEC-001–BLESEC-006, BWF-003–BWF-045 |
-| `tests/hardware/test_ble_blufi.py` | Live advertising, GATT, encrypted status/list/error flows, Wi-Fi provisioning, reconnect, and BLE + USB + HTTP/Wi-Fi concurrency. | BLE-001–BLE-017, BLESEC-001–BLESEC-006, BWF-003–BWF-045, WEB-001, USB-004 |
+| `tests/hardware/test_ble_blufi.py` | Live advertising, GATT, encrypted status/list/error flows, Wi-Fi provisioning, reconnect, BLE + USB + HTTP/Wi-Fi concurrency, and OTA-reset disconnect/re-enumeration lifecycle. | BLE-001–BLE-017, BLESEC-001–BLESEC-006, BWF-003–BWF-045, WEB-001, WEBUP-004, USB-004 |
 | `tests/connectivity/test_station_connection.cpp`, `test_wlan_command.cpp`, `test_wlan_request.cpp` | WLAN parsing, connect/disconnect policy, credentials, bounded scans, and responses. | NET-001–NET-046 |
 | `tests/hardware/test_runtime_and_wifi.py`, `test_udp_discovery.py`, `test_mock_network_faults.py` | Live scan/diagnostics/discovery and injected TCP/discovery socket failure recovery. | NET-001–NET-046, DISC-001–DISC-008, TCP-003, DISC-008 |
 

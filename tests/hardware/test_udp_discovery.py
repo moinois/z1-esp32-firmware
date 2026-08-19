@@ -16,6 +16,7 @@ from tests.hardware.hil_protocol import (
 
 DISCOVERY_PORT = 3333
 TCP_CONTROL_PORT = 2222
+CAPACITY_TRANSITION_TIMEOUT_SECONDS = 8.0
 
 
 def _discovery_for_target(target: str, tcp_full: str, timeout: float = 4.0) -> list[str]:
@@ -23,6 +24,10 @@ def _discovery_for_target(target: str, tcp_full: str, timeout: float = 4.0) -> l
 
     listener = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if hasattr(socket, "SO_REUSEPORT"):
+        # Permit the conformance listener to coexist with MakeraStudio's
+        # production discovery listener on hosts such as macOS.
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     listener.bind(("", DISCOVERY_PORT))
     listener.settimeout(0.25)
     deadline = time.monotonic() + timeout
@@ -88,7 +93,12 @@ def test_discovery_reports_exact_tcp_capacity(tcp_host: str) -> None:
             assert frames
             assert all(frame.frame_type != 0x91 for frame in frames)
             clients.append(client)
-        _discovery_for_target(tcp_host, "1")
+        # UDP delivery is intentionally best-effort. Observe several normative
+        # 500 ms discovery cycles so a busy shared host port cannot turn one
+        # dropped broadcast into a false TCP-capacity failure.
+        _discovery_for_target(
+            tcp_host, "1", timeout=CAPACITY_TRANSITION_TIMEOUT_SECONDS
+        )
     finally:
         for client in clients:
             client.close()
@@ -96,4 +106,6 @@ def test_discovery_reports_exact_tcp_capacity(tcp_host: str) -> None:
     # The target closes each client task asynchronously. Allow one periodic
     # cycle before requiring the next advertisement to show free capacity.
     time.sleep(0.5)
-    _discovery_for_target(tcp_host, "0")
+    _discovery_for_target(
+        tcp_host, "0", timeout=CAPACITY_TRANSITION_TIMEOUT_SECONDS
+    )

@@ -38,7 +38,7 @@ def _expect(
 
     frames = receive_tcp_frames(connection, timeout)
     assert frames, f"target returned no frame while waiting for 0x{frame_type:02x}"
-    if not allow_prior_cancel:
+    if not allow_prior_cancel and frame_type != FILE_CANCEL:
         assert not any(frame.frame_type == 0xB5 for frame in frames), frames
     expected = next(
         (frame for frame in frames if frame.frame_type == frame_type), None
@@ -177,10 +177,12 @@ def test_tcp_download_inactivity_aborts_and_releases_owner(
 @pytest.mark.sd
 @pytest.mark.requirement("HFT-023")
 @pytest.mark.requirement("HFT-025")
+@pytest.mark.requirement("HFTD-006")
+@pytest.mark.requirement("HFTD-007")
 def test_tcp_download_protocol_errors_preserve_source_and_recover(
     usb_client, tcp_host: str, sd_fixture
 ) -> None:
-    """Injects excessive commands and sequence zero through production TCP."""
+    """Checks unexpected-packet abort and modulo sequence-zero handling."""
 
     path = "/sd/DLERROR.BIN"
     content = bytes((index * 31 + 13) & 0xFF for index in range(1150))
@@ -210,10 +212,14 @@ def test_tcp_download_protocol_errors_preserve_source_and_recover(
         with socket.create_connection((tcp_host, 2222), timeout=3.0) as connection:
             start_download(connection)
             connection.sendall(encode_frame(FILE_DATA, (0).to_bytes(4, "big")))
-            cancelled = _expect(
-                connection, FILE_CANCEL, timeout=3.0, allow_prior_cancel=True
-            )
-            assert cancelled.payload == b"Error: Machine received cmd timeout!"
+            block = _expect(connection, FILE_DATA, timeout=3.0)
+            # HFTD-006 applies the modulo offset and ignores the mock adapter's
+            # failed seek, so reading continues from the position left at open.
+            assert block.payload[:4] == (0).to_bytes(4, "big")
+            assert block.payload[4:] == content
+            connection.sendall(encode_frame(FILE_CANCEL, b""))
+            cancelled = _expect(connection, FILE_CANCEL, timeout=3.0)
+            assert cancelled.payload == b"Info: canceled by remote!"
 
         assert download_file(usb_client, path) == content
     finally:

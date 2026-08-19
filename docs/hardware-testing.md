@@ -41,6 +41,7 @@ USB handle or fixture deadlock from blocking an unattended HIL run forever.
 | `Z1_HIL_SERIAL` | Diagnostic serial device | uniquely detected USB modem |
 | `Z1_HIL_SD` | Declares that a physical SD reader and card are installed | disabled |
 | `Z1_HIL_MOCK_SD` | Declares that the flashed firmware uses the mock SD profile | disabled |
+| `Z1_HIL_CAMERA` | Declares that a physical camera is installed | disabled |
 | `Z1_HIL_MOCK_CAMERA` | Declares that the flashed firmware uses the deterministic camera mock | disabled |
 | `Z1_HIL_MOCK_CONTROLLER` | Declares that the flashed firmware uses the deterministic controller-channel mock | disabled |
 | `Z1_ALLOW_MUTATION` | Enables recoverable persistent changes when `1` | disabled |
@@ -58,10 +59,20 @@ USB handle or fixture deadlock from blocking an unattended HIL run forever.
 | `Z1_HIL_WIFI_SSID` | Test-network SSID used by mutating BLUFI provisioning | unset |
 | `Z1_HIL_WIFI_PASSWORD` | Test-network password; an empty value is valid | unset |
 
-Camera availability is detected automatically through a valid
-`POST /api/camera/resolution` request. The exact controlled sensor-unavailable
-response marks camera-dependent HIL as skipped; no environment declaration is
-required.
+UDP discovery listeners enable address and port reuse where the host supports
+it. This allows HIL to observe port-3333 announcements while MakeraStudio is
+running, without terminating or otherwise interfering with that client.
+
+BLE reset recovery uses `Z1_HIL_SERIAL` when a diagnostic UART fixture exists.
+On native-USB-only hardware it instead uses the valid `Z1_HIL_OTA_IMAGE` as a
+destructive same-image reboot fixture and requires BLE disconnect, USB
+disappearance/re-enumeration, and renewed advertising before passing.
+
+Camera availability is detected through a valid `POST /api/camera/resolution`
+request. The exact controlled sensor-unavailable response marks camera-dependent
+HIL as skipped. Physical-image conformance additionally requires
+`Z1_HIL_CAMERA=1`; the deterministic mock instead requires
+`Z1_HIL_MOCK_CAMERA=1`, so the two evidence classes cannot be confused.
 
 BLE HIL uses the host adapter through Bleak. With `Z1_HIL_BLE=1`, absence of
 an `MK_`-prefixed machine-name advertisement is a failure rather than a fixture
@@ -813,8 +824,9 @@ observes the framed UART reply in controller diagnostics. The report is
 the real ESP timer: ten seconds of inactivity produces the exact terminal
 timeout, preserves the source, releases global ownership, and permits a new
 upload/download. Separate malformed-protocol injection sends 51 empty data
-frames and then sequence zero in a fresh session; its modulo-wrapped offset
-produced an empty read, so both exact abort paths and the subsequent source
+frames to exercise the exact abort boundary. A separate sequence-zero request
+against the mock's ignored seek returns the current content before an explicit
+cancel, so both the normative offset behavior and the subsequent source
 download pass. Reports are `build/hil-download-timeout.json`
 and `build/hil-download-errors.json`.
 
@@ -832,11 +844,11 @@ served the complete local asset in 10.71 seconds; the report is
 into larger transport writes transferred only 11,214 of 106,343 bytes in 15
 seconds, so that unproven implementation was removed before commit.
 
-Portable coverage was regenerated on 2026-08-13 after global host-output,
+Portable coverage was regenerated on 2026-08-19 after the specification-alignment,
 streamed-play resource/diagnostic, controller-transfer allocation, and listing
-allocation work. All 844 host tests passed with 96.22 percent line (9262/9626),
-98.51 percent function (924/938), and 86.72 percent branch (3840/4428)
-coverage; all 49 Python tooling tests also passed. The larger denominator now
+allocation work. All 853 host tests passed with 96.20 percent line (9286/9653),
+98.52 percent function (931/945), and 86.69 percent branch (3835/4424)
+coverage; all 55 Python tooling tests also passed. The larger denominator now
 includes the subsequently added production policies and public inline methods,
 so the percentages are not directly comparable to the earlier 8151-line
 snapshot. USB production policy remains at 100 percent line coverage for
@@ -856,6 +868,44 @@ through their validated public APIs. These coverage limits are separate from the
 remaining conformance limits: physical SD media, controller UART, CAN bus,
 camera behavior, RF-loss endurance, and forced TinyUSB endpoint stalls still
 require their corresponding hardware fixtures or lower-level instrumentation.
+
+On 2026-08-19 the refreshed ESP32-S3 mock profile used live native USB, BLE,
+and station Wi-Fi with mock SD, camera, controller, and NVS. Read-only HIL
+passed 33 cases with ten explicitly unavailable physical-fixture/static-asset
+skips. The complete mutating group passed 44 cases in one 328.03-second
+process, with five explicitly unavailable serial/network-fault fixture skips.
+This includes runtime/storage/transfer endurance, three USB-reset upload
+continuations, NVS, controller, filesystem, routing, SoftAP, and web
+configuration. Four destructive
+non-BLE cases passed, covering interrupted multipart recovery, SPIFFS install,
+partial OTA finalization/rollback, and persistent same-image OTA. All 15
+read-only BLE cases and encrypted provisioning passed in isolated processes;
+the reset case additionally passed through same-image OTA, BLE disconnect,
+native-USB disappearance/re-enumeration, and renewed advertising.
+
+`tools/run_hil_isolated.py` gives aggregate read-only, mutating, and destructive
+groups exact pytest directory selections, then runs every BLE node in its own
+process. A regression test verifies that a BLE node cannot accidentally be
+combined with the broad `tests/hardware` selection. USB-reset fixtures release
+and rediscover macOS/libusb handles between post-reset packets, and failed OTA
+re-enumeration probes dispose every candidate handle before retrying.
+
+That run exposed two target resource defects rather than test timeouts. A 1 ms
+controller-consumer delay rounded to zero at the configured 100 Hz FreeRTOS
+tick and starved startup before Wi-Fi/USB; the consumers now use the normative
+10 ms cycle and PSRAM stacks. Repeated maximum-size USB frames also triggered a
+panic reset with the shared 8192-byte worker budget. Receive/decode now uses a
+dedicated 16384-byte stack, file/FAT processing uses 12288 bytes, and local
+commands retain 8192 bytes. The formerly panicking 12-case endurance sequence
+then passed in 207.73 seconds.
+
+The HIL transfer driver was aligned with the revised specification during the
+same run: upload start is silent and MD5-first, completion waits for the `0x90`
+ownership-release event, HFTU-024 recovery never duplicates a start, and
+download output omission uses HFTD-005/HFTD-008 B1/B2/B6 repetition. TCP slot
+reuse now accepts a retained prior response under TRN-004. Sequence zero uses
+the HFTD-006 modulo offset and, when the mock seek fails, continues from the
+existing position rather than requiring the obsolete immediate-abort behavior.
 
 The GPIO0 heartbeat is split at the same production boundary: portable tests
 verify the initial high level, exact 1000 ms delay, repeated inversion, and no

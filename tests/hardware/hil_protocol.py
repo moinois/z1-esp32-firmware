@@ -125,8 +125,14 @@ class UsbProtocolClient:
         received: List[ReceivedFrame] = []
         while time.monotonic() < deadline:
             try:
-                read_timeout_ms = (
+                configured_timeout_ms = (
                     self.quiescence_timeout_ms if received else self.timeout_ms
+                )
+                remaining_timeout_ms = max(
+                    1, int((deadline - time.monotonic()) * 1000)
+                )
+                read_timeout_ms = min(
+                    configured_timeout_ms, remaining_timeout_ms
                 )
                 chunk = bytes(
                     self.input.read(self.input.wMaxPacketSize, timeout=read_timeout_ms)

@@ -26,6 +26,7 @@
 #include "freertos/semphr.h"
 #include "esp_timer.h"
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 
 #include "application/controller/controller_frame_forwarder.hpp"
 #include "application/controller/controller_transfer.hpp"
@@ -53,7 +54,11 @@ constexpr std::size_t controller_read_buffer_size = 256U;
 constexpr std::uint32_t controller_task_stack_size = 6144U;
 constexpr std::uint32_t controller_consumer_stack_size = 4096U;
 constexpr UBaseType_t controller_task_priority = 5U;
-constexpr TickType_t controller_consumer_poll_ticks = pdMS_TO_TICKS(1U);
+// The controller consumers run on the specification's 10 ms cycle. A shorter
+// millisecond value would round down to zero at the configured 100 Hz FreeRTOS
+// tick rate, turning vTaskDelay() into a yield-only loop that can starve the
+// lower-priority remainder of app_main before Wi-Fi and USB are started.
+constexpr TickType_t controller_consumer_poll_ticks = pdMS_TO_TICKS(10U);
 
 // Writes one complete frame and emits the specified diagnostic on failure.
 void write_controller_frame(ControllerChannelAdapter& channel,
@@ -169,6 +174,18 @@ void play_transfer_task(void*) {
         }
         vTaskDelay(controller_consumer_poll_ticks);
     }
+}
+
+void start_controller_consumer(TaskFunction_t entry, const char* name,
+                               SemaphoreHandle_t inbox_mutex) {
+    if (inbox_mutex == nullptr) return;
+    // The four independent BOOT-012 consumers must not consume the internal
+    // DMA-capable heap needed by native USB workers. Failure to obtain a PSRAM
+    // stack leaves only that consumer unavailable as required by BOOT-013.
+    static_cast<void>(xTaskCreateWithCaps(
+        entry, name, controller_consumer_stack_size, nullptr,
+        controller_task_priority, nullptr,
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
 }
 
 bool enqueue_controller_frame_impl(const firmware::core::Frame& frame,
@@ -354,27 +371,14 @@ void ControllerCommandLoop::start() {
     configuration_inbox_mutex = xSemaphoreCreateMutex();
     factory_inbox_mutex = xSemaphoreCreateMutex();
     play_inbox_mutex = xSemaphoreCreateMutex();
-    if (firmware_inbox_mutex != nullptr) {
-        static_cast<void>(xTaskCreate(
-            firmware_transfer_task, "controller_fw", controller_consumer_stack_size,
-            nullptr, controller_task_priority, nullptr));
-    }
-    if (configuration_inbox_mutex != nullptr) {
-        static_cast<void>(xTaskCreate(
-            configuration_transfer_task, "controller_cfg",
-            controller_consumer_stack_size, nullptr, controller_task_priority,
-            nullptr));
-    }
-    if (factory_inbox_mutex != nullptr) {
-        static_cast<void>(xTaskCreate(
-            factory_transfer_task, "controller_fac", controller_consumer_stack_size,
-            nullptr, controller_task_priority, nullptr));
-    }
-    if (play_inbox_mutex != nullptr) {
-        static_cast<void>(xTaskCreate(
-            play_transfer_task, "controller_play", controller_consumer_stack_size,
-            nullptr, controller_task_priority, nullptr));
-    }
+    start_controller_consumer(firmware_transfer_task, "controller_fw",
+                              firmware_inbox_mutex);
+    start_controller_consumer(configuration_transfer_task, "controller_cfg",
+                              configuration_inbox_mutex);
+    start_controller_consumer(factory_transfer_task, "controller_fac",
+                              factory_inbox_mutex);
+    start_controller_consumer(play_transfer_task, "controller_play",
+                              play_inbox_mutex);
     static_cast<void>(xTaskCreate(
         controller_command_task, "controller_commands", controller_task_stack_size,
         nullptr, controller_task_priority, nullptr));

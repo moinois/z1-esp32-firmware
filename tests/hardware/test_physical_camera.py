@@ -35,7 +35,7 @@ def _assert_jpeg(payload: bytes) -> None:
 @pytest.mark.requirement("LIVE-001")
 @pytest.mark.requirement("LIVE-005")
 def test_physical_camera_streams_jpeg_and_recovers_after_disconnect(
-    tcp_host: str,
+    tcp_host: str, physical_camera_fixture,
 ) -> None:
     """Receives real frames, disconnects, then proves a successor can stream."""
 
@@ -62,7 +62,7 @@ def test_physical_camera_streams_jpeg_and_recovers_after_disconnect(
 @pytest.mark.requirement("USB-004")
 @pytest.mark.requirement("UART-003")
 def test_physical_camera_usb_http_and_controller_reads_coexist(
-    tcp_host: str, usb_client
+    tcp_host: str, usb_client, physical_camera_fixture
 ) -> None:
     """Exercises the physical stream while safe USB and HTTP reads are active."""
 

@@ -10,19 +10,24 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 GROUPS = (
-    ("readonly", ("-m", "not mutating and not destructive and not ble")),
-    ("mutating", ("-m", "mutating and not ble")),
-    ("destructive", ("-m", "destructive and not ble")),
+    (
+        "readonly",
+        ("tests/hardware", "-m", "not mutating and not destructive and not ble"),
+    ),
+    ("mutating", ("tests/hardware", "-m", "mutating and not ble")),
+    ("destructive", ("tests/hardware", "-m", "destructive and not ble")),
 )
 # A group may contain deliberate protocol timeouts, but must not hold the
-# transport hostage for the ten-minute per-test pytest limit.  The runner's
-# shorter bound makes a stuck reset/disconnect group fail closed.
-GROUP_TIMEOUT_SECONDS = 120
+# transport hostage indefinitely. The read-only transport regression currently
+# needs about 131 seconds and the mutating endurance group exceeds 307 seconds
+# on physical Wi-Fi, so retain a measured whole-group margin while every test
+# remains protected by pytest's independent ten-minute ceiling.
+GROUP_TIMEOUT_SECONDS = 900
 
 
-def run_group(name: str, marker_args: tuple[str, ...]) -> int:
+def run_group(name: str, pytest_args: tuple[str, ...]) -> int:
     """Runs one pytest group and waits for its process to terminate."""
-    command = [sys.executable, "-m", "pytest", "tests/hardware", "-q", *marker_args]
+    command = [sys.executable, "-m", "pytest", "-q", *pytest_args]
     print(f"\n=== HIL group: {name} ===", flush=True)
     try:
         completed = subprocess.run(
@@ -50,8 +55,8 @@ def run_group(name: str, marker_args: tuple[str, ...]) -> int:
 
 def main() -> int:
     """Runs readonly, mutating, and destructive groups without overlap."""
-    for name, marker_args in GROUPS:
-        result = run_group(name, marker_args)
+    for name, pytest_args in GROUPS:
+        result = run_group(name, pytest_args)
         if result:
             return result
     # CoreBluetooth on macOS can retain a scan session after disconnect. Run

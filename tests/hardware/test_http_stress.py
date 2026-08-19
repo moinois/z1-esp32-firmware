@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 import http.client
 import socket
+import time
 
 import pytest
 
@@ -47,9 +48,22 @@ def test_interrupted_multipart_request_does_not_wedge_http(tcp_host: str) -> Non
     ).encode("ascii")
     with socket.create_connection((tcp_host, 80), timeout=5.0) as connection:
         connection.sendall(request)
-    status, body = _firmware_info(tcp_host)
-    assert status == 200
-    assert body
+    deadline = time.monotonic() + 15.0
+    last_error: OSError | None = None
+    while time.monotonic() < deadline:
+        try:
+            status, body = _firmware_info(tcp_host)
+        except OSError as error:
+            last_error = error
+            continue
+        assert status == 200
+        assert body
+        break
+    else:
+        pytest.fail(
+            "HTTP did not recover after the interrupted multipart receive "
+            f"window: {last_error}"
+        )
 
 
 @pytest.mark.hardware

@@ -139,6 +139,14 @@ def sd_fixture() -> None:
         )
 
 
+@pytest.fixture(scope="session")
+def physical_sd_fixture() -> None:
+    """Requires an explicitly declared physical SD reader and card."""
+
+    if os.getenv("Z1_HIL_SD") != "1":
+        pytest.skip("physical SD not declared with Z1_HIL_SD=1")
+
+
 @pytest.fixture
 def sd_client(request: pytest.FixtureRequest, tcp_host: str) -> Any:
     """Uses native USB when present, otherwise an explicitly reachable TCP target."""
@@ -163,6 +171,11 @@ def tcp_host() -> str:
     discovery_port = 3333
     listener = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if hasattr(socket, "SO_REUSEPORT"):
+        # MakeraStudio normally listens to the same station announcements.
+        # macOS requires REUSEPORT as well as REUSEADDR for the HIL listener to
+        # coexist with that production client instead of failing at bind().
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     listener.bind(("", discovery_port))
     listener.settimeout(0.25)
     try:
@@ -228,3 +241,11 @@ def camera_fixture(tcp_host: str) -> None:
     pytest.fail(
         f"unexpected camera capability response: HTTP {response.status} {body!r}"
     )
+
+
+@pytest.fixture(scope="session")
+def physical_camera_fixture(camera_fixture: None) -> None:
+    """Requires an explicitly declared physical camera after API detection."""
+
+    if os.getenv("Z1_HIL_CAMERA") != "1":
+        pytest.skip("physical camera not declared with Z1_HIL_CAMERA=1")
