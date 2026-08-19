@@ -871,7 +871,7 @@ firmware::application::UtcFileTime usb_file_time(time_t value) {
             static_cast<std::uint8_t>(result.tm_sec)};
 }
 
-/// Lists sandboxed SD directories and sends their entries through native USB.
+/// Lists one resolved VFS directory and sends its entries through native USB.
 class UsbDirectoryPort final : public firmware::application::DirectoryListPort {
 public:
     std::optional<std::vector<firmware::application::DirectoryEntry>>

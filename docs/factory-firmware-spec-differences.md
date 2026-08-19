@@ -108,8 +108,8 @@ verified:
 
 The factory firmware resolved absolute `/name` paths against the filesystem
 root, as HFT-004 specifies, and required `/sd/name` to address the card. The
-project's additional user-path sandbox deliberately maps host paths beneath
-`/sd`; consequently its sandbox-specific physical tests are not valid factory
+project formerly added a user-path sandbox that mapped host paths beneath
+`/sd`; those historical sandbox-specific physical tests are not valid factory
 baseline cases without changing their paths.
 
 The factory upload followed HFTU-003: the host sent `0xb1` immediately after

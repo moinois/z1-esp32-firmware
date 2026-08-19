@@ -82,7 +82,7 @@ def test_tcp_upload_retries_after_temporary_network_silence(
     """Continues one upload after a six-second host/network pause."""
 
     _clear_stale_tcp_transfer(tcp_host)
-    path = "/NETPAUSE.BIN"
+    path = "/sd/NETPAUSE.BIN"
     # This case isolates the timing policy; large multi-block recovery is
     # covered separately so Wi-Fi throughput cannot consume the timeout margin.
     content = bytes((index * 19 + 3) & 0xFF for index in range(1024))
@@ -133,8 +133,8 @@ def test_tcp_download_inactivity_aborts_and_releases_owner(
 ) -> None:
     """Observes the target timer abort, source preservation, and reuse."""
 
-    path = "/DLPAUSE.BIN"
-    successor = "/DLNEXT.BIN"
+    path = "/sd/DLPAUSE.BIN"
+    successor = "/sd/DLNEXT.BIN"
     content = bytes((index * 29 + 11) & 0xFF for index in range(1300))
     next_content = b"transfer-after-download-timeout"
     try:
@@ -183,7 +183,7 @@ def test_tcp_download_protocol_errors_preserve_source_and_recover(
 ) -> None:
     """Injects excessive commands and sequence zero through production TCP."""
 
-    path = "/DLERROR.BIN"
+    path = "/sd/DLERROR.BIN"
     content = bytes((index * 31 + 13) & 0xFF for index in range(1150))
 
     def start_download(connection: socket.socket) -> None:

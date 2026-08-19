@@ -21,8 +21,8 @@ def test_physical_config_is_listed_and_downloads_with_valid_md5(
 ) -> None:
     """Uses the factory configuration as an existing non-mutating SD fixture."""
 
-    # The factory firmware exposes the mounted-card path in directory replies;
-    # sandbox/root conformance remains covered by the separate generic SD test.
+    # The specification addresses the installed card through its explicit
+    # `/sd` VFS path; generic HFT-004 normalization is host-tested separately.
     listing = sd_client.exchange(GENERAL_COMMAND, b"ls /sd", 5.0)
     combined = b"\n".join(frame.payload for frame in listing)
     assert b"config.txt" in combined.lower(), combined

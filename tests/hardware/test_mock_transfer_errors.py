@@ -93,7 +93,7 @@ def test_duplicate_upload_packets_repeat_sequence_without_duplicate_bytes(
     """Injects 51 duplicate packets, then completes with exact file bytes."""
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
-    path = f"/D{uuid.uuid4().hex[:5].upper()}.BIN"
+    path = f"/sd/D{uuid.uuid4().hex[:5].upper()}.BIN"
     first = bytes((index * 7 + 1) & 0xFF for index in range(300))
     second = bytes((index * 11 + 3) & 0xFF for index in range(350))
     content = first + second
@@ -165,8 +165,8 @@ def test_download_cancel_releases_owner_and_preserves_source(
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     suffix = uuid.uuid4().hex[:5].upper()
-    source = f"/C{suffix}.BIN"
-    successor = f"/N{suffix}.BIN"
+    source = f"/sd/C{suffix}.BIN"
+    successor = f"/sd/N{suffix}.BIN"
     source_content = bytes((index * 19 + 5) & 0xFF for index in range(1400))
     successor_content = b"transfer-after-download-cancel"
     try:
@@ -207,9 +207,9 @@ def test_missing_and_invalid_md5_sidecars_fall_back_and_recover(
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     name = f"M{uuid.uuid4().hex[:5].upper()}.BIN"
-    path = f"/{name}"
-    sidecar = f"/.md5/{name}"
-    nested_sidecar = f"/.md5/.md5/{name}"
+    path = f"/sd/{name}"
+    sidecar = f"/sd/.md5/{name}"
+    nested_sidecar = f"/sd/.md5/.md5/{name}"
     content = bytes((index * 23 + 7) & 0xFF for index in range(1700))
     try:
         upload_file(usb_client, path, content)

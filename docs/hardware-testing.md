@@ -159,7 +159,7 @@ directory response.
 
 ### Mock SD target profile
 
-The SD mock validates the complete FAT, VFS, POSIX, path-sandbox, and
+The SD mock validates the complete FAT, VFS, POSIX, path-normalization, and
 public-command stack without a physical reader. It allocates a fresh 512 KiB
 block device in PSRAM on every boot and mounts it at `/sd`. It is deliberately
 volatile and emits a prominent `TEST BUILD` diagnostic. The generic builder

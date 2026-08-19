@@ -12,7 +12,7 @@ TEST_CASE(file_001_path_arguments_decode_terminate_and_trim_protocol_whitespace)
     const auto parsed = firmware::core::parse_filesystem_path(argument);
 
     REQUIRE(parsed.has_value());
-    REQUIRE_EQ(*parsed, std::string("/sd/dir name"));
+    REQUIRE_EQ(*parsed, std::string("/dir name"));
 }
 
 TEST_CASE(file_002_path_arguments_remove_the_last_space_hyphen_suffix) {
@@ -22,7 +22,7 @@ TEST_CASE(file_002_path_arguments_remove_the_last_space_hyphen_suffix) {
     const auto parsed = firmware::core::parse_filesystem_path(argument);
 
     REQUIRE(parsed.has_value());
-    REQUIRE_EQ(*parsed, std::string("/sd/foo -x bar"));
+    REQUIRE_EQ(*parsed, std::string("/foo -x bar"));
 }
 
 TEST_CASE(file_003_empty_filesystem_paths_are_rejected) {
@@ -35,7 +35,7 @@ TEST_CASE(file_010_list_consumes_options_and_defaults_an_empty_path_to_dot) {
         ByteVector{' ', '-', 'a', ' ', '-', 's', ' '});
 
     REQUIRE(parsed.has_value());
-    REQUIRE_EQ(parsed->path, std::string("/sd"));
+    REQUIRE_EQ(parsed->path, std::string("/"));
     REQUIRE(parsed->include_details);
 }
 
@@ -45,7 +45,7 @@ TEST_CASE(file_010_list_decodes_the_remaining_path_after_consuming_options) {
                    '2', '0', '2', '6', ' ', '-', 'i', 'g', 'n', 'o', 'r', 'e'});
 
     REQUIRE(parsed.has_value());
-    REQUIRE_EQ(parsed->path, std::string("/sd/gcodes 2026"));
+    REQUIRE_EQ(parsed->path, std::string("/gcodes 2026"));
     REQUIRE(!parsed->include_details);
 }
 
@@ -57,7 +57,7 @@ TEST_CASE(file_010_omits_an_option_that_would_leave_less_than_two_free_bytes) {
     const auto parsed = firmware::core::parse_directory_list_arguments(argument);
 
     REQUIRE(parsed.has_value());
-    REQUIRE_EQ(parsed->path, std::string("/sd"));
+    REQUIRE_EQ(parsed->path, std::string("/"));
     REQUIRE(!parsed->include_details);
 }
 
@@ -79,7 +79,7 @@ TEST_CASE(file_024_move_uses_space_absolute_separator_for_an_encoded_source_spac
                    '/', 's', 'd', '/', 'n', 'e', 'w'});
 
     REQUIRE(parsed.has_value());
-    REQUIRE_EQ(parsed->source, std::string("/sd/old name"));
+    REQUIRE_EQ(parsed->source, std::string("/old name"));
     REQUIRE_EQ(parsed->destination, std::string("/sd/new"));
 }
 
@@ -88,8 +88,8 @@ TEST_CASE(file_024_move_falls_back_to_the_first_space_and_rejects_missing_paths)
         ByteVector{' ', 'o', 'l', 'd', ' ', 'n', 'e', 'w'});
 
     REQUIRE(parsed.has_value());
-    REQUIRE_EQ(parsed->source, std::string("/sd/old"));
-    REQUIRE_EQ(parsed->destination, std::string("/sd/new"));
+    REQUIRE_EQ(parsed->source, std::string("/old"));
+    REQUIRE_EQ(parsed->destination, std::string("/new"));
     REQUIRE(!firmware::core::parse_move_paths(ByteVector{' ', 'o', 'n', 'l', 'y'})
                  .has_value());
 }

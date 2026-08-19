@@ -6,7 +6,7 @@
 namespace firmware::core {
 
 /** Reports whether @p path is the videos directory or a safe descendant.
- *  This policy is a semantic allow-list in addition to general SD sandboxing.
+ *  This requirement-specific allow-list admits only `/sd/videos` content.
  */
 bool preview_path_allowed(std::string_view path);
 

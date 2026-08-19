@@ -4,7 +4,6 @@
 #include "core/protocol/crc.hpp"
 #include "core/filesystem/file_transfer_limits.hpp"
 #include "core/protocol/protocol_constants.hpp"
-#include "core/filesystem/sd_user_path.hpp"
 #include "core/protocol/text.hpp"
 
 #include <algorithm>
@@ -44,7 +43,7 @@ PlayPathSelection resolve_play_path(core::BytesView payload) {
         return value != ' ';
     });
     selected.erase(selected.begin(), first);
-    return {selected, core::resolve_sd_user_path(selected)};
+    return {selected, core::normalize_path(selected)};
 }
 
 // Reports whether a cached checksum contains exactly 32 hexadecimal characters.

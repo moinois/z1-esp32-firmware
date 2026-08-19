@@ -97,7 +97,7 @@ def _await_upload_request(connection: socket.socket, frames, timeout: float = 7.
 @pytest.mark.requirement("SD-001")
 @pytest.mark.requirement("FILE-005")
 def test_sd_root_can_be_listed(sd_client, sd_fixture) -> None:
-    frames = sd_client.exchange(GENERAL_COMMAND, b"ls /", timeout_seconds=5.0)
+    frames = sd_client.exchange(GENERAL_COMMAND, b"ls /sd", timeout_seconds=5.0)
     assert frames, "no response; SD card may be absent or unmounted"
     combined = b"\n".join(frame.payload for frame in frames).lower()
     assert b"error" not in combined, combined.decode("utf-8", errors="replace")
@@ -114,7 +114,7 @@ def test_temporary_directory_create_and_remove(sd_client, sd_fixture) -> None:
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     # Keep the generated directory compact so the response remains easy to
     # inspect; current SD-009 permits long names and does not require 8.3.
-    path = f"/Z1{uuid.uuid4().hex[:6].upper()}"
+    path = f"/sd/Z1{uuid.uuid4().hex[:6].upper()}"
     try:
         created = sd_client.exchange(
             GENERAL_COMMAND, f"mkdir {path}".encode("ascii"), timeout_seconds=5.0
@@ -142,8 +142,8 @@ def test_directory_rename_is_visible_in_root_listing(sd_client, sd_fixture) -> N
     """Exercises real FAT rename and enumeration through the public protocol."""
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     suffix = uuid.uuid4().hex[:5].upper()
-    source = f"/O{suffix}"
-    destination = f"/N{suffix}"
+    source = f"/sd/O{suffix}"
+    destination = f"/sd/N{suffix}"
     try:
         created = sd_client.exchange(
             GENERAL_COMMAND, f"mkdir {source}".encode("ascii"), 5.0
@@ -155,40 +155,13 @@ def test_directory_rename_is_visible_in_root_listing(sd_client, sd_fixture) -> N
             5.0,
         )
         assert any(b"renamed" in frame.payload.lower() for frame in renamed)
-        listed = sd_client.exchange(GENERAL_COMMAND, b"ls /", 5.0)
+        listed = sd_client.exchange(GENERAL_COMMAND, b"ls /sd", 5.0)
         listing = b"".join(frame.payload for frame in listed)
-        assert destination[1:].encode("ascii") + b"/" in listing
-        assert source[1:].encode("ascii") + b"/" not in listing
+        assert destination.rsplit("/", 1)[1].encode("ascii") + b"/" in listing
+        assert source.rsplit("/", 1)[1].encode("ascii") + b"/" not in listing
     finally:
         _remove(sd_client, destination)
         _remove(sd_client, source)
-
-
-@pytest.mark.hardware
-@pytest.mark.mutating
-@pytest.mark.sd
-@pytest.mark.requirement("HFT-004")
-@pytest.mark.requirement("FILE-020")
-def test_parent_traversal_remains_sandboxed_to_sd_root(sd_client, sd_fixture) -> None:
-    """Proves traversal is normalized to the user-visible SD root on real VFS calls."""
-    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
-    name = f"S{uuid.uuid4().hex[:6].upper()}"
-    try:
-        created = sd_client.exchange(
-            GENERAL_COMMAND,
-            f"mkdir /../../{name}".encode("ascii"),
-            5.0,
-        )
-        message = b"".join(frame.payload for frame in created)
-        # Command resolution remains sandboxed to SD, while the normative
-        # response exposes the resolved physical path required by FILE-020.
-        assert f"created directory /sd/{name}".encode("ascii") in message
-        listed = sd_client.exchange(GENERAL_COMMAND, b"ls /", 5.0)
-        assert name.encode("ascii") + b"/" in b"".join(
-            frame.payload for frame in listed
-        )
-    finally:
-        _remove(sd_client, f"/{name}")
 
 
 @pytest.mark.hardware
@@ -214,8 +187,8 @@ def test_file_roundtrip_md5_rename_and_delete(usb_client, sd_fixture) -> None:
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     suffix = uuid.uuid4().hex[:5].upper()
-    source = f"/F{suffix}.BIN"
-    destination = f"/R{suffix}.BIN"
+    source = f"/sd/F{suffix}.BIN"
+    destination = f"/sd/R{suffix}.BIN"
     content = bytes((index * 37 + 11) & 0xFF for index in range(2500))
     digest = hashlib.md5(content).hexdigest().encode("ascii")
     try:
@@ -254,7 +227,7 @@ def test_large_tcp_upload_resumes_after_connection_loss(
     """Drops TCP mid-upload and requires the reused slot to request continuation."""
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
-    path = f"/N{uuid.uuid4().hex[:5].upper()}.BIN"
+    path = f"/sd/N{uuid.uuid4().hex[:5].upper()}.BIN"
     block_size = 4096
     # Keep enough headroom for the mock's bounded diagnostic log while still
     # exercising multiple maximum-sized protocol blocks.
@@ -348,40 +321,12 @@ def test_large_tcp_upload_resumes_after_connection_loss(
 @pytest.mark.mutating
 @pytest.mark.sd
 @pytest.mark.usb
-@pytest.mark.requirement("HFT-004")
-@pytest.mark.requirement("FILE-001")
-@pytest.mark.requirement("FILE-002")
-@pytest.mark.requirement("FILE-003")
-@pytest.mark.requirement("FILE-005")
-def test_upload_parent_traversal_is_confined_to_sd(usb_client, sd_fixture) -> None:
-    """Uploads through an escaping path and reads it from the clamped SD path."""
-
-    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
-    directory = f"T{uuid.uuid4().hex[:5].upper()}"
-    canonical = f"/{directory}/SAFE.BIN"
-    escaping = f"/../../{directory}/SAFE.BIN"
-    content = b"sandbox-through-target-fat"
-    try:
-        created = usb_client.exchange(
-            GENERAL_COMMAND, f"mkdir /{directory}".encode("ascii"), 5.0
-        )
-        assert b"created directory" in _payload(created).lower()
-        upload_file(usb_client, escaping, content)
-        assert download_file(usb_client, canonical) == content
-    finally:
-        _remove(usb_client, f"/{directory}")
-
-
-@pytest.mark.hardware
-@pytest.mark.mutating
-@pytest.mark.sd
-@pytest.mark.usb
 @pytest.mark.requirement("HFT-010")
 @pytest.mark.requirement("HFT-011")
 @pytest.mark.requirement("FILE-030")
 @pytest.mark.requirement("FILE-031")
-def test_gcodes_token_and_embedded_text_map_independently(usb_client, sd_fixture) -> None:
-    """Checks exact gcodes path-token mapping without matching filename text."""
+def test_gcodes_cache_and_ordinary_sd_names_are_independent(usb_client, sd_fixture) -> None:
+    """Checks G-code cache handling without remapping ordinary SD names."""
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     suffix = uuid.uuid4().hex[:4].upper()
@@ -390,19 +335,19 @@ def test_gcodes_token_and_embedded_text_map_independently(usb_client, sd_fixture
     mapped_content = b"mapped-gcodes-token"
     embedded_content = b"ordinary-name-containing-gcode-text"
     try:
-        usb_client.exchange(GENERAL_COMMAND, b"mkdir /gcodes", 5.0)
+        usb_client.exchange(GENERAL_COMMAND, b"mkdir /sd/gcodes", 5.0)
         upload_file(
             usb_client,
-            f"/ignored/gcodes/{mapped_name}",
+            f"/sd/gcodes/{mapped_name}",
             mapped_content,
         )
-        assert download_file(usb_client, f"/gcodes/{mapped_name}") == mapped_content
+        assert download_file(usb_client, f"/sd/gcodes/{mapped_name}") == mapped_content
 
-        upload_file(usb_client, f"/{embedded_name}", embedded_content)
-        assert download_file(usb_client, f"/{embedded_name}") == embedded_content
+        upload_file(usb_client, f"/sd/{embedded_name}", embedded_content)
+        assert download_file(usb_client, f"/sd/{embedded_name}") == embedded_content
     finally:
-        _remove(usb_client, f"/gcodes/{mapped_name}")
-        _remove(usb_client, f"/{embedded_name}")
+        _remove(usb_client, f"/sd/gcodes/{mapped_name}")
+        _remove(usb_client, f"/sd/{embedded_name}")
 
 
 @pytest.mark.hardware
@@ -416,16 +361,16 @@ def test_serial_log_sentinel_mirrors_diagnostics(usb_client, sd_fixture) -> None
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     try:
-        upload_file(usb_client, "/serial.log", b"")
+        upload_file(usb_client, "/sd/serial.log", b"")
         usb_client.exchange(
             GENERAL_COMMAND, b"md5sum /MISSING.BIN", timeout_seconds=5.0
         )
         time.sleep(0.2)
-        log = download_file(usb_client, "/serial.log", verify_md5=False)
+        log = download_file(usb_client, "/sd/serial.log", verify_md5=False)
         assert b"SD access failed" in log
         assert b"MISSING.BIN" in log
     finally:
-        _remove(usb_client, "/serial.log")
+        _remove(usb_client, "/sd/serial.log")
 
 
 @pytest.mark.hardware
@@ -440,7 +385,7 @@ def test_cancelled_upload_removes_partial_file_and_md5_sidecar(
     """Cancels after one block and requires all partially written artifacts gone."""
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
-    path = f"/C{uuid.uuid4().hex[:5].upper()}.BIN"
+    path = f"/sd/C{uuid.uuid4().hex[:5].upper()}.BIN"
     content = bytes((index * 17 + 5) & 0xFF for index in range(1024))
     try:
         usb_client.send_encoded(
@@ -493,7 +438,7 @@ def test_tcp_filesystem_query_during_usb_upload(
     """Keeps an upload pending while another transport lists the same volume."""
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
-    path = f"/X{uuid.uuid4().hex[:5].upper()}.BIN"
+    path = f"/sd/X{uuid.uuid4().hex[:5].upper()}.BIN"
     content = bytes((index * 23 + 1) & 0xFF for index in range(2048))
     try:
         usb_client.send_encoded(
@@ -509,7 +454,7 @@ def test_tcp_filesystem_query_during_usb_upload(
         )
 
         listed = TcpProtocolClient(tcp_host).exchange(
-            GENERAL_COMMAND, b"ls /", timeout_seconds=5.0
+            GENERAL_COMMAND, b"ls /sd", timeout_seconds=5.0
         )
         assert listed
         assert b"error" not in _payload(listed).lower()
@@ -537,7 +482,7 @@ def test_full_mock_volume_retries_and_recovers_after_cancel(
     if os.getenv("Z1_HIL_MOCK_SD") != "1":
         pytest.skip("full-volume injection is restricted to Z1_HIL_MOCK_SD=1")
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
-    path = f"/V{uuid.uuid4().hex[:5].upper()}.BIN"
+    path = f"/sd/V{uuid.uuid4().hex[:5].upper()}.BIN"
     block = bytes((index * 13 + 3) & 0xFF for index in range(8192))
     announced_blocks = 128
     try:

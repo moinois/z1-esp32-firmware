@@ -35,8 +35,8 @@ TEST_CASE(hft_002_malformed_or_oversized_starts_are_rejected) {
     REQUIRE(!firmware::core::parse_file_transfer_start(ByteVector(129U, 'x')).has_value());
 }
 
-TEST_CASE(hft_003_path_is_escaped_nul_terminated_and_trimmed_at_both_ends) {
-    const ByteVector payload{'u', 'p', 'l', 'o', 'a', 'd', ' ', ' ', '\t', '/', 's', 'd', '/',
+TEST_CASE(hft_003_path_is_escaped_nul_terminated_and_trims_only_specified_edges) {
+    const ByteVector payload{'u', 'p', 'l', 'o', 'a', 'd', ' ', ' ', ' ', '/', 's', 'd', '/',
                              'a', 1U, 'b', '\r', '\n', ' ', 0U, 'x'};
 
     const auto result = firmware::core::parse_file_transfer_start(payload);
@@ -45,13 +45,24 @@ TEST_CASE(hft_003_path_is_escaped_nul_terminated_and_trimmed_at_both_ends) {
     REQUIRE_EQ(result->path, std::string("/sd/a b"));
 }
 
-TEST_CASE(hft_003_empty_or_more_than_255_byte_resolved_paths_are_rejected) {
+TEST_CASE(hft_003_empty_upload_is_rejected_but_trimmed_empty_download_is_root) {
     REQUIRE(!firmware::core::parse_file_transfer_start(bytes("upload    ")).has_value());
+    const auto download =
+        firmware::core::parse_file_transfer_start(bytes("download   "));
+    REQUIRE(download.has_value());
+    REQUIRE_EQ(download->path, std::string("/"));
+}
+
+TEST_CASE(hft_003_tabs_are_path_bytes_and_resolved_paths_are_bounded) {
+    const auto tabbed =
+        firmware::core::parse_file_transfer_start(bytes("upload \tfile\t"));
+    REQUIRE(tabbed.has_value());
+    REQUIRE_EQ(tabbed->path, std::string("/\tfile\t"));
     const std::string payload = "upload /" + std::string(255U, 'x');
     REQUIRE(!firmware::core::parse_file_transfer_start(bytes(payload)).has_value());
 }
 
-TEST_CASE(hft_010_exact_gcodes_component_selects_both_cache_paths) {
+TEST_CASE(hft_010_first_literal_gcodes_substring_selects_both_cache_paths) {
     const auto mapping =
         firmware::core::map_file_cache_paths("/sd/gcodes/jobs/a.gcode");
 
@@ -64,8 +75,14 @@ TEST_CASE(hft_010_exact_gcodes_component_selects_both_cache_paths) {
         firmware::core::map_file_cache_paths("/sd/prefixgcodes/jobs/a.gcode");
     REQUIRE(embedded.md5_path.has_value());
     REQUIRE_EQ(*embedded.md5_path,
-               std::string("/sd/.md5/prefixgcodes/jobs/a.gcode"));
-    REQUIRE(!embedded.compressed_path.has_value());
+               std::string("/sd/gcodes/.md5/jobs/a.gcode"));
+    REQUIRE_EQ(*embedded.compressed_path,
+               std::string("/sd/gcodes/.lz/jobs/a.gcode"));
+
+    const auto outside_sd =
+        firmware::core::map_file_cache_paths("/elsewhere/gcodes/job.nc");
+    REQUIRE_EQ(*outside_sd.md5_path,
+               std::string("/sd/gcodes/.md5/job.nc"));
 }
 
 TEST_CASE(hft_011_sd_paths_without_gcodes_have_only_a_root_md5_mapping) {

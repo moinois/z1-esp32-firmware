@@ -15,15 +15,17 @@ namespace {
 constexpr std::size_t maximum_start_size = 128U;
 constexpr std::size_t maximum_md5_input_size = 63U;
 
-// Reports whether a path edge character is trimmed by the transfer protocol.
-bool trimmed_character(char value) {
-    return value == '\t' || value == '\n' || value == '\r' || value == ' ';
+// Reports whether a trailing path byte is removed by HFT-003.
+bool trailing_trimmed_character(char value) {
+    return value == '\n' || value == '\r' || value == ' ';
 }
 
-// Removes protocol-defined whitespace from both ends of decoded path text.
+// HFT-003 removes leading ASCII spaces but preserves tabs as path bytes.
 std::string trim_path(std::string value) {
-    const auto first = std::find_if_not(value.begin(), value.end(), trimmed_character);
-    const auto last = std::find_if_not(value.rbegin(), value.rend(), trimmed_character).base();
+    const auto first = std::find_if_not(value.begin(), value.end(),
+                                        [](char byte) { return byte == ' '; });
+    const auto last = std::find_if_not(value.rbegin(), value.rend(),
+                                       trailing_trimmed_character).base();
     if (first >= last) {
         return {};
     }
@@ -58,10 +60,10 @@ std::optional<FileTransferStart> parse_file_transfer_start(BytesView payload) {
     const std::string decoded = decode_escaped(
         {payload.data() + path_offset, payload.size() - path_offset});
     const std::string trimmed = trim_path(decoded);
-    if (trimmed.empty()) {
+    if (trimmed.empty() && direction == FileTransferDirection::upload) {
         return std::nullopt;
     }
-    std::string resolved = resolve_sd_user_path(trimmed);
+    std::string resolved = normalize_path(trimmed);
     if (resolved.size() > file_transfer_limits::maximum_path_size) {
         return std::nullopt;
     }
@@ -69,7 +71,7 @@ std::optional<FileTransferStart> parse_file_transfer_start(BytesView payload) {
 }
 
 FileCachePaths map_file_cache_paths(std::string_view resolved_path) {
-    constexpr std::string_view marker = "/gcodes/";
+    constexpr std::string_view marker = "gcodes/";
     const std::size_t marker_position = resolved_path.find(marker);
     if (marker_position != std::string_view::npos) {
         const std::string relative(resolved_path.substr(marker_position + marker.size()));

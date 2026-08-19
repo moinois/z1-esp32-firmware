@@ -86,7 +86,7 @@ TEST_CASE(play_002_exact_play_space_treats_the_complete_payload_as_the_path) {
 
     REQUIRE(session.prepare(bytes("play "), 0U, port));
 
-    REQUIRE_EQ(port.opened_path, std::string("/sd"));
+    REQUIRE_EQ(port.opened_path, std::string("/"));
 }
 
 TEST_CASE(play_002_nonstandard_play_prefix_is_also_the_complete_path) {
@@ -95,7 +95,7 @@ TEST_CASE(play_002_nonstandard_play_prefix_is_also_the_complete_path) {
 
     REQUIRE(session.prepare(bytes("playfile.gcode"), 0U, port));
 
-    REQUIRE_EQ(port.opened_path, std::string("/sd/ile.gcode"));
+    REQUIRE_EQ(port.opened_path, std::string("/ile.gcode"));
 }
 
 TEST_CASE(play_001_and_002_remove_both_supported_play_prefixes) {
@@ -104,7 +104,7 @@ TEST_CASE(play_001_and_002_remove_both_supported_play_prefixes) {
 
     REQUIRE(session.prepare(bytes("play play x"), 0U, port));
 
-    REQUIRE_EQ(port.opened_path, std::string("/sd/x"));
+    REQUIRE_EQ(port.opened_path, std::string("/x"));
     REQUIRE_EQ(port.close_count, 0U);
 }
 
@@ -145,7 +145,7 @@ TEST_CASE(play_004_open_failure_broadcasts_exact_error_at_most_once_per_second) 
     REQUIRE_EQ(text(port.broadcasts.front().payload),
                std::string("Error:open file failed[P0]"));
     REQUIRE_EQ(port.diagnostics[2].message,
-               std::string("PLAY_FAIL[P0_OPEN] fopen failed file='/sd/one'"));
+               std::string("PLAY_FAIL[P0_OPEN] fopen failed file='/one'"));
 }
 
 TEST_CASE(play_005_status_is_empty_until_running_and_uses_only_valid_cached_md5) {
@@ -176,7 +176,7 @@ TEST_CASE(play_006_replacement_prepare_does_not_clear_the_running_flag) {
     REQUIRE(session.prepare(bytes("play /second"), 1U, port));
 
     REQUIRE(session.running());
-    REQUIRE_EQ(text(session.status_reply(port).payload), std::string("/sd/second|"));
+    REQUIRE_EQ(text(session.status_reply(port).payload), std::string("/second|"));
 }
 
 TEST_CASE(play_006_failed_replacement_retains_running_status_and_previous_path) {
@@ -189,8 +189,8 @@ TEST_CASE(play_006_failed_replacement_retains_running_status_and_previous_path) 
     REQUIRE(!session.prepare(bytes("play /missing"), 1U, port));
 
     REQUIRE(session.running());
-    REQUIRE_EQ(text(session.status_reply(port).payload), std::string("/sd/first|"));
-    REQUIRE_EQ(session.path(), std::string_view("/sd/first"));
+    REQUIRE_EQ(text(session.status_reply(port).payload), std::string("/first|"));
+    REQUIRE_EQ(session.path(), std::string_view("/first"));
     REQUIRE_EQ(session.generation(), 1U);
     REQUIRE_EQ(port.close_count, 0U);
 }
@@ -202,5 +202,5 @@ TEST_CASE(play_007_embedded_nul_terminates_the_command_path) {
 
     REQUIRE(session.prepare(command, 0U, port));
 
-    REQUIRE_EQ(port.opened_path, std::string("/sd/ok"));
+    REQUIRE_EQ(port.opened_path, std::string("/ok"));
 }

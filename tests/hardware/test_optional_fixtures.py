@@ -87,9 +87,9 @@ def test_mock_controller_completes_all_transfer_families(
         pytest.fail(f"mock controller transfer did not publish {expected!r}")
 
     files = {
-        "/lpc1768.bin": bytes((index * 11 + 7) & 0xFF for index in range(1300)),
-        "/config.txt": b"machine.name=Mock Z1\naxis.count=4\n",
-        "/factory.ini": b"serial=MOCK-001\ncalibration=nominal\n",
+        "/sd/lpc1768.bin": bytes((index * 11 + 7) & 0xFF for index in range(1300)),
+        "/sd/config.txt": b"machine.name=Mock Z1\naxis.count=4\n",
+        "/sd/factory.ini": b"serial=MOCK-001\ncalibration=nominal\n",
     }
     try:
         for path, content in files.items():
@@ -105,8 +105,8 @@ def test_mock_controller_completes_all_transfer_families(
             usb_client.exchange(GENERAL_COMMAND, command, 1.0)
             wait_for_result(result)
 
-        assert download_file(usb_client, "/config.txt") == files["/config.txt"]
-        for consumed_path in ("/lpc1768.bin", "/factory.ini"):
+        assert download_file(usb_client, "/sd/config.txt") == files["/sd/config.txt"]
+        for consumed_path in ("/sd/lpc1768.bin", "/sd/factory.ini"):
             with pytest.raises(FileTransferError, match="failed to open file"):
                 download_file(usb_client, consumed_path)
     finally:
@@ -131,7 +131,7 @@ def test_mock_controller_rejects_malformed_geometry_and_recovers(
     if os.getenv("Z1_HIL_MOCK_CONTROLLER") != "1":
         pytest.skip("mock controller not declared with Z1_HIL_MOCK_CONTROLLER=1")
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
-    path = "/lpc1768.bin"
+    path = "/sd/lpc1768.bin"
     content = bytes((index * 5 + 3) & 0xFF for index in range(700))
 
     def wait_for_result(expected: bytes) -> None:
@@ -158,7 +158,7 @@ def test_mock_controller_rejects_malformed_geometry_and_recovers(
             download_file(usb_client, path)
     finally:
         try:
-            usb_client.exchange(GENERAL_COMMAND, b"rm /lpc1768.bin", 4.0)
+            usb_client.exchange(GENERAL_COMMAND, b"rm /sd/lpc1768.bin", 4.0)
         except Exception:
             pass
 
@@ -177,7 +177,7 @@ def test_mock_controller_timeout_and_cancel_preserve_staged_firmware(
     if os.getenv("Z1_HIL_MOCK_CONTROLLER") != "1":
         pytest.skip("mock controller not declared with Z1_HIL_MOCK_CONTROLLER=1")
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
-    path = "/lpc1768.bin"
+    path = "/sd/lpc1768.bin"
     content = bytes((index * 13 + 9) & 0xFF for index in range(900))
 
     def wait_for_result(expected: bytes, timeout: float = 9.0) -> None:
@@ -272,7 +272,7 @@ def test_controller_uart_remains_live_during_host_file_transfer(
     if os.getenv("Z1_HIL_MOCK_CONTROLLER") != "1":
         pytest.skip("mock controller not declared with Z1_HIL_MOCK_CONTROLLER=1")
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
-    path = "/CXFER.BIN"
+    path = "/sd/CXFER.BIN"
     content = b"controller-traffic-during-host-transfer"
     connection = socket.create_connection((tcp_host, 2222), timeout=5.0)
     cancelled = False

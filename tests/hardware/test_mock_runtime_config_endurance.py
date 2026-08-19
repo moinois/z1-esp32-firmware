@@ -99,7 +99,7 @@ def test_configuration_errors_and_concurrent_updates_preserve_document(
     tcp = TcpProtocolClient(tcp_host)
     initial = b"MAINBOARD_USBA=before\nMAINBOARD_TCPB=before\n"
     try:
-        upload_file(usb_client, "/config.txt", initial)
+        upload_file(usb_client, "/sd/config.txt", initial)
         malformed = _payload(
             tcp.exchange(GENERAL_COMMAND, b"config-set sd ONLYKEY", 5.0)
         )
@@ -107,7 +107,7 @@ def test_configuration_errors_and_concurrent_updates_preserve_document(
             b"Usage: config-set source setting value # where source is sd, "
             b"setting is the key and value is the new value\r\n"
         )
-        assert download_file(usb_client, "/config.txt") == initial
+        assert download_file(usb_client, "/sd/config.txt") == initial
 
         with ThreadPoolExecutor(max_workers=2) as executor:
             usb_result = executor.submit(
@@ -125,13 +125,13 @@ def test_configuration_errors_and_concurrent_updates_preserve_document(
             assert b"has been set" in _payload(usb_result.result())
             assert b"has been set" in _payload(tcp_result.result())
 
-        content = download_file(usb_client, "/config.txt")
+        content = download_file(usb_client, "/sd/config.txt")
         assert b"MAINBOARD_USBA=usb-value" in content
         assert b"MAINBOARD_TCPB=tcp-value" in content
         assert b"MAINBOARD_USBA=" in content and b"MAINBOARD_TCPB=" in content
     finally:
-        _remove(usb_client, "/config.txt")
-        _remove(usb_client, "/config.tmp")
+        _remove(usb_client, "/sd/config.txt")
+        _remove(usb_client, "/sd/config.tmp")
 
 
 @pytest.mark.hardware
@@ -147,7 +147,7 @@ def test_mock_sd_repeated_transfer_and_metadata_cycles(usb_client, sd_fixture) -
     """Repeatedly uploads, verifies, renames, and deletes varied FAT files."""
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
-    directory = f"/E{uuid.uuid4().hex[:5].upper()}"
+    directory = f"/sd/E{uuid.uuid4().hex[:5].upper()}"
     try:
         created = _payload(
             usb_client.exchange(
@@ -209,7 +209,7 @@ def test_mock_sd_usb_roundtrips_varied_large_frames(
         (8192, 64 * 1024),
     )
     for case, (block_size, size) in enumerate(cases):
-        path = f"/L{stress_round}{case}{uuid.uuid4().hex[:3].upper()}.BIN"
+        path = f"/sd/L{stress_round}{case}{uuid.uuid4().hex[:3].upper()}.BIN"
         content = bytes(
             (index * (case * 10 + 17) + block_size) & 0xFF
             for index in range(size)

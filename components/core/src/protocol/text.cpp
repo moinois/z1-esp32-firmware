@@ -32,7 +32,6 @@ std::string decode_escaped(BytesView input) {
     return output;
 }
 std::string normalize_path(std::string input) {
-    std::replace(input.begin(), input.end(), '\\', '/');
     std::vector<std::string_view> parts;
     for (std::size_t start = 0; start <= input.size();) {
         const auto end = input.find('/', start);

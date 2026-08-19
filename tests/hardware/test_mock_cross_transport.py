@@ -111,7 +111,7 @@ def test_configuration_get_and_set_are_shared_between_usb_and_tcp(
     tcp = TcpProtocolClient(tcp_host)
     initial = b"# cross-transport HIL\nMAINBOARD_HILVALUE=before\n"
     try:
-        upload_file(usb_client, "/config.txt", initial)
+        upload_file(usb_client, "/sd/config.txt", initial)
 
         usb_read = usb_client.exchange(
             GENERAL_COMMAND, b"config-get sd HILVALUE", 5.0
@@ -123,7 +123,7 @@ def test_configuration_get_and_set_are_shared_between_usb_and_tcp(
         )
         assert b"sd: HILVALUE has been set to from-tcp" in _payload(tcp_set)
         assert b"MAINBOARD_HILVALUE=from-tcp" in download_file(
-            usb_client, "/config.txt"
+            usb_client, "/sd/config.txt"
         )
 
         usb_set = usb_client.exchange(
@@ -140,11 +140,11 @@ def test_configuration_get_and_set_are_shared_between_usb_and_tcp(
         )
         assert b"cloud source does not exist" in _payload(invalid)
         assert b"MAINBOARD_HILVALUE=from-usb" in download_file(
-            usb_client, "/config.txt"
+            usb_client, "/sd/config.txt"
         )
     finally:
-        _remove(usb_client, "/config.default")
-        _remove(usb_client, "/config.txt")
+        _remove(usb_client, "/sd/config.default")
+        _remove(usb_client, "/sd/config.txt")
 
 
 @pytest.mark.hardware
@@ -165,7 +165,7 @@ def test_configuration_default_and_restore_supports_long_filename(
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     initial = b"MAINBOARD_HILVALUE=snapshot\n"
     try:
-        upload_file(usb_client, "/config.txt", initial)
+        upload_file(usb_client, "/sd/config.txt", initial)
         saved = usb_client.exchange(GENERAL_COMMAND, b"config-default", 5.0)
         payload = _payload(saved)
         assert b"Settings save as default complete." in payload
@@ -177,10 +177,10 @@ def test_configuration_default_and_restore_supports_long_filename(
             GENERAL_COMMAND, b"config-restore", 5.0
         )
         assert b"Settings restored complete." in _payload(restored)
-        assert download_file(usb_client, "/config.txt") == initial
+        assert download_file(usb_client, "/sd/config.txt") == initial
     finally:
-        _remove(usb_client, "/config.default")
-        _remove(usb_client, "/config.txt")
+        _remove(usb_client, "/sd/config.default")
+        _remove(usb_client, "/sd/config.txt")
 
 
 @pytest.mark.hardware
@@ -201,7 +201,7 @@ def test_tcp_filesystem_mutations_are_visible_over_usb(
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     tcp = TcpProtocolClient(tcp_host)
     suffix = uuid.uuid4().hex[:5].upper()
-    directory = f"/T{suffix}"
+    directory = f"/sd/T{suffix}"
     source = f"{directory}/SOURCE.BIN"
     destination = f"{directory}/MOVED.BIN"
     content = b"cross-transport-filesystem-state"
@@ -210,8 +210,8 @@ def test_tcp_filesystem_mutations_are_visible_over_usb(
             GENERAL_COMMAND, f"mkdir {directory}".encode("ascii"), 5.0
         )
         assert b"created directory" in _payload(created).lower()
-        listed = usb_client.exchange(GENERAL_COMMAND, b"ls /", 5.0)
-        assert directory[1:].encode("ascii") in _payload(listed)
+        listed = usb_client.exchange(GENERAL_COMMAND, b"ls /sd", 5.0)
+        assert directory.rsplit("/", 1)[1].encode("ascii") in _payload(listed)
 
         upload_file(usb_client, source, content)
         renamed = tcp.exchange(
@@ -248,8 +248,8 @@ def test_usb_upload_ownership_rejects_tcp_then_recovers(
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     suffix = uuid.uuid4().hex[:5].upper()
-    usb_path = f"/U{suffix}.BIN"
-    tcp_path = f"/T{suffix}.BIN"
+    usb_path = f"/sd/U{suffix}.BIN"
+    tcp_path = f"/sd/T{suffix}.BIN"
     usb_content = bytes((index * 7 + 3) & 0xFF for index in range(900))
     tcp_content = bytes((index * 11 + 5) & 0xFF for index in range(1200))
     tcp = TcpProtocolClient(tcp_host)
@@ -316,8 +316,8 @@ def test_tcp_upload_ownership_rejects_usb_then_recovers(
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     suffix = uuid.uuid4().hex[:5].upper()
-    tcp_path = f"/P{suffix}.BIN"
-    usb_path = f"/Q{suffix}.BIN"
+    tcp_path = f"/sd/P{suffix}.BIN"
+    usb_path = f"/sd/Q{suffix}.BIN"
     tcp_content = bytes((index * 13 + 9) & 0xFF for index in range(800))
     usb_content = bytes((index * 17 + 1) & 0xFF for index in range(1100))
     connection: socket.socket | None = None

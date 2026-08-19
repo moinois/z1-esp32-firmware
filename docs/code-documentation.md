@@ -15,7 +15,7 @@ components/
 │       ├── can/                  CANopen node, dictionary, PDO, SDO, timing
 │       ├── configuration/        Configuration syntax and JSON policies
 │       ├── connectivity/         Wi-Fi and discovery policies
-│       ├── filesystem/           Path sandbox, syntax, transfer mapping
+│       ├── filesystem/           Path normalization, SD constants, transfer mapping
 │       ├── media/                AVI parsing/writing and preview policies
 │       ├── network/              Network policy and discovery formatting
 │       ├── protocol/             Frames, CRC, text, status, limits
@@ -67,9 +67,10 @@ tests/                              Verification tree mirroring the domains
   aliases, or security policy is not obvious from the syntax.
 - `components/core` and `components/application` must remain usable without
   ESP-IDF; target details belong in `main` adapters.
-- User-path authority is documented in `core/filesystem/sd_user_path.hpp` and
-  ADR-016. Normative `/sd/...` response formatting is documented at the
-  response sites and in the requirements matrix.
+- General user paths follow `core/protocol/text.hpp`; the SD mount constants in
+  `core/filesystem/sd_user_path.hpp` are reserved for firmware-owned content.
+  The superseded sandbox and its Community Edition rationale remain recorded
+  in ADR-016.
 - Requirement IDs belong in tests and requirements documentation, not in every
   implementation comment.
 

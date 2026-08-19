@@ -15,8 +15,9 @@ TEST_CASE(esc_002_first_nul_terminates_text) {
     REQUIRE_EQ(firmware::core::decode_escaped(ByteVector{'a', 0, 'b'}), std::string("a"));
 }
 
-TEST_CASE(hft_004_path_normalization_handles_both_separators_and_parent_components) {
-    REQUIRE_EQ(firmware::core::normalize_path("foo\\bar/../baz"), std::string("/foo/baz"));
+TEST_CASE(hft_004_path_normalization_uses_only_slash_as_a_separator) {
+    REQUIRE_EQ(firmware::core::normalize_path("foo\\bar/baz"),
+               std::string("/foo\\bar/baz"));
     REQUIRE_EQ(firmware::core::normalize_path("../../sd/file"), std::string("/sd/file"));
 }
 

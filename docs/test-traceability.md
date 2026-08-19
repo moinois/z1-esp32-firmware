@@ -54,7 +54,7 @@ Portable startup and adapter-selection cases are in `tests/runtime/` and
 
 | Test group | What it verifies | Requirements |
 |---|---|---|
-| `tests/storage/test_file_transfer_paths.cpp`, `test_file_transfer_admission.cpp` | Path normalization, sandboxing, cache paths, owner admission, pending starts, and release ordering. | HFT-001–HFT-014, HFT-020–HFT-025, OWN-001–OWN-008 |
+| `tests/storage/test_file_transfer_paths.cpp`, `test_file_transfer_admission.cpp` | Root-relative path normalization, literal `gcodes/` cache paths, owner admission, pending starts, and release ordering. | HFT-001–HFT-014, HFT-020–HFT-025, OWN-001–OWN-008 |
 | `tests/storage/test_file_upload.cpp`, `test_file_download.cpp`, `test_file_hash_command.cpp` | Upload/download framing, retries, MD5 sidecars, missing/invalid metadata, offsets, and terminal responses. | HFTU-001–HFTU-010, HFTD-001–HFTD-009, FILE-027–FILE-029 |
 | `tests/hardware/test_sd_storage.py`, `test_file_transfer_recovery.py`, `test_mock_transfer_errors.py` | Target round trips, large frames, retries after silence, cancellation cleanup, MD5 recovery, path confinement, and owner reuse. | HFT-004, HFT-010–HFT-011, HFT-020–HFT-025, HFTU-001–HFTU-010, HFTD-001–HFTD-009, OWN-003, OWN-008 |
 
@@ -63,7 +63,7 @@ Portable startup and adapter-selection cases are in `tests/runtime/` and
 | Test group | What it verifies | Requirements |
 |---|---|---|
 | `tests/storage/test_sd_card_lifecycle.cpp`, `test_sd_access_diagnostic.cpp` | Mount/unmount ordering, absence, capacity policy, and diagnostic reason mapping. | SD-001–SD-008 |
-| `tests/storage/test_sd_user_path.cpp`, `test_filesystem_syntax.cpp` | Logical `/sd` sandbox, aliases, separators, traversal rejection, and `gcodes` token mapping. | FILE-001–FILE-005, FILE-030–FILE-031, HFT-004, HFT-010–HFT-011 |
+| `tests/storage/test_sd_user_path.cpp`, `test_filesystem_syntax.cpp` | Central firmware-owned SD paths, `/`-only separators, root-relative resolution, component normalization, and cache mapping. | FILE-001–FILE-005, FILE-030–FILE-031, HFT-004, HFT-010–HFT-011 |
 | `tests/storage/test_directory_listing.cpp`, `test_filesystem_commands.cpp` | Listing, type replies, mkdir/rm/mv, truncation and allocation-failure behavior. | FILE-011–FILE-026, DIAG-028 |
 | `tests/configuration/test_configuration_files.cpp`, `test_configuration_document.cpp`, `test_configuration_get.cpp`, `test_configuration_set.cpp` | Bytewise config copies, long filename `config.default`, parsing, namespaces, hashes, and bounded responses. | CFG-001–CFG-006, CFG-010, CFG-015–CFG-016, CFG-020–CFG-023, CFG-030–CFG-034 |
 | `tests/hardware/test_mock_cross_transport.py::test_configuration_default_and_restore_supports_long_filename` | Positive target verification of `/sd/config.default` under current SD-009 long-filename policy. | SD-009, CFG-001, CFG-004–CFG-006 |

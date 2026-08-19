@@ -33,7 +33,7 @@
 #include "application/playback/preview_playback.hpp"
 #include "application/playback/preview_frame_step.hpp"
 #include "core/media/preview_path_policy.hpp"
-#include "core/filesystem/sd_user_path.hpp"
+#include "core/protocol/text.hpp"
 #include "core/media/avi_preview.hpp"
 #include "core/web/multipart_extractor.hpp"
 #include "core/web/multipart_policy.hpp"
@@ -1078,7 +1078,7 @@ esp_err_t preview_websocket_handler(httpd_req_t* request) {
         return ESP_OK;
     }
     const std::string preview_path =
-        firmware::core::resolve_sd_user_path(preview_request.path);
+        firmware::core::normalize_path(preview_request.path);
     if (!firmware::core::preview_path_allowed(preview_path)) {
         const auto response = firmware::application::format_preview_response(
             preview_request.command, preview_request.sequence, -1);

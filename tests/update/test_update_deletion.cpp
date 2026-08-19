@@ -188,5 +188,5 @@ TEST_CASE(upd_063_final_failure_broadcasts_exact_unlimited_error) {
     REQUIRE_EQ(
         port.broadcasts,
         std::vector<std::string>({
-            "Error: failed to delete [/lpc1768.bin], please delete manually.\r\n"}));
+            "Error: failed to delete [/sd/lpc1768.bin], please delete manually.\r\n"}));
 }

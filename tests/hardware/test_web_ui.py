@@ -90,7 +90,7 @@ def test_configuration_api_reads_validates_and_persists(
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     fixture = b"# HIL web configuration\nMAINBOARD_HILVALUE=before\n"
     try:
-        upload_file(usb_client, "/config.txt", fixture)
+        upload_file(usb_client, "/sd/config.txt", fixture)
         status, content_type, body = _request(tcp_host, "GET", "/api/config")
         assert status == 200
         assert content_type == "application/json"
@@ -103,7 +103,7 @@ def test_configuration_api_reads_validates_and_persists(
             tcp_host, "POST", "/api/config", request, "application/json"
         )
         assert (status, content_type, body) == (200, "application/json", b'{"ok":true}')
-        stored = download_file(usb_client, "/config.txt")
+        stored = download_file(usb_client, "/sd/config.txt")
         assert b"MAINBOARD_HILVALUE=after" in stored
 
         invalid = json.dumps({"key": "HILVALUE", "value": "bad\nline"}).encode()
@@ -114,6 +114,6 @@ def test_configuration_api_reads_validates_and_persists(
         assert body == b"Invalid configuration key or value"
     finally:
         try:
-            usb_client.exchange(GENERAL_COMMAND, b"rm /config.txt", 4.0)
+            usb_client.exchange(GENERAL_COMMAND, b"rm /sd/config.txt", 4.0)
         except Exception:
             pass

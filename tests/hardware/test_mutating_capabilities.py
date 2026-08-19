@@ -176,7 +176,7 @@ def test_native_usb_upload_continues_after_disconnect(
     """Continues an owned upload at the pending sequence after a bus reset."""
 
     _require_usb_reset()
-    path = f"/U{stress_round}{uuid.uuid4().hex[:4].upper()}.BIN"
+    path = f"/sd/U{stress_round}{uuid.uuid4().hex[:4].upper()}.BIN"
     block_size = 4096
     content = bytes((index * 31 + 9) & 0xFF for index in range(3 * block_size))
     blocks = [

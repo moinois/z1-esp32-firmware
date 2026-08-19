@@ -386,7 +386,7 @@ host-only HIL dependencies and are never part of the firmware build graph.
 <a id="adr-012"></a>
 ## ADR-012: Sandbox user-controlled filesystem paths beneath the SD volume
 
-- **Status:** Accepted
+- **Status:** Superseded by strict HFT-004 conformance
 - **Date:** 2026-07-27
 
 ### Context
@@ -396,9 +396,10 @@ ESP-IDF exposes a global VFS root containing mounts such as `/sd` and
 `ls /` to observe that implementation namespace and could direct uploads away
 from removable storage.
 
-### Decision
+### Historical decision
 
-All USB-, TCP-, controller-, and browser-supplied filesystem paths use `/` as
+The implementation formerly made all USB-, TCP-, controller-, and
+browser-supplied filesystem paths use `/` as
 the logical SD root and pass through one portable resolver before target I/O.
 The physical result is exactly `/sd` or a descendant. A leading `/sd` remains a
 compatibility alias. An exact `gcodes` path component selects the canonical
@@ -413,13 +414,13 @@ operations log that state before classifying POSIX errno, allowing an absent
 card to be distinguished from a missing path without changing command response
 contracts such as `FILE-015`.
 
-This sandbox is an implementation security policy retained independently of
-whether the upstream specification states the confinement as explicitly. The
-upstream repository remains the normative external reference and is not
-modified by this project; the local policy narrows user-controlled storage I/O
-to the SD volume without changing the documented wire responses.
+This policy was removed when the project returned to a strict reading of
+HFT-004. General host paths now resolve from `/`; only requirements that
+explicitly name `/sd` or `/sd/gcodes` select those locations. The stronger
+authority boundary remains a candidate for the Community Edition, where it can
+be documented as an intentional security extension rather than conformance.
 
-### Consequences
+### Historical consequences
 
 - User input cannot select `/spiffs` or another VFS mount.
 - Path normalization and cache mapping are transport-independent and host-tested.
@@ -571,7 +572,7 @@ from the persisted file.
 <a id="adr-016"></a>
 ## ADR-016: Sandbox all user file paths below the SD mount point
 
-- **Status:** Accepted
+- **Status:** Superseded by strict HFT-004 conformance
 - **Date:** 2026-08-09
 
 ### Context
@@ -581,7 +582,7 @@ paths and compatibility aliases. Treating those forms as unrestricted host
 filesystem paths would allow a user command to address unrelated VFS mounts or
 internal files. The firmware has one intended user storage root: `/sd`.
 
-### Decision
+### Historical decision
 
 Every path supplied by a user through USB, TCP, HTTP, playback, preview, or
 controller-originated file commands is normalized and resolved beneath `/sd`.
@@ -593,10 +594,12 @@ explicitly defines such a presentation.
 Internal target code may use physical paths directly only through the shared
 path helpers.
 
-This is a deliberate security and interoperability clarification. If a literal
-reading of an upstream path rule appears to allow access outside `/sd`, the
-sandbox takes precedence; the implementation does not expose other VFS names
-or permit traversal. The upstream specification remains unchanged.
+This local policy no longer applies in the specification-derived firmware.
+HFT-004 normalization is authoritative: `/` is the only separator, relative
+paths resolve against `/`, and `.`/`..` components are normalized without an
+implicit `/sd` prefix. Firmware-owned SD resources still use the centrally
+defined mount point. The former sandbox design is preserved here so a future
+Community Edition can reintroduce it explicitly.
 
 ### Consequences
 
