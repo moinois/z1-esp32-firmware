@@ -15,7 +15,7 @@ recoverable mutations. Re-run this audit whenever a status leaves `Pending fixtu
 |---|---:|
 | Ready on the current Z1 | 0 |
 | Ready through mocks or deterministic testhooks | 19 |
-| Needs controlled controller or machine interaction | 29 |
+| Needs controlled controller or machine interaction | 27 |
 | Needs external instrumentation or hardware | 13 |
 
 ## Ready on the current Z1
@@ -56,7 +56,6 @@ The hardware is present, but these cases can affect controller firmware, configu
 - [LPC-010--LPC-014 common controller-transfer wire layer](physical-verification-evidence.md#phys-090)
 - [LPC-015--LPC-019 common transfer state behavior](physical-verification-evidence.md#phys-091)
 - [LPCFW-001--LPCFW-006 controller firmware transfer](physical-verification-evidence.md#phys-092)
-- [LPCCFG-001--LPCCFG-006 controller configuration transfer](physical-verification-evidence.md#phys-093)
 - [LPCFAC-001--LPCFAC-005 controller factory-data transfer](physical-verification-evidence.md#phys-094)
 - [PLAY-001--PLAY-007 streamed-play preparation and status](physical-verification-evidence.md#phys-095)
 - [PLAY-010--PLAY-011, PLAY-018 play controller lifecycle](physical-verification-evidence.md#phys-096)
@@ -66,7 +65,6 @@ The hardware is present, but these cases can affect controller firmware, configu
 - [PLAY-021 streamed-play family inbox](physical-verification-evidence.md#phys-100)
 - [PLAY-022--PLAY-023 streamed-play resource failures](physical-verification-evidence.md#phys-101)
 - [UPD-053--UPD-055 controller update handoff](physical-verification-evidence.md#phys-108)
-- [DIAG-034 controller-transfer lifecycle diagnostics](physical-verification-evidence.md#phys-134)
 - [DIAG-035--DIAG-036 controller-transfer failure and layout diagnostics](physical-verification-evidence.md#phys-135)
 - [DIAG-037 streamed-play diagnostics](physical-verification-evidence.md#phys-136)
 - [RUN-033--RUN-035 play-state bridge](physical-verification-evidence.md#phys-215)

@@ -124,9 +124,9 @@ public `webui` directory unless this local-only option is explicitly supplied.
 directory. Release mode requires `--live`, enables ESP-IDF size optimization,
 and rejects mock adapter selections. It also defaults release logging to
 warnings, retaining errors while removing non-normative informational log
-strings. DIAG-025 is an intentional narrow exception: its `APP_BLUFI` and
-`Custom Data` INFO call sites are retained and enabled per tag because the
-specification requires those records. The shared factory remains in the source
+strings. DIAG-025 and DIAG-034--DIAG-036 are intentional narrow exceptions:
+the BLUFI and controller-transfer INFO call sites are retained and enabled per
+tag because the specification requires those records. The shared factory remains in the source
 tree, but compile-time `if constexpr` selection plus linker garbage collection
 removes unreferenced mock paths from the live image. `--mainboard-version`
 supplies the aggregate package metadata and requires `--release`; it does not

@@ -1082,3 +1082,15 @@ and ten repeated status exchanges passed over the native-USB-to-UART path. The
 report is `build/hil-physical-controller-refresh.json`. This closes the basic
 bidirectional integration boundary; electrical timing, forced UART faults, and
 controller-initiated destructive transfer families remain separately gated.
+
+The normal controller configuration refresh was subsequently observed without
+issuing a controller mutation. A release build retained the normative
+`cfg_LPC1768` INFO lifecycle tag, `/sd/serial.log` captured the controller's
+`0xd1` start request, the fixed 512-byte `0xd2` layout response, and requested
+`0xd3` data. `/sd/config.txt` had SHA-256
+`9279f939b336085101fcc96d66a6e847a256d34d6f1cc3ba49afdb68b9367af3` both
+before and after the OTA reboot. The physical controller suite then passed 2/2,
+including ten repeated status exchanges. This proves that startup supplies the
+SD configuration to the controller; it does not by itself prove that the
+controller contains no persistent storage. The retained trace is
+`build/controller-config-startup.log`.

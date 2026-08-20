@@ -19,10 +19,24 @@
 #include <unistd.h>
 
 namespace firmware::target {
+namespace {
+
+constexpr char firmware_transfer_tag[] = "dfu_LPC1768";
+constexpr char configuration_transfer_tag[] = "cfg_LPC1768";
+constexpr char factory_transfer_tag[] = "factory_LPC1768";
+
+}  // namespace
 
 ControllerTransferAdapter::ControllerTransferAdapter(
     ControllerChannelAdapter& channel)
-    : channel_(channel) {}
+    : channel_(channel) {
+    // DIAG-034--DIAG-036 require these lifecycle records in production. Keep
+    // only their three tags at INFO when release builds lower the global log
+    // level to WARN; unrelated informational strings remain optimized out.
+    esp_log_level_set(firmware_transfer_tag, ESP_LOG_INFO);
+    esp_log_level_set(configuration_transfer_tag, ESP_LOG_INFO);
+    esp_log_level_set(factory_transfer_tag, ESP_LOG_INFO);
+}
 
 bool ControllerTransferAdapter::configuration_available() {
     return ConfigurationFileStore{}.exists();
@@ -147,7 +161,10 @@ void ControllerTransferAdapter::diagnose(
     if (diagnostic.error) {
         ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
     } else {
-        ESP_LOGI(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+        // ESP_LOG_LEVEL retains this normative INFO call site even when the
+        // release profile compiles ordinary ESP_LOGI sites out.
+        ESP_LOG_LEVEL(ESP_LOG_INFO, diagnostic.tag.data(), "%s",
+                      diagnostic.message.c_str());
     }
 }
 
