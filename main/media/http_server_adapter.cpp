@@ -110,6 +110,7 @@ constexpr TickType_t live_frame_interval = pdMS_TO_TICKS(50U);
 constexpr UBaseType_t live_control_queue_capacity = 8U;
 constexpr TickType_t live_start_admission_wait = pdMS_TO_TICKS(500U);
 constexpr TickType_t live_stop_admission_wait = pdMS_TO_TICKS(200U);
+constexpr TickType_t live_task_completion_wait = pdMS_TO_TICKS(10000U);
 
 enum class LiveControlRequestAction : std::uint8_t { start, stop };
 
@@ -123,6 +124,7 @@ struct LiveControlRequest {
 
 QueueHandle_t live_control_queue = nullptr;
 SemaphoreHandle_t live_websocket_send_mutex = nullptr;
+SemaphoreHandle_t live_stream_stopped = nullptr;
 
 esp_err_t send_live_websocket_frame(httpd_handle_t handle, int socket_id,
                                     httpd_ws_frame_t* frame) {
@@ -131,8 +133,12 @@ esp_err_t send_live_websocket_frame(httpd_handle_t handle, int socket_id,
             pdTRUE) {
         return ESP_ERR_TIMEOUT;
     }
-    const esp_err_t result =
-        httpd_ws_send_frame_async(handle, socket_id, frame);
+    // Live and preview producers run outside the HTTP server task. Queue the
+    // send through ESP-IDF and wait for completion so it cannot race the
+    // server's receive/close handling for the same session. The lower-level
+    // httpd_ws_send_frame_async() call performs the socket write immediately
+    // in its caller despite its historical name.
+    const esp_err_t result = httpd_ws_send_data(handle, socket_id, frame);
     xSemaphoreGive(live_websocket_send_mutex);
     return result;
 }
@@ -206,12 +212,18 @@ void live_stream_task(void* parameter) {
         // fixed post-send delay, which would accumulate capture/send latency.
         vTaskDelayUntil(&capture_started, live_frame_interval);
     }
+    if (live_stream_stopped != nullptr) {
+        xSemaphoreGive(live_stream_stopped);
+    }
     delete context;
     vTaskDelete(nullptr);
 }
 
 // Starts a generation-bound live stream for one admitted socket.
 bool start_live_stream(httpd_handle_t handle, int socket_id) {
+    // A completion token belongs to the preceding generation and must never
+    // let a later stop appear complete before its task has actually exited.
+    static_cast<void>(xSemaphoreTake(live_stream_stopped, 0U));
     const auto generation = live_generation.fetch_add(
                                 1U, std::memory_order_acq_rel) +
                             1U;
@@ -270,6 +282,7 @@ void live_arbiter_task(void*) {
                                                                 "start_stream")
                                    : live_control_policy.handle(socket_id,
                                                                 "stop_stream");
+        bool preceding_stream_stopped = true;
         for (const auto& decision : decisions) {
             if (decision.action ==
                 firmware::application::LiveControlAction::preempted) {
@@ -284,12 +297,25 @@ void live_arbiter_task(void*) {
                     request.handle, static_cast<int>(decision.socket_id),
                     &response));
             }
-            if (decision.action == firmware::application::LiveControlAction::stop ||
-                decision.action ==
-                    firmware::application::LiveControlAction::preempted) {
+            if (decision.action == firmware::application::LiveControlAction::stop) {
                 live_generation.fetch_add(1U, std::memory_order_acq_rel);
+                // The old task may already be inside capture or a socket send.
+                // Waiting for its explicit completion prevents a reused file
+                // descriptor from inheriting that generation's final frame.
+                preceding_stream_stopped =
+                    xSemaphoreTake(live_stream_stopped,
+                                   live_task_completion_wait) == pdTRUE;
             }
             if (decision.action == firmware::application::LiveControlAction::start) {
+                if (!preceding_stream_stopped) {
+                    // Never overlap generations after a bounded stop failure.
+                    // Release policy ownership so a later request can retry.
+                    static_cast<void>(
+                        live_control_policy.on_disconnect(decision.socket_id));
+                    static_cast<void>(httpd_sess_trigger_close(
+                        request.handle, static_cast<int>(decision.socket_id)));
+                    continue;
+                }
                 preempt_preview_for_live(request.handle);
                 if (!start_live_stream(
                         request.handle, static_cast<int>(decision.socket_id))) {
@@ -323,11 +349,19 @@ bool start_live_arbiter() {
         ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
         return false;
     }
+    live_stream_stopped = xSemaphoreCreateBinary();
+    if (live_stream_stopped == nullptr) {
+        vSemaphoreDelete(live_websocket_send_mutex);
+        live_websocket_send_mutex = nullptr;
+        return false;
+    }
     live_control_queue = xQueueCreate(live_control_queue_capacity,
                                       sizeof(LiveControlRequest));
     if (live_control_queue == nullptr) {
         vSemaphoreDelete(live_websocket_send_mutex);
         live_websocket_send_mutex = nullptr;
+        vSemaphoreDelete(live_stream_stopped);
+        live_stream_stopped = nullptr;
         const auto diagnostic = firmware::application::live_media_diagnostic(
             firmware::application::LiveMediaDiagnosticEvent::arbiter_queue_create_failed);
         ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
@@ -340,6 +374,8 @@ bool start_live_arbiter() {
         live_control_queue = nullptr;
         vSemaphoreDelete(live_websocket_send_mutex);
         live_websocket_send_mutex = nullptr;
+        vSemaphoreDelete(live_stream_stopped);
+        live_stream_stopped = nullptr;
         const auto diagnostic = firmware::application::live_media_diagnostic(
             firmware::application::LiveMediaDiagnosticEvent::arbiter_task_create_failed);
         ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());

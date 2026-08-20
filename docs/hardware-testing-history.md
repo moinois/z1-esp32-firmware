@@ -1040,3 +1040,19 @@ arbiter control sends could overlap on the old socket. The target now serializes
 those sends with a bounded mutex. After OTA installing the `0x169890`-byte
 release image, the physical test passed with real JPEGs and the exact compact
 old-owner JSON. The report is `build/hil-pending-media-preemption.json`.
+
+Subsequent repetitions exposed a second transport race: an external live task
+called ESP-IDF's low-level `httpd_ws_send_frame_async()` directly while the HTTP
+server task could receive or close the same socket. The API name is historical;
+the call performs the write in its caller. Live and preemption output now uses
+the blocking `httpd_ws_send_data()` queue, and ownership changes wait for an
+explicit old-task completion token before starting the next generation.
+
+The resulting standard release image was `0x169a10` bytes, leaving `0x265f0`
+bytes free in each normative OTA slot. OTA installation and USB
+re-enumeration passed. Ten consecutive executions of the complete physical
+camera suite then passed (30/30 cases), including repeated disconnect/reconnect,
+exact two-client preemption, and camera operation during HTTP, USB, and
+controller reads. Reports are retained as
+`build/hil-camera-queued-send-1.json` through
+`build/hil-camera-queued-send-10.json`.

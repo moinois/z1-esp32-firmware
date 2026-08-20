@@ -195,8 +195,11 @@ timeouts, malformed replies, cancellation, queue pressure, and UART
 fragmentation are exercised with the controller mock.
 
 Physical OV3660 tests verify JPEG framing, stream reconnect, successor ownership,
-preview, and concurrent USB/HTTP/controller traffic. Deterministic mock frames
-cover target error paths but not sensor quality or timing.
+preview, and concurrent USB/HTTP/controller traffic. Live and control frames are
+serialized through the HTTP server task so socket receive/close processing cannot
+race an external camera producer. Ten consecutive physical regression passes
+(30 cases) verify repeated disconnect, preemption, and cross-service recovery.
+Deterministic mock frames cover target error paths but not sensor quality or timing.
 
 CANopen behavior is host-tested and TWAI composition target-built. No physical
 CAN conformance is claimed until an active peer can drive traffic and faults.
