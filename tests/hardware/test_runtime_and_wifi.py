@@ -11,7 +11,11 @@ import urllib.request
 
 import pytest
 
-from tests.hardware.hil_protocol import GENERAL_COMMAND, TcpProtocolClient
+from tests.hardware.hil_protocol import (
+    GENERAL_COMMAND,
+    SINGLE_COMMAND,
+    TcpProtocolClient,
+)
 
 
 def _payloads(frames) -> bytes:
@@ -28,6 +32,33 @@ def test_usb_runtime_and_serial_reads(usb_client) -> None:
         usb_client.exchange(GENERAL_COMMAND, b"sys-time", 4.0)
     )
     assert usb_client.exchange(GENERAL_COMMAND, b"sn-get", 4.0)
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.usb
+@pytest.mark.requirement("REC-001")
+@pytest.mark.requirement("REC-002")
+def test_usb_recording_control_starts_and_always_stops_while_idle(usb_client) -> None:
+    """Exercises M951/M952 only when the physical controller reports idle."""
+
+    status = usb_client.exchange(SINGLE_COMMAND, b"?", 4.0)
+    snapshots = [frame.payload for frame in status if frame.frame_type == 0x81]
+    if not snapshots or not snapshots[-1].startswith(b"<Idle|"):
+        pytest.skip("recording control requires an idle physical machine")
+
+    try:
+        started = usb_client.exchange(GENERAL_COMMAND, b"M951", 4.0)
+        assert any(
+            frame.frame_type == GENERAL_COMMAND and frame.payload == b"ok\n"
+            for frame in started
+        )
+    finally:
+        stopped = usb_client.exchange(GENERAL_COMMAND, b"M952", 4.0)
+        assert any(
+            frame.frame_type == GENERAL_COMMAND and frame.payload == b"ok\n"
+            for frame in stopped
+        )
 
 
 @pytest.mark.hardware

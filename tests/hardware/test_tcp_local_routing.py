@@ -47,8 +47,11 @@ def test_four_tcp_slots_route_local_families_to_their_origin(tcp_host: str) -> N
     """Runs four local families concurrently and checks origin-bound replies."""
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
-    if os.getenv("Z1_HIL_MOCK_CONTROLLER") != "1":
-        pytest.skip("deterministic status requires the controller mock")
+    preflight = _matching_payload(
+        _exchange(tcp_host, SINGLE_COMMAND, b"?"), 0x81
+    )
+    if not preflight.startswith(b"<Idle|"):
+        pytest.skip("recording control requires an idle physical machine")
 
     requests = (
         (GENERAL_COMMAND, b"M951"),

@@ -44,6 +44,25 @@ def _remove(client, path: str) -> None:
         pass
 
 
+def _read_optional(client, path: str) -> bytes | None:
+    """Captures an existing persistent file before a physical mutation."""
+
+    try:
+        return download_file(client, path)
+    except FileTransferError:
+        return None
+
+
+def _restore_optional(client, path: str, original: bytes | None) -> None:
+    """Restores exact pre-test bytes or the prior absence of one file."""
+
+    if original is None:
+        _remove(client, path)
+        return
+    upload_file(client, path, original)
+    assert download_file(client, path) == original
+
+
 def _required_frame(frames, expected_type: int):
     """Returns one required frame with useful wire evidence on failure."""
 
@@ -110,6 +129,7 @@ def test_configuration_get_and_set_are_shared_between_usb_and_tcp(
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     tcp = TcpProtocolClient(tcp_host)
     initial = b"# cross-transport HIL\nMAINBOARD_HILVALUE=before\n"
+    original = _read_optional(usb_client, "/sd/config.txt")
     try:
         upload_file(usb_client, "/sd/config.txt", initial)
 
@@ -143,8 +163,7 @@ def test_configuration_get_and_set_are_shared_between_usb_and_tcp(
             usb_client, "/sd/config.txt"
         )
     finally:
-        _remove(usb_client, "/sd/config.default")
-        _remove(usb_client, "/sd/config.txt")
+        _restore_optional(usb_client, "/sd/config.txt", original)
 
 
 @pytest.mark.hardware
@@ -164,6 +183,8 @@ def test_configuration_default_and_restore_supports_long_filename(
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     initial = b"MAINBOARD_HILVALUE=snapshot\n"
+    original_config = _read_optional(usb_client, "/sd/config.txt")
+    original_default = _read_optional(usb_client, "/sd/config.default")
     try:
         upload_file(usb_client, "/sd/config.txt", initial)
         saved = usb_client.exchange(GENERAL_COMMAND, b"config-default", 5.0)
@@ -179,8 +200,8 @@ def test_configuration_default_and_restore_supports_long_filename(
         assert b"Settings restored complete." in _payload(restored)
         assert download_file(usb_client, "/sd/config.txt") == initial
     finally:
-        _remove(usb_client, "/sd/config.default")
-        _remove(usb_client, "/sd/config.txt")
+        _restore_optional(usb_client, "/sd/config.default", original_default)
+        _restore_optional(usb_client, "/sd/config.txt", original_config)
 
 
 @pytest.mark.hardware
