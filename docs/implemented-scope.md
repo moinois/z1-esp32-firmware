@@ -308,7 +308,7 @@ The production capability inventory contains:
 - persistent-store initialization with erase-and-retry recovery; and
 - the nonfatal GPIO0 heartbeat service.
 
-The current host suite has 856 C++ tests, and the Python tooling suite has 55
+The current host suite has 856 C++ tests, and the Python tooling suite has 56
 tests. The latest portable coverage report is 96.20% lines, 98.52% functions,
 and 86.69% branches; regenerate it with `python3 tools/host_coverage.py`.
 The firmware also builds successfully as an ESP32-S3 application using ESP-IDF
