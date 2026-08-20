@@ -22,12 +22,13 @@ LOG or DIAG behavior. No physical result is claimed merely because a test exists
 
 ## Current portable verification snapshot
 
-As of 2026-08-19, the dependency-free C++ host suite contains 853 passing
-tests. The focused suites cover malformed AVI preview inputs, transfer setup,
-retry, timeout, sequence, and path failures, CANopen RPDO/TPDO boundaries,
+As of 2026-08-20, the dependency-free C++ host suite contains 856 passing
+tests. The focused suites cover USB reconnect scheduling, malformed AVI preview
+inputs, transfer setup, retry, timeout, sequence, and path failures, CANopen RPDO/TPDO boundaries,
 global host-output composition, streamed-play diagnostics and resource paths,
 filesystem-command failures, and storage-retention failure paths. The
-corresponding coverage report is 96.20% lines (9286/9653), 98.52% functions
+latest generated coverage report predates the three USB reconnect cases and is
+96.20% lines (9286/9653), 98.52% functions
 (931/945), and 86.69% branches (3835/4424). The Python tooling suite contains
 55 passing tests. These figures are
 portable-test evidence only; they do not replace physical SD, camera, CAN,
@@ -59,20 +60,24 @@ sandbox is recorded as superseded in
 [ADR-016](architecture-decisions.md#adr-016) and is reserved for a future
 Community Edition security policy.
 
-## Current backlog summary
+## Current completion summary
 
-| Area | Current state | Remaining evidence or implementation |
+`Implementation complete` means that no known production module is missing.
+It does not erase the explicitly listed physical or endurance gap. Detailed
+host, target, and HIL evidence remains in the requirement rows below.
+
+| Area | Implementation status | What remains |
 |---|---|---|
-| Direct OTA | Implemented, host-tested, target-built, and physically exercised across both partitions, rollback, and delayed transport | Package/controller end-to-end fixtures |
-| HTTP, TCP, Wi-Fi | Core paths and target adapters implemented; HTTP, WebSocket, TCP, Wi-Fi diagnostics, WLAN scanning, periodic station UDP discovery, credential persistence, populated SPIFFS, and `/updateffs` have HIL PASS; permanent four-slot workers passed 80-session churn and the final 94-case all-mock regression; manual reconnect accepts an already address-ready ESP-IDF snapshot | Longer physical RF-loss endurance remains environment-dependent; mock/host evidence does not replace RF conformance |
-| Configuration web interface | Responsive HTML/CSS/JavaScript UI loads and sorts current MAINBOARD settings, distinguishes existing/new records, tracks unsaved changes, posts only changes, supports authoritative reload, and shows firmware/Wi-Fi diagnostics; LAN trust-boundary policy is documented | Updated `spiffs.bin`, `/updateffs` reboot, assets, current-value enumeration and persistence HIL PASS 2026-08-01; no browser backend was available for cross-browser visual/accessibility automation |
-| USB | Target integration implemented; HIL through 2026-08-20 verifies descriptors, repeated requests, framing recovery, upload/download, MD5, three-round 64 KiB/8192-byte-frame stress, exact multi-block continuation across repeated bus resets, OTA bus disappearance/re-enumeration, stable maximum-frame processing, and two physical unplug/replug cycles without an ESP, Wi-Fi, or controller restart; the production TX drain and reconnect scheduler are target-independent and instrumented | Physical TinyUSB endpoint-stall injection remains; staging overflow, full-queue contention, partial writes, no-progress expiry, retained disconnect state, and reconnect timing are covered portably at the production boundary |
-| SD/config/logging | Portable behavior host-tested and target adapters built; storage HIL covers the PSRAM-backed FAT mock, including full-volume failure/recovery, cancel cleanup, concurrent USB/TCP access, diagnostics, and explicit `/sd` paths | Repository firmware physically listed, restored, downloaded, and MD5-verified `/sd/config.txt` over USB/TCP; removal/reinsertion evidence exists from the factory baseline, while injected physical media errors remain pending |
-| Camera/media | Live and deterministic mock camera adapters share one factory-selected lifecycle/capture surface; repeated resolution, multi-frame WebSocket lifecycle, preemption, concurrent HTTP/TCP, disconnect and successor HIL pass with the mock | Repository release image physically passes OV3660 JPEG streaming, disconnect/successor recovery, camera/HTTP/USB/controller coexistence, and repeated BLE/network load; recording endurance remains |
-| Controller/UART | Live and deterministic mock controller channels share one factory-selected interface; HIL through 2026-08-01 covers production framing, deliberately fragmented UART reads, periodic status/diagnostic exchange, snapshots, RSSI aggregation, USB/TCP replies, firmware/configuration/factory transfer handshakes, malformed geometry and controller-cancel recovery, five-second firmware timeout with routing recovery, staged-file preservation, controller-origin serial/record commands, and controller UART during an active host upload | Physical Z1 controller version/status/diagnostic reads and repeated coexistence queries pass; direct electrical fault/timing injection remains |
-| CANopen | Node, dictionary, expedited SDO, PDO, M942, heartbeat/error composition, digital-output diagnostics, and TWAI adapter implemented | Portable composition is host-tested; physical CAN fixture remains |
-| BLE/BLUFI | Provisioning lifecycle/security and portable wire policies implemented; Bleak HIL covers lifecycle, GATT, wire responses, error paths, DH/AES/CRC security, fragmentation, cross-transport load, reset recovery, and credential association | HIL PASS 2026-08-19 for all 15 read-only BLE tests, encrypted credential provisioning to the declared test network, and destructive same-image OTA reset with BLE disconnect, USB re-enumeration, and renewed advertising |
-| Persistence/runtime | NVS, clock, counters, observers, and transport command adapters target-built; OTA-reboot HIL verifies first-boot, counters, identity read state, and Wi-Fi recovery; build-gated open/commit fault injection is HIL-verified | Long-duration physical timing remains |
+| Direct OTA | Implementation complete | End-to-end aggregate packages containing controller firmware need the physical controller-update fixture. |
+| HTTP, TCP, and Wi-Fi | Implementation complete | Longer RF-loss, coexistence, and resource-endurance runs remain environment-dependent. |
+| Configuration web interface | Implementation complete | Cross-browser visual and accessibility verification remains. |
+| USB | Implementation complete | Forced physical endpoint stalls and saturation require lower-level USB instrumentation. |
+| SD, configuration, and logging | Implementation complete | Injected physical FAT/media faults and longer storage endurance remain. |
+| Camera and media | Implementation complete | Long-running physical camera-to-SD recording and retention need endurance evidence. |
+| Controller and UART | Implementation complete | Electrical fault and timing injection require a controller/UART fixture. |
+| CANopen | Implementation complete | Bus-level timing and electrical conformance require an active CAN fixture. |
+| BLE and BLUFI | Implementation complete | Longer RF coexistence and provisioning endurance remain. |
+| Persistence and runtime | Implementation complete | Long-duration clock/counter accuracy and power-cycle endurance remain. |
 
 | Area | Implementation | Automated verification | Target integration and physical evidence |
 |---|---|---|---|
