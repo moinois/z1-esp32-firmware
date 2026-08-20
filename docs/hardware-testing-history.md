@@ -1017,3 +1017,17 @@ removed `/sd/config.txt` instead of restoring the pre-test file. The original
 The test now captures the original bytes, restores them in cleanup, and verifies
 the restored download. Its isolated rerun passed and retained the same digest;
 the report is `build/hil-config-restore.json`.
+
+## DIAG-025 release-log verification (2026-08-20)
+
+The first physical custom-data check proved BLUFI frame acceptance but found no
+mandatory informational records in the enabled SD diagnostic mirror. Release
+logging globally defaults to WARN for size, so the target adapter was changed
+to retain and enable only the normative `APP_BLUFI` and `Custom Data` INFO tags.
+
+Clean standard and compact release builds both produced a `0x169830`-byte
+application with `0x267d0` bytes free in the specification's `0x190000` OTA
+slots. The standard image was installed through `/update`; HTTP completion,
+USB bus absence, and fresh USB enumeration all passed. The physical DIAG-025
+case then passed with the exact length and lowercase hexadecimal records in
+`/sd/serial.log`. Its report is `build/hil-diag025-fixed.json`.

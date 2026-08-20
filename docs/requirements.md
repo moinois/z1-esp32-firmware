@@ -90,8 +90,8 @@ Automated status is deliberately compact. The current matrix contains 219
 
 Detailed coverage evidence is kept in
 [automated-verification-evidence.md](automated-verification-evidence.md).
-Physical status is deliberately compact. The current matrix contains 60 `Yes`,
-82 `Partial`, 68 `Pending fixture`, and 9 `Not required` rows. Every status
+Physical status is deliberately compact. The current matrix contains 61 `Yes`,
+81 `Partial`, 68 `Pending fixture`, and 9 `Not required` rows. Every status
 links directly to its detailed target and physical evidence in
 [physical-verification-evidence.md](physical-verification-evidence.md).
 
@@ -158,7 +158,7 @@ links directly to its detailed target and physical evidence in
 | [CFG-030](https://github.com/f355/esp32_cnc_spec/blob/main/06-storage-and-configuration.md#cfg-030)--[CFG-034](https://github.com/f355/esp32_cnc_spec/blob/main/06-storage-and-configuration.md#cfg-034) configuration updates | Core rewrite logic and application implementation with replaceable persistence port | Yes | [Yes](physical-verification-evidence.md#phys-050) |
 | [LOG-001](https://github.com/f355/esp32_cnc_spec/blob/main/06-storage-and-configuration.md#log-001)--[LOG-006](https://github.com/f355/esp32_cnc_spec/blob/main/06-storage-and-configuration.md#log-006) diagnostic capture and record formatting | Application implementation with replaceable output/buffer/clock port | Yes | [Yes](physical-verification-evidence.md#phys-051) |
 | [LOG-007](https://github.com/f355/esp32_cnc_spec/blob/main/06-storage-and-configuration.md#log-007)--[LOG-013](https://github.com/f355/esp32_cnc_spec/blob/main/06-storage-and-configuration.md#log-013) diagnostic log writer | Application implementation with replaceable buffered-file port | Yes | [Partial](physical-verification-evidence.md#phys-052) |
-| [DIAG-025](https://github.com/f355/esp32_cnc_spec/blob/main/13-diagnostic-output.md#diag-025) BLUFI custom-data diagnostics | Portable bounded formatter plus ESP-IDF logging adapter | Yes | [Partial](physical-verification-evidence.md#phys-053) |
+| [DIAG-025](https://github.com/f355/esp32_cnc_spec/blob/main/13-diagnostic-output.md#diag-025) BLUFI custom-data diagnostics | Portable bounded formatter plus ESP-IDF logging adapter | Yes | [Yes](physical-verification-evidence.md#phys-053) |
 | [NET-001](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#net-001)--[NET-002](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#net-002) machine name | Core implementation | Yes | [Yes](physical-verification-evidence.md#phys-054) |
 | [NET-004](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#net-004)--[NET-005](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#net-005) AP channel selection | Core implementation | Yes | [Partial](physical-verification-evidence.md#phys-055) |
 | [NET-003](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#net-003)--[NET-005](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#net-005), [NET-008](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#net-008) connectivity startup | Application policy plus ESP-IDF `ConnectivityStartupAdapter` | Yes | [Yes](physical-verification-evidence.md#phys-056) |

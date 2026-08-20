@@ -19,6 +19,16 @@ namespace firmware::target {
 namespace {
 
 constexpr char tag[] = "BLUFI_PORT";
+constexpr char custom_data_length_tag[] = "APP_BLUFI";
+constexpr char custom_data_bytes_tag[] = "Custom Data";
+
+void write_normative_info(const char* record_tag, const std::string& message) {
+    // Release builds intentionally default to WARN to stay within the normative
+    // OTA partition. DIAG-025 is an explicit exception: ESP_LOG_LEVEL retains
+    // this INFO call site while the per-tag level keeps unrelated INFO records
+    // disabled.
+    ESP_LOG_LEVEL(ESP_LOG_INFO, record_tag, "%s", message.c_str());
+}
 
 firmware::application::StationApiResult api_result(esp_err_t result,
                                                     const char* operation) {
@@ -31,6 +41,10 @@ firmware::application::StationApiResult api_result(esp_err_t result,
 
 bool BlufiProvisioningAdapter::initialize(
     const firmware::application::BleLifecycleConfig&) {
+    // These two tags carry normative DIAG-025 output and must remain visible
+    // even when the release profile lowers the global default to WARN.
+    esp_log_level_set(custom_data_length_tag, ESP_LOG_INFO);
+    esp_log_level_set(custom_data_bytes_tag, ESP_LOG_INFO);
     // The lifecycle adapter owns profile registration; this port is ready after it.
     return true;
 }
@@ -158,14 +172,14 @@ void BlufiProvisioningAdapter::send_wifi_list(
 void BlufiProvisioningAdapter::log_custom_data(firmware::core::BytesView data) {
     const std::string length =
         firmware::application::blufi_custom_data_length_message(data.size());
-    ESP_LOGI("APP_BLUFI", "%s", length.c_str());
+    write_normative_info(custom_data_length_tag, length);
     for (std::size_t offset = 0U;; offset += 16U) {
         const auto message =
             firmware::application::blufi_custom_data_hex_message(data, offset);
         if (!message.has_value()) {
             break;
         }
-        ESP_LOGI("Custom Data", "%s", message->c_str());
+        write_normative_info(custom_data_bytes_tag, *message);
     }
 }
 
