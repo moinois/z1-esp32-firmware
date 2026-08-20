@@ -9,7 +9,11 @@ import time
 
 import pytest
 
-from tests.hardware.hil_file_transfer import download_file, upload_file
+from tests.hardware.hil_file_transfer import (
+    FileTransferError,
+    download_file,
+    upload_file,
+)
 from tests.hardware.hil_protocol import GENERAL_COMMAND
 
 
@@ -85,10 +89,14 @@ def test_large_static_asset_completes_without_transport_stall(tcp_host: str) -> 
 def test_configuration_api_reads_validates_and_persists(
     tcp_host: str, usb_client, sd_fixture
 ) -> None:
-    """Loads one fixture setting, updates it over HTTP, and checks SD bytes."""
+    """Updates one fixture setting and restores the prior configuration bytes."""
 
     assert os.environ["Z1_ALLOW_MUTATION"] == "1"
     fixture = b"# HIL web configuration\nMAINBOARD_HILVALUE=before\n"
+    try:
+        original = download_file(usb_client, "/sd/config.txt")
+    except FileTransferError:
+        original = None
     try:
         upload_file(usb_client, "/sd/config.txt", fixture)
         status, content_type, body = _request(tcp_host, "GET", "/api/config")
@@ -113,7 +121,8 @@ def test_configuration_api_reads_validates_and_persists(
         assert status == 400
         assert body == b"Invalid configuration key or value"
     finally:
-        try:
+        if original is None:
             usb_client.exchange(GENERAL_COMMAND, b"rm /sd/config.txt", 4.0)
-        except Exception:
-            pass
+        else:
+            upload_file(usb_client, "/sd/config.txt", original)
+            assert download_file(usb_client, "/sd/config.txt") == original
