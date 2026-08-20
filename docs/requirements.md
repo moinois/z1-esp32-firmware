@@ -91,7 +91,7 @@ Automated status is deliberately compact. The current matrix contains 219
 Detailed coverage evidence is kept in
 [automated-verification-evidence.md](automated-verification-evidence.md).
 Physical status is deliberately compact. The current matrix contains 62 `Yes`,
-81 `Partial`, 67 `Pending fixture`, and 9 `Not required` rows. Every status
+82 `Partial`, 66 `Pending fixture`, and 9 `Not required` rows. Every status
 links directly to its detailed target and physical evidence in
 [physical-verification-evidence.md](physical-verification-evidence.md).
 
@@ -316,7 +316,7 @@ links directly to its detailed target and physical evidence in
 | [NET-044](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#net-044)--[NET-046](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#net-046) TCP WLAN connection flow | ESP-IDF TCP response/STA adapters over `WlanConnectionCommand` | Yes | [Yes](physical-verification-evidence.md#phys-208) |
 | [DISC-001](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#disc-001)--[DISC-008](https://github.com/f355/esp32_cnc_spec/blob/main/07-connectivity.md#disc-008) UDP discovery target adapter | ESP-IDF UDP port over `DiscoveryService` with build-gated open/send fault injection | Yes | [Partial](physical-verification-evidence.md#phys-209) |
 | DISC station address wiring | TCP WLAN connect composition | Yes | [Yes](physical-verification-evidence.md#phys-210) |
-| DISC station disconnect wiring | TCP WLAN disconnect composition | Yes | [Pending fixture](physical-verification-evidence.md#phys-211) |
+| DISC station disconnect wiring | TCP WLAN disconnect composition | Yes | [Partial](physical-verification-evidence.md#phys-211) |
 | DISC station event wiring | ESP-IDF `WlanEventAdapter` | Yes | [Partial](physical-verification-evidence.md#phys-212) |
 | [REC-001](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#rec-001)--[REC-002](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#rec-002) recording request state | Target atomic state port shared by command and media tasks | Yes | [Pending fixture](physical-verification-evidence.md#phys-213) |
 | [REC-002](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#rec-002) recording condition policy | Portable application policy | Yes | [Pending fixture](physical-verification-evidence.md#phys-214) |

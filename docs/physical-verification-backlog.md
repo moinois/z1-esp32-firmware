@@ -13,7 +13,7 @@ recoverable mutations. Re-run this audit whenever a status leaves `Pending fixtu
 
 | Actionability | Rows |
 |---|---:|
-| Ready on the current Z1 | 17 |
+| Ready on the current Z1 | 16 |
 | Ready through mocks or deterministic testhooks | 19 |
 | Needs a controlled machine-operation fixture | 17 |
 | Needs external instrumentation or hardware | 14 |
@@ -36,7 +36,6 @@ These cases use USB, Wi-Fi, BLE, SD, camera, or the read-only controller channel
 - [RUN-043 controller clearftm wiring](physical-verification-evidence.md#phys-183)
 - [RUN-020--RUN-023 wall-clock response transport](physical-verification-evidence.md#phys-184)
 - [REC-001 recording command wiring](physical-verification-evidence.md#phys-186)
-- [DISC station disconnect wiring](physical-verification-evidence.md#phys-211)
 - [REC-001--REC-002 recording request state](physical-verification-evidence.md#phys-213)
 - [REC-002 recording condition policy](physical-verification-evidence.md#phys-214)
 

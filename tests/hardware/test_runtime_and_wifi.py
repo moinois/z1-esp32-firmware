@@ -137,3 +137,42 @@ def test_wifi_diagnostic_counters_are_monotonic(tcp_host: str) -> None:
         "addresses_acquired", "addresses_lost",
     ):
         assert second[key] >= first[key]
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.usb
+@pytest.mark.wifi
+@pytest.mark.requirement("DISC-004")
+@pytest.mark.requirement("NET-020")
+def test_station_disconnect_event_is_observed_and_automatically_recovers(
+    usb_client, tcp_host: str,
+) -> None:
+    """Uses native USB to survive the intentional station outage."""
+
+    def diagnostics() -> dict:
+        with urllib.request.urlopen(
+            f"http://{tcp_host}/api/wifi/diagnostics", timeout=5.0
+        ) as response:
+            return json.load(response)
+
+    before = diagnostics()
+    reply = _payloads(
+        usb_client.exchange(GENERAL_COMMAND, b"wlan -d", 5.0)
+    )
+    assert b"WiFi Disconnected!\n" in reply
+
+    deadline = time.monotonic() + 30.0
+    while time.monotonic() < deadline:
+        try:
+            after = diagnostics()
+        except OSError:
+            time.sleep(0.2)
+            continue
+        if (
+            after["disconnections"] > before["disconnections"]
+            and after["addresses_acquired"] > before["addresses_acquired"]
+        ):
+            return
+        time.sleep(0.2)
+    pytest.fail("station disconnect/reconnect events were not both observed")
