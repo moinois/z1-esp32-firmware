@@ -87,3 +87,27 @@ def test_requirement_physical_status_is_concise_linked_and_has_evidence() -> Non
     )
     assert summary
     assert tuple(map(int, summary.groups())) == tuple(counts.values())
+
+
+def test_physical_backlog_classifies_every_pending_fixture_once() -> None:
+    """The actionable backlog neither loses nor duplicates pending rows."""
+
+    evidence = _table_rows(
+        _ROOT / "docs" / "physical-verification-evidence.md",
+        "| Requirement area | Status | "
+        "Detailed target integration and physical evidence |",
+    )
+    pending_anchors = {
+        re.match(r'<a id="(phys-\d{3})"></a>', row[0]).group(1)
+        for row in evidence
+        if row[1] == "Pending fixture"
+    }
+    backlog = (_ROOT / "docs" / "physical-verification-backlog.md").read_text(
+        encoding="utf-8"
+    )
+    backlog_anchors = re.findall(
+        r"\(physical-verification-evidence\.md#(phys-\d{3})\)", backlog
+    )
+
+    assert len(backlog_anchors) == len(set(backlog_anchors))
+    assert set(backlog_anchors) == pending_anchors
