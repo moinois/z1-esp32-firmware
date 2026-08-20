@@ -135,6 +135,7 @@ add_executable(
     usb/test_usb_transmit_drain.cpp
     usb/test_usb_receive_staging.cpp
     usb/test_usb_protocol_state.cpp
+    usb/test_usb_reconnect_recovery.cpp
     usb/test_usb_descriptors.cpp
     usb/test_usb_transmit_progress.cpp
     usb/test_usb_task_timing.cpp

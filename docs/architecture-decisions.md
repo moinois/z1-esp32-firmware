@@ -620,3 +620,37 @@ Community Edition can reintroduce it explicitly.
   helpers.
 - Requirements evidence must distinguish this local security decision from
   normative upstream conformance.
+
+<a id="adr-017"></a>
+## ADR-017: Recover native USB without restarting the machine
+
+- **Status:** Accepted
+- **Date:** 2026-08-20
+
+### Context
+
+The self-powered Z1 can keep running over Wi-Fi and its controller link after
+the native USB cable is removed, while the ESP32-S3 USB peripheral may fail to
+enumerate when the cable is reinserted. Restarting the ESP would recover USB but
+is unsafe: G-code is streamed to the controller, and both running and paused
+jobs must retain their mainboard state.
+
+### Decision
+
+Treat suspend or unmount as a request for a delayed logical cable cycle. TinyUSB
+callbacks only update an atomic, target-independent scheduler. A worker task
+performs the due action by routing the DWC BVALID input low and then high, using
+the same ESP-ROM mechanism exercised by Espressif's TinyUSB connection tests.
+Mount or resume cancels recovery immediately. If no host returns, bounded retry
+cycles continue without restarting the CPU or touching controller/playback
+state.
+
+### Consequences
+
+- USB can re-enumerate after a physical cable cycle while machine execution,
+  pause state, Wi-Fi, TCP, and HTTP continue uninterrupted.
+- TinyUSB callbacks remain nonblocking and do not perform register operations.
+- The scheduler is host-tested independently of ESP-IDF; the BVALID composition
+  requires ESP32-S3 target builds and physical HIL.
+- The firmware does not claim that a USB reconnect makes restarting an active
+  or paused machine safe; no restart fallback is permitted by this decision.

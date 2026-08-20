@@ -6,12 +6,15 @@
 #include "class/vendor/vendor_device.h"
 
 #include "esp_log.h"
+#include "esp_rom_gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
 #include "freertos/task.h"
+#include "soc/gpio_sig_map.h"
 
 #include "application/usb/usb_descriptors.hpp"
 #include "application/usb/usb_protocol_state.hpp"
+#include "application/usb/usb_reconnect_recovery.hpp"
 #include "application/usb/usb_transmit_drain.hpp"
 #include "application/web/recording_commands.hpp"
 #if Z1_MOCK_NETWORK_CONTROL_ENABLED
@@ -120,6 +123,8 @@ constexpr std::uint32_t local_command_settle_milliseconds = 10U;
 constexpr std::uint32_t file_transfer_poll_milliseconds = 10U;
 constexpr UBaseType_t usb_worker_priority = 4U;
 constexpr std::uint32_t usb_transmit_task_stack_size = 4096U;
+constexpr std::uint32_t usb_reconnect_task_stack_size = 3072U;
+constexpr std::uint32_t usb_reconnect_poll_milliseconds = 20U;
 constexpr std::uint32_t usb_m942_task_stack_size = 6144U;
 // Decoding one 8300-byte host frame temporarily retains both raw and decoded
 // representations. Keep that path separate from the smaller FAT/hash worker
@@ -146,6 +151,7 @@ const char* string_descriptors[] = {
 constexpr std::size_t string_descriptor_count =
     sizeof(string_descriptors) / sizeof(string_descriptors[0]);
 firmware::application::UsbProtocolState protocol_state;
+firmware::application::UsbReconnectRecovery reconnect_recovery;
 
 /// Routes application response frames into the native USB transmit queue.
 class UsbFrameSink final : public FrameSink {
@@ -1241,6 +1247,41 @@ void usb_transmit_task(void* /* unused */) {
     }
 }
 
+/** Performs logical USB disconnect/reconnect cycles outside TinyUSB callbacks.
+ *
+ * Changing the DWC BVALID input resets only the USB peripheral's view of the
+ * cable. It deliberately leaves the ESP, controller link, and playback state
+ * running, so an active or paused machine job can never be restarted as a side
+ * effect of recovering the host connection.
+ *
+ * @param unused FreeRTOS task parameter; shared state is module-owned.
+ */
+void usb_reconnect_task(void* /* unused */) {
+    for (;;) {
+        const auto now_milliseconds = static_cast<std::uint64_t>(
+            esp_timer_get_time() / microseconds_per_millisecond);
+        switch (reconnect_recovery.poll(now_milliseconds)) {
+            case firmware::application::UsbReconnectAction::drive_bvalid_low:
+                ESP_LOGI(tag, "cycling USB BVALID low for reconnect recovery");
+                static_cast<void>(wifi_diagnostic_log().append(
+                    "usb.recovery.bvalid_low"));
+                esp_rom_gpio_connect_in_signal(
+                    GPIO_MATRIX_CONST_ZERO_INPUT, USB_SRP_BVALID_IN_IDX, false);
+                break;
+            case firmware::application::UsbReconnectAction::drive_bvalid_high:
+                ESP_LOGI(tag, "restoring USB BVALID high for reconnect recovery");
+                static_cast<void>(wifi_diagnostic_log().append(
+                    "usb.recovery.bvalid_high"));
+                esp_rom_gpio_connect_in_signal(
+                    GPIO_MATRIX_CONST_ONE_INPUT, USB_SRP_BVALID_IN_IDX, false);
+                break;
+            case firmware::application::UsbReconnectAction::none:
+                break;
+        }
+        vTaskDelay(pdMS_TO_TICKS(usb_reconnect_poll_milliseconds));
+    }
+}
+
 /// Polls the buffered TinyUSB vendor FIFO and dispatches received bytes.
 ///
 /// This keeps receive behavior consistent across ESP-IDF TinyUSB buffer
@@ -1592,6 +1633,7 @@ void consume_received_bytes(const std::uint8_t* bytes, std::size_t size) {
 
 /// Marks native USB ready when TinyUSB reports that the device was mounted.
 extern "C" void tud_mount_cb(void) {
+    reconnect_recovery.connection_restored();
     protocol_state.enumerated();
     // Enumeration proves physical presence only. USB becomes an eligible host
     // destination after the first structurally valid application frame.
@@ -1604,6 +1646,23 @@ extern "C" void tud_umount_cb(void) {
     protocol_state.disconnected();
     tcp_router_usb_disconnected();
     firmware::target::set_host_output_usb_active(false);
+    reconnect_recovery.connection_lost(static_cast<std::uint64_t>(
+        esp_timer_get_time() / microseconds_per_millisecond));
+}
+
+/** Arms reconnect recovery when the host suspends the USB bus.
+ *
+ * @param remote_wakeup_en Whether the host permits remote wakeup; recovery
+ * does not rely on that optional USB feature.
+ */
+extern "C" void tud_suspend_cb(bool /* remote_wakeup_en */) {
+    reconnect_recovery.connection_lost(static_cast<std::uint64_t>(
+        esp_timer_get_time() / microseconds_per_millisecond));
+}
+
+/** Cancels reconnect recovery as soon as host bus activity resumes. */
+extern "C" void tud_resume_cb(void) {
+    reconnect_recovery.connection_restored();
 }
 
 /// Accepts data reported by the TinyUSB vendor-interface receive callback.
@@ -1672,6 +1731,12 @@ bool UsbDeviceAdapter::start() {
     if (xTaskCreate(usb_transmit_task, "usb_tx", usb_transmit_task_stack_size,
                     nullptr, usb_worker_priority, nullptr) != pdPASS) {
         ESP_LOGE(tag, "USB TinyUSB transmit task allocation failed");
+        return false;
+    }
+    if (xTaskCreate(usb_reconnect_task, "usb_reconnect",
+                    usb_reconnect_task_stack_size, nullptr,
+                    usb_worker_priority, nullptr) != pdPASS) {
+        ESP_LOGE(tag, "USB reconnect task allocation failed");
         return false;
     }
     // Decoding a maximum-sized host frame needs more stack than the original

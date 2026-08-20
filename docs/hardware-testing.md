@@ -957,3 +957,32 @@ discovery and the mutating reset/healthy-boot diagnostic passed without panic,
 watchdog, assertion, or stack-overflow output. The report is retained as
 `build/hil-heartbeat-boot-fixed.json`; it proves healthy composition but not the
 electrical waveform.
+
+## Physical USB cable reconnect recovery (2026-08-20)
+
+Both factory firmware 1.1.2.0.1.13 and the repository firmware could leave the
+Z1 native USB port absent after unplugging and reconnecting its cable. Wi-Fi and
+controller communication remained alive, and restarting the whole ESP restored
+USB, identifying recovery of the USB peripheral rather than a machine reboot as
+the safe target. A machine reboot is specifically unsuitable because G-code is
+streamed to the controller and a paused job must remain an active machine state.
+
+The target now arms a portable reconnect scheduler from TinyUSB suspend/unmount
+callbacks. A normal FreeRTOS worker waits one second, then drives the ESP32-S3
+DWC `USB_SRP_BVALID_IN_IDX` low for 100 ms and high again. It retries at a
+bounded interval until mount/resume cancels the schedule. Callback code neither
+delays nor changes registers, and the recovery never restarts the ESP,
+controller link, playback session, or paused/running job. Portable tests verify
+the delay, low/high ordering, cancellation, retry, and re-arming behavior.
+
+The release image `build-usb-bvalid-recovery/mainboard_firmware.bin` was
+1,480,624 bytes and fitted the normative 0x190000-byte OTA partitions with
+0x26850 bytes free. It was installed through `/update`; the expected USB bus
+absence and fresh application enumeration both occurred after the scheduled
+OTA reboot. Two subsequent manual five-second cable unplug/replug cycles each
+re-enumerated as VID:PID `303a:4002`. After both cycles, the two native USB
+read-only HIL cases passed, `sn-get`/`diagnose` replied, HTTP and TCP remained
+reachable at `192.168.8.196`, and controller status remained idle. Wi-Fi
+diagnostics retained `station_starts=1`, `associations=1`, and
+`disconnections=0`, proving that neither physical cycle restarted the ESP or
+network service.

@@ -29,10 +29,10 @@ Portable startup and adapter-selection cases are in `tests/runtime/` and
 | Test group | What it verifies | Requirements |
 |---|---|---|
 | `tests/protocol/test_frame.cpp` and `tests/protocol/test_crc.cpp` | Frame envelope, lengths, CRCs, tails, and recovery from malformed input. | FRM-001–FRM-016 |
-| `tests/usb/test_usb_receive_staging.cpp`, `test_usb_protocol_state.cpp` | USB staging capacity, whole-session discard, disconnect clearing, and protocol activation state. | USB-004–USB-006, USB-009–USB-011 |
+| `tests/usb/test_usb_receive_staging.cpp`, `test_usb_protocol_state.cpp`, `test_usb_reconnect_recovery.cpp` | USB staging capacity, whole-session discard, protocol activation state, and callback-safe logical reconnect scheduling with repeated re-arming. | USB-004–USB-006, USB-009–USB-011 |
 | `tests/usb/test_usb_transmit_queue.cpp`, `test_usb_transmit_drain.cpp`, `test_usb_transmit_progress.cpp` | FIFO capacity, admission, partial writes, completion removal, failure latching, purge, and no-progress timeout. | USB-007–USB-010 |
 | `tests/transport/test_tcp_client_session.cpp`, `test_tcp_transmit_queue.cpp`, `test_tcp_frame_sender.cpp` | TCP receive/send buffering, short writes, retry policy, and session cleanup. | TCP-003–TCP-010 |
-| `tests/hardware/test_usb.py`, `test_transport_stress.py`, `test_tcp.py` | Native USB descriptors/round trips, fragmented TCP frames, four-client capacity, fifth-client rejection, slot reuse, and post-stress recovery. | USB-001–USB-003, TCP-003–TCP-013 |
+| `tests/hardware/test_usb.py`, `test_transport_stress.py`, `test_tcp.py` | Native USB descriptors/round trips, fragmented TCP frames, four-client capacity, fifth-client rejection, slot reuse, and post-stress recovery. Two manual cable cycles additionally verify physical USB re-enumeration without restarting the ESP or network services. | USB-001–USB-005, TCP-003–TCP-013 |
 
 ## 03 — Routing and commands
 

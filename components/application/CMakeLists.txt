@@ -83,6 +83,7 @@ set(APPLICATION_SOURCES
     src/usb/usb_transmit_drain.cpp
     src/usb/usb_receive_staging.cpp
     src/usb/usb_protocol_state.cpp
+    src/usb/usb_reconnect_recovery.cpp
     src/usb/usb_descriptors.cpp
     src/usb/usb_transmit_progress.cpp
     src/connectivity/wlan_request.cpp
