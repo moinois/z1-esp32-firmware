@@ -1031,3 +1031,12 @@ slots. The standard image was installed through `/update`; HTTP completion,
 USB bus absence, and fresh USB enumeration all passed. The physical DIAG-025
 case then passed with the exact length and lowercase hexadecimal records in
 `/sd/serial.log`. Its report is `build/hil-diag025-fixed.json`.
+
+## Physical live-video preemption (2026-08-20)
+
+Two real-camera WebSocket clients exposed that the second owner could stream
+while the first never received its mandatory MEDIA-003 record. Live JPEG and
+arbiter control sends could overlap on the old socket. The target now serializes
+those sends with a bounded mutex. After OTA installing the `0x169890`-byte
+release image, the physical test passed with real JPEGs and the exact compact
+old-owner JSON. The report is `build/hil-pending-media-preemption.json`.

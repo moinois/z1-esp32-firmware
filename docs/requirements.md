@@ -90,8 +90,8 @@ Automated status is deliberately compact. The current matrix contains 219
 
 Detailed coverage evidence is kept in
 [automated-verification-evidence.md](automated-verification-evidence.md).
-Physical status is deliberately compact. The current matrix contains 61 `Yes`,
-81 `Partial`, 68 `Pending fixture`, and 9 `Not required` rows. Every status
+Physical status is deliberately compact. The current matrix contains 62 `Yes`,
+81 `Partial`, 67 `Pending fixture`, and 9 `Not required` rows. Every status
 links directly to its detailed target and physical evidence in
 [physical-verification-evidence.md](physical-verification-evidence.md).
 
@@ -257,7 +257,7 @@ links directly to its detailed target and physical evidence in
 | [WEBUP-004](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#webup-004), [WEBUP-010](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#webup-010)--[WEBUP-014](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#webup-014) direct application update | Block-oriented application OTA transaction with replaceable camera, partition, OTA, response, and restart ports; bootloader rollback enabled and application validity deferred until critical startup completes | Yes | [Yes](physical-verification-evidence.md#phys-149) |
 | [WEBUP-004](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#webup-004), [WEBUP-020](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#webup-020)--[WEBUP-023](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#webup-023) direct web-volume update | Block-oriented raw partition transaction with replaceable partition/response/restart port | Yes | [Yes](physical-verification-evidence.md#phys-150) |
 | [LIVE-001](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#live-001)--[LIVE-012](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#live-012) live WebSocket control, arbitration, streaming, and lazy capability | Sticky one-shot initialization policy; eight-entry FreeRTOS control queue with 500/200 ms admission waits; serialized ownership policy; generation-bound 50 ms capture task; shared ordered frame-iteration port | Yes | [Partial](physical-verification-evidence.md#phys-151) |
-| [MEDIA-003](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#media-003)--[MEDIA-005](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#media-005) media preemption messages | Portable compact JSON message formatter with ESP-IDF WebSocket preemption sends | Yes | [Pending fixture](physical-verification-evidence.md#phys-152) |
+| [MEDIA-003](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#media-003)--[MEDIA-005](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#media-005) media preemption messages | Portable compact JSON message formatter with ESP-IDF WebSocket preemption sends | Yes | [Yes](physical-verification-evidence.md#phys-152) |
 | [PREV-010](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#prev-010) preview path policy | Portable exact `/sd/videos` allow-list | Yes | [Partial](physical-verification-evidence.md#phys-153) |
 | [AVI-001](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#avi-001)--[AVI-005](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#avi-005) preview acceptance | Portable RIFF scanner and indexed frame reader | Yes | [Partial](physical-verification-evidence.md#phys-154) |
 | [PREV-001](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#prev-001)--[PREV-007](https://github.com/f355/esp32_cnc_spec/blob/main/08-media-and-web.md#prev-007) preview JSON request policy | Application parser over portable JSON core | Yes | [Partial](physical-verification-evidence.md#phys-155) |

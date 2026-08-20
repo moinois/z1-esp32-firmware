@@ -99,4 +99,57 @@ def test_physical_camera_usb_http_and_controller_reads_coexist(
         assert opcode == 2
         _assert_jpeg(payload)
     finally:
+        try:
+            send_text(connection, b"stop_stream")
+        except OSError:
+            pass
         connection.close()
+
+
+@pytest.mark.hardware
+@pytest.mark.readonly
+@pytest.mark.http
+@pytest.mark.camera
+@pytest.mark.requirement("LIVE-006")
+@pytest.mark.requirement("MEDIA-003")
+@pytest.mark.requirement("MEDIA-005")
+def test_physical_camera_second_live_client_receives_exact_preemption(
+    tcp_host: str, physical_camera_fixture,
+) -> None:
+    """Proves cross-socket ownership using real JPEG production."""
+
+    expected = (
+        b'{"ns":"vlive","rsp":"preempted","reason":"live",'
+        b'"message":"The video stream channel is already occupied."}'
+    )
+    first = open_video_socket(tcp_host)
+    second = open_video_socket(tcp_host)
+    try:
+        send_text(first, b"start_stream")
+        opcode, payload = receive_frame(first)
+        assert opcode == 2
+        _assert_jpeg(payload)
+
+        send_text(second, b"start_stream")
+        opcode, payload = receive_frame(second)
+        assert opcode == 2
+        _assert_jpeg(payload)
+
+        # Frames already captured for the old owner can precede the control
+        # record. Bound the drain without assuming camera frame timing.
+        for _ in range(10):
+            opcode, payload = receive_frame(first)
+            if opcode == 1:
+                break
+            assert opcode == 2
+            _assert_jpeg(payload)
+        else:
+            pytest.fail("preempted physical client received no control record")
+        assert payload == expected
+    finally:
+        try:
+            send_text(second, b"stop_stream")
+        except OSError:
+            pass
+        first.close()
+        second.close()

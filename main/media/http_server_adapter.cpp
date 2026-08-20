@@ -12,6 +12,7 @@
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 
 #include "application/web/web_config.hpp"
@@ -121,6 +122,20 @@ struct LiveControlRequest {
 };
 
 QueueHandle_t live_control_queue = nullptr;
+SemaphoreHandle_t live_websocket_send_mutex = nullptr;
+
+esp_err_t send_live_websocket_frame(httpd_handle_t handle, int socket_id,
+                                    httpd_ws_frame_t* frame) {
+    if (live_websocket_send_mutex == nullptr ||
+        xSemaphoreTake(live_websocket_send_mutex, pdMS_TO_TICKS(10000U)) !=
+            pdTRUE) {
+        return ESP_ERR_TIMEOUT;
+    }
+    const esp_err_t result =
+        httpd_ws_send_frame_async(handle, socket_id, frame);
+    xSemaphoreGive(live_websocket_send_mutex);
+    return result;
+}
 
 bool submit_live_control(httpd_handle_t handle, int socket_id,
                          LiveControlRequestAction action);
@@ -152,8 +167,8 @@ public:
         outgoing.type = HTTPD_WS_TYPE_BINARY;
         outgoing.payload = const_cast<std::uint8_t*>(frame.data());
         outgoing.len = frame.size();
-        return httpd_ws_send_frame_async(handle_, static_cast<int>(socket_id),
-                                          &outgoing) == ESP_OK;
+        return send_live_websocket_frame(handle_, static_cast<int>(socket_id),
+                                         &outgoing) == ESP_OK;
     }
 
 private:
@@ -235,7 +250,7 @@ void preempt_preview_for_live(httpd_handle_t handle) {
     response.payload = reinterpret_cast<std::uint8_t*>(
         const_cast<char*>(message.data()));
     response.len = message.size();
-    static_cast<void>(httpd_ws_send_frame_async(
+    static_cast<void>(send_live_websocket_frame(
         handle, static_cast<int>(preview_runtime->socket_id), &response));
     preview_generation.fetch_add(1U, std::memory_order_acq_rel);
     preview_runtime.reset();
@@ -265,7 +280,7 @@ void live_arbiter_task(void*) {
                 response.payload = reinterpret_cast<std::uint8_t*>(
                     const_cast<char*>(message.data()));
                 response.len = message.size();
-                static_cast<void>(httpd_ws_send_frame_async(
+                static_cast<void>(send_live_websocket_frame(
                     request.handle, static_cast<int>(decision.socket_id),
                     &response));
             }
@@ -301,9 +316,18 @@ bool submit_live_control(httpd_handle_t handle, int socket_id,
 
 // Creates the live-control service independently of WebSocket connections.
 bool start_live_arbiter() {
+    live_websocket_send_mutex = xSemaphoreCreateMutex();
+    if (live_websocket_send_mutex == nullptr) {
+        const auto diagnostic = firmware::application::live_media_diagnostic(
+            firmware::application::LiveMediaDiagnosticEvent::arbiter_queue_create_failed);
+        ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
+        return false;
+    }
     live_control_queue = xQueueCreate(live_control_queue_capacity,
                                       sizeof(LiveControlRequest));
     if (live_control_queue == nullptr) {
+        vSemaphoreDelete(live_websocket_send_mutex);
+        live_websocket_send_mutex = nullptr;
         const auto diagnostic = firmware::application::live_media_diagnostic(
             firmware::application::LiveMediaDiagnosticEvent::arbiter_queue_create_failed);
         ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
@@ -314,6 +338,8 @@ bool start_live_arbiter() {
                     live_arbiter_task_priority, nullptr) != pdPASS) {
         vQueueDelete(live_control_queue);
         live_control_queue = nullptr;
+        vSemaphoreDelete(live_websocket_send_mutex);
+        live_websocket_send_mutex = nullptr;
         const auto diagnostic = firmware::application::live_media_diagnostic(
             firmware::application::LiveMediaDiagnosticEvent::arbiter_task_create_failed);
         ESP_LOGE(diagnostic.tag.data(), "%s", diagnostic.message.c_str());
