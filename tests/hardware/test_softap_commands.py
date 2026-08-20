@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 import re
+import time
 
 import pytest
 
 from tests.hardware.hil_protocol import UsbProtocolClient
+from tests.hardware.hil_ota import multipart_upload, wait_for_usb_service_restart
 
 GENERAL_COMMAND = 0xA2
 CONSOLE_MESSAGE = 0x90
@@ -24,13 +28,42 @@ def _console(client: UsbProtocolClient, command: bytes) -> str:
 def _settings(client: UsbProtocolClient) -> tuple[bool, str, str, int]:
     """Parses the normative `ap get` response without hiding delimiters."""
 
-    response = _console(client, b"ap get")
-    match = re.fullmatch(
-        r"AP enable=([01]) ssid=(.*?) password=(.*?) channel=(\d+)\r\n",
-        response,
-    )
-    assert match is not None, response
+    frames = client.exchange(GENERAL_COMMAND, b"ap get", 4.0)
+    responses = [
+        frame.payload.decode("utf-8", errors="strict")
+        for frame in frames
+        if frame.frame_type == CONSOLE_MESSAGE
+    ]
+    matches = [
+        re.fullmatch(
+            r"AP enable=([01]) ssid=(.*?) password=(.*?) channel=(\d+)\r\n",
+            response,
+        )
+        for response in responses
+    ]
+    match = next((candidate for candidate in reversed(matches) if candidate), None)
+    assert match is not None, responses
     return match[1] == "1", match[2], match[3], int(match[4])
+
+
+def _wait_for_settings(
+    client: UsbProtocolClient,
+    expected: tuple[bool, str, str, int],
+    timeout_seconds: float = 10.0,
+) -> None:
+    """Ignores reboot broadcasts until the AP command service is responsive."""
+
+    deadline = time.monotonic() + timeout_seconds
+    last: object = None
+    while time.monotonic() < deadline:
+        try:
+            last = _settings(client)
+            if last == expected:
+                return
+        except (AssertionError, OSError) as error:
+            last = error
+        time.sleep(0.2)
+    pytest.fail(f"saved SoftAP settings did not settle to {expected!r}: {last!r}")
 
 
 @pytest.mark.hardware
@@ -99,3 +132,64 @@ def test_reversible_softap_mutations_update_get_and_restore(
         else:
             _console(usb_client, b"ap password " + password.encode())
         _console(usb_client, b"ap enable" if enabled else b"ap disable")
+
+
+@pytest.mark.hardware
+@pytest.mark.destructive
+@pytest.mark.requirement("APCFG-001")
+@pytest.mark.requirement("APCFG-002")
+@pytest.mark.requirement("APCFG-003")
+@pytest.mark.requirement("APCFG-004")
+def test_saved_softap_settings_are_loaded_across_reboot_and_restored(
+    usb_client: UsbProtocolClient, tcp_host: str
+) -> None:
+    """Reboots through OTA twice and restores every persistent AP setting."""
+
+    image_name = os.getenv("Z1_HIL_OTA_IMAGE")
+    if not image_name:
+        pytest.skip("set Z1_HIL_OTA_IMAGE to the current application image")
+    image = Path(image_name)
+    if not image.is_file():
+        pytest.skip(f"OTA image fixture does not exist: {image}")
+
+    original = _settings(usb_client)
+    temporary = (
+        not original[0],
+        original[1],
+        "HilBoot88" if original[2] != "HilBoot88" else "HilBoot99",
+        1 if original[3] != 1 else 2,
+    )
+
+    current = usb_client
+    try:
+        assert _console(current, f"ap channel {temporary[3]}".encode()).startswith(
+            "AP channel saved"
+        )
+        assert _console(
+            current, b"ap password " + temporary[2].encode()
+        ).startswith("AP password saved")
+        _console(current, b"ap enable" if temporary[0] else b"ap disable")
+
+        status, _ = multipart_upload(
+            tcp_host, "/update", image.read_bytes(), image.name,
+            maximum_attempts=1,
+        )
+        assert status == 200
+        current = wait_for_usb_service_restart(current, timeout_seconds=60)
+        _wait_for_settings(current, temporary)
+    finally:
+        _console(current, f"ap channel {original[3]}".encode())
+        if original[2] == "null":
+            _console(current, b"ap password clear")
+        else:
+            _console(current, b"ap password " + original[2].encode())
+        _console(current, b"ap enable" if original[0] else b"ap disable")
+
+        status, _ = multipart_upload(
+            tcp_host, "/update", image.read_bytes(), image.name,
+            maximum_attempts=1,
+        )
+        assert status == 200
+        current = wait_for_usb_service_restart(current, timeout_seconds=60)
+        _wait_for_settings(current, original)
+        current.close()

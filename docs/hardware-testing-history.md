@@ -1064,3 +1064,14 @@ and `/sd/videos` remained byte-for-byte unchanged; M952 completed cleanup. The
 report is `build/hil-recording-idle-guard.json`. This is negative-condition
 evidence only: producing a real segment still requires a deliberately controlled
 running or streamed-play fixture.
+
+Saved SoftAP startup was verified with a two-reboot restoration transaction.
+The test retained the original channel, password, and enable state; stored
+distinct temporary values; OTA-reinstalled the current image; and observed the
+temporary tuple after startup. It then restored the original tuple, performed a
+second OTA reboot, and verified exact equality. The first run exposed a fixture
+race where an asynchronous reboot broadcast was mistaken for an `ap get` reply;
+the helper now selects only the normative response and polls boundedly for
+service readiness. The corrected report is
+`build/hil-softap-startup-restore.json`. Independent AP visibility and client
+authentication remain separate RF evidence.

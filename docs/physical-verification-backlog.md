@@ -13,7 +13,7 @@ recoverable mutations. Re-run this audit whenever a status leaves `Pending fixtu
 
 | Actionability | Rows |
 |---|---:|
-| Ready on the current Z1 | 13 |
+| Ready on the current Z1 | 12 |
 | Ready through mocks or deterministic testhooks | 19 |
 | Needs a controlled machine-operation fixture | 17 |
 | Needs external instrumentation or hardware | 14 |
@@ -22,7 +22,6 @@ recoverable mutations. Re-run this audit whenever a status leaves `Pending fixtu
 
 These cases use USB, Wi-Fi, BLE, SD, camera, or the read-only controller channel already present on the Z1. Mutating cases must use unique data, preserve configuration, and restore state before passing.
 
-- [APCFG-001--APCFG-004 saved SoftAP startup](physical-verification-evidence.md#phys-057)
 - [AVI-010--AVI-013 recorded AVI writer](physical-verification-evidence.md#phys-164)
 - [REC-003--REC-010 recording segment policy](physical-verification-evidence.md#phys-165)
 - [REC-020--REC-024 storage retention policy](physical-verification-evidence.md#phys-167)

@@ -167,7 +167,8 @@ recovery.
 ### Connectivity
 
 Wi-Fi evidence covers station association, address acquisition, scanning,
-diagnostics, UDP discovery, persisted credentials, and recovery after OTA.
+diagnostics, UDP discovery, persisted credentials, saved SoftAP settings across
+reboot with exact restoration, and recovery after OTA.
 BLUFI evidence covers advertisement identity, GATT properties, connection
 cycles, protocol errors, security negotiation, encrypted fragmented messages,
 credential provisioning, and coexistence with USB and HTTP.
