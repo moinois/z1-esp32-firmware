@@ -195,7 +195,8 @@ timeouts, malformed replies, cancellation, queue pressure, and UART
 fragmentation are exercised with the controller mock.
 
 Physical OV3660 tests verify JPEG framing, stream reconnect, successor ownership,
-preview, and concurrent USB/HTTP/controller traffic. Live and control frames are
+preview, concurrent USB/HTTP/controller traffic, and that an accepted recording
+request cannot create an AVI while the physical controller remains idle. Live and control frames are
 serialized through the HTTP server task so socket receive/close processing cannot
 race an external camera producer. Ten consecutive physical regression passes
 (30 cases) verify repeated disconnect, preemption, and cross-service recovery.

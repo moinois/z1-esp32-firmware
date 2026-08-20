@@ -1056,3 +1056,11 @@ exact two-client preemption, and camera operation during HTTP, USB, and
 controller reads. Reports are retained as
 `build/hil-camera-queued-send-1.json` through
 `build/hil-camera-queued-send-10.json`.
+
+The recoverable physical recording guard was then strengthened beyond command
+acknowledgements. With the controller continuously reporting `Idle`, M951 was
+accepted, the request became visible in status, repeated task intervals elapsed,
+and `/sd/videos` remained byte-for-byte unchanged; M952 completed cleanup. The
+report is `build/hil-recording-idle-guard.json`. This is negative-condition
+evidence only: producing a real segment still requires a deliberately controlled
+running or streamed-play fixture.

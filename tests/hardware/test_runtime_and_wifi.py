@@ -22,6 +22,16 @@ def _payloads(frames) -> bytes:
     return b"\n".join(frame.payload for frame in frames)
 
 
+def _directory_snapshot(client, path: bytes) -> bytes:
+    """Returns directory data without depending on protocol frame chunking."""
+
+    return b"".join(
+        frame.payload
+        for frame in client.exchange(GENERAL_COMMAND, b"ls " + path, 5.0)
+        if frame.frame_type == 0x83
+    )
+
+
 @pytest.mark.hardware
 @pytest.mark.readonly
 @pytest.mark.usb
@@ -37,22 +47,37 @@ def test_usb_runtime_and_serial_reads(usb_client) -> None:
 @pytest.mark.hardware
 @pytest.mark.mutating
 @pytest.mark.usb
+@pytest.mark.sd
 @pytest.mark.requirement("REC-001")
 @pytest.mark.requirement("REC-002")
-def test_usb_recording_control_starts_and_always_stops_while_idle(usb_client) -> None:
-    """Exercises M951/M952 only when the physical controller reports idle."""
+def test_usb_recording_control_stays_inactive_and_stops_while_idle(
+    usb_client, sd_fixture
+) -> None:
+    """Proves an idle machine accepts M951 without creating an AVI segment."""
 
     status = usb_client.exchange(SINGLE_COMMAND, b"?", 4.0)
     snapshots = [frame.payload for frame in status if frame.frame_type == 0x81]
     if not snapshots or not snapshots[-1].startswith(b"<Idle|"):
         pytest.skip("recording control requires an idle physical machine")
 
+    videos_before = _directory_snapshot(usb_client, b"/sd/videos")
     try:
         started = usb_client.exchange(GENERAL_COMMAND, b"M951", 4.0)
         assert any(
             frame.frame_type == GENERAL_COMMAND and frame.payload == b"ok\n"
             for frame in started
         )
+        # Observe several recording-task intervals while the physical motion
+        # board remains idle. The directory must remain byte-for-byte stable.
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            current = usb_client.exchange(SINGLE_COMMAND, b"?", 4.0)
+            current_snapshots = [
+                frame.payload for frame in current if frame.frame_type == 0x81
+            ]
+            assert current_snapshots and current_snapshots[-1].startswith(b"<Idle|")
+            time.sleep(0.2)
+        assert _directory_snapshot(usb_client, b"/sd/videos") == videos_before
     finally:
         stopped = usb_client.exchange(GENERAL_COMMAND, b"M952", 4.0)
         assert any(
