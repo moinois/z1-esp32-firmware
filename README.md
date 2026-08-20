@@ -27,7 +27,7 @@ endurance evidence rather than known missing production modules.
 - [Test traceability](docs/test-traceability.md) — specification IDs mapped to executable tests.
 - [HIL status](docs/hardware-testing.md) — current fixture coverage and how to run it.
 
-Current verification: 856 portable C++ tests and 56 Python tooling tests pass.
+Current verification: 856 portable C++ tests and 58 Python tooling tests pass.
 The latest coverage snapshot is 96.20% lines, 98.52% functions, and 86.69%
 branches. See the linked documents for the evidence boundary; a successful build
 or a mock test does not by itself establish physical conformance.

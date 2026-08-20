@@ -213,7 +213,7 @@ still needs its physical update fixture.
 ## Current verification snapshot
 
 The portable suite contains 856 passing C++ tests. The Python tooling suite
-contains 56 passing tests. The latest generated portable coverage snapshot is
+contains 58 passing tests. The latest generated portable coverage snapshot is
 96.20% lines, 98.52% functions, and 86.69% branches.
 
 The latest reviewed physical Z1 campaign covered USB, Wi-Fi, BLE, SD,

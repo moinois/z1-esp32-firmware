@@ -13,7 +13,7 @@ recoverable mutations. Re-run this audit whenever a status leaves `Pending fixtu
 
 | Actionability | Rows |
 |---|---:|
-| Ready on the current Z1 | 44 |
+| Ready on the current Z1 | 29 |
 | Ready through mocks or deterministic testhooks | 19 |
 | Needs a controlled machine-operation fixture | 17 |
 | Needs external instrumentation or hardware | 14 |
@@ -24,28 +24,13 @@ These cases use USB, Wi-Fi, BLE, SD, camera, or the read-only controller channel
 
 - [USB local recording control](physical-verification-evidence.md#phys-008)
 - [USB local configuration commands](physical-verification-evidence.md#phys-019)
-- [HFT-010--HFT-011 cache path mapping](physical-verification-evidence.md#phys-027)
 - [HFT-013 cached MD5 extraction](physical-verification-evidence.md#phys-028)
 - [HFT-014 cache base preparation](physical-verification-evidence.md#phys-029)
 - [HFT-005--HFT-007 start admission and owner mailbox](physical-verification-evidence.md#phys-030)
-- [HFTD-001--HFTD-010 host download](physical-verification-evidence.md#phys-031)
-- [HFT-020--HFT-021, HFT-023, HFT-025 download timing and errors](physical-verification-evidence.md#phys-032)
-- [HFTU-001--HFTU-011 host upload](physical-verification-evidence.md#phys-033)
-- [HFT-020--HFT-022, HFT-024--HFT-025 upload timing and retries](physical-verification-evidence.md#phys-034)
-- [DIAG-028 filesystem command diagnostics](physical-verification-evidence.md#phys-036)
 - [SD-009--SD-010 FAT filename, sector, and lock policy](physical-verification-evidence.md#phys-043)
 - [CFG-001, CFG-004--CFG-006 configuration file copies](physical-verification-evidence.md#phys-046)
-- [CFG-011--CFG-013 configuration reads](physical-verification-evidence.md#phys-048)
-- [CFG-030--CFG-034 configuration updates](physical-verification-evidence.md#phys-050)
 - [DIAG-025 BLUFI custom-data diagnostics](physical-verification-evidence.md#phys-053)
-- [NET-004--NET-005 AP channel selection](physical-verification-evidence.md#phys-055)
 - [APCFG-001--APCFG-004 saved SoftAP startup](physical-verification-evidence.md#phys-057)
-- [APCFG-005--APCFG-006, APCMD-001--APCMD-007, DIAG-019 SoftAP commands](physical-verification-evidence.md#phys-058)
-- [APQ-001--APQ-003, DIAG-019 host Wi-Fi parameter queries](physical-verification-evidence.md#phys-059)
-- [NET-006--NET-007 socket capacity and hostname](physical-verification-evidence.md#phys-060)
-- [OWN-001--OWN-008 ownership policy](physical-verification-evidence.md#phys-079)
-- [RUN-020--RUN-023 wall clock](physical-verification-evidence.md#phys-112)
-- [RUN-050--RUN-052 aggregated runtime status](physical-verification-evidence.md#phys-115)
 - [MEDIA-003--MEDIA-005 media preemption messages](physical-verification-evidence.md#phys-152)
 - [AVI-010--AVI-013 recorded AVI writer](physical-verification-evidence.md#phys-164)
 - [REC-003--REC-010 recording segment policy](physical-verification-evidence.md#phys-165)

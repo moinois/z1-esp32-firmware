@@ -994,3 +994,26 @@ diagnostics retained `station_starts=1`, `associations=1`, and
 `disconnections=0`, proving that neither physical cycle restarted the ESP or
 network service.
 
+## Pending-fixture reduction campaign (2026-08-20)
+
+The physical-evidence matrix was audited row by row and its 94 genuine pending
+fixtures were classified by actionability. After the Z1 returned online, a
+focused read-only campaign passed 12/12 SoftAP/Wi-Fi query, runtime, USB, TCP
+fragmentation, four-client capacity, fifth-client rejection, slot-reuse, and
+recovery cases. The report is
+`build/hil-pending-readonly-audit.json`.
+
+A recoverable-mutation campaign then passed 13 cases and skipped only the
+mock-only full-volume injection. It physically covered SD upload/download,
+MD5, rename/delete, G-code cache mapping, cancellation cleanup, network-pause
+continuation, download timeout/error recovery, SoftAP mutation/restoration, and
+the configuration API. The report is
+`build/hil-pending-mutating-audit.json`.
+
+That campaign exposed a fixture-safety defect: the configuration API test
+removed `/sd/config.txt` instead of restoring the pre-test file. The original
+5791-byte backup was immediately restored and verified with SHA-256
+`1dd558bd52ab15f025c0ac96bddda0d76766afbec2b0efccc2ddabdf1379e27a`.
+The test now captures the original bytes, restores them in cleanup, and verifies
+the restored download. Its isolated rerun passed and retained the same digest;
+the report is `build/hil-config-restore.json`.
