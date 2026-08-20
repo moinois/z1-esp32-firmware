@@ -13,7 +13,7 @@ recoverable mutations. Re-run this audit whenever a status leaves `Pending fixtu
 
 | Actionability | Rows |
 |---|---:|
-| Ready on the current Z1 | 29 |
+| Ready on the current Z1 | 18 |
 | Ready through mocks or deterministic testhooks | 19 |
 | Needs a controlled machine-operation fixture | 17 |
 | Needs external instrumentation or hardware | 14 |
@@ -22,14 +22,6 @@ recoverable mutations. Re-run this audit whenever a status leaves `Pending fixtu
 
 These cases use USB, Wi-Fi, BLE, SD, camera, or the read-only controller channel already present on the Z1. Mutating cases must use unique data, preserve configuration, and restore state before passing.
 
-- [USB local recording control](physical-verification-evidence.md#phys-008)
-- [USB local configuration commands](physical-verification-evidence.md#phys-019)
-- [HFT-013 cached MD5 extraction](physical-verification-evidence.md#phys-028)
-- [HFT-014 cache base preparation](physical-verification-evidence.md#phys-029)
-- [HFT-005--HFT-007 start admission and owner mailbox](physical-verification-evidence.md#phys-030)
-- [SD-009--SD-010 FAT filename, sector, and lock policy](physical-verification-evidence.md#phys-043)
-- [CFG-001, CFG-004--CFG-006 configuration file copies](physical-verification-evidence.md#phys-046)
-- [DIAG-025 BLUFI custom-data diagnostics](physical-verification-evidence.md#phys-053)
 - [APCFG-001--APCFG-004 saved SoftAP startup](physical-verification-evidence.md#phys-057)
 - [MEDIA-003--MEDIA-005 media preemption messages](physical-verification-evidence.md#phys-152)
 - [AVI-010--AVI-013 recorded AVI writer](physical-verification-evidence.md#phys-164)
@@ -45,9 +37,6 @@ These cases use USB, Wi-Fi, BLE, SD, camera, or the read-only controller channel
 - [RUN-043 controller clearftm wiring](physical-verification-evidence.md#phys-183)
 - [RUN-020--RUN-023 wall-clock response transport](physical-verification-evidence.md#phys-184)
 - [REC-001 recording command wiring](physical-verification-evidence.md#phys-186)
-- [REC-001 TCP-local recording control](physical-verification-evidence.md#phys-200)
-- [FILE-020--FILE-026 TCP-local filesystem commands](physical-verification-evidence.md#phys-203)
-- [DISC station address wiring](physical-verification-evidence.md#phys-210)
 - [DISC station disconnect wiring](physical-verification-evidence.md#phys-211)
 - [REC-001--REC-002 recording request state](physical-verification-evidence.md#phys-213)
 - [REC-002 recording condition policy](physical-verification-evidence.md#phys-214)
