@@ -18,6 +18,7 @@ from tests.hardware.hil_ota import (
     open_usb_before_restart,
     wait_for_usb_service_restart,
 )
+from tests.hardware.hil_file_transfer import download_file, upload_file
 from tests.hardware.hil_protocol import GENERAL_COMMAND
 
 BLUFI_NAME_PREFIX = "MK_"
@@ -530,6 +531,43 @@ def test_blufi_unknown_control_subtype_has_no_response_and_session_recovers() ->
             assert _assert_plain_frame(response, 0x10) == b"\x01\x03"
 
     asyncio.run(validate())
+
+
+@pytest.mark.hardware
+@pytest.mark.mutating
+@pytest.mark.ble
+@pytest.mark.sd
+@pytest.mark.usb
+@pytest.mark.requirement("DIAG-025")
+def test_blufi_custom_data_is_mirrored_to_physical_sd_log(usb_client) -> None:
+    """Sends one custom-data frame and verifies exact SD-backed diagnostics."""
+
+    _require_ble_fixture()
+    assert os.environ["Z1_ALLOW_MUTATION"] == "1"
+    payload = bytes.fromhex("01 ab 7f 00 55")
+
+    async def send_custom_data() -> None:
+        from bleak import BleakClient
+
+        device, _ = await _require_blufi()
+        async with BleakClient(device, timeout=10.0) as client:
+            frame = bytes([((0x13 << 2) | 0x01), 0x08, 0x00, len(payload)])
+            acknowledgement = await _request_frame(client, frame + payload)
+            assert acknowledgement == b"\x00\x04\x00\x01\x00"
+            await asyncio.sleep(0.2)
+
+    try:
+        upload_file(usb_client, "/sd/serial.log", b"")
+        asyncio.run(send_custom_data())
+        time.sleep(0.5)
+        log = download_file(usb_client, "/sd/serial.log", verify_md5=False)
+        assert b"Recv custom data, len=5" in log
+        assert b"01 ab 7f 00 55" in log
+    finally:
+        try:
+            usb_client.exchange(GENERAL_COMMAND, b"rm /sd/serial.log", 4.0)
+        except Exception:
+            pass
 
 
 @pytest.mark.hardware
