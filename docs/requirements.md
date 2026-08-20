@@ -91,7 +91,7 @@ Automated status is deliberately compact. The current matrix contains 219
 Detailed coverage evidence is kept in
 [automated-verification-evidence.md](automated-verification-evidence.md).
 Physical status is deliberately compact. The current matrix contains 62 `Yes`,
-86 `Partial`, 62 `Pending fixture`, and 9 `Not required` rows. Every status
+87 `Partial`, 61 `Pending fixture`, and 9 `Not required` rows. Every status
 links directly to its detailed target and physical evidence in
 [physical-verification-evidence.md](physical-verification-evidence.md).
 
@@ -188,7 +188,7 @@ links directly to its detailed target and physical evidence in
 | [LPC-001](https://github.com/f355/esp32_cnc_spec/blob/main/04-motion-board-protocols.md#lpc-001)--[LPC-002](https://github.com/f355/esp32_cnc_spec/blob/main/04-motion-board-protocols.md#lpc-002) periodic controller queries | Application scheduler plus factory-selected controller channel | Yes | [Partial](physical-verification-evidence.md#phys-080) |
 | [LPC-003](https://github.com/f355/esp32_cnc_spec/blob/main/04-motion-board-protocols.md#lpc-003) initial controller status | Controller UART task using scheduler at startup | Yes | [Yes](physical-verification-evidence.md#phys-081) |
 | [STAT-001](https://github.com/f355/esp32_cnc_spec/blob/main/03-routing-and-commands.md#stat-001)--[STAT-010](https://github.com/f355/esp32_cnc_spec/blob/main/03-routing-and-commands.md#stat-010) motion-board snapshots and replies | Core and application implementation | Yes | [Partial](physical-verification-evidence.md#phys-082) |
-| [UART-003](https://github.com/f355/esp32_cnc_spec/blob/main/02-framing-and-transports.md#uart-003)--[UART-008](https://github.com/f355/esp32_cnc_spec/blob/main/02-framing-and-transports.md#uart-008) controller link policy | Application implementation | Yes | [Pending fixture](physical-verification-evidence.md#phys-083) |
+| [UART-003](https://github.com/f355/esp32_cnc_spec/blob/main/02-framing-and-transports.md#uart-003)--[UART-008](https://github.com/f355/esp32_cnc_spec/blob/main/02-framing-and-transports.md#uart-008) controller link policy | Application implementation | Yes | [Partial](physical-verification-evidence.md#phys-083) |
 | [DIAG-021](https://github.com/f355/esp32_cnc_spec/blob/main/13-diagnostic-output.md#diag-021) controller receive/write diagnostics | Portable exact formatters and target UART integration | Yes | [Pending fixture](physical-verification-evidence.md#phys-084) |
 | [HW-020](https://github.com/f355/esp32_cnc_spec/blob/main/01-hardware-and-startup.md#hw-020) motion-board UART configuration | ESP-IDF adapter started through `ControllerCommandLoop` | Yes | [Partial](physical-verification-evidence.md#phys-085) |
 | [UART-009](https://github.com/f355/esp32_cnc_spec/blob/main/02-framing-and-transports.md#uart-009) receive retention and candidate checks | Shared stream decoder UART policy plus ESP-IDF UART receive buffer | Yes | [Pending fixture](physical-verification-evidence.md#phys-086) |

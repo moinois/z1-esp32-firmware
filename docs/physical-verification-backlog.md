@@ -15,8 +15,8 @@ recoverable mutations. Re-run this audit whenever a status leaves `Pending fixtu
 |---|---:|
 | Ready on the current Z1 | 0 |
 | Ready through mocks or deterministic testhooks | 19 |
-| Needs a controlled machine-operation fixture | 22 |
-| Needs external instrumentation or hardware | 21 |
+| Needs controlled controller or machine interaction | 29 |
+| Needs external instrumentation or hardware | 13 |
 
 ## Ready on the current Z1
 
@@ -49,7 +49,7 @@ These boundaries are unsafe or unreliable to provoke naturally. They can be impl
 - [TCP-012--TCP-013 connection capacity and selective acknowledgement](physical-verification-evidence.md#phys-190)
 - [TCP origin-aware dispatch](physical-verification-evidence.md#phys-199)
 
-## Needs a controlled machine-operation fixture
+## Needs controlled controller or machine interaction
 
 The hardware is present, but these cases can affect controller firmware, configuration, factory data, or streamed play. Run them only with an agreed idle/service-mode setup, recovery images, and an explicit restoration check.
 
@@ -75,6 +75,13 @@ The hardware is present, but these cases can affect controller firmware, configu
 - [REC-020--REC-024 storage retention policy](physical-verification-evidence.md#phys-167)
 - [REC-021--REC-024 storage retention service](physical-verification-evidence.md#phys-168)
 - [REC-021--REC-024 filesystem adapter](physical-verification-evidence.md#phys-169)
+- [RUN-031 wall-clock first-boot bridge](physical-verification-evidence.md#phys-179)
+- [RUN-020--RUN-023 wall-clock target adapter](physical-verification-evidence.md#phys-180)
+- [RUN-020--RUN-023 wall-clock command composition](physical-verification-evidence.md#phys-181)
+- [RUN-020--RUN-023 controller command wiring](physical-verification-evidence.md#phys-182)
+- [RUN-043 controller clearftm wiring](physical-verification-evidence.md#phys-183)
+- [RUN-020--RUN-023 wall-clock response transport](physical-verification-evidence.md#phys-184)
+- [REC-001 recording command wiring](physical-verification-evidence.md#phys-186)
 
 ## Needs external instrumentation or hardware
 
@@ -82,7 +89,6 @@ These cases require an active CAN peer, UART/GPIO measurement, TinyUSB endpoint 
 
 - [USB-008 transmit progress timeout](physical-verification-evidence.md#phys-006)
 - [USB M942 CAN exercise](physical-verification-evidence.md#phys-014)
-- [UART-003--UART-008 controller link policy](physical-verification-evidence.md#phys-083)
 - [DIAG-021 controller receive/write diagnostics](physical-verification-evidence.md#phys-084)
 - [UART-009 receive retention and candidate checks](physical-verification-evidence.md#phys-086)
 - [HW-053, CAN-007--CAN-008 CAN identity and pending transmission](physical-verification-evidence.md#phys-087)
@@ -94,10 +100,3 @@ These cases require an active CAN peer, UART/GPIO measurement, TinyUSB endpoint 
 - [DIAG-033 CAN digital-output monitoring](physical-verification-evidence.md#phys-121)
 - [TCP controller forwarding](physical-verification-evidence.md#phys-195)
 - [HW-060--HW-061 GPIO heartbeat](physical-verification-evidence.md#phys-219)
-- [RUN-031 wall-clock first-boot bridge](physical-verification-evidence.md#phys-179)
-- [RUN-020--RUN-023 wall-clock target adapter](physical-verification-evidence.md#phys-180)
-- [RUN-020--RUN-023 wall-clock command composition](physical-verification-evidence.md#phys-181)
-- [RUN-020--RUN-023 controller command wiring](physical-verification-evidence.md#phys-182)
-- [RUN-043 controller clearftm wiring](physical-verification-evidence.md#phys-183)
-- [RUN-020--RUN-023 wall-clock response transport](physical-verification-evidence.md#phys-184)
-- [REC-001 recording command wiring](physical-verification-evidence.md#phys-186)

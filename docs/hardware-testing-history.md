@@ -1075,3 +1075,10 @@ the helper now selects only the normative response and polls boundedly for
 service readiness. The corrected report is
 `build/hil-softap-startup-restore.json`. Independent AP visibility and client
 authentication remain separate RF evidence.
+
+The repository image's installed motion controller was then rechecked rather
+than treated as an absent fixture. Physical version, idle status, diagnostics,
+and ten repeated status exchanges passed over the native-USB-to-UART path. The
+report is `build/hil-physical-controller-refresh.json`. This closes the basic
+bidirectional integration boundary; electrical timing, forced UART faults, and
+controller-initiated destructive transfer families remain separately gated.
