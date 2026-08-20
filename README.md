@@ -22,6 +22,7 @@ endurance evidence rather than known missing production modules.
 
 - [Implemented capabilities](docs/implemented-scope.md) — detailed feature inventory.
 - [Requirement status](docs/requirements.md) — concise completion state and explicit gaps.
+- [Physical verification evidence](docs/physical-verification-evidence.md) — detailed target/HIL evidence behind the concise requirement statuses.
 - [Test traceability](docs/test-traceability.md) — specification IDs mapped to executable tests.
 - [HIL status](docs/hardware-testing.md) — current fixture coverage and how to run it.
 

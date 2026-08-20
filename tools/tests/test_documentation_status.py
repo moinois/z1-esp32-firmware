@@ -1,8 +1,9 @@
-"""Guards the concise requirement-status contract and its evidence ledger."""
+"""Guards concise requirement statuses and their one-to-one evidence ledgers."""
 
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -42,3 +43,47 @@ def test_requirement_automation_status_is_concise_and_has_evidence() -> None:
     )
     assert [row[0] for row in requirements] == [row[0] for row in evidence]
     assert all(len(row) == 2 and row[1] for row in evidence)
+
+
+def test_requirement_physical_status_is_concise_linked_and_has_evidence() -> None:
+    """Every physical status links directly to one matching evidence row."""
+
+    requirements = _table_rows(
+        _ROOT / "docs" / "requirements.md",
+        "| Area | Implementation | Automated verification | "
+        "Target integration and physical evidence |",
+    )
+    evidence = _table_rows(
+        _ROOT / "docs" / "physical-verification-evidence.md",
+        "| Requirement area | Status | "
+        "Detailed target integration and physical evidence |",
+    )
+
+    assert len(requirements) == len(evidence)
+    for index, (requirement, detail) in enumerate(zip(requirements, evidence), 1):
+        anchor = f"phys-{index:03d}"
+        status_match = re.fullmatch(
+            rf"\[(Yes|Partial|Pending fixture|Not required)\]"
+            rf"\(physical-verification-evidence\.md#{anchor}\)",
+            requirement[3],
+        )
+        assert status_match
+        assert detail[0] == f'<a id="{anchor}"></a>{requirement[0]}'
+        assert detail[1] == status_match.group(1)
+        assert detail[2]
+
+    counts = {
+        status: sum(detail[1] == status for detail in evidence)
+        for status in ("Yes", "Partial", "Pending fixture", "Not required")
+    }
+    requirements_text = (_ROOT / "docs" / "requirements.md").read_text(
+        encoding="utf-8"
+    )
+    summary = re.search(
+        r"current matrix contains (\d+) `Yes`,\n"
+        r"(\d+) `Partial`, (\d+) `Pending fixture`, and "
+        r"(\d+) `Not required` rows",
+        requirements_text,
+    )
+    assert summary
+    assert tuple(map(int, summary.groups())) == tuple(counts.values())
