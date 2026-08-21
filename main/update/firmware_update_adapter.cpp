@@ -154,6 +154,10 @@ public:
         return {firmware::application::UpdateLoadFailure::none, std::move(*bytes)};
     }
     void aggregate_opened() override {
+        // UPD-042 clears the prior-failure report as soon as a replacement
+        // aggregate is opened. Clear the volatile status together with NVS so
+        // Studio does not continue observing stale OTA:3,0 during this boot.
+        clear_runtime_update_status();
         static_cast<void>(persist_update_phase(0U));
     }
     void remove_aggregate(std::string_view path) override {

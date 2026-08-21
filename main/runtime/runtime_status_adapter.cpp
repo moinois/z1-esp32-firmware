@@ -77,6 +77,11 @@ void publish_runtime_update_phase(std::uint8_t phase) {
     update_phase.store(phase, std::memory_order_release);
 }
 
+void clear_runtime_update_status() {
+    update_progress.store(0U, std::memory_order_release);
+    update_phase.store(0U, std::memory_order_release);
+}
+
 void publish_controller_transfer_status(std::uint8_t phase,
                                         std::uint32_t progress) {
     if (phase != 4U && controller_success_timer != nullptr) {

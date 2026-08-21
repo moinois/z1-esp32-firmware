@@ -34,6 +34,9 @@ firmware::application::ControllerSnapshots& shared_controller_snapshots();
 /// Publishes the newest update phase for aggregate status composition.
 void publish_runtime_update_phase(std::uint8_t phase);
 
+/// Clears both fields of the host-visible firmware-update status.
+void clear_runtime_update_status();
+
 /// Publishes controller-transfer phase and rounded progress for machine status.
 void publish_controller_transfer_status(std::uint8_t phase,
                                         std::uint32_t progress);
