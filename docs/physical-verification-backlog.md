@@ -33,8 +33,6 @@ These boundaries are unsafe or unreliable to provoke naturally. They can be impl
 - [DIAG-027 transfer-owner and setup diagnostics](physical-verification-evidence.md#phys-035)
 - [UPD-004--UPD-005, UPD-020--UPD-022 aggregate loading and validation effects](physical-verification-evidence.md#phys-103)
 - [UPD-060--UPD-063 update-file deletion](physical-verification-evidence.md#phys-104)
-- [UPD-023, UPD-040--UPD-043 update recovery and persistence](physical-verification-evidence.md#phys-105)
-- [UPD-050--UPD-052, UPD-054 visible update status](physical-verification-evidence.md#phys-106)
 - [UPD-001--UPD-003 aggregate paths and triggers](physical-verification-evidence.md#phys-109)
 - [UPD-006 update processor initialization](physical-verification-evidence.md#phys-110)
 - [DIAG-030 aggregate header diagnostics](physical-verification-evidence.md#phys-131)

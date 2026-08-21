@@ -1094,3 +1094,24 @@ including ten repeated status exchanges. This proves that startup supplies the
 SD configuration to the controller; it does not by itself prove that the
 controller contains no persistent storage. The retained trace is
 `build/controller-config-startup.log`.
+
+## Physical stale OTA recovery (2026-08-21)
+
+A failed controller firmware attempt left the machine consistently reporting
+`OTA:3,0`. The target adapter cleared the persisted phase when a replacement
+aggregate opened, but did not clear the host-visible phase and progress atomics,
+so Studio could continue observing the stale failure for the rest of that boot.
+The adapter now clears both volatile fields together with the persisted phase,
+matching UPD-042 at the target boundary.
+
+The host suite passed and the standard release image was 1,481,376 bytes,
+leaving `0x26560` bytes free in each normative OTA slot. The image was installed
+through `/update`; USB disappeared, re-enumerated, and answered after the A/B-OTA
+reboot. A checksum-valid empty aggregate was then uploaded and consumed to
+exercise aggregate-open recovery without writing controller firmware. Status
+reported `OTA:0,0` immediately, three consecutive checks after a second
+confirmed ESP32 reboot also reported `OTA:0,0`, and the stale
+`/sd/.md5/firmware.bin` sidecar was removed. Controller communication remained
+active as `C:1` with version `1.1.2.0.1.13`. The separately observed controller
+RX alarm repeats on an approximately ten-second interval and is not treated as
+evidence of an OTA-state failure.

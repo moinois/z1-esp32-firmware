@@ -119,7 +119,8 @@ The production capability inventory contains:
   ESP32-S3 image verification;
 - bounded update-file deletion with busy and permission recovery, exact retry
   delays, and final manual-removal broadcasts;
-- update phase recovery with a four-slot nonblocking persistence queue, shared
+- update phase recovery with a four-slot nonblocking persistence queue,
+  aggregate-open clearing of both persistent and host-visible state, shared
   error throttling, controller progress, and transient success reporting;
 - validated aggregate application with controller-only handoff, inactive
   mainboard OTA sequencing, active-write abort policy, and exact terminal
