@@ -4,6 +4,7 @@ idf_component_register(
         "can/can_twai_adapter.cpp"
         "can/canopen_target_service.cpp"
         "controller/controller_uart_adapter.cpp"
+        "controller/controller_uart_trace.cpp"
         "main.cpp"
         "hardware_adapter_factory.cpp"
         "configuration/configuration_file_store.cpp"

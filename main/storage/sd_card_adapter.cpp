@@ -16,6 +16,7 @@
 #include "core/filesystem/sd_user_path.hpp"
 #include "diagnostic_capture_adapter.hpp"
 #include "serial_log_mirror_adapter.hpp"
+#include "controller_uart_trace.hpp"
 
 #include <optional>
 #include <cstdio>
@@ -86,6 +87,7 @@ public:
 
     bool unmount() override {
         serial_log_mirror().storage_unmounted();
+        controller_uart_trace_storage_unmounted();
         if (card_ == nullptr) {
             set_sd_storage_mounted(false);
             return true;
