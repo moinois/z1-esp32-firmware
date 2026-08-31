@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -37,7 +37,7 @@ jobs:
         run: python3 -m pytest tools/tests -q
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ github.sha }}
           path: build/host-coverage/coverage/
@@ -63,7 +63,7 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -80,7 +80,7 @@ jobs:
             --build-dir "$BUILD_DIR"
 
       - name: Upload build metadata
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: firmware-build-${{ matrix.profile }}-${{ github.sha }}
           path: |

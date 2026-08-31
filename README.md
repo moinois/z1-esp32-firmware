@@ -276,11 +276,12 @@ version metadata and alternate paths.
 
 Repository releases are created from the **Create firmware release** workflow
 in GitHub Actions. Enter a SemVer version without the leading `v`, select the
-source ref, and leave **dry run** enabled for the first run. A dry run builds,
-tests, checksum-verifies, and uploads the same workflow artifacts without
-creating a GitHub tag or Release. Disable dry run only after those artifacts
-have been inspected. Stable versions from refs other than `main` are published
-as prereleases unless the explicit stable-release override is selected.
+source ref, and leave **Create the tag and GitHub Release** unchecked for the
+first run. That dry run builds, tests, checksum-verifies, and uploads the same
+workflow artifacts without creating a GitHub tag or Release. Select the publish
+checkbox only after those artifacts have been inspected. Stable versions from
+refs other than `main` are published as prereleases unless the explicit
+stable-release override is selected.
 
 ## Running hardware-in-the-loop tests
 

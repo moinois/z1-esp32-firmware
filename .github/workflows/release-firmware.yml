@@ -1,7 +1,7 @@
 name: Create firmware release
 
 run-name: >-
-  ${{ inputs.dry_run && 'Dry run' || 'Release' }}
+  ${{ inputs.publish_release && 'Release' || 'Dry run' }}
   v${{ inputs.version }} from ${{ inputs.source_ref }}
 
 on:
@@ -16,10 +16,10 @@ on:
         required: true
         default: dev
         type: string
-      dry_run:
-        description: Build and verify artifacts without creating a GitHub Release
+      publish_release:
+        description: Create the tag and GitHub Release after successful verification
         required: true
-        default: true
+        default: false
         type: boolean
       publish_stable_from_non_main:
         description: Mark a stable version from a non-main ref as a stable release
@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Check out requested source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.source_ref }}
           fetch-depth: 0
@@ -154,7 +154,7 @@ jobs:
             echo "- Source commit: \`${{ steps.source.outputs.sha }}\`"
             echo "- Version: \`$VERSION\`"
             echo "- Prerelease: \`$PRERELEASE\` ($REASON)"
-            echo "- Dry run: \`${{ inputs.dry_run }}\`"
+            echo "- Publish release: \`${{ inputs.publish_release }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   coverage:
@@ -164,7 +164,7 @@ jobs:
 
     steps:
       - name: Check out validated source commit
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.source_sha }}
           fetch-depth: 0
@@ -201,15 +201,15 @@ jobs:
           PY
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
-          name: coverage-v${{ inputs.version }}${{ inputs.dry_run && '-dry-run' || '' }}
+          name: coverage-v${{ inputs.version }}${{ !inputs.publish_release && '-dry-run' || '' }}
           path: build/host-coverage/coverage/
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish latest release coverage branch
-        if: ${{ !inputs.dry_run }}
+        if: ${{ inputs.publish_release }}
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -241,7 +241,7 @@ jobs:
 
     steps:
       - name: Check out validated source commit
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.source_sha }}
           fetch-depth: 0
@@ -286,16 +286,16 @@ jobs:
           (cd dist && sha256sum --check SHA256SUMS.txt)
 
       - name: Upload verified firmware artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
-          name: firmware-v${{ inputs.version }}${{ inputs.dry_run && '-dry-run' || '' }}
+          name: firmware-v${{ inputs.version }}${{ !inputs.publish_release && '-dry-run' || '' }}
           path: dist/
           if-no-files-found: error
           retention-days: 30
 
   publish:
     name: Create GitHub Release
-    if: ${{ !inputs.dry_run }}
+    if: ${{ inputs.publish_release }}
     needs:
       - prepare
       - coverage
@@ -304,7 +304,7 @@ jobs:
 
     steps:
       - name: Download verified firmware artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: firmware-v${{ inputs.version }}
           path: dist
