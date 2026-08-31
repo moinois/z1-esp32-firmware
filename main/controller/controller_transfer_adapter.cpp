@@ -46,16 +46,18 @@ std::optional<std::vector<firmware::core::ByteVector>>
 ControllerTransferAdapter::read_configuration_chunks(std::size_t chunk_size) {
     if (chunk_size == 0U) return std::nullopt;
     const auto lines = ConfigurationFileStore{}.read_lines();
-    std::string content;
-    for (const auto& line : lines) {
-        content += line;
-        content.push_back('\n');
-    }
     std::vector<firmware::core::ByteVector> chunks;
-    for (std::size_t offset = 0U; offset < content.size(); offset += chunk_size) {
-        const std::size_t count = std::min(chunk_size, content.size() - offset);
-        chunks.emplace_back(content.begin() + offset,
-                            content.begin() + offset + count);
+    for (const auto& line : lines) {
+        // LPCCFG input records are bounded text-line reads. A short line ends
+        // its record; following lines must not fill the unused part of the
+        // 255-byte input capacity. Preserve bounded fragments for long lines.
+        std::string record = line;
+        record.push_back('\n');
+        for (std::size_t offset = 0U; offset < record.size(); offset += chunk_size) {
+            const std::size_t count = std::min(chunk_size, record.size() - offset);
+            chunks.emplace_back(record.begin() + offset,
+                                record.begin() + offset + count);
+        }
     }
     return chunks;
 }
