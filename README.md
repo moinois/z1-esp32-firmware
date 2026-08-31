@@ -274,6 +274,14 @@ The result is `build-dev/firmware.bin`; release builds create this package
 automatically. See [`tools/README.md`](tools/README.md) for
 version metadata and alternate paths.
 
+Repository releases are created from the **Create firmware release** workflow
+in GitHub Actions. Enter a SemVer version without the leading `v`, select the
+source ref, and leave **dry run** enabled for the first run. A dry run builds,
+tests, checksum-verifies, and uploads the same workflow artifacts without
+creating a GitHub tag or Release. Disable dry run only after those artifacts
+have been inspected. Stable versions from refs other than `main` are published
+as prereleases unless the explicit stable-release override is selected.
+
 ## Running hardware-in-the-loop tests
 
 Hardware tests automatically skip unavailable fixtures and never count a skip

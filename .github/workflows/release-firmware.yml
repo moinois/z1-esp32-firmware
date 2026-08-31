@@ -1,27 +1,172 @@
-name: Release firmware
+name: Create firmware release
+
+run-name: >-
+  ${{ inputs.dry_run && 'Dry run' || 'Release' }}
+  v${{ inputs.version }} from ${{ inputs.source_ref }}
 
 on:
-  release:
-    types:
-      - published
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version in SemVer format, without a leading v
+        required: true
+        type: string
+      source_ref:
+        description: Branch, tag, or commit to release
+        required: true
+        default: dev
+        type: string
+      dry_run:
+        description: Build and verify artifacts without creating a GitHub Release
+        required: true
+        default: true
+        type: boolean
+      publish_stable_from_non_main:
+        description: Mark a stable version from a non-main ref as a stable release
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.event.release.tag_name }}
+  group: release-${{ inputs.version }}
   cancel-in-progress: false
 
 jobs:
+  prepare:
+    name: Validate release request
+    runs-on: ubuntu-latest
+    outputs:
+      encoded_version: ${{ steps.version.outputs.encoded }}
+      prerelease: ${{ steps.policy.outputs.prerelease }}
+      source_sha: ${{ steps.source.outputs.sha }}
+
+    steps:
+      - name: Check out requested source
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Record immutable source commit
+        id: source
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Validate release version
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import os
+          import re
+          import sys
+
+          version = os.environ["VERSION"]
+          semver = re.compile(
+              r"^(0|[1-9][0-9]*)\."
+              r"(0|[1-9][0-9]*)\."
+              r"(0|[1-9][0-9]*)"
+              r"(?:-((?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)"
+              r"(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?"
+              r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
+          )
+          if not semver.fullmatch(version):
+              print(
+                  "::error::Version must be valid SemVer without a leading v "
+                  "(for example 1.2.3 or 1.2.3-rc.1)",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+          PY
+
+      - name: Verify that the release tag is available
+        shell: bash
+        env:
+          RELEASE_TAG: v${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          if git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            echo "::error::Tag $RELEASE_TAG already exists"
+            exit 1
+          fi
+
+      - name: Encode firmware version
+        id: version
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          VERSION_CORE="${VERSION%%[-+]*}"
+          IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION_CORE"
+
+          MAJOR=$((10#$MAJOR))
+          MINOR=$((10#$MINOR))
+          PATCH=$((10#$PATCH))
+
+          if (( MAJOR > 255 || MINOR > 255 || PATCH > 255 )); then
+            echo "::error::Version components must fit in one byte"
+            exit 1
+          fi
+
+          ENCODED=$(( (MAJOR << 16) | (MINOR << 8) | PATCH ))
+          printf -v ENCODED_HEX '0x%08X' "$ENCODED"
+          echo "encoded=$ENCODED_HEX" >> "$GITHUB_OUTPUT"
+
+      - name: Determine GitHub release classification
+        id: policy
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+          FORCE_STABLE: ${{ inputs.publish_stable_from_non_main }}
+        run: |
+          set -euo pipefail
+
+          VERSION_WITHOUT_BUILD="${VERSION%%+*}"
+          PRERELEASE=false
+          REASON="stable version from main"
+
+          if [[ "$VERSION_WITHOUT_BUILD" == *-* ]]; then
+            PRERELEASE=true
+            REASON="SemVer prerelease identifier"
+          elif [[ "$SOURCE_REF" != "main" && "$FORCE_STABLE" != "true" ]]; then
+            PRERELEASE=true
+            REASON="stable version requested from non-main source"
+          elif [[ "$SOURCE_REF" != "main" ]]; then
+            REASON="explicit stable-release override for non-main source"
+          fi
+
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Release policy"
+            echo
+            echo "- Source: \`$SOURCE_REF\`"
+            echo "- Source commit: \`${{ steps.source.outputs.sha }}\`"
+            echo "- Version: \`$VERSION\`"
+            echo "- Prerelease: \`$PRERELEASE\` ($REASON)"
+            echo "- Dry run: \`${{ inputs.dry_run }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   coverage:
-    name: Test and publish code coverage
+    name: Test and generate code coverage
+    needs: prepare
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out release source
+      - name: Check out validated source commit
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ needs.prepare.outputs.source_sha }}
           fetch-depth: 0
           submodules: recursive
 
@@ -29,7 +174,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           sudo apt-get update
           sudo apt-get install --yes clang llvm cmake ninja-build
 
@@ -37,8 +181,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           python3 tools/host_coverage.py
+          python3 -m pytest tools/tests -q
 
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
@@ -59,16 +203,17 @@ jobs:
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
-          name: coverage-${{ github.event.release.tag_name }}
+          name: coverage-v${{ inputs.version }}${{ inputs.dry_run && '-dry-run' || '' }}
           path: build/host-coverage/coverage/
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish latest release coverage branch
+        if: ${{ !inputs.dry_run }}
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: v${{ inputs.version }}
         run: |
           set -euo pipefail
 
@@ -87,123 +232,108 @@ jobs:
           git push --force origin coverage
 
   build:
-    name: Build release firmware
+    name: Build and verify release firmware
+    needs: prepare
     runs-on: ubuntu-latest
 
     container:
       image: espressif/idf:v5.4.1
 
     steps:
-      - name: Check out release source
+      - name: Check out validated source commit
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ needs.prepare.outputs.source_sha }}
           fetch-depth: 0
           submodules: recursive
-
-      - name: Validate release tag
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: |
-          set -euo pipefail
-
-          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Release tag must use vMAJOR.MINOR.PATCH"
-            exit 1
-          fi
 
       - name: Verify ESP-IDF environment
         shell: bash
         run: |
           set -euo pipefail
-
           source /opt/esp/idf/export.sh
-
           idf.py --version
           python3 --version
-
-      - name: Encode release version
-        id: version
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: |
-          set -euo pipefail
-
-          VERSION="${RELEASE_TAG#v}"
-          IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
-
-          # Force decimal parsing so valid zero-padded components such as 08
-          # are not interpreted as invalid Bash octal literals.
-          MAJOR=$((10#$MAJOR))
-          MINOR=$((10#$MINOR))
-          PATCH=$((10#$PATCH))
-
-          if (( MAJOR > 255 || MINOR > 255 || PATCH > 255 )); then
-            echo "::error::Version components must fit in one byte"
-            exit 1
-          fi
-
-          ENCODED=$(( (MAJOR << 16) | (MINOR << 8) | PATCH ))
-
-          printf -v ENCODED_HEX '0x%08X' "$ENCODED"
-
-          echo "plain=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "encoded=$ENCODED_HEX" >> "$GITHUB_OUTPUT"
 
       - name: Build and package live firmware
         shell: bash
         env:
-          MAINBOARD_VERSION: ${{ steps.version.outputs.encoded }}
+          MAINBOARD_VERSION: ${{ needs.prepare.outputs.encoded_version }}
         run: |
           set -euo pipefail
-
           source /opt/esp/idf/export.sh
-
           python3 tools/build_firmware.py \
             --live \
             --release \
             --mainboard-version "$MAINBOARD_VERSION" \
             --build-dir build
 
-      - name: Prepare release assets
+      - name: Prepare and verify release assets
         shell: bash
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: v${{ inputs.version }}
         run: |
           set -euo pipefail
 
           mkdir -p dist
-
           APP_BIN="$(python3 -c 'import json; print(json.load(open("build/project_description.json"))["app_bin"])')"
           test -f "build/$APP_BIN"
 
-          cp "build/$APP_BIN" \
-            "dist/z1-mainboard-${RELEASE_TAG}.bin"
+          cp "build/$APP_BIN" "dist/z1-mainboard-${RELEASE_TAG}.bin"
+          cp build/firmware.bin "dist/z1-firmware-${RELEASE_TAG}.bin"
+          cp build/hardware-selection.json dist/hardware-selection.json
+          (cd dist && sha256sum *.bin > SHA256SUMS.txt)
+          (cd dist && sha256sum --check SHA256SUMS.txt)
 
-          cp build/firmware.bin \
-            "dist/z1-firmware-${RELEASE_TAG}.bin"
-
-          cp build/hardware-selection.json \
-            dist/hardware-selection.json
-
-          sha256sum dist/*.bin > dist/SHA256SUMS.txt
-
-      - name: Upload workflow artifact
+      - name: Upload verified firmware artifact
         uses: actions/upload-artifact@v5
         with:
-          name: firmware-${{ github.event.release.tag_name }}
+          name: firmware-v${{ inputs.version }}${{ inputs.dry_run && '-dry-run' || '' }}
           path: dist/
           if-no-files-found: error
           retention-days: 30
 
-      - name: Attach files to release
-        uses: softprops/action-gh-release@v2
+  publish:
+    name: Create GitHub Release
+    if: ${{ !inputs.dry_run }}
+    needs:
+      - prepare
+      - coverage
+      - build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download verified firmware artifact
+        uses: actions/download-artifact@v5
         with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: |
+          name: firmware-v${{ inputs.version }}
+          path: dist
+
+      - name: Create release at validated source commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v${{ inputs.version }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+
+          release_args=(
+            "$RELEASE_TAG"
             dist/*.bin
             dist/SHA256SUMS.txt
             dist/hardware-selection.json
-          fail_on_unmatched_files: true
+            --repo "$GITHUB_REPOSITORY"
+            --target "$SOURCE_SHA"
+            --title "$RELEASE_TAG"
+            --generate-notes
+          )
+
+          if [[ "$PRERELEASE" == "true" ]]; then
+            release_args+=(--prerelease)
+          else
+            release_args+=(--latest)
+          fi
+
+          gh release create "${release_args[@]}"
