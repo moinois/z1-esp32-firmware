@@ -10,6 +10,12 @@
 
 namespace firmware::target {
 
+/// Observed text from one bounded line read plus its EOF observation state.
+struct BoundedConfigurationRead {
+    std::string observed_text;
+    bool observed_end_of_file = false;
+};
+
 /// Owns config.txt paths and performs one fresh, cross-transport-safe operation
 /// per request.
 class ConfigurationFileStore {
@@ -38,6 +44,10 @@ public:
 
     /// Returns complete source lines for protocols that require raw records.
     std::vector<std::string> read_lines() const;
+
+    /// Reads raw input through LF-, size-, or EOF-bounded records.
+    std::optional<std::vector<BoundedConfigurationRead>> read_bounded_lines(
+        std::size_t maximum_read_size) const;
 
 private:
     /// Reads and parses a fresh document; missing files become empty documents.

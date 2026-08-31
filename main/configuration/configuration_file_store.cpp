@@ -157,6 +157,46 @@ std::vector<std::string> ConfigurationFileStore::read_lines() const {
     return read_document().lines();
 }
 
+std::optional<std::vector<BoundedConfigurationRead>>
+ConfigurationFileStore::read_bounded_lines(std::size_t maximum_read_size) const {
+    if (maximum_read_size == 0U) return std::nullopt;
+    std::lock_guard<std::mutex> lock(configuration_file_mutex);
+    std::FILE* file = std::fopen(active_path.c_str(), "rb");
+    if (file == nullptr) return std::nullopt;
+
+    std::vector<BoundedConfigurationRead> reads;
+    bool failed = false;
+    while (true) {
+        BoundedConfigurationRead read;
+        read.observed_text.reserve(maximum_read_size);
+        bool observed_nul = false;
+        std::size_t consumed = 0U;
+        while (consumed < maximum_read_size) {
+            const int value = std::fgetc(file);
+            if (value == EOF) {
+                failed = std::ferror(file) != 0;
+                read.observed_end_of_file = !failed;
+                break;
+            }
+            ++consumed;
+            const auto byte = static_cast<unsigned char>(value);
+            if (!observed_nul) {
+                if (byte == 0U) {
+                    observed_nul = true;
+                } else {
+                    read.observed_text.push_back(static_cast<char>(byte));
+                }
+            }
+            if (byte == static_cast<unsigned char>('\n')) break;
+        }
+        if (failed || consumed == 0U) break;
+        reads.push_back(std::move(read));
+    }
+    std::fclose(file);
+    if (failed) return std::nullopt;
+    return reads;
+}
+
 std::string_view active_configuration_path() {
     return active_path;
 }

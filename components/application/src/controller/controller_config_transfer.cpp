@@ -12,14 +12,15 @@ namespace {
 
 constexpr std::size_t minimum_remaining_space = 80U;
 constexpr std::size_t maximum_unmodified_record_size = 64U;
-constexpr std::size_t truncated_record_size = maximum_unmodified_record_size - 2U;
+constexpr std::size_t truncated_record_size = maximum_unmodified_record_size - 1U;
 
 // Reports whether a chunk is selectable as controller configuration content.
-bool eligible_record(const core::ByteVector& chunk, bool final_chunk) {
-    if (chunk.size() <= 2U || chunk.front() == '#' || chunk.front() == '*') {
+bool eligible_record(const ControllerConfigurationRead& read) {
+    const auto& text = read.observed_text;
+    if (text.size() <= 2U || text.front() == '#' || text.front() == '*') {
         return false;
     }
-    return chunk.back() == '\n' || final_chunk;
+    return text.back() == '\n' || read.observed_end_of_file;
 }
 
 // Applies the controller's maximum-length transformation to one record.
@@ -30,7 +31,6 @@ core::ByteVector transform_record(const core::ByteVector& record) {
     core::ByteVector transformed(record.begin(),
                                  record.begin() + truncated_record_size);
     transformed.push_back('\n');
-    transformed.push_back(0U);
     return transformed;
 }
 
@@ -86,9 +86,9 @@ void ControllerConfigTransfer::handle_geometry(core::BytesView payload,
         report_error(port);
         return;
     }
-    const auto chunks =
-        port.read_configuration_chunks(controller_transfer_chunk_size);
-    if (!chunks.has_value()) {
+    const auto reads =
+        port.read_configuration_lines(controller_transfer_chunk_size);
+    if (!reads.has_value()) {
         port.diagnose(controller_transfer_diagnostic(
             ControllerTransferFamily::configuration,
             ControllerTransferDiagnosticEvent::data_open_failure));
@@ -100,8 +100,8 @@ void ControllerConfigTransfer::handle_geometry(core::BytesView payload,
     }
 
     frame_count_ = static_cast<std::uint32_t>(std::count_if(
-        chunks->begin(), chunks->end(), [](const core::ByteVector& chunk) {
-            return chunk.size() > 2U;
+        reads->begin(), reads->end(), [](const ControllerConfigurationRead& read) {
+            return read.observed_text.size() > 2U;
         }));
     frame_data_size_ = controller_transfer_frame_data_size;
     if (!port.send(make_transfer_reply(core::protocol::configuration_family,
@@ -137,9 +137,9 @@ void ControllerConfigTransfer::handle_data(core::BytesView payload,
     if (frame_data_size_ == 0U) {
         return;
     }
-    const auto chunks =
-        port.read_configuration_chunks(controller_transfer_chunk_size);
-    if (!chunks.has_value()) {
+    const auto reads =
+        port.read_configuration_lines(controller_transfer_chunk_size);
+    if (!reads.has_value()) {
         port.diagnose(controller_transfer_diagnostic(
             ControllerTransferFamily::configuration,
             ControllerTransferDiagnosticEvent::data_open_failure));
@@ -148,9 +148,9 @@ void ControllerConfigTransfer::handle_data(core::BytesView payload,
     }
 
     std::vector<core::ByteVector> records;
-    for (std::size_t index = 0U; index < chunks->size(); ++index) {
-        if (eligible_record((*chunks)[index], index + 1U == chunks->size())) {
-            records.push_back(transform_record((*chunks)[index]));
+    for (const auto& read : *reads) {
+        if (eligible_record(read)) {
+            records.push_back(transform_record(read.observed_text));
         }
     }
 

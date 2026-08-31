@@ -42,24 +42,19 @@ bool ControllerTransferAdapter::configuration_available() {
     return ConfigurationFileStore{}.exists();
 }
 
-std::optional<std::vector<firmware::core::ByteVector>>
-ControllerTransferAdapter::read_configuration_chunks(std::size_t chunk_size) {
-    if (chunk_size == 0U) return std::nullopt;
-    const auto lines = ConfigurationFileStore{}.read_lines();
-    std::vector<firmware::core::ByteVector> chunks;
-    for (const auto& line : lines) {
-        // LPCCFG input records are bounded text-line reads. A short line ends
-        // its record; following lines must not fill the unused part of the
-        // 255-byte input capacity. Preserve bounded fragments for long lines.
-        std::string record = line;
-        record.push_back('\n');
-        for (std::size_t offset = 0U; offset < record.size(); offset += chunk_size) {
-            const std::size_t count = std::min(chunk_size, record.size() - offset);
-            chunks.emplace_back(record.begin() + offset,
-                                record.begin() + offset + count);
-        }
+std::optional<std::vector<firmware::application::ControllerConfigurationRead>>
+ControllerTransferAdapter::read_configuration_lines(std::size_t maximum_read_size) {
+    const auto stored_reads =
+        ConfigurationFileStore{}.read_bounded_lines(maximum_read_size);
+    if (!stored_reads.has_value()) return std::nullopt;
+    std::vector<firmware::application::ControllerConfigurationRead> reads;
+    reads.reserve(stored_reads->size());
+    for (const auto& stored_read : *stored_reads) {
+        reads.push_back({firmware::core::ByteVector(stored_read.observed_text.begin(),
+                                                   stored_read.observed_text.end()),
+                         stored_read.observed_end_of_file});
     }
-    return chunks;
+    return reads;
 }
 
 bool ControllerTransferAdapter::file_exists(std::string_view path) {

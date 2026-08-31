@@ -10,6 +10,7 @@
 
 using firmware::application::ControllerConfigPort;
 using firmware::application::ControllerConfigTransfer;
+using firmware::application::ControllerConfigurationRead;
 using firmware::core::ByteVector;
 using firmware::core::Frame;
 
@@ -26,11 +27,18 @@ public:
         return exists;
     }
 
-    // Returns configured 255-byte input chunks and records the requested path.
-    std::optional<std::vector<ByteVector>> read_configuration_chunks(
-        std::size_t chunk_size) override {
-        requested_chunk_size = chunk_size;
-        return chunks;
+    // Returns configured bounded line reads and records the requested capacity.
+    std::optional<std::vector<ControllerConfigurationRead>> read_configuration_lines(
+        std::size_t maximum_read_size) override {
+        requested_chunk_size = maximum_read_size;
+        if (!chunks.has_value()) return std::nullopt;
+        std::vector<ControllerConfigurationRead> reads;
+        reads.reserve(chunks->size());
+        for (std::size_t index = 0U; index < chunks->size(); ++index) {
+            reads.push_back({(*chunks)[index],
+                             final_read_observed_eof && index + 1U == chunks->size()});
+        }
+        return reads;
     }
 
     bool response_data_memory_available(std::size_t bytes) override {
@@ -54,6 +62,7 @@ public:
     std::size_t allocation_size = 0U;
     std::size_t requested_chunk_size = 0U;
     std::optional<std::vector<ByteVector>> chunks = std::vector<ByteVector>{};
+    bool final_read_observed_eof = true;
     std::vector<Frame> sent;
     std::vector<firmware::application::ControllerTransferDiagnostic> diagnostics;
 };
@@ -148,7 +157,7 @@ TEST_CASE(lpccfg_003_index_two_skips_two_eligible_records) {
                ByteVector({0U, 0U, 0U, 2U, 't', 'h', 'r', 'e', 'e', '\n', '\n'}));
 }
 
-TEST_CASE(lpccfg_004_long_records_use_first_62_bytes_then_lf_and_nul) {
+TEST_CASE(lpccfg_004_long_reads_use_first_63_bytes_then_lf_without_nul) {
     ControllerConfigTransfer transfer;
     FakeConfigPort port;
     port.chunks = std::vector<ByteVector>{ByteVector(65U, 'a')};
@@ -159,9 +168,22 @@ TEST_CASE(lpccfg_004_long_records_use_first_62_bytes_then_lf_and_nul) {
     const auto& payload = port.sent.back().payload;
     REQUIRE_EQ(payload.size(), 69U);
     REQUIRE_EQ(payload[65], static_cast<std::uint8_t>('a'));
-    REQUIRE_EQ(payload[66], static_cast<std::uint8_t>('\n'));
-    REQUIRE_EQ(payload[67], 0U);
+    REQUIRE_EQ(payload[66], static_cast<std::uint8_t>('a'));
+    REQUIRE_EQ(payload[67], static_cast<std::uint8_t>('\n'));
     REQUIRE_EQ(payload[68], static_cast<std::uint8_t>('\n'));
+}
+
+TEST_CASE(lpccfg_003_unterminated_read_requires_that_read_to_observe_eof) {
+    ControllerConfigTransfer transfer;
+    FakeConfigPort port;
+    port.chunks = std::vector<ByteVector>{bytes("unterminated")};
+    port.final_read_observed_eof = false;
+    transfer.handle(geometry(), port);
+    const std::size_t before = port.sent.size();
+
+    transfer.handle({0xD3U, {0U, 0U, 0U, 1U}}, port);
+
+    REQUIRE_EQ(port.sent.size(), before);
 }
 
 TEST_CASE(lpccfg_005_aggregation_stops_after_a_record_when_under_80_bytes_remain) {

@@ -12,6 +12,12 @@
 
 namespace firmware::application {
 
+/// One bounded configuration-file line read and whether that read observed EOF.
+struct ControllerConfigurationRead {
+    core::ByteVector observed_text;
+    bool observed_end_of_file = false;
+};
+
 /// Isolates configuration-transfer rules from storage and controller output.
 class ControllerConfigPort {
 public:
@@ -21,9 +27,9 @@ public:
     /// Reports whether the configuration file is currently available.
     virtual bool configuration_available() = 0;
 
-    /// Reads the file as fixed-size input chunks or reports failure.
-    virtual std::optional<std::vector<core::ByteVector>>
-    read_configuration_chunks(std::size_t chunk_size) = 0;
+    /// Performs sequential bounded line reads or reports file-access failure.
+    virtual std::optional<std::vector<ControllerConfigurationRead>>
+    read_configuration_lines(std::size_t maximum_read_size) = 0;
 
     /// Probes transient data-response retention for deterministic DIAG-035 handling.
     virtual bool response_data_memory_available(std::size_t bytes) {

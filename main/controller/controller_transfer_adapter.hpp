@@ -26,8 +26,8 @@ public:
         std::size_t maximum_size) override;
     std::optional<std::vector<firmware::core::ByteVector>> read_chunks(
         std::string_view path, std::size_t chunk_size) override;
-    std::optional<std::vector<firmware::core::ByteVector>>
-    read_configuration_chunks(std::size_t chunk_size) override;
+    std::optional<std::vector<firmware::application::ControllerConfigurationRead>>
+    read_configuration_lines(std::size_t maximum_read_size) override;
     bool remove_file(std::string_view path) override;
     bool response_data_memory_available(std::size_t bytes) override;
     bool send(firmware::core::Frame frame) override;
