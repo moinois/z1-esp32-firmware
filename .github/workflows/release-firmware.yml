@@ -16,6 +16,15 @@ on:
         required: true
         default: dev
         type: string
+      controller_payload:
+        description: Approved LPC firmware payload included in firmware.bin
+        required: true
+        type: choice
+        options:
+          # BEGIN GENERATED CONTROLLER PAYLOAD OPTIONS
+          - none
+          - official-z1-v1.1.2
+          # END GENERATED CONTROLLER PAYLOAD OPTIONS
       publish_release:
         description: Create the tag and GitHub Release after successful verification
         required: true
@@ -40,6 +49,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       encoded_version: ${{ steps.version.outputs.encoded }}
+      controller_version: ${{ steps.controller.outputs.encoded_version }}
+      controller_asset: ${{ steps.controller.outputs.asset }}
+      controller_payload_id: ${{ inputs.controller_payload }}
       prerelease: ${{ steps.policy.outputs.prerelease }}
       source_sha: ${{ steps.source.outputs.sha }}
 
@@ -157,6 +169,43 @@ jobs:
             echo "- Publish release: \`${{ inputs.publish_release }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Resolve approved controller payload
+        if: ${{ inputs.controller_payload != 'none' }}
+        id: controller
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/controller_payload_catalog.py \
+            '${{ inputs.controller_payload }}' \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Download and verify controller payload
+        if: ${{ inputs.controller_payload != 'none' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ steps.controller.outputs.repository }}
+          RELEASE_TAG: ${{ steps.controller.outputs.tag }}
+          ASSET: ${{ steps.controller.outputs.asset }}
+          EXPECTED_SHA256: ${{ steps.controller.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          mkdir controller-payload
+          gh release download "$RELEASE_TAG" \
+            --repo "$REPOSITORY" \
+            --pattern "$ASSET" \
+            --dir controller-payload
+          printf '%s  %s\n' "$EXPECTED_SHA256" "controller-payload/$ASSET" | sha256sum --check --strict
+
+      - name: Upload verified controller payload
+        if: ${{ inputs.controller_payload != 'none' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: controller-${{ inputs.controller_payload }}
+          path: controller-payload/${{ steps.controller.outputs.asset }}
+          if-no-files-found: error
+          retention-days: 1
+
   coverage:
     name: Test and generate code coverage
     needs: prepare
@@ -255,6 +304,13 @@ jobs:
           idf.py --version
           python3 --version
 
+      - name: Download verified controller payload
+        if: ${{ inputs.controller_payload != 'none' }}
+        uses: actions/download-artifact@v8
+        with:
+          name: controller-${{ inputs.controller_payload }}
+          path: controller-payload
+
       - name: Build and package live firmware
         shell: bash
         env:
@@ -272,12 +328,29 @@ jobs:
         shell: bash
         env:
           RELEASE_TAG: v${{ inputs.version }}
+          MAINBOARD_VERSION: ${{ needs.prepare.outputs.encoded_version }}
+          CONTROLLER_VERSION: ${{ needs.prepare.outputs.controller_version }}
+          CONTROLLER_ASSET: ${{ needs.prepare.outputs.controller_asset }}
+          CONTROLLER_PAYLOAD_ID: ${{ needs.prepare.outputs.controller_payload_id }}
         run: |
           set -euo pipefail
 
           mkdir -p dist
           APP_BIN="$(python3 -c 'import json; print(json.load(open("build/project_description.json"))["app_bin"])')"
           test -f "build/$APP_BIN"
+
+          if [[ "$CONTROLLER_PAYLOAD_ID" != "none" ]]; then
+            python3 tools/package_firmware.py \
+              --mainboard "build/$APP_BIN" \
+              --mainboard-version "$MAINBOARD_VERSION" \
+              --controller "controller-payload/$CONTROLLER_ASSET" \
+              --controller-version "$CONTROLLER_VERSION" \
+              --output build/firmware.bin
+            python3 tools/controller_payload_catalog.py "$CONTROLLER_PAYLOAD_ID" \
+              > dist/controller-payload.txt
+          else
+            printf 'payload_id=none\n' > dist/controller-payload.txt
+          fi
 
           cp "build/$APP_BIN" "dist/z1-mainboard-${RELEASE_TAG}.bin"
           cp build/firmware.bin "dist/z1-firmware-${RELEASE_TAG}.bin"
@@ -324,6 +397,7 @@ jobs:
             dist/*.bin
             dist/SHA256SUMS.txt
             dist/hardware-selection.json
+            dist/controller-payload.txt
             --repo "$GITHUB_REPOSITORY"
             --target "$SOURCE_SHA"
             --title "$RELEASE_TAG"

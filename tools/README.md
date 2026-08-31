@@ -215,6 +215,12 @@ Without `--controller`, the controller size, version, and flag remain clear.
 Supplying `--controller-version` without `--controller`, or an empty controller
 file, is rejected.
 
+Published controller payload identities are recorded in
+`release/controller-payloads.json`. `controller_payload_catalog.py` validates
+that catalog and resolves an approved ID to its exact repository, tag, asset,
+SHA-256, and SemVer-derived controller version. The release workflow never
+downloads an unlisted or floating controller artifact.
+
 Build a controller-only package explicitly with:
 
 ```text

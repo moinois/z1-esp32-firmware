@@ -283,6 +283,11 @@ checkbox only after those artifacts have been inspected. Stable versions from
 refs other than `main` are published as prereleases unless the explicit
 stable-release override is selected.
 
+Select an approved LPC image with **controller payload**. The `none` choice
+leaves LPC untouched; a versioned choice downloads and checksum-verifies the
+exact controller release asset listed in `release/controller-payloads.json`
+and includes it in the aggregate `firmware.bin` package.
+
 ## Running hardware-in-the-loop tests
 
 Hardware tests automatically skip unavailable fixtures and never count a skip
