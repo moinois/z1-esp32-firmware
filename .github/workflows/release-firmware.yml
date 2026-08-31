@@ -22,8 +22,8 @@ on:
         type: choice
         options:
           # BEGIN GENERATED CONTROLLER PAYLOAD OPTIONS
-          - none
-          - official-z1-v1.1.2
+          - None (do not update LPC)
+          - Official Makera Z1 Firmware v1.1.2
           # END GENERATED CONTROLLER PAYLOAD OPTIONS
       publish_release:
         description: Create the tag and GitHub Release after successful verification
@@ -51,7 +51,7 @@ jobs:
       encoded_version: ${{ steps.version.outputs.encoded }}
       controller_version: ${{ steps.controller.outputs.encoded_version }}
       controller_asset: ${{ steps.controller.outputs.asset }}
-      controller_payload_id: ${{ inputs.controller_payload }}
+      controller_payload_id: ${{ inputs.controller_payload == 'None (do not update LPC)' && 'none' || steps.controller.outputs.payload_id }}
       prerelease: ${{ steps.policy.outputs.prerelease }}
       source_sha: ${{ steps.source.outputs.sha }}
 
@@ -170,7 +170,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Resolve approved controller payload
-        if: ${{ inputs.controller_payload != 'none' }}
+        if: ${{ inputs.controller_payload != 'None (do not update LPC)' }}
         id: controller
         shell: bash
         run: |
@@ -178,33 +178,6 @@ jobs:
           python3 tools/controller_payload_catalog.py \
             '${{ inputs.controller_payload }}' \
             --github-output "$GITHUB_OUTPUT"
-
-      - name: Download and verify controller payload
-        if: ${{ inputs.controller_payload != 'none' }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPOSITORY: ${{ steps.controller.outputs.repository }}
-          RELEASE_TAG: ${{ steps.controller.outputs.tag }}
-          ASSET: ${{ steps.controller.outputs.asset }}
-          EXPECTED_SHA256: ${{ steps.controller.outputs.sha256 }}
-        run: |
-          set -euo pipefail
-          mkdir controller-payload
-          gh release download "$RELEASE_TAG" \
-            --repo "$REPOSITORY" \
-            --pattern "$ASSET" \
-            --dir controller-payload
-          printf '%s  %s\n' "$EXPECTED_SHA256" "controller-payload/$ASSET" | sha256sum --check --strict
-
-      - name: Upload verified controller payload
-        if: ${{ inputs.controller_payload != 'none' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: controller-${{ inputs.controller_payload }}
-          path: controller-payload/${{ steps.controller.outputs.asset }}
-          if-no-files-found: error
-          retention-days: 1
 
   coverage:
     name: Test and generate code coverage
@@ -304,12 +277,14 @@ jobs:
           idf.py --version
           python3 --version
 
-      - name: Download verified controller payload
-        if: ${{ inputs.controller_payload != 'none' }}
-        uses: actions/download-artifact@v8
-        with:
-          name: controller-${{ inputs.controller_payload }}
-          path: controller-payload
+      - name: Download and verify controller payload
+        if: ${{ inputs.controller_payload != 'None (do not update LPC)' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/controller_payload_catalog.py \
+            '${{ inputs.controller_payload }}' \
+            --download-directory controller-payload
 
       - name: Build and package live firmware
         shell: bash
