@@ -1,5 +1,6 @@
 /** @file @brief Implements controller UART access using the ESP-IDF UART driver. */
 #include "controller_uart_adapter.hpp"
+#include "controller_uart_trace.hpp"
 
 #include "application/controller/controller_uart_config.hpp"
 
@@ -41,25 +42,36 @@ bool ControllerUartAdapter::initialize() {
                      application::controller_uart.cts_gpio) != ESP_OK) {
         return false;
     }
-    return uart_driver_install(uart_port,
+    const bool installed = uart_driver_install(uart_port,
                                application::controller_uart.receive_buffer_size,
                                application::controller_uart.transmit_buffer_size,
                                unused_event_queue_size,
                                nullptr,
                                default_interrupt_flags) == ESP_OK;
+    if (installed) start_controller_uart_trace();
+    return installed;
 }
 
 int ControllerUartAdapter::read(std::uint8_t* destination, std::size_t capacity) {
     const std::size_t read_size =
         std::min(capacity, application::controller_uart.maximum_read_size);
-    return uart_read_bytes(uart_port,
-                           destination,
-                           read_size,
-                           pdMS_TO_TICKS(application::controller_uart.read_wait_milliseconds));
+    const int received = uart_read_bytes(
+        uart_port, destination, read_size,
+        pdMS_TO_TICKS(application::controller_uart.read_wait_milliseconds));
+    if (received > 0) {
+        trace_controller_uart(ControllerUartTraceDirection::receive,
+                              {destination, static_cast<std::size_t>(received)});
+    }
+    return received;
 }
 
 int ControllerUartAdapter::write(core::BytesView frame) {
-    return uart_write_bytes(uart_port, frame.data(), frame.size());
+    const int submitted = uart_write_bytes(uart_port, frame.data(), frame.size());
+    if (submitted > 0) {
+        trace_controller_uart(ControllerUartTraceDirection::transmit,
+                              {frame.data(), static_cast<std::size_t>(submitted)});
+    }
+    return submitted;
 }
 
 }  // namespace firmware::target
