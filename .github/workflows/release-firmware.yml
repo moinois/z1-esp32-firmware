@@ -175,7 +175,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install --yes clang llvm cmake ninja-build
+          sudo apt-get install --yes clang llvm cmake ninja-build python3-pytest
 
       - name: Run host tests and generate coverage
         shell: bash
