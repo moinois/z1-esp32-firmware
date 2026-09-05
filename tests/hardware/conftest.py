@@ -45,8 +45,13 @@ def pytest_collection_modifyitems(items: List[pytest.Item]) -> None:
 
     allow_mutation = os.getenv("Z1_ALLOW_MUTATION") == "1"
     allow_destructive = os.getenv("Z1_ALLOW_DESTRUCTIVE") == "1"
+    allow_large_file = os.getenv("Z1_RUN_LARGE_FILE_UPLOAD") == "1"
     for item in items:
-        if item.get_closest_marker("destructive") and not allow_destructive:
+        if item.get_closest_marker("large_file") and not allow_large_file:
+            item.add_marker(pytest.mark.skip(
+                reason="large-file HIL requires Z1_RUN_LARGE_FILE_UPLOAD=1"
+            ))
+        elif item.get_closest_marker("destructive") and not allow_destructive:
             item.add_marker(pytest.mark.skip(
                 reason="destructive HIL test requires Z1_ALLOW_DESTRUCTIVE=1"
             ))

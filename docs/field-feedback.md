@@ -29,6 +29,12 @@ Status vocabulary:
 | FB-009 | Boards without SD/controller hardware would be easier to exercise if they returned static configuration, empty directories, and motionless controller data. | `Candidate`. Automatic fallback would conceal missing hardware and change specified failure semantics. | Consider a separately enabled simulator build backed by the existing storage/controller ports. No production fallback is authorized. |
 | FB-010 | More BLE logs were requested for connection, MTU, subscription, negotiation, protection mode, notifications, disconnect, scan, and IP acquisition. | `Candidate`. These are useful diagnostics if they avoid credentials and excessive packet logging. | Track as a diagnostic enhancement; existing HIL already verifies these wire-level phases physically. |
 
+## 2026-09 large-upload report
+
+| ID | Anonymized observation or proposal | Assessment | Result or follow-up |
+|---|---|---|---|
+| FB-011 | A field report suggested that an upload somewhat larger than 20 MB could not be completed. A physical-SD reproduction is still pending. During fixture preparation, a 512 KiB mock FAT volume reproducibly accepted 480 KiB but exhausted its usable capacity at upload block 494; the same 512 KiB upload and a 900 KiB upload succeeded after temporarily increasing the mock volume to 1 MiB, and the block-494 failure returned after restoring 512 KiB. | `Confirmed` only for full-volume error behavior. The moving boundary proves that this fixture failure was storage exhaustion, not evidence of a fixed transfer-size limit. HFTU-006 intentionally maps every target write failure, including a permanent full-volume failure, to repeated type `0xb6` `Error: File Write error!retry...` responses. If the host stops retrying, HFT-021 later exposes only the generic upload timeout. | `Candidate` for a Community Edition compatibility policy. Preserve the specified behavior in the conformance implementation. A future community mode should distinguish retryable write failures from permanent storage failures such as `ENOSPC`, terminate a permanent failure with an explicit type `0xb5` reason, and remove the partial target and MD5 sidecar. The on-demand physical-SD test in `tests/hardware/test_large_file_upload.py` remains the fixture for investigating the separate reported size limit. |
+
 ## Traceability rules
 
 When feedback causes a change, update the applicable row with the resulting

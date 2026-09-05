@@ -68,6 +68,7 @@ the already flashed image; they do not enable mocks in live firmware.
 |---|---|---|
 | `readonly` | Enabled when its fixture is detected | Queries and observation only |
 | `mutating` | Disabled | Requires `Z1_ALLOW_MUTATION=1`; tests must restore or remove their unique data |
+| `large_file` | Disabled | Requires `Z1_RUN_LARGE_FILE_UPLOAD=1`; reserved for long-running physical-SD capacity checks |
 | `destructive` | Disabled | Requires `Z1_ALLOW_DESTRUCTIVE=1` and a documented recovery image/path |
 
 Device detection grants permission only for read-only cases. The suite never
@@ -107,6 +108,10 @@ python3 -m pytest tests/hardware/test_usb.py -q
 # Recoverable mutations
 Z1_ALLOW_MUTATION=1 python3 -m pytest tests/hardware -m mutating
 
+# On-demand upload of at least 100 MiB to a physical SD card
+Z1_HIL_SD=1 Z1_ALLOW_MUTATION=1 Z1_RUN_LARGE_FILE_UPLOAD=1 \
+python3 -m pytest tests/hardware/test_large_file_upload.py -v
+
 # Explicitly destructive OTA checks
 Z1_ALLOW_DESTRUCTIVE=1 \
 Z1_HIL_OTA_IMAGE=build/mainboard_firmware.bin \
@@ -143,8 +148,10 @@ Only a reviewed `PASS` may update physical evidence in
 | `Z1_HIL_SPIFFS_IMAGE` | Valid SPIFFS image used by destructive `/updateffs` cases |
 | `Z1_HIL_PREVIEW_FILE` | Existing AVI below `/sd/videos` for physical preview |
 | `Z1_HIL_STATIC_ASSET`, `Z1_HIL_STATIC_ASSET_TIMEOUT` | Optional private large web asset and bounded timeout |
+| `Z1_HIL_LARGE_UPLOAD_BYTES` | Optional byte count of at least 100 MiB; defaults to 100 MiB |
 | `Z1_HIL_USB_RESET` | Explicitly permits recoverable native USB reset cases |
 | `Z1_ALLOW_MUTATION` | Enables recoverable mutations when set to `1` |
+| `Z1_RUN_LARGE_FILE_UPLOAD` | Explicitly enables the long-running physical-SD upload check when set to `1` |
 | `Z1_ALLOW_DESTRUCTIVE` | Enables firmware/partition replacement when set to `1` |
 
 ## Evidence by area
